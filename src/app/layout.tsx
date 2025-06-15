@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
-import { Manrope } from "next/font/google";
 import "./globals.css";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-  preload: true,
-});
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -21,8 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${manrope.variable}  antialiased`}>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`  antialiased `}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

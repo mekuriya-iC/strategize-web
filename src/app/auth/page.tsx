@@ -46,9 +46,9 @@ export default function AuthPage() {
             <Image
               src="/images/auth/overlay-chart-sample.png"
               alt="Chart Sample Overlay"
-              width={320}
+              width={280}
               height={120}
-              className="absolute -right-12 bottom-34 rounded-2xl shadow-2xl "
+              className="absolute -right-2 bottom-34 rounded-2xl shadow-2xl "
               style={{ zIndex: 10 }}
               priority
             />

@@ -1,19 +1,43 @@
 import StrategyPeriodCard from "./StrategyPeriodCard";
 import { Wrench, BadgeCheck, Crown } from "lucide-react";
+import starIcon from "@/public/images/choose-strategy/stars.png";
+
+import Image from "next/image";
 
 const periods = [
   {
-    icon: <Wrench size={48} strokeWidth={1.5} />,
+    icon: (
+      <Image
+        src="/images/choose-strategy/stars.png"
+        alt="star"
+        width={48}
+        height={48}
+      />
+    ),
     title: "Past",
     date: "July 2023 - 2026",
   },
   {
-    icon: <BadgeCheck size={48} strokeWidth={1.5} />,
+    icon: (
+      <Image
+        src="/images/choose-strategy/award.png"
+        alt="crown"
+        width={48}
+        height={48}
+      />
+    ),
     title: "Current",
     date: "July 2023 - 2026",
   },
   {
-    icon: <Crown size={48} strokeWidth={1.5} />,
+    icon: (
+      <Image
+        src="/images/choose-strategy/crown.png"
+        alt="star"
+        width={48}
+        height={48}
+      />
+    ),
     title: "Future",
     date: "July 2023 - 2026",
   },

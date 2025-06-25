@@ -11,10 +11,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { useRouter } from "next/navigation";
 
 export default function AddNewStrategyForm() {
+  const router = useRouter();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [timeline, setTimeline] = useState<string>("3 Years");
+  
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +38,7 @@ export default function AddNewStrategyForm() {
             selected={date}
             onSelect={setDate}
             className="w-full rounded-md border"
+
           />
         </div>
       </div>
@@ -53,7 +57,8 @@ export default function AddNewStrategyForm() {
       </div>
       <Button
         type="submit"
-        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white text-lg font-semibold"
+        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white text-lg font-semibold cursor-pointer"
+        onClick={() => router.push("/dashboard")} 
       >
         + Add
       </Button>

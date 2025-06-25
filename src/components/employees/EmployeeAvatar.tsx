@@ -1,6 +1,7 @@
 import React from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 interface EmployeeAvatarProps {
   src: string;
@@ -22,8 +23,9 @@ const EmployeeAvatar: React.FC<EmployeeAvatarProps> = ({
       <a
         href={downloadUrl}
         download
-        className="text-xs text-primary underline hover:text-primary/80"
+        className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
       >
+        <Download className="h-3 w-3" />
         Download
       </a>
     </div>

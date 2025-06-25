@@ -59,7 +59,7 @@ export default function AnalyticsSummary() {
   return (
     <section className="mb-10">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">Analytics</h2>
+        <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46]">Analytics</h2>
         <Button variant="outline" size="sm" className="flex items-center gap-2">
           <Filter className="w-4 h-4" /> Filter
         </Button>

@@ -12,11 +12,11 @@ export default function StrategyPeriodPage() {
       <div className="w-full max-w-6xl mx-auto">
         {/* Logo at the top left */}
 
-        <h1 className="text-3xl md:text-4xl font-bold text-center mb-12">
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-12 text-[#11181C]">
           Choose Strategy Period
         </h1>
         <StrategyPeriodGrid />
-        <div className="flex justify-center mt-10">
+        <div className="flex justify-center mt-24">
           <NewStrategyButton />
         </div>
       </div>

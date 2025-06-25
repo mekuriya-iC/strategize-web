@@ -21,13 +21,13 @@ export default function AnalyticsCard({
       {/* Top row: Icon and Title */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-gray-400 dark:text-gray-200">{icon}</span>
-        <span className="text-sm text-gray-700 dark:text-gray-100 font-medium">
+        <span className="text-xl text-[#09090B] dark:text-gray-100 font-medium">
           {title}
         </span>
       </div>
       {/* Middle row: Value and Change Badge */}
       <div className="flex items-center gap-2">
-        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <span className="text-2xl font-bold text-[#3838EC] dark:text-gray-100">
           {value}
         </span>
         <span

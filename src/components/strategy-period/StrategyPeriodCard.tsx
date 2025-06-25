@@ -20,16 +20,16 @@ export default function StrategyPeriodCard({
 }: StrategyPeriodCardProps) {
   return (
     <Card
-      className={`bg-white border border-[#E2E8F0] rounded-xl shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col items-center p-8 transition-all ${
+      className={`bg-white border border-[#E2E8F0] rounded-xl shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col items-center p-8 transition-all gap-2 ${
         selected ? "ring-2 ring-[#3838EC]" : ""
       }`}
     >
-      <div className="mb-4 text-5xl">{icon}</div>
-      <div className="font-semibold text-lg mb-1">{title}</div>
-      <div className="text-sm text-gray-500 mb-6">{date}</div>
+      <div className="mb-5 text-5xl">{icon}</div>
+      <div className="font-semibold text-lg  text-primary">{title}</div>
+      <div className="text-sm text-[#09090B] mb-8">{date}</div>
       <Button
         onClick={onClick}
-        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white"
+        className="w-full bg-primary cursor-pointer text-white"
       >
         Choose
       </Button>

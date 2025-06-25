@@ -10,6 +10,7 @@ interface Employee {
   fullName: string;
   profilePic: string;
   email: string;
+  department: string;
   phone: string;
   employedOn: string;
   status: string;
@@ -23,23 +24,37 @@ const EmployeeTableRow = ({
   odd: boolean;
 }) => {
   return (
-    <TableRow className={odd ? "bg-muted/50" : "bg-white dark:bg-muted"}>
-      <TableCell className="font-medium">{employee.fullName}</TableCell>
-      <TableCell>
+    <TableRow className={odd ? "bg-white" : "bg-[#ECECFF] "}>
+      <TableCell className="font-medium px-6 py-4 text-[#11181C]">
+        {employee.fullName}
+      </TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
         <EmployeeAvatar
           src={employee.profilePic}
           alt={employee.fullName}
           downloadUrl={employee.profilePic}
         />
       </TableCell>
-      <TableCell>{employee.email}</TableCell>
-      <TableCell>{employee.phone}</TableCell>
-      <TableCell>{employee.employedOn}</TableCell>
-      <TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
+        {employee.email}
+      </TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
+        {employee.department}
+      </TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
+        {employee.phone}
+      </TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
+        {employee.employedOn}
+      </TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
         <EmployeeStatusBadge status={employee.status} />
       </TableCell>
-      <TableCell>
-        <EmployeeActionsMenu onView={() => {}} />
+      <TableCell className="px-6 py- text-[#11181C]">
+        <EmployeeActionsMenu
+          onView={() => {}}
+          employeeName={employee.fullName}
+        />
       </TableCell>
     </TableRow>
   );

@@ -174,7 +174,10 @@ export default function ObjectivesApprovalTable() {
                   onClick={() => setSelectedObjective(obj)}
                   style={{ cursor: "pointer" }}
                 >
-                  <TableCell className="py-4 text-base">
+                  <TableCell
+                    className="py-4 text-base"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={selected.includes(obj.id)}
                       onCheckedChange={() => handleSelect(obj.id)}
@@ -201,7 +204,12 @@ export default function ObjectivesApprovalTable() {
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4 text-base">
-                    <button onClick={() => handleExpand(obj.id)}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExpand(obj.id);
+                      }}
+                    >
                       {expanded === obj.id ? (
                         <ChevronUp className="w-4 h-4" />
                       ) : (

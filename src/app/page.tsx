@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import AuthPage from "./auth/page";
 
 export default function Home() {
   return (
-    <div>
-      <Button variant={"outline"}>Hello Strategize</Button>
-    </div>
+    <>
+    <AuthPage/>
+    </>
   );
 }

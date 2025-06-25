@@ -29,58 +29,59 @@ export default function ObjectiveForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10">
-      {/* Objective Name */}
-      <div>
-        <label className="block font-medium mb-2 ">Objective Name</label>
-        <Input
-          placeholder="Enter objective name"
-          value={objectiveName}
-          onChange={(e) => setObjectiveName(e.target.value)}
-          required
-          className="max-w-xl"
-        />
-      </div>
-      {/* KPIs Section */}
-      <div>
-        <label className="block font-medium mb-4 text-lg">KPIs</label>
-        {kpis.map((kpi, idx) => (
-          <div key={idx} className="mb-6">
-            <div className="grid grid-cols-3 gap-4 mb-1">
-              <label className="text-sm text-gray-500 col-span-2">{`KPI ${
-                idx + 1
-              }`}</label>
-              <label className="text-sm text-gray-500">{`Weight ${
-                idx + 1
-              }`}</label>
-            </div>
-            <KPIInputRow
-              kpi={kpi}
-              index={idx}
-              onChange={handleKPIChange}
-              onRemove={handleRemoveKPI}
-              canRemove={kpis.length > 1}
+    <div className="min-h-[70vh] flex flex-col">
+      <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+        {/* Content Container */}
+        <div className="flex-1 space-y-10 pb-6">
+          {/* Objective Name */}
+          <div>
+            <label className="block font-medium mb-2">Objective Name</label>
+            <Input
+              placeholder="Enter objective name"
+              value={objectiveName}
+              onChange={(e) => setObjectiveName(e.target.value)}
+              required
+              className="max-w-xl"
             />
           </div>
-        ))}
-        <Button
-          type="button"
-          variant="link"
-          className="text-[#3838EC] pl-0"
-          onClick={handleAddKPI}
-        >
-          + New KPI
-        </Button>
-      </div>
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-4 mt-10">
-        <Button type="button" variant="outline">
-          Cancel
-        </Button>
-        <Button type="submit" className="bg-[#3838EC] text-white">
-          Add Objective
-        </Button>
-      </div>
-    </form>
+          {/* KPIs Section */}
+          <div>
+            {kpis.map((kpi, idx) => (
+              <div key={idx} className="mb-6">
+                <KPIInputRow
+                  kpi={kpi}
+                  index={idx}
+                  onChange={handleKPIChange}
+                  onRemove={handleRemoveKPI}
+                  canRemove={kpis.length > 1}
+                />
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="link"
+              className="text-[#3838EC] pl-0 cursor-pointer text-center w-full"
+              onClick={handleAddKPI}
+            >
+              + New KPI
+            </Button>
+          </div>
+        </div>
+
+        {/* Action Buttons - Fixed at bottom */}
+        <div className="flex justify-end gap-4 py-4   bottom-0">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-primary cursor-pointer border border-primary hover:bg-primary hover:text-white"
+          >
+            Cancel
+          </Button>
+          <Button type="submit" className="bg-[#3838EC] text-white">
+            Add Objective
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

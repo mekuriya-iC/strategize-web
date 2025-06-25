@@ -7,9 +7,12 @@ import ObjectivesApprovalTable from "@/components/objectives/ObjectivesApprovalT
 export default function ObjectivesPage() {
   const router = useRouter();
   return (
+    <>
+    {/* <EmptyState/> */}
     <div className="min-h-[70vh]">
       <ProgressSteps currentStep={2} />
       <ObjectivesApprovalTable />
     </div>
+    </>
   );
 }

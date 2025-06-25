@@ -23,7 +23,9 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="">
       <div>
-        <h1 className="text-4xl font-bold mb-4 text-center font-sans">Welcome Back</h1>
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center font-sans text-[#11181C]">
+          Welcome Back
+        </h1>
         <p className="mb-8 text-center text-[#ABABAB] font-sans">
           Please enter your email and password to continue
         </p>
@@ -83,7 +85,10 @@ export default function LoginForm() {
             checked={rememberMe}
             onCheckedChange={(checked) => setRememberMe(!!checked)}
           />
-          <Label htmlFor="remember" className="text-sm font-sans">
+          <Label
+            htmlFor="remember"
+            className="text-sm font-sans text-[#242424]"
+          >
             Remember me
           </Label>
         </div>
@@ -96,7 +101,10 @@ export default function LoginForm() {
       </div>
 
       {/* Login Button */}
-      <Button type="submit" className="w-full bg-[#3838EC] text-white py-6 font-sans">
+      <Button
+        type="submit"
+        className="w-full bg-primary text-white py-6 font-sans cursor-pointer"
+      >
         Login
       </Button>
     </form>

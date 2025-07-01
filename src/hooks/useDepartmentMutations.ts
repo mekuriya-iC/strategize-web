@@ -79,10 +79,14 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
+      // Refetch all possible departments queries that might be cached
       refetchQueries: [
-        {
-          query: GET_DEPARTMENTS,
-        },
+        // Generic refetch (handles most cases)
+        { query: GET_DEPARTMENTS },
+        // For analytics (all departments)
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
+        // For forms that need all departments (dropdowns)
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
     }
@@ -101,10 +105,14 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
+      // Refetch all possible departments queries that might be cached
       refetchQueries: [
-        {
-          query: GET_DEPARTMENTS,
-        },
+        // Generic refetch (handles most cases)
+        { query: GET_DEPARTMENTS },
+        // For analytics (all departments)
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
+        // For forms that need all departments (dropdowns)
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
       update: (cache, { data }) => {

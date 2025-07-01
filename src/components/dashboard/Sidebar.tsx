@@ -122,6 +122,16 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { open, closeSidebar } = useSidebar();
 
+  // Helper function to determine if a navigation link is active
+  const isLinkActive = (linkHref: string) => {
+    // Exact match for dashboard home
+    if (linkHref === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    // For other links, check if pathname starts with the link href
+    return pathname.startsWith(linkHref);
+  };
+
   return (
     <>
       {/* Mobile overlay */}
@@ -156,7 +166,7 @@ export default function Sidebar() {
                 key={link.href}
                 href={link.href}
                 className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] ${
-                  pathname === link.href
+                  isLinkActive(link.href)
                     ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
                     : "text-gray-700"
                 }`}
@@ -210,7 +220,7 @@ export default function Sidebar() {
                   flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA]
                   ${open ? "gap-3 px-3 py-2" : "gap-0 px-2 py-2 justify-center"}
                   ${
-                    pathname === link.href
+                    isLinkActive(link.href)
                       ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
                       : "text-gray-700"
                   }

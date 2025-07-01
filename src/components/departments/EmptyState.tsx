@@ -17,7 +17,7 @@ export default function EmptyState({ onAddDepartment }: EmptyStateProps) {
         priority
       />
       <h2 className="text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-4 max-w-xl">
-        It seems you don't have added any departments yet
+        It seems you don&apos;t have added any departments yet
       </h2>
       <p className="text-[#BABABA] dark:text-gray-400 mb-8 md:mb-12 text-lg max-w-sm">
         Start organizing your company by creating departments.

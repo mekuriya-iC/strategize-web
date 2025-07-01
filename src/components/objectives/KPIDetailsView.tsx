@@ -148,7 +148,10 @@ export default function KPIDetailsView({
                   {kpi.weight}
                 </TableCell>
                 {years.map((year) => (
-                  <TableCell key={year} className="px-6 py-4 text-gray-600 font-medium">
+                  <TableCell
+                    key={year}
+                    className="px-6 py-4 text-gray-600 font-medium"
+                  >
                     {kpi.targets[year] ?? "-"}
                   </TableCell>
                 ))}
@@ -173,7 +176,6 @@ export default function KPIDetailsView({
       <AssignDivisionDialog
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
-        kpi={selectedKPI}
         assignedDivisions={
           selectedKPI ? assignedDivisions[selectedKPI] || [] : []
         }

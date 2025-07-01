@@ -7,7 +7,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 
 interface KPIInputRowProps {
   kpi: {
@@ -29,8 +28,6 @@ export default function KPIInputRow({
   onChange,
   onRemove,
   canRemove = false,
-  onAddNew,
-  showAddButton = false,
 }: KPIInputRowProps) {
   return (
     <div className="mb-6 ">

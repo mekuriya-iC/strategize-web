@@ -7,11 +7,7 @@ import {
   REMOVE_EMPLOYEE,
 } from "@/lib/graphql/mutations/employees";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import {
-  CreateEmployeeInput,
-  UpdateEmployeeInput,
-  Employee,
-} from "@/types/graphql";
+import { CreateEmployeeInput, UpdateEmployeeInput } from "@/types/graphql";
 
 export const useEmployeeMutations = () => {
   // Create Employee Mutation
@@ -82,7 +78,7 @@ export const useEmployeeMutations = () => {
         deletedEmployee: data?.removeEmployee,
         deletedEmployeeId: employeeId, // Use the original ID since backend can't return it
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error("Remove employee error:", error);
       return { success: false, error };
     }

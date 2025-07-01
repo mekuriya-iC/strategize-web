@@ -73,8 +73,9 @@ const DeleteDepartmentDialog: React.FC<DeleteDepartmentDialogProps> = ({
               Are you sure you want to delete this department?
             </DialogTitle>
             <p className="text-sm text-gray-600 text-center">
-              This action cannot be undone. The department "{departmentName}"
-              will be permanently removed from the system.
+              This action cannot be undone. The department &quot;
+              {departmentName}&quot; will be permanently removed from the
+              system.
             </p>
           </div>
         </DialogHeader>

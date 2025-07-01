@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
+"use client";
 import AuthPage from "./auth/page";
 
 export default function Home() {

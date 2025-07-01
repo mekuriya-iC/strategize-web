@@ -1,10 +1,8 @@
 import React from "react";
 import {
   Table,
-  TableHeader,
   TableBody,
   TableRow,
-  TableHead,
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -16,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ReusableTableHeader, {
-  HeaderColumn,
 } from "@/components/ui/table-header";
 import { DepartmentTableSkeleton } from "@/components/skeleton";
 

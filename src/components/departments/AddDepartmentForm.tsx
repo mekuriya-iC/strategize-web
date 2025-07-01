@@ -10,6 +10,21 @@ import {
 import { Button } from "@/components/ui/button";
 import KPIInputRow from "./KPIInputRow";
 
+interface KPIData {
+  kpi: string;
+  corporateObjective: string;
+  baseline: string;
+  weight: string;
+  target: string;
+  targetType: string;
+}
+
+interface FormData {
+  departmentObjective: string;
+  corporateObjective: string;
+  kpis: KPIData[];
+}
+
 const mockCorporateObjectives = [
   "Deploy a learning management system across 3 departments",
   "Implement a training platform throughout...",
@@ -19,7 +34,7 @@ const AddDepartmentForm = ({
   onSubmit,
   onCancel,
 }: {
-  onSubmit?: (data: any) => void;
+  onSubmit?: (data: FormData) => void;
   onCancel?: () => void;
 }) => {
   const [departmentObjective, setDepartmentObjective] = useState("");
@@ -35,7 +50,7 @@ const AddDepartmentForm = ({
     },
   ]);
 
-  const handleKPIChange = (idx: number, value: any) => {
+  const handleKPIChange = (idx: number, value: KPIData) => {
     setKpis((kpis) => kpis.map((k, i) => (i === idx ? value : k)));
   };
 

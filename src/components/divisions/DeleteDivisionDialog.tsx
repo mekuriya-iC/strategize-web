@@ -29,14 +29,15 @@ const DeleteDivisionDialog: React.FC<DeleteDivisionDialogProps> = ({
         id: String(divisionId),
       });
       setOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting division:", error);
 
       // Check if it's a foreign key constraint error
       if (
-        error.message?.includes("foreign key constraint") ||
-        error.message?.includes("FK_") ||
-        error.message?.includes("Department")
+        error instanceof Error &&
+        (error.message?.includes("foreign key constraint") ||
+          error.message?.includes("FK_") ||
+          error.message?.includes("Department"))
       ) {
         // The mutation hook will show the error toast, but we can add more specific handling here if needed
         // For now, just keep the dialog open so user can see the error
@@ -60,7 +61,7 @@ const DeleteDivisionDialog: React.FC<DeleteDivisionDialogProps> = ({
           <div className="px-6 pb-6">
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete the division{" "}
-              <span className="font-semibold">"{divisionName}"</span>?
+              <span className="font-semibold">&quot;{divisionName}&quot;</span>?
             </p>
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
               <p className="text-yellow-800 text-sm">

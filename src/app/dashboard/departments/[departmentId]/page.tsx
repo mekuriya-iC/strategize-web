@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import DepartmentDetailsTable from "@/components/departments/DepartmentDetailsTable";
@@ -9,7 +9,7 @@ import DepartmentPagination from "@/components/departments/DepartmentPagination"
 
 const DepartmentDetailsPage = () => {
   const router = useRouter();
-  const params = useParams();
+ ;
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 

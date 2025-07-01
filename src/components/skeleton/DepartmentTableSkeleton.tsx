@@ -4,7 +4,6 @@ import {
   Table,
   TableBody,
   TableRow,
-  TableHead,
   TableCell,
 } from "@/components/ui/table";
 import ReusableTableHeader, {

@@ -45,7 +45,7 @@ export default function ResetPasswordForm() {
 
       toast.success("Password reset successful!");
       router.push("/auth/reset-success");
-    } catch (error) {
+    } catch {
       toast.error("Failed to reset password. Please try again.");
     } finally {
       setLoading(false);

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import ResetSuccessConfirmation from "@/components/auth/ResetSuccessConfirmation";
 
@@ -27,7 +28,7 @@ export default function ResetSuccessPage() {
 
           {/* Dashboard preview image */}
           <div className="relative">
-            <img
+            <Image
               src="/images/auth/performance-dashboard.png"
               alt="Performance Dashboard"
               className="rounded-lg shadow-2xl max-w-full h-auto"

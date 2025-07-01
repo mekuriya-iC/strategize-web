@@ -1,14 +1,7 @@
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, MoreVertical, Trash2, Plus } from "lucide-react";
 import {
@@ -33,6 +26,22 @@ export interface Department {
   managedBy: string;
   division: string;
   members: number;
+}
+
+// Additional interfaces for props
+interface Manager {
+  employeeId: string;
+  fullName: string;
+}
+
+interface Division {
+  divisionId: string;
+  name: string;
+}
+
+interface Member {
+  employeeId: string;
+  fullName: string;
 }
 
 // Mock data matching the design from the image
@@ -135,9 +144,9 @@ interface DepartmentTableProps {
   loading?: boolean;
   error?: string;
   onAddDepartment?: () => void;
-  managers?: any[];
-  divisions?: any[];
-  allMembers?: any[];
+  managers?: Manager[];
+  divisions?: Division[];
+  allMembers?: Member[];
   onDeleteSuccess?: () => void;
   onEditSuccess?: () => void;
 }

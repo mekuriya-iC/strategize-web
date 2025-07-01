@@ -1,10 +1,15 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { Table, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import ReusableTableHeader from "@/components/ui/table-header";
+import {
+  Table,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableHead,
+  TableHeader,
+} from "@/components/ui/table";
 
 export interface Objective {
   id: string;
@@ -19,7 +24,7 @@ interface ObjectiveTableProps {
   selected: string[];
   expanded: string | null;
   onSelect: (id: string) => void;
-  onSelectAll: () => void;
+  onSelectAll?: () => void;
   onExpand: (id: string) => void;
   onObjectiveClick: (objective: Objective) => void;
   loading?: boolean;
@@ -44,14 +49,10 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
   loading = false,
   error,
 }) => {
-  const headers = [
-    { key: "checkbox", label: "" },
-    { key: "strategic_objective", label: "STRATEGIC OBJECTIVE" },
-    { key: "kpi", label: "KPI" },
-    { key: "weight", label: "WEIGHT" },
-    { key: "status", label: "STATUS" },
-    { key: "action", label: "" },
-  ];
+  // Calculate if all objectives are selected
+  const allSelected =
+    objectives.length > 0 &&
+    objectives.every((obj) => selected.includes(obj.id));
 
   if (loading) {
     return (
@@ -87,7 +88,32 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
   return (
     <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
       <Table className="border-none">
-        <ReusableTableHeader headers={headers} />
+        <TableHeader>
+          <TableRow className="bg-muted/60 hover:bg-muted/60">
+            <TableHead className="px-6 py-3 w-12">
+              {onSelectAll && (
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={onSelectAll}
+                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                />
+              )}
+            </TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
+              STRATEGIC OBJECTIVE
+            </TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
+              KPI
+            </TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
+              WEIGHT
+            </TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
+              STATUS
+            </TableHead>
+            <TableHead className="px-6 py-3 w-12"></TableHead>
+          </TableRow>
+        </TableHeader>
         <TableBody>
           {objectives.map((obj, idx) => (
             <React.Fragment key={obj.id}>

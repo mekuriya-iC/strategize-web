@@ -8,23 +8,47 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useEmployeeMutations } from "@/hooks/useEmployeeMutations";
 
 interface DeleteEmployeeDialogProps {
   children: React.ReactNode;
   employeeName?: string;
+  employeeId?: string;
 }
 
 const DeleteEmployeeDialog: React.FC<DeleteEmployeeDialogProps> = ({
   children,
   employeeName = "this employee",
+  employeeId,
 }) => {
   const [open, setOpen] = useState(false);
+  const { removeEmployee, removeLoading } = useEmployeeMutations();
 
-  const handleDelete = () => {
-    // Handle delete logic here
-    console.log("Deleting employee:", employeeName);
-    setOpen(false);
+  const handleDelete = async () => {
+    if (!employeeId) {
+      toast.error("Error", {
+        description: "Employee ID is missing. Cannot delete employee.",
+      });
+      return;
+    }
+
+    const result = await removeEmployee(employeeId);
+
+    if (result.success) {
+      toast.success("Employee deleted successfully", {
+        description: `${employeeName} has been removed from the system.`,
+      });
+      setOpen(false);
+    } else {
+      toast.error("Failed to delete employee", {
+        description:
+          typeof result.error === "string"
+            ? result.error
+            : "Please try again later.",
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -46,6 +70,10 @@ const DeleteEmployeeDialog: React.FC<DeleteEmployeeDialogProps> = ({
             <DialogTitle className="text-lg font-semibold text-center text-[#0F1327]">
               Are you sure you want to delete {employeeName}?
             </DialogTitle>
+            <p className="text-sm text-gray-600 text-center">
+              This action cannot be undone. The employee will be permanently
+              removed from the system.
+            </p>
           </div>
         </DialogHeader>
 
@@ -55,16 +83,25 @@ const DeleteEmployeeDialog: React.FC<DeleteEmployeeDialogProps> = ({
             type="button"
             variant="outline"
             onClick={handleCancel}
-            className=" order-2 sm:order-1"
+            disabled={removeLoading}
+            className="order-2 sm:order-1"
           >
             No, Cancel
           </Button>
           <Button
             type="button"
             onClick={handleDelete}
-            className=" bg-red-600 hover:bg-red-700 text-white order-1 sm:order-2"
+            disabled={removeLoading || !employeeId}
+            className="bg-red-600 hover:bg-red-700 text-white order-1 sm:order-2"
           >
-            Yes, Delete
+            {removeLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Deleting...
+              </>
+            ) : (
+              "Yes, Delete"
+            )}
           </Button>
         </div>
       </DialogContent>

@@ -8,11 +8,14 @@ export default function ObjectivesPage() {
   const router = useRouter();
   return (
     <>
-    {/* <EmptyState/> */}
-    <div className="min-h-[70vh]">
-      <ProgressSteps currentStep={2} />
-      <ObjectivesApprovalTable />
-    </div>
+      {/* <EmptyState/> */}
+      <div className="min-h-[70vh]">
+        <div className="mb-4">
+          <ProgressSteps currentStep={2} />
+        </div>
+
+        <ObjectivesApprovalTable />
+      </div>
     </>
   );
 }

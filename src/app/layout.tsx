@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ApolloWrapper } from "@/components/ApolloWrapper";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
@@ -16,7 +18,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`  antialiased `}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ApolloWrapper>
+          <ThemeProvider>
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </ApolloWrapper>
       </body>
     </html>
   );

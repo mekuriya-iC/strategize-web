@@ -4,6 +4,7 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import EmployeeAvatar from "./EmployeeAvatar";
 import EmployeeStatusBadge from "./EmployeeStatusBadge";
 import EmployeeActionsMenu from "./EmployeeActionsMenu";
+import { Employee as GraphQLEmployee } from "@/types/graphql";
 
 interface Employee {
   id: number;
@@ -14,14 +15,19 @@ interface Employee {
   phone: string;
   employedOn: string;
   status: string;
+  employeeId?: string;
 }
 
 const EmployeeTableRow = ({
   employee,
   odd,
+  originalEmployee,
+  onAddDepartment,
 }: {
   employee: Employee;
   odd: boolean;
+  originalEmployee?: GraphQLEmployee;
+  onAddDepartment?: () => void;
 }) => {
   return (
     <TableRow className={odd ? "bg-white" : "bg-[#ECECFF] "}>
@@ -35,25 +41,28 @@ const EmployeeTableRow = ({
           downloadUrl={employee.profilePic}
         />
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C]">
+      <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.email}
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C]">
+      <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.department}
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C]">
+      <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.phone}
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C]">
+      <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.employedOn}
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C]">
+      <TableCell className="px-6 py-4 text-[#11181C]">
         <EmployeeStatusBadge status={employee.status} />
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C]">
+      <TableCell className="px-6 py-4 text-[#11181C]">
         <EmployeeActionsMenu
           onView={() => {}}
           employeeName={employee.fullName}
+          employeeId={employee.employeeId}
+          originalEmployee={originalEmployee}
+          onAddDepartment={onAddDepartment}
         />
       </TableCell>
     </TableRow>

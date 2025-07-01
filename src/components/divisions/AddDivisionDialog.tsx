@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +14,12 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
+
+interface Manager {
+  id: string;
+  name: string;
+}
 
 interface AddDivisionDialogProps {
   open: boolean;
@@ -22,12 +27,13 @@ interface AddDivisionDialogProps {
   divisionName: string;
   setDivisionName: (name: string) => void;
   divisionManager: string;
-  setDivisionManager: (manager: string) => void;
+  setDivisionManager: (managerId: string) => void;
   departments: string[];
   setDepartments: (departments: string[]) => void;
-  managers: string[];
+  managers: Manager[];
   allDepartments: string[];
   onSubmit: () => void;
+  loading?: boolean;
 }
 
 const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
@@ -42,87 +48,175 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
   managers,
   allDepartments,
   onSubmit,
+  loading = false,
 }) => {
+  const handleDepartmentToggle = (department: string) => {
+    setDepartments(
+      departments.includes(department)
+        ? departments.filter((d) => d !== department)
+        : [...departments, department]
+    );
+  };
+
+  const handleRemoveDepartment = (department: string) => {
+    setDepartments(departments.filter((d) => d !== department));
+  };
+
+  // Get selected manager name for display
+  const selectedManagerName =
+    managers.find((m) => m.id === divisionManager)?.name || "";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-xl p-8">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-2xl text-center font-semibold">
-            Add Division
-          </DialogTitle>
-          <DialogClose asChild>
-            <button className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
-              ×
-            </button>
-          </DialogClose>
-        </DialogHeader>
-        <form
-          className="space-y-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-        >
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block mb-1 font-medium">Division Name</label>
-              <Input
-                placeholder="Enter division name"
-                value={divisionName}
-                onChange={(e) => setDivisionName(e.target.value)}
-                required
-              />
+      <DialogContent className="max-w-[320px] sm:max-w-[650px] rounded-xl p-0 overflow-hidden">
+        <div className="bg-white">
+          {/* Header */}
+          <DialogHeader className="p-6">
+            <div className="flex items-center justify-center relative">
+              <DialogTitle className="text-xl font-semibold text-[#0F1327]">
+                Add Division
+              </DialogTitle>
             </div>
-            <div className="flex-1">
-              <label className="block mb-1 font-medium">Division Manager</label>
-              <Select
-                value={divisionManager}
-                onValueChange={setDivisionManager}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select division manager" />
-                </SelectTrigger>
-                <SelectContent>
-                  {managers.map((manager) => (
-                    <SelectItem key={manager} value={manager}>
-                      {manager}
-                    </SelectItem>
+          </DialogHeader>
+
+          {/* Form */}
+          <form
+            className="p-6 space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit();
+            }}
+          >
+            {/* Division Name and Manager Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Division Name
+                </label>
+                <Input
+                  placeholder="Operation Division"
+                  value={divisionName}
+                  onChange={(e) => setDivisionName(e.target.value)}
+                  className="w-full"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Division Manager
+                </label>
+                <Select
+                  value={divisionManager}
+                  onValueChange={setDivisionManager}
+                  disabled={loading || managers.length === 0}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Manager">
+                      {selectedManagerName ||
+                        (managers.length === 0
+                          ? "No managers available"
+                          : "Select Manager")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {managers.length === 0 ? (
+                      <div className="p-2 text-sm text-gray-500">
+                        No managers found. Please ensure there are employees
+                        with MANAGER, ADMIN, or SUPER_ADMIN roles.
+                      </div>
+                    ) : (
+                      managers.map((manager) => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          {manager.name} (ID: {manager.id})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {managers.length === 0 && (
+                  <p className="text-sm text-red-600 mt-1">
+                    No managers available. Please create employees with
+                    appropriate roles first.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Department(s) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Department(s){" "}
+                <span className="text-gray-500 text-xs">(Optional)</span>
+              </label>
+              <div className="border border-gray-300 rounded-md p-3 min-h-[100px] bg-white">
+                {/* Selected Department Tags */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {departments.map((department) => (
+                    <div
+                      key={department}
+                      className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
+                    >
+                      <span>{department}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDepartment(department)}
+                        className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                        disabled={loading}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+
+                {/* Add Department Dropdown */}
+                <Select
+                  onValueChange={handleDepartmentToggle}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="w-full border-dashed border-gray-300">
+                    <SelectValue placeholder="Add Department(s)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allDepartments
+                      .filter((d) => !departments.includes(d))
+                      .map((department) => (
+                        <SelectItem key={department} value={department}>
+                          {department}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block mb-1 font-medium">Department(s)</label>
-            <Select
-              value={departments[0] || ""}
-              onValueChange={(val) => setDepartments(val ? [val] : [])}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Add Department(s)" />
-              </SelectTrigger>
-              <SelectContent>
-                {allDepartments.map((dep) => (
-                  <SelectItem key={dep} value={dep}>
-                    {dep}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-4 mt-8">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" className="bg-[#3838EC] text-white">
-              Add Division
-            </Button>
-          </div>
-        </form>
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="px-6"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6"
+                disabled={
+                  loading ||
+                  !divisionName.trim() ||
+                  !divisionManager ||
+                  managers.length === 0
+                }
+              >
+                {loading ? "Creating..." : "Add Division"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -9,6 +9,7 @@ import {
   Moon,
   SidebarClose,
   SidebarOpen,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,16 +18,27 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import StrategySelector from "./StrategySelector";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/context/SidebarContext";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
   const { open, toggleSidebar } = useSidebar();
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/auth");
+  };
 
   // Function to get page name from pathname
   const getPageName = (path: string) => {
@@ -119,17 +131,45 @@ export default function Topbar() {
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center gap-2 text-gray-700"
+              className="flex items-center gap-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
-              <User className="w-5 h-5" />
-              <span>John Doe</span>
+              <UserAvatar
+                src={user?.picture}
+                alt={user?.fullName || "User"}
+                size="sm"
+              />
+              <span className="hidden sm:inline">
+                {user?.fullName || "User"}
+              </span>
               <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 rotate-90" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Account</DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem disabled>
+              <div className="flex items-center gap-3">
+                <UserAvatar
+                  src={user?.picture}
+                  alt={user?.fullName || "User"}
+                  size="md"
+                />
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {user?.fullName || "User"}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {user?.email || ""}
+                  </span>
+                </div>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Account Settings</DropdownMenuItem>
             <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

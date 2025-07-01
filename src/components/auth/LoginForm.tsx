@@ -7,17 +7,34 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+// import { LoginEmployeeInput } from "@/types/graphql";
+import { toast } from "sonner";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const { login, isAuthenticated, user, loading } = useAuth();
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Add authentication logic here
-    alert("Login submitted!");
+    const result = await login({
+      email,
+      password,
+    });
+
+    if (result?.success) {
+      toast.success("Login Successful!");
+      // Use Next.js router instead of window.location
+      router.push("/dashboard");
+    } else {
+      // console.log("Login failed:", result?.error);
+      toast.error("Login failed. Please check your credentials and try again.");
+    }
   };
 
   return (
@@ -93,7 +110,7 @@ export default function LoginForm() {
           </Label>
         </div>
         <Link
-          href="/forgot-password"
+          href="/auth/forgot-password"
           className="text-sm text-primary hover:underline font-sans"
         >
           Forgot Password?
@@ -103,9 +120,10 @@ export default function LoginForm() {
       {/* Login Button */}
       <Button
         type="submit"
-        className="w-full bg-primary text-white py-6 font-sans cursor-pointer"
+        disabled={loading || !email || !password}
+        className="w-full bg-primary text-white py-6 font-sans cursor-pointer disabled:opacity-50"
       >
-        Login
+        {loading ? "Logging in..." : "Login"}
       </Button>
     </form>
   );

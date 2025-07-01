@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,11 +23,15 @@ interface AddDepartmentDialogProps {
   setDepartmentName: (name: string) => void;
   departmentManager: string;
   setDepartmentManager: (manager: string) => void;
+  selectedDivision: string;
+  setSelectedDivision: (division: string) => void;
   departmentMembers: string[];
   setDepartmentMembers: (members: string[]) => void;
-  managers: string[];
-  allMembers: string[];
+  managers: Array<{ employeeId: string; fullName: string }>;
+  divisions: Array<{ divisionId: string; name: string }>;
+  allMembers: Array<{ employeeId: string; fullName: string }>;
   onSubmit: () => void;
+  loading?: boolean;
 }
 
 const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
@@ -38,125 +41,191 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
   setDepartmentName,
   departmentManager,
   setDepartmentManager,
+  selectedDivision,
+  setSelectedDivision,
   departmentMembers,
   setDepartmentMembers,
-  managers,
-  allMembers,
+  managers = [],
+  divisions = [],
+  allMembers = [],
   onSubmit,
+  loading = false,
 }) => {
-  const handleMemberToggle = (member: string) => {
+  const handleMemberToggle = (memberId: string) => {
     setDepartmentMembers(
-      departmentMembers.includes(member)
-        ? departmentMembers.filter((m) => m !== member)
-        : [...departmentMembers, member]
+      departmentMembers.includes(memberId)
+        ? departmentMembers.filter((m) => m !== memberId)
+        : [...departmentMembers, memberId]
     );
   };
 
-  const handleRemoveMember = (member: string) => {
-    setDepartmentMembers(departmentMembers.filter((m) => m !== member));
+  const handleRemoveMember = (memberId: string) => {
+    setDepartmentMembers(departmentMembers.filter((m) => m !== memberId));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-xl p-8">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-2xl text-center font-semibold">
-            Add Department
-          </DialogTitle>
-          <DialogClose asChild>
-            <button className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
-              ×
-            </button>
-          </DialogClose>
-        </DialogHeader>
-        <form
-          className="space-y-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-        >
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block mb-1 font-medium">Department Name</label>
-              <Input
-                placeholder="Enter department name"
-                value={departmentName}
-                onChange={(e) => setDepartmentName(e.target.value)}
-                required
-              />
+      <DialogContent className="max-w-[320px] sm:max-w-[650px] rounded-xl p-0 overflow-hidden">
+        <div className="bg-white">
+          {/* Header */}
+          <DialogHeader className="p-6 ">
+            <div className="flex items-center justify-center relative">
+              <DialogTitle className="text-xl font-semibold text-[#0F1327]">
+                Add Department
+              </DialogTitle>
             </div>
-            <div className="flex-1">
-              <label className="block mb-1 font-medium">
-                Department Manager
+          </DialogHeader>
+
+          {/* Form */}
+          <form
+            className="p-6 space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit();
+            }}
+          >
+            {/* Department Name and Manager Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Department Name
+                </label>
+                <Input
+                  placeholder="Learning Solutions"
+                  value={departmentName}
+                  onChange={(e) => setDepartmentName(e.target.value)}
+                  className="w-full"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Department Manager
+                </label>
+                <Select
+                  value={departmentManager}
+                  onValueChange={setDepartmentManager}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {managers.map((manager) => (
+                      <SelectItem
+                        key={manager.employeeId}
+                        value={manager.employeeId}
+                      >
+                        {manager.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Division */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Division
               </label>
               <Select
-                value={departmentManager}
-                onValueChange={setDepartmentManager}
+                value={selectedDivision}
+                onValueChange={setSelectedDivision}
+                disabled={loading}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department manager" />
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Division" />
                 </SelectTrigger>
                 <SelectContent>
-                  {managers.map((manager) => (
-                    <SelectItem key={manager} value={manager}>
-                      {manager}
+                  {divisions.map((division) => (
+                    <SelectItem
+                      key={division.divisionId}
+                      value={division.divisionId}
+                    >
+                      {division.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div>
-            <label className="block mb-1 font-medium">Department(s)</label>
-            <div className="border rounded-md px-2 py-2 min-h-[44px] flex flex-wrap gap-2 bg-white">
-              {departmentMembers.length === 0 && (
-                <span className="text-muted-foreground">Add member(s)</span>
-              )}
-              {departmentMembers.map((member) => (
-                <span
-                  key={member}
-                  className="flex items-center bg-muted px-2 py-1 rounded-full text-sm"
-                >
-                  {member}
-                  <button
-                    type="button"
-                    className="ml-1"
-                    onClick={() => handleRemoveMember(member)}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-              <Select onValueChange={handleMemberToggle}>
-                <SelectTrigger className="w-auto min-w-[150px]">
-                  <SelectValue placeholder="Add member(s)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allMembers
-                    .filter((m) => !departmentMembers.includes(m))
-                    .map((member) => (
-                      <SelectItem key={member} value={member}>
-                        {member}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+
+            {/* Member(s) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Member(s)
+              </label>
+              <div className="border border-gray-300 rounded-md p-3 min-h-[100px] bg-white">
+                {/* Selected Members Tags */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {departmentMembers.map((memberId) => {
+                    const member = allMembers.find(
+                      (m) => m.employeeId === memberId
+                    );
+                    return (
+                      <div
+                        key={memberId}
+                        className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
+                      >
+                        <span>{member?.fullName || memberId}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(memberId)}
+                          className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          disabled={loading}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add Member Dropdown */}
+                <Select onValueChange={handleMemberToggle} disabled={loading}>
+                  <SelectTrigger className="w-full border-dashed border-gray-300">
+                    <SelectValue placeholder="Add member(s)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allMembers
+                      .filter((m) => !departmentMembers.includes(m.employeeId))
+                      .map((member) => (
+                        <SelectItem
+                          key={member.employeeId}
+                          value={member.employeeId}
+                        >
+                          {member.fullName}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
-          <div className="flex justify-end gap-4 mt-8">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" className="bg-[#3838EC] text-white">
-              Add Department
-            </Button>
-          </div>
-        </form>
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="px-6"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6"
+                disabled={
+                  loading || !departmentName.trim() || !selectedDivision
+                }
+              >
+                {loading ? "Adding..." : "Add Department"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

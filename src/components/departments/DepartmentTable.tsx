@@ -9,142 +9,269 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-// Placeholder import for row
-// import DepartmentTableRow from "./DepartmentTableRow";
+import { Button } from "@/components/ui/button";
+import { Edit, MoreVertical, Trash2, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ReusableTableHeader, {
+  HeaderColumn,
+} from "@/components/ui/table-header";
+import { DepartmentTableSkeleton } from "@/components/skeleton";
+import DeleteDepartmentDialog from "./DeleteDepartmentDialog";
+import EditDepartmentDialog from "./EditDepartmentDialog";
 
-// Mock data for demonstration
-const departments = [
+// Department interface matching the design
+export interface Department {
+  id: number | string;
+  departmentName: string;
+  createdBy: string;
+  createdOn: string;
+  managedBy: string;
+  division: string;
+  members: number;
+}
+
+// Mock data matching the design from the image
+const departments: Department[] = [
   {
     id: 1,
-    corporateObjective:
-      "Deploy a learning management system across 3 departments",
-    departmentObjective:
-      "Deploy a learning management system across 3 departments",
-    kpi: "200+ employees trained in Q1",
-    baseline: 12,
-    weight: "10%",
-    target: 45,
+    departmentName: "Research and Advisory Solution",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 6,
   },
   {
     id: 2,
-    corporateObjective: "Implement a training platform throughout...",
-    departmentObjective: "Implement a training platform throughout...",
-    kpi: "Over 200 staff members completed training in the first month",
-    baseline: 12,
-    weight: "10%",
-    target: 40,
+    departmentName: "Learning solutions",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 3,
   },
   {
     id: 3,
-    corporateObjective:
-      "Deploy a learning management system across 3 departments",
-    departmentObjective:
-      "Deploy a learning management system across 3 departments",
-    kpi: "Feedback turnaround time reduced to < 3 days",
-    baseline: 13,
-    weight: "20%",
-    target: 35,
+    departmentName: "Relationship Marketing and Sales",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Lorem Ipsum Division",
+    members: 11,
   },
   {
     id: 4,
-    corporateObjective: "Increase employee engagement across all departments",
-    departmentObjective: "Launch quarterly engagement surveys",
-    kpi: "Employee satisfaction score increased by 15%",
-    baseline: 15,
-    weight: "40%",
-    target: 45,
+    departmentName: "Knowledge Sharing Platform",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Lorem Ipsum Division",
+    members: 8,
   },
   {
     id: 5,
-    corporateObjective: "Expand leadership development programs",
-    departmentObjective: "Implement new leadership workshops",
-    kpi: "New training modules launched for leadership development",
-    baseline: 14,
-    weight: "30%",
-    target: 50,
+    departmentName: "Capital Market Services",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 21,
   },
   {
     id: 6,
-    corporateObjective: "Improve operational efficiency",
-    departmentObjective: "Automate routine reporting tasks",
-    kpi: "Monthly report generation time reduced by 50%",
-    baseline: 10,
-    weight: "15%",
-    target: 20,
+    departmentName: "Finance and Investment",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 4,
   },
   {
     id: 7,
-    corporateObjective: "Enhance customer service responsiveness",
-    departmentObjective: "Implement new ticketing system",
-    kpi: "Average response time reduced to 2 hours",
-    baseline: 8,
-    weight: "25%",
-    target: 18,
+    departmentName: "Lorem Ipsum Department",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 9,
   },
   {
     id: 8,
-    corporateObjective: "Increase digital adoption",
-    departmentObjective: "Roll out new mobile app to all staff",
-    kpi: "App adoption rate reaches 80% by Q3",
-    baseline: 5,
-    weight: "20%",
-    target: 80,
+    departmentName: "Lorem Ipsum Department",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 18,
   },
   {
     id: 9,
-    corporateObjective: "Strengthen compliance training",
-    departmentObjective: "Mandatory annual compliance modules",
-    kpi: "100% staff completion of compliance training",
-    baseline: 100,
-    weight: "10%",
-    target: 100,
+    departmentName: "Lorem Ipsum Department",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Lorem Ipsum Division",
+    members: 23,
   },
   {
     id: 10,
-    corporateObjective: "Reduce operational costs",
-    departmentObjective: "Optimize supply chain processes",
-    kpi: "Operational costs reduced by 12%",
-    baseline: 12,
-    weight: "18%",
-    target: 10,
+    departmentName: "Cross Border Solution",
+    createdBy: "John Doe",
+    createdOn: "7 June 2025, 7:38 PM",
+    managedBy: "Johnathan Doe",
+    division: "Operation Division",
+    members: 32,
   },
 ];
 
-const DepartmentTable = () => {
+interface DepartmentTableProps {
+  departments?: Department[];
+  headers?: HeaderColumn[];
+  loading?: boolean;
+  error?: string;
+  onAddDepartment?: () => void;
+  managers?: any[];
+  divisions?: any[];
+  allMembers?: any[];
+  onDeleteSuccess?: () => void;
+  onEditSuccess?: () => void;
+}
+
+const DepartmentTable: React.FC<DepartmentTableProps> = ({
+  departments: propDepartments,
+  headers = [
+    { key: "departmentName", label: "DEPARTMENT NAME" },
+    { key: "createdBy", label: "CREATED BY" },
+    { key: "createdOn", label: "CREATED ON" },
+    { key: "managedBy", label: "MANAGED BY" },
+    { key: "division", label: "DIVISION" },
+    { key: "members", label: "MEMBERS" },
+    { key: "action", label: "ACTION" },
+  ],
+  loading = false,
+  error,
+  onAddDepartment,
+  managers,
+  divisions,
+  allMembers,
+  onDeleteSuccess,
+  onEditSuccess,
+}) => {
   const router = useRouter();
+  const departmentsToShow = propDepartments || departments;
+
+  if (loading) {
+    return <DepartmentTableSkeleton rows={6} headers={headers} />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-600">Error loading departments: {error}</p>
+      </div>
+    );
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>CORPORATE OBJECTIVE</TableHead>
-          <TableHead>DEPARTMENT OBJECTIVE</TableHead>
-          <TableHead>KPI</TableHead>
-          <TableHead>BASELINE</TableHead>
-          <TableHead>WEIGHT</TableHead>
-          <TableHead>TARGET</TableHead>
-          <TableHead>ACTION</TableHead>
-        </TableRow>
-      </TableHeader>
+    <Table className="border-none">
+      <ReusableTableHeader headers={headers} />
       <TableBody>
-        {departments.map((dept, idx) => (
+        {departmentsToShow.map((dept, idx) => (
           <TableRow
             key={dept.id}
-            onClick={() => router.push(`/dashboard/departments/${dept.id}`)}
-            className={`${
-              idx % 2 === 1 ? "bg-muted/50" : "bg-white dark:bg-muted"
-            } cursor-pointer hover:bg-muted/70 transition-colors`}
+            className={`border-b border-gray-100 ${
+              idx % 2 === 1 ? "bg-white" : "bg-[#ECECFF]"
+            } hover:bg-gray-50 transition-colors`}
           >
-            <TableCell>{dept.corporateObjective}</TableCell>
-            <TableCell>{dept.departmentObjective}</TableCell>
-            <TableCell>{dept.kpi}</TableCell>
-            <TableCell>{dept.baseline}</TableCell>
-            <TableCell>{dept.weight}</TableCell>
-            <TableCell>{dept.target}</TableCell>
-            <TableCell>
-              {/* Placeholder for expand/collapse action */}
-              <button className="rounded-full border p-1 px-2 text-xs">
-                ▼
-              </button>
+            <TableCell className="px-6 py-4 font-medium text-gray-900">
+              {dept.departmentName}
+            </TableCell>
+            <TableCell className="px-6 py-4 text-gray-600">
+              {dept.createdBy}
+            </TableCell>
+            <TableCell className="px-6 py-4 text-gray-600">
+              {dept.createdOn}
+            </TableCell>
+            <TableCell className="px-6 py-4 text-gray-600">
+              {dept.managedBy}
+            </TableCell>
+            <TableCell className="px-6 py-4 text-gray-600">
+              {dept.division}
+            </TableCell>
+            <TableCell className="px-6 py-4 text-gray-600">
+              {dept.members}
+            </TableCell>
+            <TableCell className="px-6 py-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    router.push(`/dashboard/departments/${dept.id}`)
+                  }
+                  className="text-primary hover:text-primary/80"
+                >
+                  View
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-orange-50"
+                      onClick={onAddDepartment}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Department
+                    </DropdownMenuItem>
+                    <EditDepartmentDialog
+                      department={{
+                        id: dept.id,
+                        departmentName: dept.departmentName,
+                        managedBy: dept.managedBy,
+                        division: dept.division,
+                        members: dept.members,
+                      }}
+                      managers={managers || []}
+                      divisions={divisions || []}
+                      allMembers={allMembers || []}
+                      onEditSuccess={onEditSuccess}
+                    >
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    </EditDepartmentDialog>
+                    <DeleteDepartmentDialog
+                      departmentName={dept.departmentName}
+                      departmentId={dept.id}
+                      onDeleteSuccess={onDeleteSuccess}
+                    >
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onSelect={(e) => {
+                          e.preventDefault();
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" color="red" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DeleteDepartmentDialog>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </TableCell>
           </TableRow>
         ))}

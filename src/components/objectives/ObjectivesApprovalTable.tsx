@@ -1,27 +1,18 @@
 "use client";
-import { useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import React from "react";
 import KPIDetailsView from "./KPIDetailsView";
+import ObjectiveFilterBar from "./ObjectiveFilterBar";
+import ObjectiveTable, { Objective } from "./ObjectiveTable";
+import ObjectivePagination from "./ObjectivePagination";
 
-const mockObjectives = [
+const mockObjectives: Objective[] = [
   {
     id: "1",
     title: "Increase i-Capital's shareholder value",
     kpis: [
-      "Revenue from LSL(4 line) in million",
+      "Revenue from SL4 (line) in million",
       "Revenue from RAS(5 line) in million",
       "Revenue from KSP in million",
     ],
@@ -69,33 +60,88 @@ const mockObjectives = [
     weight: 20,
     status: "not_submitted",
   },
+  {
+    id: "6",
+    title: "Enhance customer satisfaction through service improvement",
+    kpis: [
+      "Customer satisfaction score",
+      "Response time improvement",
+      "Service quality rating",
+    ],
+    weight: 25,
+    status: "pending",
+  },
+  {
+    id: "7",
+    title: "Optimize operational efficiency across all departments",
+    kpis: [
+      "Process automation rate",
+      "Cost reduction percentage",
+      "Productivity index",
+    ],
+    weight: 18,
+    status: "approved",
+  },
+  {
+    id: "8",
+    title: "Strengthen cybersecurity infrastructure",
+    kpis: ["Security incidents reduction", "Compliance score", "System uptime"],
+    weight: 22,
+    status: "rejected",
+  },
 ];
-
-const statusMap = {
-  not_submitted: { label: "Not Submitted", color: "bg-pink-100 text-pink-600" },
-  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-600" },
-  approved: { label: "Approved", color: "bg-green-100 text-green-600" },
-  rejected: { label: "Rejected", color: "bg-red-100 text-red-600" },
-};
 
 export default function ObjectivesApprovalTable() {
   const [objectives, setObjectives] = useState(mockObjectives);
   const [selected, setSelected] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [selectedObjective, setSelectedObjective] = useState<
-    (typeof mockObjectives)[0] | null
-  >(null);
+  const [selectedObjective, setSelectedObjective] = useState<Objective | null>(
+    null
+  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading] = useState(false);
+  const [error] = useState<string | undefined>(undefined);
 
-  const allSelected = selected.length === objectives.length;
+  const itemsPerPage = 10;
 
-  const handleSelectAll = () => {
-    setSelected(allSelected ? [] : objectives.map((o) => o.id));
-  };
+  // Filter objectives based on search and status
+  const filteredObjectives = useMemo(() => {
+    return objectives.filter((obj) => {
+      const matchesSearch = obj.title
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" || obj.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [objectives, searchTerm, statusFilter]);
+
+  // Paginated objectives
+  const paginatedObjectives = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredObjectives.slice(startIndex, endIndex);
+  }, [filteredObjectives, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredObjectives.length / itemsPerPage);
 
   const handleSelect = (id: string) => {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
     );
+  };
+
+  const handleSelectAll = () => {
+    const allPageIds = paginatedObjectives.map((obj) => obj.id);
+    const allSelected = allPageIds.every((id) => selected.includes(id));
+
+    if (allSelected) {
+      setSelected((prev) => prev.filter((id) => !allPageIds.includes(id)));
+    } else {
+      setSelected((prev) => [...new Set([...prev, ...allPageIds])]);
+    }
   };
 
   const handleExpand = (id: string) => {
@@ -111,6 +157,35 @@ export default function ObjectivesApprovalTable() {
     setSelected([]);
   };
 
+  const handleAddObjective = () => {
+    // TODO: Implement add objective logic
+    console.log("Add objective clicked");
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleObjectiveClick = (objective: Objective) => {
+    setSelectedObjective(objective);
+  };
+
   if (selectedObjective) {
     return (
       <KPIDetailsView
@@ -121,143 +196,58 @@ export default function ObjectivesApprovalTable() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
-      {/* Search and Filter Bar */}
-      <div className="flex items-center justify-between mb-4">
-        <Input type="text" placeholder="Search..." className="w-1/3" />
-        <Button variant="outline">All</Button>
-        <Button
-          className="ml-auto"
-          disabled={selected.length === 0}
-          onClick={handleSubmitForApproval}
-        >
-          Submit for Approval
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6 px-2 md:px-6">
+      {/* Filter Bar */}
+      <ObjectiveFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={handleSearchChange}
+        statusFilter={statusFilter}
+        onStatusFilterChange={handleStatusFilterChange}
+        onClearFilters={handleClearFilters}
+        selectedCount={selected.length}
+        onAddObjective={handleAddObjective}
+      />
+
+      {/* Results Summary */}
+
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl shadow bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/60">
-              <TableHead className="py-4 text-base font-semibold">
-                {/* Checkbox */}
-              </TableHead>
-              <TableHead className="py-4 text-base font-semibold">
-                Strategic Objective
-              </TableHead>
-              <TableHead className="py-4 text-base font-semibold">
-                KPI
-              </TableHead>
-              <TableHead className="py-4 text-base font-semibold">
-                Weight
-              </TableHead>
-              <TableHead className="py-4 text-base font-semibold">
-                Status
-              </TableHead>
-              <TableHead className="py-4 text-base font-semibold"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {objectives.map((obj, idx) => (
-              <React.Fragment key={obj.id}>
-                <TableRow
-                  className={`group transition-colors border-b border-muted
-                    ${
-                      selected.includes(obj.id)
-                        ? "bg-primary/10"
-                        : idx % 2 === 0
-                        ? "bg-white"
-                        : "bg-muted/30"
-                    }
-                    hover:bg-primary/5
-                  `}
-                  onClick={() => setSelectedObjective(obj)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <TableCell
-                    className="py-4 text-base"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selected.includes(obj.id)}
-                      onCheckedChange={() => handleSelect(obj.id)}
-                    />
-                  </TableCell>
-                  <TableCell className="py-4 text-base font-bold">
-                    {obj.title}
-                  </TableCell>
-                  <TableCell className="py-4 text-base">
-                    <span className="text-xs text-muted-foreground font-normal">
-                      {obj.kpis.length} KPIs
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-4 text-base">
-                    {obj.weight}%
-                  </TableCell>
-                  <TableCell className="py-4 text-base">
-                    <Badge
-                      className={`${
-                        statusMap[obj.status as keyof typeof statusMap].color
-                      } rounded-full px-3 py-1 text-xs font-semibold shadow-none`}
-                    >
-                      {statusMap[obj.status as keyof typeof statusMap].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-4 text-base">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleExpand(obj.id);
-                      }}
-                    >
-                      {expanded === obj.id ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                  </TableCell>
-                </TableRow>
-                {expanded === obj.id && (
-                  <TableRow className="bg-muted/20">
-                    <TableCell></TableCell>
-                    <TableCell
-                      colSpan={5}
-                      className="py-4 text-base font-normal"
-                    >
-                      <ul className="pl-4 text-sm text-muted-foreground">
-                        {obj.kpis.map((kpi, i) => (
-                          <li key={i}>{kpi}</li>
-                        ))}
-                      </ul>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </Table>
+      <ObjectiveTable
+        objectives={paginatedObjectives}
+        selected={selected}
+        expanded={expanded}
+        onSelect={handleSelect}
+        onSelectAll={handleSelectAll}
+        onExpand={handleExpand}
+        onObjectiveClick={handleObjectiveClick}
+        loading={loading}
+        error={error}
+      />
+      <div className="text-sm text-gray-600">
+        Showing {filteredObjectives.length} of {objectives.length} objectives
       </div>
-      {/* Progress Bar */}
-      <div className="flex items-center justify-between mt-4">
-        <span>{objectives.length} Objectives</span>
-        <div className="w-1/3 bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-primary h-2 rounded-full"
-            style={{ width: "100%" }}
-          />
+
+      {/* Submit Button */}
+      {selected.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSubmitForApproval}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            Submit {selected.length} objective{selected.length > 1 ? "s" : ""}{" "}
+            for Approval
+          </Button>
         </div>
-        <span className="text-green-600 font-semibold">100%</span>
-      </div>
+      )}
+
       {/* Pagination */}
-      <div className="flex justify-end mt-2">
-        <Button variant="ghost">Previous</Button>
-        <Button variant="ghost" className="font-bold">
-          1
-        </Button>
-        <Button variant="ghost">2</Button>
-        <Button variant="ghost">Next</Button>
-      </div>
+      <ObjectivePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredObjectives.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        loading={loading}
+      />
     </div>
   );
 }

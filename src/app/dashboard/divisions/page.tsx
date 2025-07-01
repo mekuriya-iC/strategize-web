@@ -1,87 +1,435 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@apollo/client";
 import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import DivisionTable from "@/components/divisions/DivisionTable";
-import SearchAndFilterBar from "@/components/divisions/SearchAndFilterBar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import type { Division } from "@/components/divisions/DivisionTable";
+import DivisionFilterBar from "@/components/divisions/DivisionFilterBar";
+import DivisionPagination from "@/components/divisions/DivisionPagination";
 import AddDivisionDialog from "@/components/divisions/AddDivisionDialog";
+import AddDepartmentDialog from "@/components/departments/AddDepartmentDialog";
+import EmptyState from "@/components/divisions/EmptyState";
+import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import { useDivisionMutations } from "@/hooks/useDivisionMutations";
+import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import type {
+  PaginatedDivisions,
+  PaginatedEmployees,
+  PaginatedDepartments,
+  Division as GraphQLDivision,
+  Employee as GraphQLEmployee,
+  Department as GraphQLDepartment,
+} from "@/types/graphql";
 
-// TODO: import Pagination when implemented
+const DivisionsPage = () => {
+  const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<
+    "all" | "managed" | "recent" | "with_departments" | "no_departments"
+  >("all");
 
-export default function DivisionsPage() {
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // GraphQL queries
+  const {
+    data: divisionsData,
+    loading: divisionsLoading,
+    error: divisionsError,
+  } = useQuery<{ divisions: PaginatedDivisions }>(GET_DIVISIONS, {
+    variables: {
+      page: currentPage,
+      limit: itemsPerPage,
+      search: searchTerm || undefined,
+    },
+    fetchPolicy: "cache-and-network",
+  });
+
+  // Fetch employees for manager selection (only MANAGER and ADMIN roles)
+  const { data: employeesData } = useQuery<{ employees: PaginatedEmployees }>(
+    GET_EMPLOYEES,
+    {
+      variables: {
+        page: 1,
+        limit: 100, // Get enough managers for the dropdown
+      },
+      fetchPolicy: "cache-first",
+    }
+  );
+
+  // Fetch departments for department selection
+  const { data: departmentsData } = useQuery<{
+    departments: PaginatedDepartments;
+  }>(GET_DEPARTMENTS, {
+    variables: {
+      page: 1,
+      limit: 100, // Get enough departments for the dropdown
+    },
+    fetchPolicy: "cache-first",
+  });
+
+  // Division mutations
+  const { createDivision, loading: mutationLoading } = useDivisionMutations();
+
+  // Department mutations
+  const {
+    createDepartment,
+    updateDepartment,
+    loading: departmentMutationLoading,
+  } = useDepartmentMutations();
+
+  // Add Division Dialog state
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [divisionName, setDivisionName] = useState("");
   const [divisionManager, setDivisionManager] = useState("");
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 
-  // Mock data for managers and departments
-  const managers = ["John Doe", "Jane Smith", "Alice Johnson"];
-  const allDepartments = ["Research and Advisory Solution", "Learning Solution", "knowledge Sharing platform", "Marketing"];
+  // Add Department Dialog state
+  const [isAddDepartmentDialogOpen, setIsAddDepartmentDialogOpen] =
+    useState(false);
+  const [departmentName, setDepartmentName] = useState("");
+  const [departmentManager, setDepartmentManager] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [departmentMembers, setDepartmentMembers] = useState<string[]>([]);
 
-  const handleAddDivision = () => {
-    // TODO: handle form submission
-    setDialogOpen(false);
-    setDivisionName("");
-    setDivisionManager("");
-    setDepartments([]);
+  // Transform GraphQL data to match UI interface and apply filters
+  const transformedDivisions: Division[] = React.useMemo(() => {
+    if (!divisionsData?.divisions.items) return [];
+
+    let filteredDivisions = divisionsData.divisions.items;
+
+    // Apply filters
+    if (filterType !== "all") {
+      filteredDivisions = filteredDivisions.filter(
+        (division: GraphQLDivision) => {
+          switch (filterType) {
+            case "managed":
+              return division.manager !== null;
+            case "recent":
+              const weekAgo = new Date();
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              return new Date(division.createdAt) > weekAgo;
+            case "with_departments":
+              return (division.departments?.length || 0) > 0;
+            case "no_departments":
+              return (division.departments?.length || 0) === 0;
+            default:
+              return true;
+          }
+        }
+      );
+    }
+
+    return filteredDivisions.map((graphqlDivision: GraphQLDivision) => ({
+      id: graphqlDivision.divisionId, // Keep as string ID
+      divisionName: graphqlDivision.name,
+      createdBy: "System", // GraphQL doesn't provide createdBy info
+      createdOn: new Date(graphqlDivision.createdAt).toLocaleDateString(
+        "en-US",
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }
+      ),
+      managedBy: graphqlDivision.manager?.fullName || "No Manager",
+      departments: graphqlDivision.departments?.length || 0,
+    }));
+  }, [divisionsData, filterType]);
+
+  // Filter managers (MANAGER and ADMIN roles only)
+  const managers = React.useMemo(() => {
+    if (!employeesData?.employees.items) return [];
+
+    return employeesData.employees.items
+      .filter(
+        (employee: GraphQLEmployee) =>
+          employee.role === "MANAGER" ||
+          employee.role === "ADMIN" ||
+          employee.role === "SUPER_ADMIN"
+      )
+      .map((employee: GraphQLEmployee) => ({
+        id: employee.employeeId,
+        name: employee.fullName,
+      }));
+  }, [employeesData]);
+
+  // Transform departments data for UI
+  const allDepartments = React.useMemo(() => {
+    if (!departmentsData?.departments.items) return [];
+
+    return departmentsData.departments.items.map(
+      (department: GraphQLDepartment) => department.name
+    );
+  }, [departmentsData]);
+
+  // Transform employees data for department members
+  const allMembers = React.useMemo(() => {
+    if (!employeesData?.employees.items) return [];
+
+    return employeesData.employees.items.map((employee: GraphQLEmployee) => ({
+      employeeId: employee.employeeId,
+      fullName: employee.fullName,
+    }));
+  }, [employeesData]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
-  return (
-    <div className="w-full max-w-7xl mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Divisions</h1>
-        <Button className="ml-auto" onClick={() => setDialogOpen(true)}>
-          + Add Division
-        </Button>
+  const handleSearchChange = (searchTerm: string) => {
+    setSearchTerm(searchTerm);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleFilterChange = (
+    filterValue:
+      | "all"
+      | "managed"
+      | "recent"
+      | "with_departments"
+      | "no_departments"
+  ) => {
+    setFilterType(filterValue);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleAddDivision = () => {
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSubmitDivision = async () => {
+    if (!divisionName.trim() || !divisionManager) {
+      return;
+    }
+
+    try {
+      // First create the division
+      const createdDivision = await createDivision({
+        input: {
+          name: divisionName.trim(),
+          managerId: divisionManager,
+        },
+      });
+
+      // If departments were selected and division was created successfully, assign them
+      if (createdDivision && selectedDepartments.length > 0) {
+        console.log(
+          `Assigning ${selectedDepartments.length} departments to division ${createdDivision.divisionId}`
+        );
+
+        // Find the department IDs for the selected department names
+        const departmentIds =
+          departmentsData?.departments.items
+            .filter((dept) => selectedDepartments.includes(dept.name))
+            .map((dept) => dept.departmentId) || [];
+
+        // Update each department to assign it to the new division
+        const updatePromises = departmentIds.map((departmentId) =>
+          updateDepartment({
+            input: {
+              departmentId,
+              divisionId: createdDivision.divisionId,
+            },
+          })
+        );
+
+        // Wait for all department updates to complete
+        await Promise.all(updatePromises);
+        console.log(
+          `Successfully assigned ${departmentIds.length} departments to division`
+        );
+      }
+
+      // Reset form
+      setDivisionName("");
+      setDivisionManager("");
+      setSelectedDepartments([]);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating division:", error);
+    }
+  };
+
+  const handleAddDepartment = () => {
+    setIsAddDepartmentDialogOpen(true);
+  };
+
+  const handleSubmitDepartment = async () => {
+    if (!departmentName.trim() || !departmentManager || !selectedDepartment) {
+      return;
+    }
+
+    try {
+      await createDepartment({
+        input: {
+          name: departmentName.trim(),
+          managerId: departmentManager,
+          divisionId: selectedDepartment,
+        },
+        employeeIds: departmentMembers, // Assign selected members
+      });
+
+      // Reset form
+      setDepartmentName("");
+      setDepartmentManager("");
+      setSelectedDepartment("");
+      setDepartmentMembers([]);
+      setIsAddDepartmentDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating department:", error);
+    }
+  };
+
+  // Loading state
+  const loading =
+    divisionsLoading ||
+    mutationLoading.create ||
+    departmentMutationLoading.create ||
+    departmentMutationLoading.update;
+
+  // Error state
+  if (divisionsError) {
+    return (
+      <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+        <div className="p-8 text-center">
+          <p className="text-red-600">
+            Error loading divisions: {String(divisionsError)}
+          </p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
       </div>
+    );
+  }
+
+  const totalItems = divisionsData?.divisions.meta.totalItems || 0;
+  const totalPages = divisionsData?.divisions.meta.totalPages || 0;
+
+  return (
+    <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+      {/* Header and Actions */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+          Divisions
+        </h1>
+      </div>
+
+      {/* Only show filter bar and actions when there's data or loading */}
+      {(divisionsLoading ||
+        divisionsError ||
+        transformedDivisions.length > 0) && (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <DivisionFilterBar
+              onSearchChange={handleSearchChange}
+              onFilterChange={handleFilterChange}
+              searchValue={searchTerm}
+              filterValue={filterType}
+              disabled={loading}
+            />
+            <div className="flex gap-2 items-center">
+              <Button
+                className="ml-2"
+                onClick={handleAddDivision}
+                disabled={loading}
+              >
+                <Plus width={16} height={16} />
+                Add Division
+              </Button>
+            </div>
+          </div>
+
+          {/* Results Summary */}
+          {(searchTerm || filterType !== "all") && (
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>
+                Showing {transformedDivisions.length} of {totalItems} divisions
+                {searchTerm && (
+                  <span className="ml-1">matching "{searchTerm}"</span>
+                )}
+              </span>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Empty State or Table */}
+      {!divisionsLoading &&
+      !divisionsError &&
+      transformedDivisions.length === 0 ? (
+        <EmptyState onAddDivision={handleAddDivision} />
+      ) : (
+        <>
+          {/* Table */}
+          <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+            <DivisionTable
+              divisions={transformedDivisions}
+              loading={loading}
+              error={divisionsError ? String(divisionsError) : undefined}
+              managers={managers}
+              onAddDepartment={handleAddDepartment}
+            />
+          </div>
+
+          {/* Pagination */}
+          <DivisionPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            loading={loading}
+          />
+        </>
+      )}
+
       {/* Add Division Dialog */}
       <AddDivisionDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
         divisionName={divisionName}
         setDivisionName={setDivisionName}
         divisionManager={divisionManager}
         setDivisionManager={setDivisionManager}
-        departments={departments}
-        setDepartments={setDepartments}
+        departments={selectedDepartments}
+        setDepartments={setSelectedDepartments}
         managers={managers}
         allDepartments={allDepartments}
-        onSubmit={handleAddDivision}
+        onSubmit={handleSubmitDivision}
+        loading={mutationLoading.create}
       />
-      {/* Search and Filter Bar */}
-      <div className="mb-4">
-        <SearchAndFilterBar
-          search={search}
-          onSearchChange={setSearch}
-          filter={filter}
-          onFilterChange={setFilter}
-        />
-      </div>
-      {/* Division Table */}
-      <div className="mb-4">
-        <DivisionTable />
-      </div>
-      {/* TODO: Pagination */}
-      <div className="flex justify-end">
-        {/* <Pagination /> */}
-        <div className="text-muted-foreground">Pagination placeholder</div>
-      </div>
+
+      {/* Add Department Dialog */}
+      <AddDepartmentDialog
+        open={isAddDepartmentDialogOpen}
+        onOpenChange={setIsAddDepartmentDialogOpen}
+        departmentName={departmentName}
+        setDepartmentName={setDepartmentName}
+        departmentManager={departmentManager}
+        setDepartmentManager={setDepartmentManager}
+        selectedDivision={selectedDepartment}
+        setSelectedDivision={setSelectedDepartment}
+        departmentMembers={departmentMembers}
+        setDepartmentMembers={setDepartmentMembers}
+        managers={managers.map((m) => ({ employeeId: m.id, fullName: m.name }))}
+        divisions={
+          divisionsData?.divisions.items.map((d) => ({
+            divisionId: d.divisionId,
+            name: d.name,
+          })) || []
+        }
+        allMembers={allMembers}
+        onSubmit={handleSubmitDepartment}
+      />
     </div>
   );
-}
+};
+
+export default DivisionsPage;

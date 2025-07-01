@@ -110,21 +110,24 @@ export default function KPIDetailsView({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/60">
-              <TableHead className="py-4 text-base font-semibold">
+              <TableHead className=" text-[#9E9E9E] text-[14px] px-6 py-3">
                 KPI
               </TableHead>
-              <TableHead className="py-4 text-base font-semibold">
+              <TableHead className="text-[#9E9E9E] text-[14px] px-6 py-3">
                 Baseline
               </TableHead>
-              <TableHead className="py-4 text-base font-semibold">
+              <TableHead className="text-[#9E9E9E] text-[14px] px-6 py-3">
                 Weight
               </TableHead>
               {years.map((year) => (
-                <TableHead key={year} className="py-4 text-base font-semibold">
+                <TableHead
+                  key={year}
+                  className="text-[#9E9E9E] text-[14px] px-6 py-3"
+                >
                   Target {year}
                 </TableHead>
               ))}
-              <TableHead className="py-4 text-base font-semibold">
+              <TableHead className="text-[#9E9E9E] text-[14px] px-6 py-3">
                 Assigned To
               </TableHead>
             </TableRow>
@@ -133,19 +136,23 @@ export default function KPIDetailsView({
             {mockKPIDetails.map((kpi, idx) => (
               <TableRow
                 key={kpi.kpi}
-                className={idx % 2 === 0 ? "bg-muted/30" : "bg-white"}
+                className={idx % 2 === 0 ? "bg-white" : "bg-[#ECECFF]"}
               >
-                <TableCell className="py-4 text-base font-medium">
+                <TableCell className="  px-6 py-4 text-gray-600 font-medium">
                   {kpi.kpi}
                 </TableCell>
-                <TableCell className="py-4 text-base">{kpi.baseline}</TableCell>
-                <TableCell className="py-4 text-base">{kpi.weight}</TableCell>
+                <TableCell className="px-6 py-4 text-gray-600 font-medium">
+                  {kpi.baseline}
+                </TableCell>
+                <TableCell className="px-6 py-4 text-gray-600 font-medium">
+                  {kpi.weight}
+                </TableCell>
                 {years.map((year) => (
-                  <TableCell key={year} className="py-4 text-base">
+                  <TableCell key={year} className="px-6 py-4 text-gray-600 font-medium">
                     {kpi.targets[year] ?? "-"}
                   </TableCell>
                 ))}
-                <TableCell className="py-4 text-base">
+                <TableCell className="px-6 py-4 text-gray-600 font-medium">
                   <Button
                     variant="link"
                     className="text-primary px-0 h-auto"

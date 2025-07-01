@@ -1,31 +1,101 @@
 "use client";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import React from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useQuery } from "@apollo/client";
+import { ArrowLeft } from "lucide-react";
 import DepartmentDetailsTable from "@/components/departments/DepartmentDetailsTable";
+import { GET_DEPARTMENT } from "@/lib/graphql/queries/departments";
+import type { Department } from "@/types/graphql";
 
-import DepartmentPagination from "@/components/departments/DepartmentPagination";
+interface DepartmentData {
+  department: Department;
+}
 
 const DepartmentDetailsPage = () => {
   const router = useRouter();
- ;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const params = useParams();
+  const departmentId = params.departmentId as string;
 
-  const [loading] = useState(false);
+  // Fetch department details
+  const {
+    data: departmentData,
+    loading,
+    error,
+  } = useQuery<DepartmentData>(GET_DEPARTMENT, {
+    variables: { departmentId },
+    fetchPolicy: "cache-and-network",
+  });
 
-  // For now, use a static department objective. In a real app, fetch by departmentId.
-  const departmentObjective =
-    "Operation Division";
+  const department = departmentData?.department;
 
-  // Mock data for filtering (you can replace this with actual data)
-  const totalItems = 15;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          </button>
+          <div className="animate-pulse h-8 bg-gray-200 rounded w-64"></div>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-96 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          </button>
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+            Department Details
+          </h1>
+        </div>
+        <div className="p-8 text-center">
+          <p className="text-red-600">
+            Error loading department: {error.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!department) {
+    return (
+      <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          </button>
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+            Department Details
+          </h1>
+        </div>
+        <div className="p-8 text-center">
+          <p className="text-gray-600">Department not found</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
@@ -41,33 +111,39 @@ const DepartmentDetailsPage = () => {
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
           <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
-            {departmentObjective}
+            {department.name}
           </h1>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex justify-end">
-        <Button>
-          <Plus width={16} height={16} />
-          Add Department
-        </Button>
+      {/* Department Info Summary */}
+      <div className="bg-white rounded-lg border p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Manager</h3>
+            <p className="text-gray-900">
+              {department.manager?.fullName || "No Manager"}
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Division</h3>
+            <p className="text-gray-900">
+              {department.division?.name || "No Division"}
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">
+              Total Members
+            </h3>
+            <p className="text-gray-900">{department.employees?.length || 0}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Table */}
+      {/* Department Details Table */}
       <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
-        <DepartmentDetailsTable />
+        <DepartmentDetailsTable department={department} loading={false} />
       </div>
-
-      {/* Pagination */}
-      <DepartmentPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        totalItems={totalItems}
-        itemsPerPage={itemsPerPage}
-        onPageChange={handlePageChange}
-        loading={loading}
-      />
     </div>
   );
 };

@@ -54,10 +54,6 @@ export const GET_DEPARTMENT = gql`
       division {
         divisionId
         name
-        manager {
-          employeeId
-          fullName
-        }
       }
       employees {
         employeeId

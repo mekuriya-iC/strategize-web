@@ -27,12 +27,17 @@ export const useDivisionMutations = () => {
           description: error.message,
         });
       },
+      // Refetch all possible divisions queries that might be cached
       refetchQueries: [
-        {
-          query: GET_DIVISIONS,
-          variables: { page: 1, limit: 10 },
-        },
+        // For divisions page with pagination
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
+        // For analytics (all divisions)
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
+        // For forms that need all divisions (dropdowns)
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
       ],
+      // Alternative: Use refetchQueries: "all" to refetch ALL queries that include GET_DIVISIONS
+      // refetchQueries: "all",
       awaitRefetchQueries: true,
     }
   );
@@ -50,11 +55,14 @@ export const useDivisionMutations = () => {
           description: error.message,
         });
       },
+      // Refetch all possible divisions queries that might be cached
       refetchQueries: [
-        {
-          query: GET_DIVISIONS,
-          variables: { page: 1, limit: 10 },
-        },
+        // For divisions page with pagination
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
+        // For analytics (all divisions)
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
+        // For forms that need all divisions (dropdowns)
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
     }
@@ -85,11 +93,14 @@ export const useDivisionMutations = () => {
           description: errorMessage,
         });
       },
+      // Refetch all possible divisions queries that might be cached
       refetchQueries: [
-        {
-          query: GET_DIVISIONS,
-          variables: { page: 1, limit: 10 },
-        },
+        // For divisions page with pagination
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
+        // For analytics (all divisions)
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
+        // For forms that need all divisions (dropdowns)
+        { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
     }

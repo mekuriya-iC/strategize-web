@@ -16,9 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
 import {
   PaginatedDivisions,
-  PaginatedEmployees,
   Division as GraphQLDivision,
-  Employee as GraphQLEmployee,
   EmployeeRole,
 } from "@/types/graphql";
 
@@ -40,7 +38,7 @@ const EmployeesPage = () => {
 
   const { user } = useAuth();
 
-  const { data, loading, error, refetch } = useQuery(GET_EMPLOYEES, {
+  const { data, loading, error } = useQuery(GET_EMPLOYEES, {
     variables: {
       page: currentPage,
       limit: itemsPerPage,
@@ -66,24 +64,32 @@ const EmployeesPage = () => {
   const totalItems = meta?.totalItems || 0;
 
   // Filter employees based on search and filter criteria
-  const filteredEmployees = employees.filter((employee: any) => {
-    // Search filter
-    const matchesSearch =
-      !searchTerm ||
-      employee.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phoneNumber?.includes(searchTerm) ||
-      employee.role?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredEmployees = employees.filter(
+    (employee: {
+      fullName?: string;
+      email?: string;
+      phoneNumber?: string;
+      role?: string;
+      status?: string;
+    }) => {
+      // Search filter
+      const matchesSearch =
+        !searchTerm ||
+        employee.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.phoneNumber?.includes(searchTerm) ||
+        employee.role?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Status filter
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "active" && employee.status === "ACTIVE") ||
-      (filterStatus === "inactive" &&
-        (employee.status === "INACTIVE" || employee.status === "DISABLED"));
+      // Status filter
+      const matchesStatus =
+        filterStatus === "all" ||
+        (filterStatus === "active" && employee.status === "ACTIVE") ||
+        (filterStatus === "inactive" &&
+          (employee.status === "INACTIVE" || employee.status === "DISABLED"));
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    }
+  );
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -141,7 +147,7 @@ const EmployeesPage = () => {
   // Get managers (employees with MANAGER, ADMIN, or SUPER_ADMIN roles)
   const managers =
     employees?.filter(
-      (emp: any) =>
+      (emp: { role?: string }) =>
         emp.role === EmployeeRole.MANAGER ||
         emp.role === EmployeeRole.ADMIN ||
         emp.role === EmployeeRole.SUPER_ADMIN
@@ -199,7 +205,7 @@ const EmployeesPage = () => {
               )}
               {error.message?.includes("Require one of roles") && (
                 <p className="text-red-600 text-sm mt-2">
-                  <strong>Access denied:</strong> You don't have permission to
+                  <strong>Access denied:</strong> You don&apos;t have permission to
                   view employees. Contact your administrator.
                 </p>
               )}
@@ -213,10 +219,14 @@ const EmployeesPage = () => {
                 Showing {filteredEmployees.length} of {employees.length}{" "}
                 employees
                 {searchTerm && (
-                  <span className="ml-1">matching "{searchTerm}"</span>
+                  <span className="ml-1">
+                    matching &quot;{searchTerm}&quot;
+                  </span>
                 )}
                 {filterStatus !== "all" && (
-                  <span className="ml-1">with status "{filterStatus}"</span>
+                  <span className="ml-1">
+                    with status &quot;{filterStatus}&quot;
+                  </span>
                 )}
               </span>
             </div>
@@ -236,7 +246,7 @@ const EmployeesPage = () => {
             priority
           />
           <h2 className="text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-4 max-w-xl">
-            It seems you don't have added any employees yet
+            It seems you don&apos;t have added any employees yet
           </h2>
           <p className="text-[#BABABA] dark:text-gray-400 mb-8 md:mb-12 text-lg max-w-sm">
             Start building your team by adding employees.
@@ -288,10 +298,12 @@ const EmployeesPage = () => {
         setSelectedDivision={setSelectedDivision}
         departmentMembers={departmentMembers}
         setDepartmentMembers={setDepartmentMembers}
-        managers={managers.map((m: any) => ({
-          employeeId: m.employeeId,
-          fullName: m.fullName,
-        }))}
+        managers={managers.map(
+          (m: { employeeId?: string; fullName?: string }) => ({
+            employeeId: m.employeeId,
+            fullName: m.fullName,
+          })
+        )}
         divisions={divisions.map((d: GraphQLDivision) => ({
           divisionId: d.divisionId,
           name: d.name,

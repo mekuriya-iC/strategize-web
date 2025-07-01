@@ -15,12 +15,11 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { X, Edit } from "lucide-react";
+import { X } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
 import { GET_DEPARTMENT } from "@/lib/graphql/queries/departments";
 import {
-  Department,
   GetDepartmentResponse,
   DepartmentQueryVariables,
 } from "@/types/graphql";

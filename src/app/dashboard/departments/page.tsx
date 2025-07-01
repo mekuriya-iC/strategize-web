@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -18,7 +17,6 @@ import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
 import {
   DepartmentsQueryVariables,
   Department as GraphQLDepartment,
-  Division,
   Employee,
   EmployeeRole,
   PaginatedDepartments,
@@ -27,7 +25,6 @@ import {
 } from "@/types/graphql";
 
 const DepartmentsPage = () => {
-  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -242,11 +239,13 @@ const DepartmentsPage = () => {
               <span>
                 Showing {departments.length} of {totalItems} departments
                 {searchTerm && (
-                  <span className="ml-1">matching "{searchTerm}"</span>
+                  <span className="ml-1">
+                    matching &quot;{searchTerm}&quot;
+                  </span>
                 )}
                 {filterStatus !== "all" && (
                   <span className="ml-1">
-                    with status "{filterStatus.replace("_", " ")}"
+                    with status &quot;{filterStatus.replace("_", " ")}&quot;
                   </span>
                 )}
               </span>

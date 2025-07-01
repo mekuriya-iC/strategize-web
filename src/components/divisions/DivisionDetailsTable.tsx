@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ReusableTableHeader, {
-  HeaderColumn,
 } from "@/components/ui/table-header";
 import { DepartmentTableSkeleton } from "@/components/skeleton";
 import EditDepartmentDialog from "@/components/departments/EditDepartmentDialog";

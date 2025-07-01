@@ -3,15 +3,12 @@ import {
   ChevronRight,
   Bell,
   Globe,
-  User,
-  Menu,
   Sun,
   Moon,
   SidebarClose,
   SidebarOpen,
   LogOut,
 } from "lucide-react";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

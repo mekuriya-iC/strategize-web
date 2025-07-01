@@ -27,8 +27,6 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
   statusFilter,
   onStatusFilterChange,
   onClearFilters,
-  selectedCount,
-  onAddObjective,
 }) => {
   const hasActiveFilters = searchTerm || statusFilter !== "all";
 

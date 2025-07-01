@@ -46,6 +46,11 @@ export interface AnalyticsStats {
   error: string | null;
 }
 
+interface ItemWithDateFields {
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const useAnalytics = (): AnalyticsStats => {
   // Fetch real data from GraphQL
   const {
@@ -79,8 +84,8 @@ export const useAnalytics = (): AnalyticsStats => {
   const analytics = useMemo(() => {
     // Helper function to calculate recent growth
     const calculateRecentGrowth = (
-      items: any[],
-      dateField: string = "createdAt"
+      items: Array<ItemWithDateFields>,
+      dateField: keyof ItemWithDateFields = "createdAt"
     ): string => {
       if (!items || items.length === 0) return "0%";
 
@@ -88,7 +93,9 @@ export const useAnalytics = (): AnalyticsStats => {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       const recentItems = items.filter((item) => {
-        const itemDate = new Date(item[dateField]);
+        const dateValue = item[dateField];
+        if (!dateValue) return false;
+        const itemDate = new Date(dateValue);
         return itemDate > weekAgo;
       });
 
@@ -128,7 +135,7 @@ export const useAnalytics = (): AnalyticsStats => {
 
     const activeEmployeesCount =
       employeesData?.employees?.items?.filter(
-        (employee: Employee) => employee.role !== "INACTIVE"
+        (employee: Employee) => employee.status === "ACTIVE"
       ).length || 0;
 
     const managerCount =

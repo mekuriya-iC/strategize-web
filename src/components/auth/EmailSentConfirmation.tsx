@@ -25,7 +25,7 @@ export default function EmailSentConfirmation() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success("Reset link sent again!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to resend email. Please try again.");
     } finally {
       setResending(false);
@@ -52,7 +52,7 @@ export default function EmailSentConfirmation() {
           Password Reset Email Sent!
         </h1>
         <p className="text-center text-[#ABABAB] font-sans mb-2">
-          We've sent a password reset link to
+          We&apos;ve sent a password reset link to
         </p>
         <p className="text-center text-[#11181C] font-semibold font-sans">
           {email || "your email address"}
@@ -72,7 +72,7 @@ export default function EmailSentConfirmation() {
       <div className="space-y-4">
         <div className="text-center">
           <span className="text-sm text-[#ABABAB] font-sans">
-            Didn't receive the email?{" "}
+            Didn&apos;t receive the email?{" "}
           </span>
           <button
             onClick={handleResend}

@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -26,7 +25,6 @@ import type {
 } from "@/types/graphql";
 
 const DivisionsPage = () => {
-  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -352,7 +350,9 @@ const DivisionsPage = () => {
               <span>
                 Showing {transformedDivisions.length} of {totalItems} divisions
                 {searchTerm && (
-                  <span className="ml-1">matching "{searchTerm}"</span>
+                  <span className="ml-1">
+                    matching &quot;{searchTerm}&quot;
+                  </span>
                 )}
               </span>
             </div>

@@ -8,13 +8,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 
 interface DepartmentPaginationProps {
   currentPage: number;
@@ -29,10 +23,7 @@ interface DepartmentPaginationProps {
 export default function DepartmentPagination({
   currentPage,
   totalPages,
-  totalItems,
-  itemsPerPage,
   onPageChange,
-  onItemsPerPageChange,
   loading = false,
 }: DepartmentPaginationProps) {
   // Calculate visible page numbers
@@ -80,9 +71,7 @@ export default function DepartmentPagination({
     return rangeWithDots;
   };
 
-  // Calculate item range for display
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
 
   const handlePageClick = (page: number) => {
     if (page !== currentPage && page >= 1 && page <= totalPages && !loading) {
@@ -126,7 +115,7 @@ export default function DepartmentPagination({
               />
             </PaginationItem>
 
-            {getVisiblePages().map((page, index) => (
+            {getVisiblePages().map((page) => (
               <PaginationItem
                 key={typeof page === "string" ? page : `page-${page}`}
               >

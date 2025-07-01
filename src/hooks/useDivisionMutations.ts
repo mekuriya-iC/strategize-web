@@ -10,8 +10,6 @@ import type {
   CreateDivisionMutationVariables,
   UpdateDivisionMutationVariables,
   RemoveDivisionMutationVariables,
-  Division,
-  PaginatedDivisions,
 } from "@/types/graphql";
 
 export const useDivisionMutations = () => {

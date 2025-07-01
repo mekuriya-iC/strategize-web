@@ -151,7 +151,7 @@ export default function EmployeePagination({
               />
             </PaginationItem>
 
-            {getVisiblePages().map((page, index) => (
+            {getVisiblePages().map((page) => (
               <PaginationItem
                 key={typeof page === "string" ? page : `page-${page}`}
               >

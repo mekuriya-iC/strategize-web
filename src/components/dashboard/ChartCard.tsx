@@ -23,7 +23,16 @@ ChartJS.register(
 interface ChartCardProps {
   title: string;
   chartType: "doughnut" | "bar";
-  data: any;
+  data: {
+    labels?: string[];
+    datasets: Array<{
+      data: number[];
+      backgroundColor?: string | string[];
+      borderColor?: string | string[];
+      borderWidth?: number;
+      [key: string]: unknown;
+    }>;
+  };
   legend?: ReactNode;
 }
 

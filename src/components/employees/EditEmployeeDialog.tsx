@@ -57,10 +57,11 @@ interface FormErrors {
 
 // Helper function to parse GraphQL errors and provide user-friendly messages
 const parseGraphQLError = (
-  error: any
+  error: unknown
 ): { title: string; description: string } => {
   // Convert error to string for analysis
-  const errorMessage = error?.message || error?.toString() || "";
+  const errorMessage =
+    (error instanceof Error ? error.message : error?.toString()) || "";
 
   // Check for duplicate key constraint violations
   if (errorMessage.includes("duplicate key value violates unique constraint")) {
@@ -142,7 +143,6 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
     picture: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [hasNewImage, setHasNewImage] = useState(false);
@@ -248,7 +248,6 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
       return;
     }
 
-    setUploadedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setHasNewImage(true);
     setErrors((prev) => ({ ...prev, picture: undefined }));
@@ -272,7 +271,6 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
 
   // Remove uploaded file
   const removeFile = () => {
-    setUploadedFile(null);
     setPreviewUrl("");
     setHasNewImage(false);
     setFormData((prev) => ({ ...prev, picture: "" }));
@@ -331,7 +329,6 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
     if (!newOpen) {
       // Reset any uploaded files
       if (hasNewImage) {
-        setUploadedFile(null);
         setHasNewImage(false);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";

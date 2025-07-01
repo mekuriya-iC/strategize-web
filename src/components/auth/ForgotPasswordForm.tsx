@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowLeft, ArrowLeftIcon, ChevronLeftIcon } from "lucide-react";
+import { Mail, ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -32,7 +32,7 @@ export default function ForgotPasswordForm() {
 
       toast.success("Reset link sent to your email!");
       router.push("/auth/email-sent");
-    } catch (error) {
+    } catch {
       toast.error("Failed to send reset email. Please try again.");
     } finally {
       setLoading(false);

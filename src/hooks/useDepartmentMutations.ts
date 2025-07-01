@@ -14,7 +14,6 @@ import type {
   RemoveDepartmentMutationVariables,
   AddEmployeeToDepartmentMutationVariables,
   RemoveEmployeeFromDepartmentMutationVariables,
-  Department,
   PaginatedDepartments,
 } from "@/types/graphql";
 
@@ -146,7 +145,7 @@ export const useDepartmentMutations = () => {
 
   const [addEmployeeToDepartmentMutation, { loading: addEmployeeLoading }] =
     useMutation(ADD_EMPLOYEE_TO_DEPARTMENT, {
-      onCompleted: (data) => {
+      onCompleted: () => {
         // Don't show toast for individual employee additions to avoid spam
         // The main department creation toast is sufficient
       },
@@ -200,7 +199,7 @@ export const useDepartmentMutations = () => {
         const employeePromises = variables.employeeIds.map(
           async (employeeId) => {
             try {
-              const addResult = await addEmployeeToDepartmentMutation({
+              await addEmployeeToDepartmentMutation({
                 variables: {
                   departmentId: createdDepartment.departmentId,
                   employeeId: employeeId,
@@ -209,7 +208,7 @@ export const useDepartmentMutations = () => {
               console.log(
                 `Successfully added employee ${employeeId} to department`
               );
-              return { success: true, employeeId, result: addResult };
+              return { success: true, employeeId };
             } catch (error) {
               console.error(
                 `Failed to add employee ${employeeId} to department:`,
@@ -291,7 +290,7 @@ export const useDepartmentMutations = () => {
         if (employeesToAdd.length > 0) {
           const addPromises = employeesToAdd.map(async (employeeId) => {
             try {
-              const addResult = await addEmployeeToDepartmentMutation({
+              await addEmployeeToDepartmentMutation({
                 variables: {
                   departmentId: updatedDepartment.departmentId,
                   employeeId: employeeId,
@@ -317,7 +316,7 @@ export const useDepartmentMutations = () => {
         if (employeesToRemove.length > 0) {
           const removePromises = employeesToRemove.map(async (employeeId) => {
             try {
-              const removeResult = await removeEmployeeFromDepartmentMutation({
+              await removeEmployeeFromDepartmentMutation({
                 variables: {
                   departmentId: updatedDepartment.departmentId,
                   employeeId: employeeId,

@@ -2,9 +2,6 @@ import React from "react";
 import {
   Table,
   TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
 } from "@/components/ui/table";
 import EmployeeTableRow from "./EmployeeTableRow";
 import ReusableTableHeader, {

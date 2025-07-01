@@ -14,7 +14,6 @@ import { X, Trash2 } from "lucide-react";
 interface AssignDivisionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  kpi: any; // Can be string or object, depending on usage
   assignedDivisions: string[];
   onAssign: (division: string) => void;
   onRemove: (division: string) => void;
@@ -26,7 +25,6 @@ const mockDivisions = ["OD", "LS", "RAS", "HR", "IT", "Finance"];
 export default function AssignDivisionDialog({
   open,
   onOpenChange,
-  kpi,
   assignedDivisions,
   onAssign,
   onRemove,

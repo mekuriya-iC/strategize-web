@@ -33,5 +33,5 @@ jobs:
 
       - name: Run New Container
         run: |
-          fuser -k 4410/tcp || true
+          sudo fuser -k 4410/tcp || true
           docker run -d --network host -p 4410:4410 strategize-web:latest

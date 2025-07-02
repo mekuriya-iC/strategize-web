@@ -31,38 +31,18 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      update: (cache, { data }) => {
-        if (data?.createDepartment) {
-          // Update the departments list cache
-          const existingDepartments = cache.readQuery<{
-            departments: PaginatedDepartments;
-          }>({
-            query: GET_DEPARTMENTS,
-            variables: { page: 1, limit: 10 },
-          });
-
-          if (existingDepartments) {
-            cache.writeQuery({
-              query: GET_DEPARTMENTS,
-              variables: { page: 1, limit: 10 },
-              data: {
-                departments: {
-                  ...existingDepartments.departments,
-                  items: [
-                    data.createDepartment,
-                    ...existingDepartments.departments.items,
-                  ],
-                  meta: {
-                    ...existingDepartments.departments.meta,
-                    totalItems:
-                      existingDepartments.departments.meta.totalItems + 1,
-                  },
-                },
-              },
-            });
-          }
-        }
-      },
+      // Refetch all possible departments queries that might be cached
+      refetchQueries: [
+        // Generic refetch (handles most cases)
+        { query: GET_DEPARTMENTS },
+        // For main departments page
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 10 } },
+        // For forms that need all departments (dropdowns)
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
+        // For analytics (all departments)
+        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
+      ],
+      awaitRefetchQueries: true,
     }
   );
 

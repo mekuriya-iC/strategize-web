@@ -128,7 +128,10 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
             {/* Division */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Division
+                Division{" "}
+                <span className="text-sm font-normal text-gray-500">
+                  (Optional)
+                </span>
               </label>
               <Select
                 value={selectedDivision}
@@ -136,7 +139,7 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
                 disabled={loading}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Division" />
+                  <SelectValue placeholder="Select Division (Optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {divisions.map((division) => (
@@ -217,9 +220,7 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
               <Button
                 type="submit"
                 className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6"
-                disabled={
-                  loading || !departmentName.trim() || !selectedDivision
-                }
+                disabled={loading || !departmentName.trim()}
               >
                 {loading ? "Adding..." : "Add Department"}
               </Button>

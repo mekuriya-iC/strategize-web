@@ -146,8 +146,7 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
             {/* Department(s) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Department(s){" "}
-                <span className="text-gray-500 text-xs">(Optional)</span>
+                Department(s)
               </label>
               <div className="border border-gray-300 rounded-md p-3 min-h-[100px] bg-white">
                 {/* Selected Department Tags */}

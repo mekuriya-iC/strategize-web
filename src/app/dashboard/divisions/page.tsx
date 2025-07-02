@@ -66,7 +66,8 @@ const DivisionsPage = () => {
       page: 1,
       limit: 100, // Get enough departments for the dropdown
     },
-    fetchPolicy: "cache-first",
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   // Division mutations

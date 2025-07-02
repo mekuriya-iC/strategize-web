@@ -174,10 +174,6 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
       newErrors.password = "Password must be at least 6 characters";
     }
 
-    if (!formData.picture) {
-      newErrors.picture = "Profile picture is required";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -448,7 +444,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
 
           {/* Row 5: Profile Picture */}
           <div className="space-y-2 sm:space-y-3">
-            <Label>Profile Picture *</Label>
+            <Label>Profile Picture</Label>
             {!previewUrl ? (
               <div
                 className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center hover:border-gray-400 transition-colors cursor-pointer ${

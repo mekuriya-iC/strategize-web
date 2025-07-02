@@ -171,7 +171,7 @@ const DepartmentsPage = () => {
   };
 
   const handleSubmitDepartment = async () => {
-    if (!departmentName.trim() || !selectedDivision) {
+    if (!departmentName.trim()) {
       return;
     }
 
@@ -179,7 +179,7 @@ const DepartmentsPage = () => {
       await createDepartment({
         input: {
           name: departmentName.trim(),
-          divisionId: selectedDivision,
+          divisionId: selectedDivision || undefined,
           managerId: departmentManager || undefined,
         },
         employeeIds: departmentMembers,

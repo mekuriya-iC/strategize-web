@@ -12,17 +12,53 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { useRouter } from "next/navigation";
+import { useStrategicPeriodMutations } from "@/hooks/useStrategicPeriodMutations";
+import { toast } from "sonner";
+import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
 
 export default function AddNewStrategyForm() {
   const router = useRouter();
+  const { createStrategicPeriod, loading, error } =
+    useStrategicPeriodMutations();
+  const { setSelected } = useStrategicPeriod();
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [timeline, setTimeline] = useState<string>("3 Years");
-  
+  const [timeline, setTimeline] = useState<string>("3");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: handle form submission
-    alert(`Date: ${date?.toLocaleDateString()} | Timeline: ${timeline}`);
+
+    if (!date) {
+      toast.error("Please select a start date");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const startDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+      const length = parseFloat(timeline);
+
+      const newPeriod = await createStrategicPeriod({
+        input: {
+          startDate,
+          length,
+        },
+      });
+
+      toast.success("Strategic period created successfully!");
+
+      // Update context with the newly created period and redirect to list page
+      if (newPeriod) {
+        setSelected({ period: newPeriod });
+      }
+      router.push("/strategy-period");
+    } catch (err) {
+      console.error("Error creating strategic period:", err);
+      toast.error("Failed to create strategic period. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -31,36 +67,46 @@ export default function AddNewStrategyForm() {
       className="w-full max-w-sm flex flex-col gap-6 items-center"
     >
       <div className="w-full">
-        <Label className="mb-2 block">Select Date Period</Label>
+        <Label className="mb-2 block">Select Start Date</Label>
         <div className="w-full">
           <Calendar
             mode="single"
             selected={date}
             onSelect={setDate}
             className="w-full rounded-md border"
-
+            disabled={(date) => date < new Date()}
           />
         </div>
       </div>
       <div className="w-full">
-        <Label className="mb-2 block">Timeline</Label>
+        <Label className="mb-2 block">Duration (Years)</Label>
         <Select value={timeline} onValueChange={setTimeline}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select timeline" />
+            <SelectValue placeholder="Select duration" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="3 Years">3 Years</SelectItem>
-            <SelectItem value="5 Years">5 Years</SelectItem>
-            <SelectItem value="10 Years">10 Years</SelectItem>
+            <SelectItem value="1">1 Year</SelectItem>
+            <SelectItem value="2">2 Years</SelectItem>
+            <SelectItem value="3">3 Years</SelectItem>
+            <SelectItem value="5">5 Years</SelectItem>
+            <SelectItem value="10">10 Years</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {error && (
+        <div className="w-full text-red-500 text-sm text-center">
+          {error.message ||
+            "An error occurred while creating the strategic period"}
+        </div>
+      )}
+
       <Button
         type="submit"
-        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white text-lg font-semibold cursor-pointer"
-        onClick={() => router.push("/dashboard")} 
+        disabled={loading || isSubmitting || !date}
+        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white text-lg font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        + Add
+        {loading || isSubmitting ? "Creating..." : "+ Add"}
       </Button>
     </form>
   );

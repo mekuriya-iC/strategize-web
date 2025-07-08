@@ -39,7 +39,7 @@ export function middleware(request: NextRequest) {
     // Auth page - redirect to dashboard if already authenticated
     if (accessToken) {
       const redirectUrl =
-        request.nextUrl.searchParams.get("redirect") || "/dashboard";
+        request.nextUrl.searchParams.get("redirect") || "/strategy-period";
       return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
     // Not authenticated, allow access to auth page
@@ -49,7 +49,7 @@ export function middleware(request: NextRequest) {
   if (pathname === "/") {
     // Root page - redirect based on authentication status
     if (accessToken) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/strategy-period", request.url));
     } else {
       return NextResponse.redirect(new URL("/auth", request.url));
     }

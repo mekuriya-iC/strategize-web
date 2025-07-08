@@ -227,3 +227,217 @@ export interface RemoveEmployeeFromDepartmentMutationVariables {
   departmentId: string;
   employeeId: string;
 }
+
+// Strategic Period Types
+export interface StrategicPeriod {
+  strategicPeriodId: string;
+  startDate: string;
+  length: number;
+  endDate: string;
+  createdBy: Employee | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateStrategicPeriodInput {
+  startDate: string;
+  length: number;
+}
+
+export interface UpdateStrategicPeriodInput {
+  strategicPeriodId: string;
+  startDate?: string;
+  length?: number;
+}
+
+export interface PaginatedStrategicPeriods {
+  items: StrategicPeriod[];
+  meta: PaginationMeta;
+}
+
+// Objective Types
+export type ObjectiveType =
+  | "CORPORATE"
+  | "DIVISION"
+  | "DEPARTMENT"
+  | "PERSONNEL";
+export type ObjectiveStatus =
+  | "NOT_SUBMITTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+
+export interface Objective {
+  objectiveId: string;
+  name: string;
+  type: ObjectiveType;
+  status: ObjectiveStatus;
+  strategicPeriod: StrategicPeriod | null;
+  createdBy: Employee | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateObjectiveInput {
+  name: string;
+  type: ObjectiveType;
+  strategicPeriodId: string;
+}
+
+export interface UpdateObjectiveInput {
+  objectiveId: string;
+  name?: string;
+  type?: ObjectiveType;
+  status?: ObjectiveStatus;
+  strategicPeriodId?: string;
+}
+
+export interface PaginatedObjectives {
+  items: Objective[];
+  meta: PaginationMeta;
+}
+
+// KPI Types
+export type KpiWeightType = "NUMBER" | "PERCENT";
+export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
+
+// Restore KPI target types
+export interface KpiTarget {
+  timeline: string;
+  target: number;
+}
+
+export interface KpiTargetInput {
+  timeline: string;
+  target: number;
+}
+
+export interface Kpi {
+  kpiId: string;
+  name: string;
+  baseline: number;
+  weight: number;
+  weightType: KpiWeightType;
+  status: KpiStatus;
+  targets: KpiTarget[];
+  objective: Objective | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateKpiInput {
+  name: string;
+  baseline: number;
+  weight: number;
+  weightType: KpiWeightType;
+  targets: KpiTargetInput[];
+  objectiveId: string;
+}
+
+export interface UpdateKpiInput {
+  kpiId: string;
+  name?: string;
+  baseline?: number;
+  weight?: number;
+  weightType?: KpiWeightType;
+  status?: KpiStatus;
+  targets?: KpiTargetInput[];
+  objectiveId?: string;
+}
+
+export interface PaginatedKpis {
+  items: Kpi[];
+  meta: PaginationMeta;
+}
+
+// Query Response Types
+export interface GetStrategicPeriodsResponse {
+  strategicPeriods: PaginatedStrategicPeriods;
+}
+
+export interface GetStrategicPeriodResponse {
+  strategicPeriod: StrategicPeriod;
+}
+
+export interface GetObjectivesResponse {
+  objectives: PaginatedObjectives;
+}
+
+export interface GetObjectiveResponse {
+  objective: Objective;
+}
+
+export interface GetKpisResponse {
+  kpis: PaginatedKpis;
+}
+
+export interface GetKpiResponse {
+  kpi: Kpi;
+}
+
+// Query Variables Types
+export interface StrategicPeriodsQueryVariables {
+  page?: number;
+  limit?: number;
+}
+
+export interface StrategicPeriodQueryVariables {
+  strategicPeriodId: string;
+}
+
+export interface ObjectivesQueryVariables {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface ObjectiveQueryVariables {
+  objectiveId: string;
+}
+
+export interface KpisQueryVariables {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface KpiQueryVariables {
+  kpiId: string;
+}
+
+// Mutation Variables Types
+export interface CreateStrategicPeriodMutationVariables {
+  input: CreateStrategicPeriodInput;
+}
+
+export interface UpdateStrategicPeriodMutationVariables {
+  input: UpdateStrategicPeriodInput;
+}
+
+export interface RemoveStrategicPeriodMutationVariables {
+  id: string;
+}
+
+export interface CreateObjectiveMutationVariables {
+  input: CreateObjectiveInput;
+}
+
+export interface UpdateObjectiveMutationVariables {
+  input: UpdateObjectiveInput;
+}
+
+export interface RemoveObjectiveMutationVariables {
+  id: string;
+}
+
+export interface CreateKpiMutationVariables {
+  input: CreateKpiInput;
+}
+
+export interface UpdateKpiMutationVariables {
+  input: UpdateKpiInput;
+}
+
+export interface RemoveKpiMutationVariables {
+  id: string;
+}

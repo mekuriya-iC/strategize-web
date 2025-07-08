@@ -7,17 +7,20 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Define filter options type
 type FilterStatus = "all" | "active" | "inactive";
+type SortOrder = "none" | "asc" | "desc";
 
 interface EmployeeFilterBarProps {
   onSearchChange?: (searchTerm: string) => void;
   onFilterChange?: (filterValue: FilterStatus) => void;
+  onSortChange?: (sortOrder: SortOrder) => void;
   searchValue?: string;
   filterValue?: FilterStatus;
+  sortValue?: SortOrder;
   placeholder?: string;
   disabled?: boolean;
 }
@@ -25,8 +28,10 @@ interface EmployeeFilterBarProps {
 const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
   onSearchChange,
   onFilterChange,
+  onSortChange,
   searchValue = "",
   filterValue = "all",
+  sortValue = "none",
   placeholder = "Search employees...",
   disabled = false,
 }) => {
@@ -61,6 +66,11 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
     onFilterChange?.(value);
   };
 
+  // Sort change handler
+  const handleSortChange = (value: SortOrder) => {
+    onSortChange?.(value);
+  };
+
   // Clear search handler
   const handleClearSearch = () => {
     setInternalSearchValue("");
@@ -72,11 +82,14 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
     setInternalSearchValue("");
     onSearchChange?.("");
     onFilterChange?.("all");
+    onSortChange?.("none");
   };
 
   // Check if any filters are active
   const hasActiveFilters =
-    internalSearchValue.trim() !== "" || filterValue !== "all";
+    internalSearchValue.trim() !== "" ||
+    filterValue !== "all" ||
+    sortValue !== "none";
 
   return (
     <div className="flex flex-col md:flex-row rounded-lg gap-2 w-full">
@@ -108,8 +121,9 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
         )}
       </div>
 
-      {/* Filter Dropdown */}
+      {/* Filters Container */}
       <div className="flex items-center gap-2">
+        {/* Status Filter Dropdown */}
         <Select
           value={filterValue}
           onValueChange={handleFilterChange}
@@ -123,6 +137,23 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
             <SelectItem value="all">All Employees</SelectItem>
             <SelectItem value="active">Active Only</SelectItem>
             <SelectItem value="inactive">Inactive Only</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Sort Dropdown */}
+        <Select
+          value={sortValue}
+          onValueChange={handleSortChange}
+          disabled={disabled}
+        >
+          <SelectTrigger className="bg-white focus:ring-0 focus:ring-offset-0 shadow-none rounded-md border min-w-[120px]">
+            <ArrowUpDown className="h-4 w-4 text-gray-400 mr-2" />
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No Sorting</SelectItem>
+            <SelectItem value="asc">A to Z</SelectItem>
+            <SelectItem value="desc">Z to A</SelectItem>
           </SelectContent>
         </Select>
 

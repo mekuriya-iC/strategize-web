@@ -3,10 +3,14 @@ import { useMemo } from "react";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import type {
   PaginatedDivisions,
   PaginatedDepartments,
   PaginatedEmployees,
+  PaginatedObjectives,
+  PaginatedKpis,
   Division,
   Department,
   Employee,
@@ -17,16 +21,16 @@ export interface AnalyticsStats {
   divisionsCount: number;
   departmentsCount: number;
   employeesCount: number;
-  objectivesCount: number; // TODO: Update when backend is ready
-  kpisCount: number; // TODO: Update when backend is ready
+  objectivesCount: number;
+  kpisCount: number;
   initiativesCount: number; // TODO: Update when backend is ready
 
   // Growth percentages
   divisionsGrowth: string;
   departmentsGrowth: string;
   employeesGrowth: string;
-  objectivesGrowth: string; // TODO: Update when backend is ready
-  kpisGrowth: string; // TODO: Update when backend is ready
+  objectivesGrowth: string;
+  kpisGrowth: string;
   initiativesGrowth: string; // TODO: Update when backend is ready
 
   // Additional insights
@@ -41,6 +45,8 @@ export interface AnalyticsStats {
   divisionsLoading: boolean;
   departmentsLoading: boolean;
   employeesLoading: boolean;
+  objectivesLoading: boolean;
+  kpisLoading: boolean;
 
   // Error states
   error: string | null;
@@ -80,6 +86,24 @@ export const useAnalytics = (): AnalyticsStats => {
     fetchPolicy: "cache-and-network",
   });
 
+  const {
+    data: objectivesData,
+    loading: objectivesLoading,
+    error: objectivesError,
+  } = useQuery<{ objectives: PaginatedObjectives }>(GET_OBJECTIVES, {
+    variables: { page: 1, limit: 1000 },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const {
+    data: kpisData,
+    loading: kpisLoading,
+    error: kpisError,
+  } = useQuery<{ kpis: PaginatedKpis }>(GET_KPIS, {
+    variables: { page: 1, limit: 1000 },
+    fetchPolicy: "cache-and-network",
+  });
+
   // Calculate statistics
   const analytics = useMemo(() => {
     // Helper function to calculate recent growth
@@ -109,6 +133,8 @@ export const useAnalytics = (): AnalyticsStats => {
     const departmentsCount =
       departmentsData?.departments?.meta?.totalItems || 0;
     const employeesCount = employeesData?.employees?.meta?.totalItems || 0;
+    const objectivesCount = objectivesData?.objectives?.meta?.totalItems || 0;
+    const kpisCount = kpisData?.kpis?.meta?.totalItems || 0;
 
     // Calculate growth rates
     const divisionsGrowth = calculateRecentGrowth(
@@ -120,6 +146,10 @@ export const useAnalytics = (): AnalyticsStats => {
     const employeesGrowth = calculateRecentGrowth(
       employeesData?.employees?.items || []
     );
+    const objectivesGrowth = calculateRecentGrowth(
+      objectivesData?.objectives?.items || []
+    );
+    const kpisGrowth = calculateRecentGrowth(kpisData?.kpis?.items || []);
 
     // Additional insights
     const activeDivisionsCount =
@@ -152,11 +182,18 @@ export const useAnalytics = (): AnalyticsStats => {
           employee.role === "ADMIN" || employee.role === "SUPER_ADMIN"
       ).length || 0;
 
-    const loading = divisionsLoading || departmentsLoading || employeesLoading;
+    const loading =
+      divisionsLoading ||
+      departmentsLoading ||
+      employeesLoading ||
+      objectivesLoading ||
+      kpisLoading;
     const error =
       divisionsError?.message ||
       departmentsError?.message ||
       employeesError?.message ||
+      objectivesError?.message ||
+      kpisError?.message ||
       null;
 
     return {
@@ -164,16 +201,16 @@ export const useAnalytics = (): AnalyticsStats => {
       divisionsCount,
       departmentsCount,
       employeesCount,
-      objectivesCount: 67, // TODO: Replace with real query
-      kpisCount: 209, // TODO: Replace with real query
+      objectivesCount,
+      kpisCount,
       initiativesCount: 67, // TODO: Replace with real query
 
       // Growth percentages
       divisionsGrowth,
       departmentsGrowth,
       employeesGrowth,
-      objectivesGrowth: "-2.1%", // TODO: Replace with real calculation
-      kpisGrowth: "+2.3%", // TODO: Replace with real calculation
+      objectivesGrowth,
+      kpisGrowth,
       initiativesGrowth: "-2.1%", // TODO: Replace with real calculation
 
       // Additional insights
@@ -188,6 +225,8 @@ export const useAnalytics = (): AnalyticsStats => {
       divisionsLoading,
       departmentsLoading,
       employeesLoading,
+      objectivesLoading,
+      kpisLoading,
 
       // Error states
       error,
@@ -196,12 +235,18 @@ export const useAnalytics = (): AnalyticsStats => {
     divisionsData,
     departmentsData,
     employeesData,
+    objectivesData,
+    kpisData,
     divisionsLoading,
     departmentsLoading,
     employeesLoading,
+    objectivesLoading,
+    kpisLoading,
     divisionsError,
     departmentsError,
     employeesError,
+    objectivesError,
+    kpisError,
   ]);
 
   return analytics;

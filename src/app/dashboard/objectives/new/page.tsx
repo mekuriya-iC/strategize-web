@@ -1,11 +1,13 @@
 "use client";
 import ObjectiveForm from "@/components/objectives/ObjectiveForm";
 
-import {  ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function AddObjectivePage() {
   const router = useRouter();
+  const pageTitle = "Add Objective";
+
   return (
     <>
       <div className="max-w-6xl  py-6 px-4">
@@ -14,7 +16,7 @@ export default function AddObjectivePage() {
             {" "}
             <ChevronLeft className="w-6 h-6 mr-2" />
           </span>
-          Add Objective
+          {pageTitle}
         </h1>
         <ObjectiveForm />
       </div>

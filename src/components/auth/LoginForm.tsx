@@ -30,7 +30,7 @@ export default function LoginForm() {
     if (result?.success) {
       toast.success("Login Successful!");
       // Use Next.js router instead of window.location
-      router.push("/dashboard");
+      router.push("/strategy-period");
     } else {
       // console.log("Login failed:", result?.error);
       toast.error("Login failed. Please check your credentials and try again.");

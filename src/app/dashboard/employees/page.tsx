@@ -27,6 +27,7 @@ const EmployeesPage = () => {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "active" | "inactive"
   >("all");
+  const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
 
   // Department dialog state
   const [isAddDepartmentDialogOpen, setIsAddDepartmentDialogOpen] =
@@ -63,33 +64,65 @@ const EmployeesPage = () => {
   const totalPages = meta?.totalPages || 1;
   const totalItems = meta?.totalItems || 0;
 
-  // Filter employees based on search and filter criteria
-  const filteredEmployees = employees.filter(
-    (employee: {
-      fullName?: string;
-      email?: string;
-      phoneNumber?: string;
-      role?: string;
-      status?: string;
-    }) => {
-      // Search filter
-      const matchesSearch =
-        !searchTerm ||
-        employee.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.phoneNumber?.includes(searchTerm) ||
-        employee.role?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter and sort employees based on search, filter, and sort criteria
+  const filteredEmployees = employees
+    .filter(
+      (employee: {
+        fullName?: string;
+        email?: string;
+        phoneNumber?: string;
+        role?: string;
+        status?: string;
+      }) => {
+        // Search filter
+        const matchesSearch =
+          !searchTerm ||
+          employee.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          employee.phoneNumber?.includes(searchTerm) ||
+          employee.role?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Status filter
-      const matchesStatus =
-        filterStatus === "all" ||
-        (filterStatus === "active" && employee.status === "ACTIVE") ||
-        (filterStatus === "inactive" &&
-          (employee.status === "INACTIVE" || employee.status === "DISABLED"));
+        // Status filter
+        const matchesStatus =
+          filterStatus === "all" ||
+          (filterStatus === "active" && employee.status === "ACTIVE") ||
+          (filterStatus === "inactive" &&
+            (employee.status === "INACTIVE" || employee.status === "DISABLED"));
 
-      return matchesSearch && matchesStatus;
-    }
-  );
+        return matchesSearch && matchesStatus;
+      }
+    )
+    .sort(
+      (
+        a: {
+          fullName?: string;
+          email?: string;
+          phoneNumber?: string;
+          role?: string;
+          status?: string;
+        },
+        b: {
+          fullName?: string;
+          email?: string;
+          phoneNumber?: string;
+          role?: string;
+          status?: string;
+        }
+      ) => {
+        if (sortOrder === "none") return 0;
+
+        const nameA = a.fullName?.toLowerCase() || "";
+        const nameB = b.fullName?.toLowerCase() || "";
+
+        if (sortOrder === "asc") {
+          return nameA.localeCompare(nameB);
+        } else if (sortOrder === "desc") {
+          return nameB.localeCompare(nameA);
+        }
+
+        return 0;
+      }
+    );
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -108,6 +141,11 @@ const EmployeesPage = () => {
   const handleFilterChange = (filterValue: "all" | "active" | "inactive") => {
     setFilterStatus(filterValue);
     setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleSortChange = (sortValue: "none" | "asc" | "desc") => {
+    setSortOrder(sortValue);
+    setCurrentPage(1); // Reset to first page when sorting
   };
 
   // Department dialog handlers
@@ -172,8 +210,10 @@ const EmployeesPage = () => {
             <EmployeeFilterBar
               onSearchChange={handleSearchChange}
               onFilterChange={handleFilterChange}
+              onSortChange={handleSortChange}
               searchValue={searchTerm}
               filterValue={filterStatus}
+              sortValue={sortOrder}
               disabled={loading}
             />
             <div className="flex gap-2 items-center">
@@ -205,15 +245,15 @@ const EmployeesPage = () => {
               )}
               {error.message?.includes("Require one of roles") && (
                 <p className="text-red-600 text-sm mt-2">
-                  <strong>Access denied:</strong> You don&apos;t have permission to
-                  view employees. Contact your administrator.
+                  <strong>Access denied:</strong> You don&apos;t have permission
+                  to view employees. Contact your administrator.
                 </p>
               )}
             </div>
           )}
 
           {/* Results Summary */}
-          {(searchTerm || filterStatus !== "all") && (
+          {(searchTerm || filterStatus !== "all" || sortOrder !== "none") && (
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>
                 Showing {filteredEmployees.length} of {employees.length}{" "}
@@ -226,6 +266,11 @@ const EmployeesPage = () => {
                 {filterStatus !== "all" && (
                   <span className="ml-1">
                     with status &quot;{filterStatus}&quot;
+                  </span>
+                )}
+                {sortOrder !== "none" && (
+                  <span className="ml-1">
+                    sorted {sortOrder === "asc" ? "A to Z" : "Z to A"}
                   </span>
                 )}
               </span>
@@ -272,7 +317,7 @@ const EmployeesPage = () => {
           </div>
 
           {/* Pagination - only show if we have unfiltered results or no filters applied */}
-          {!searchTerm && filterStatus === "all" && (
+          {!searchTerm && filterStatus === "all" && sortOrder === "none" && (
             <EmployeePagination
               currentPage={currentPage}
               totalPages={totalPages}

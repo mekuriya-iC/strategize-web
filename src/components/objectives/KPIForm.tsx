@@ -102,29 +102,15 @@ export default function KPIForm({
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
-      toast.error("KPI name is required");
-      return false;
-    }
-
-    if (!formData.baseline || isNaN(Number(formData.baseline))) {
+    // Optional: Check baseline value if provided
+    if (formData.baseline && isNaN(Number(formData.baseline))) {
       toast.error("Please enter a valid baseline value");
       return false;
     }
 
-    if (!formData.weight || isNaN(Number(formData.weight))) {
+    // Optional: Check weight value if provided
+    if (formData.weight && isNaN(Number(formData.weight))) {
       toast.error("Please enter a valid weight value");
-      return false;
-    }
-
-    const validTargets = targets
-      .map((t) => ({ ...t, target: Number(t.target) }))
-      .filter((t) => t.timeline.trim() && !isNaN(t.target) && t.target > 0);
-
-    if (validTargets.length === 0) {
-      toast.error(
-        "Please add at least one valid target with a timeline and target value greater than 0"
-      );
       return false;
     }
 
@@ -146,9 +132,9 @@ export default function KPIForm({
         .filter((t) => t.timeline.trim() && !isNaN(t.target) && t.target > 0);
 
       const kpiData = {
-        name: formData.name.trim(),
-        baseline: Number(formData.baseline),
-        weight: Number(formData.weight),
+        name: formData.name.trim() || "",
+        baseline: formData.baseline ? Number(formData.baseline) : 0,
+        weight: formData.weight ? Number(formData.weight) : 0,
         weightType: formData.weightType,
         targets: validTargets as KpiTargetInput[],
         objectiveId,
@@ -171,11 +157,6 @@ export default function KPIForm({
         toast.error(
           "Objective data is missing. Please refresh the page and try again."
         );
-        return;
-      }
-
-      if (isNaN(kpiData.baseline) || isNaN(kpiData.weight)) {
-        toast.error("Baseline and weight must be valid numbers.");
         return;
       }
 
@@ -259,18 +240,17 @@ export default function KPIForm({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">KPI Name *</Label>
+                <Label htmlFor="name">KPI Name</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Enter KPI name"
-                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="baseline">Baseline Value *</Label>
+                <Label htmlFor="baseline">Baseline Value</Label>
                 <Input
                   id="baseline"
                   type="number"
@@ -280,12 +260,11 @@ export default function KPIForm({
                     handleInputChange("baseline", e.target.value)
                   }
                   placeholder="Enter baseline value"
-                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="weight">Weight *</Label>
+                <Label htmlFor="weight">Weight</Label>
                 <Input
                   id="weight"
                   type="number"
@@ -293,12 +272,11 @@ export default function KPIForm({
                   value={formData.weight}
                   onChange={(e) => handleInputChange("weight", e.target.value)}
                   placeholder="Enter weight"
-                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="weightType">Weight Type *</Label>
+                <Label htmlFor="weightType">Weight Type</Label>
                 <Select
                   value={formData.weightType}
                   onValueChange={(value: KpiWeightType) =>

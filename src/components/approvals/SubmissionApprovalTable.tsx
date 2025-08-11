@@ -169,7 +169,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
       ? child.parent?.name || "N/A"
       : submission.objective?.name || "N/A";
     const childName = hasParent
-      ? submission.objective?.name || "N/A"
+      ? submission.objective?.name || undefined
       : undefined;
     return { strategicName, childName, hasParent };
   };
@@ -370,7 +370,11 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                   </TableCell>
                   <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
                     <div className="truncate" title={childName || "N/A"}>
-                      {childName || (hasParent ? "N/A" : strategicName)}
+                      {childName
+                        ? childName
+                        : hasParent
+                        ? "N/A"
+                        : strategicName}
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4 text-gray-600">

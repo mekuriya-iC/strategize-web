@@ -327,9 +327,11 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                       <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
                         <div
                           className="truncate"
-                          title={obj.type === "CORPORATE" ? "" : obj.name}
+                          title={
+                            obj.type === "CORPORATE" ? "" : obj.name || "N/A"
+                          }
                         >
-                          {obj.type === "CORPORATE" ? (
+                          {obj.type === "CORPORATE" || !obj.name ? (
                             <span className="text-gray-400 italic text-sm">
                               N/A
                             </span>

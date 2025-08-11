@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useKPIMutations } from "@/hooks/useKPIMutations";
 import { useKPI, useKPIs } from "@/hooks/useKPIs";
+import { useSubmissionMutations } from "@/hooks/useSubmissionMutations";
+
 import { useObjective } from "@/hooks/useObjectives";
 import {
   KpiWeightType,
@@ -41,6 +43,8 @@ export default function KPIForm({
 }: KPIFormProps) {
   const isEditing = Boolean(kpiId);
   const { createKpi, updateKpi, loading } = useKPIMutations();
+  const { createSubmission } = useSubmissionMutations();
+  
   const { kpi, loading: kpiLoading } = useKPI(
     kpiId ? { kpiId } : { kpiId: "" }
   );
@@ -354,13 +358,43 @@ export default function KPIForm({
       }
 
       if (isEditing && kpiId) {
+        const isCurrentlyRejected = kpi?.status === "REJECTED";
+
+        // Update KPI data
         await updateKpi({
           input: {
             kpiId,
             ...kpiData,
+            // Reset status to PENDING if currently rejected
+            ...(isCurrentlyRejected ? { status: "PENDING" } : {}),
           },
         });
-        toast.success("KPI updated successfully!");
+
+        // If KPI was rejected, create a new submission for re-approval
+        if (isCurrentlyRejected && objective?.type !== "CORPORATE") {
+          try {
+            await createSubmission({
+              input: {
+                type: "KPI",
+                level: objective.type as
+                  | "DIVISION"
+                  | "DEPARTMENT"
+                  | "PERSONNEL",
+                itemId: kpiId,
+                reason:
+                  "KPI updated after rejection - resubmitted for approval",
+              },
+            });
+            toast.success("KPI updated and resubmitted for approval!");
+          } catch (submissionError) {
+            console.error("Error creating submission:", submissionError);
+            toast.success(
+              "KPI updated successfully, but failed to create submission. Please submit manually."
+            );
+          }
+        } else {
+          toast.success("KPI updated successfully!");
+        }
       } else {
         const created = await createKpi({
           input: kpiData,

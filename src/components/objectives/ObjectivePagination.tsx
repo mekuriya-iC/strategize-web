@@ -7,6 +7,7 @@ interface ObjectivePaginationProps {
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
+  onRowsPerPageChange?: (rows: number) => void;
   loading?: boolean;
 }
 
@@ -16,6 +17,7 @@ const ObjectivePagination: React.FC<ObjectivePaginationProps> = ({
   totalItems,
   itemsPerPage,
   onPageChange,
+  onRowsPerPageChange,
   loading = false,
 }) => {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -142,7 +144,20 @@ const ObjectivePagination: React.FC<ObjectivePaginationProps> = ({
           ? `Showing ${startItem}-${endItem} of ${totalItems} objectives`
           : "No objectives found"}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        {onRowsPerPageChange && (
+          <select
+            className="border rounded px-2 py-1 text-sm text-gray-700"
+            value={itemsPerPage}
+            onChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
+          >
+            {[10, 20, 50].map((n) => (
+              <option key={n} value={n}>
+                {n} / page
+              </option>
+            ))}
+          </select>
+        )}
         <Button
           variant="ghost"
           onClick={() => onPageChange(currentPage - 1)}

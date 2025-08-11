@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
 import { ReactNode } from "react";
 
 interface AnalyticsCardProps {
@@ -8,6 +9,8 @@ interface AnalyticsCardProps {
   isPositive: boolean;
   icon?: ReactNode;
   loading?: boolean;
+  href?: string; // optional navigation target
+  disabled?: boolean; // optional disabled state
 }
 
 export default function AnalyticsCard({
@@ -17,6 +20,8 @@ export default function AnalyticsCard({
   isPositive,
   icon,
   loading = false,
+  href,
+  disabled = false,
 }: AnalyticsCardProps) {
   if (loading) {
     return (
@@ -38,8 +43,14 @@ export default function AnalyticsCard({
     );
   }
 
-  return (
-    <Card className="p-5 rounded-xl border border-[#E2E8F0] shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-2 min-w-[180px] min-h-[110px] bg-white dark:bg-[#18181b]">
+  const content = (
+    <Card
+      className={`p-5 rounded-xl border border-[#E2E8F0] shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-2 min-w-[180px] min-h-[110px] bg-white dark:bg-[#18181b] ${
+        disabled
+          ? "opacity-60 cursor-not-allowed"
+          : "hover:shadow-md transition"
+      }`}
+    >
       {/* Top row: Icon and Title */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-gray-400 dark:text-gray-200">{icon}</span>
@@ -64,4 +75,10 @@ export default function AnalyticsCard({
       </div>
     </Card>
   );
+
+  if (href && !disabled) {
+    return <Link href={href}>{content}</Link>;
+  }
+
+  return content;
 }

@@ -7,47 +7,182 @@ import ObjectiveTable, { Objective } from "./ObjectiveTable";
 // import EditObjectiveDialog from "./EditObjectiveDialog";
 import ObjectivePagination from "./ObjectivePagination";
 import { useObjectives } from "@/hooks/useObjectives";
+import type { ObjectivesQueryVariables } from "@/types/graphql";
 import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
 import { useKPIs } from "@/hooks/useKPIs";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useOrgUnit } from "@/context/OrgUnitContext";
+import { useUser } from "@/context/UserContext";
+import { useUserDepartments } from "@/hooks/useUserDepartments";
+import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
+import { useQuery } from "@apollo/client";
+import { GET_ALL_SUBMISSIONS_NO_TYPE } from "@/lib/graphql/queries/submissions";
+import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
 
 export default function ObjectivesApprovalTable() {
   const router = useRouter();
+  const { user } = useUser();
+  const { selectedUnit } = useOrgUnit();
+  const { departmentNames } = useUserDepartments();
+  const { selected: selectedDepartment } = useDepartmentSelection();
   const [selected, setSelected] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
-  // Fetch objectives from API
-  const { objectives, loading, error, meta, refetch } = useObjectives({
-    page: currentPage,
-    limit: itemsPerPage,
-    search: searchTerm || undefined,
+  // Determine the assigneeId based on the user role and selected organizational unit
+  const getAssigneeId = (): string | undefined => {
+    if (user?.role === "MANAGER" && selectedUnit) {
+      // For managers, show objectives assigned to their selected unit
+      if (selectedUnit.__typename === "Division") {
+        return (selectedUnit as { __typename: "Division"; divisionId: string })
+          .divisionId;
+      } else {
+        return (
+          selectedUnit as { __typename: "Department"; departmentId: string }
+        ).departmentId;
+      }
+    } else if (user?.role === "NORMAL") {
+      // For employees, show objectives assigned to them personally
+      return user.employeeId;
+    }
+    return undefined;
+  };
+
+  const assigneeId = getAssigneeId();
+
+  // Prepare query variables to avoid undefined-assigned optionals
+  const objectivesQueryVars: ObjectivesQueryVariables = useMemo(() => {
+    const vars: ObjectivesQueryVariables = {
+      page: 1,
+      limit: 1000,
+    };
+    if (searchTerm) {
+      vars.search = searchTerm;
+    }
+    if (assigneeId) {
+      vars.assigneeId = assigneeId;
+    }
+    return vars;
+  }, [assigneeId, searchTerm]);
+
+  // Fetch a large set and paginate client-side for predictable counts
+  const { objectives, loading, error, /* meta, */ refetch } =
+    useObjectives(objectivesQueryVars);
+
+  // Fetch a broad set of objectives for lookup (to resolve parent KPI names in expanded rows)
+  // This avoids missing parent corporate objectives when the view is scoped to a unit
+  const { objectives: allObjectivesForLookup } = useObjectives({
+    page: 1,
+    limit: 1000,
   });
 
-  // Fetch KPIs from API
+  // Fetch KPIs from API (large page so per-objective counts are correct)
   const { kpis, loading: kpisLoading } = useKPIs({
-    // Fetch all KPIs to associate with objectives
+    page: 1,
+    limit: 1000,
   });
+
+  // Fetch submissions to get rejection reasons for KPIs
+  const { data: submissionsData } = useQuery(GET_ALL_SUBMISSIONS_NO_TYPE, {
+    variables: { page: 1, limit: 1000 },
+  });
+
+  // Build rejection reasons maps for Objectives and KPIs
+  const { objectiveRejectionReasons, kpiRejectionReasons } = useMemo(() => {
+    const objectiveReasons: Record<string, string> = {};
+    const kpiReasons: Record<string, string> = {};
+
+    const allSubmissions = submissionsData?.submissions?.items || [];
+    allSubmissions.forEach(
+      (submission: {
+        status: string;
+        reason?: string;
+        type: "OBJECTIVE" | "KPI";
+        kpi?: { kpiId: string } | null;
+        objective?: { objectiveId: string } | null;
+      }) => {
+        if (submission.status !== "REJECTED" || !submission.reason) return;
+
+        if (submission.type === "KPI" && submission.kpi?.kpiId) {
+          // Direct KPI submission rejection
+          kpiReasons[submission.kpi.kpiId] = submission.reason as string;
+        } else if (submission.type === "OBJECTIVE") {
+          const objId = (submission.objective?.objectiveId || "") as string;
+          // Store reason for the objective itself
+          objectiveReasons[objId] = submission.reason as string;
+          // Also map the same reason to any rejected KPIs under that objective
+          kpis
+            .filter((k) => k.objective?.objectiveId === objId)
+            .forEach((k) => {
+              if (k.status === "REJECTED") {
+                kpiReasons[k.kpiId] = submission.reason as string;
+              }
+            });
+        }
+      }
+    );
+
+    return {
+      objectiveRejectionReasons: objectiveReasons,
+      kpiRejectionReasons: kpiReasons,
+    };
+  }, [submissionsData, kpis]);
 
   // Mutations
   const {
-    updateObjective,
+    // updateObjective,
     // removeObjective,
-    loading: mutationLoading,
+    // loading: mutationLoading,
   } = useObjectiveMutations();
 
-  // Filter objectives based on status (API doesn't support status filter, so we filter locally)
+  // Filter objectives based on status and user role
   const filteredObjectives = useMemo(() => {
-    if (statusFilter === "all") {
-      return objectives;
+    let filtered = objectives;
+
+    // Role-based filtering
+    if (user?.role === "NORMAL") {
+      // Employees: rely on assigneeId filtering only.
+      // Some backends create employee-assigned children with the parent's type
+      // (e.g., DEPARTMENT), so filtering strictly by type would hide them.
+      // Do not filter by obj.type here.
+    } else if (user?.role === "MANAGER") {
+      // Managers can see all objectives assigned to their units
+      // No additional filtering needed as assigneeId handles this
+    } else {
+      // For admins/super admins, filter out assigned objectives (children) when not in unit context
+      if (!assigneeId) {
+        filtered = filtered.filter((obj) => !obj.parent);
+      }
     }
-    return objectives.filter((obj) => obj.status === statusFilter);
-  }, [objectives, statusFilter]);
+
+    // Apply status filter
+    if (statusFilter === "all") {
+      return filtered;
+    }
+    // Map UI filter values to server enum
+    const mapped = statusFilter
+      .toUpperCase()
+      .replace("NOT_SUBMITTED", "NOT_SUBMITTED") as
+      | "NOT_SUBMITTED"
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED";
+    return filtered.filter((obj) => obj.status === mapped);
+  }, [objectives, statusFilter, user?.role, assigneeId]);
+
+  // Client-side pagination after filtering
+  const totalItems = filteredObjectives.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const pagedObjectives = filteredObjectives.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   const handleSelect = (id: string) => {
     setSelected((prev) =>
@@ -56,7 +191,7 @@ export default function ObjectivesApprovalTable() {
   };
 
   const handleSelectAll = () => {
-    const allPageIds = filteredObjectives.map((obj) => obj.objectiveId);
+    const allPageIds = pagedObjectives.map((obj) => obj.objectiveId);
     const allSelected = allPageIds.every((id) => selected.includes(id));
 
     if (allSelected) {
@@ -70,24 +205,28 @@ export default function ObjectivesApprovalTable() {
     setExpanded((prev) => (prev === id ? null : id));
   };
 
-  const handleSubmitForApproval = async () => {
-    try {
-      const updatePromises = selected.map((objectiveId) =>
-        updateObjective({
-          input: {
-            objectiveId,
-            status: "PENDING",
-          },
-        })
-      );
+  // Prepare data for bulk submission
+  const selectedObjectivesForSubmission = useMemo(() => {
+    return filteredObjectives
+      .filter(
+        (obj) =>
+          selected.includes(obj.objectiveId) &&
+          obj.status === "NOT_SUBMITTED" &&
+          obj.type !== "CORPORATE"
+      )
+      .map((obj) => ({
+        itemId: obj.objectiveId,
+        itemName: obj.name,
+        objectiveType: obj.type,
+        itemType: "objective" as const,
+      }));
+  }, [filteredObjectives, selected]);
 
-      await Promise.all(updatePromises);
-      toast.success(`${selected.length} objective(s) submitted for approval`);
-      setSelected([]);
-    } catch (error) {
-      console.error("Error submitting objectives for approval:", error);
-      toast.error("Failed to submit objectives for approval");
-    }
+  const handleBulkSubmitSuccess = () => {
+    setSelected([]);
+    toast.success(
+      `${selectedObjectivesForSubmission.length} objective(s) submitted for approval`
+    );
   };
 
   const handleAddObjective = () => {
@@ -113,6 +252,10 @@ export default function ObjectivesApprovalTable() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+  const handleRowsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
 
   const handleObjectiveClick = (objective: Objective) => {
     // Navigate to objective details page with KPI management
@@ -132,8 +275,37 @@ export default function ObjectivesApprovalTable() {
     await refetch();
   };
 
+  const handleAssignSuccess = async () => {
+    // After assignment succeeds, refresh the objectives list
+    await refetch();
+  };
+
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6">
+      {/* Context Header for Employees */}
+      {user?.role === "NORMAL" && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-blue-900 mb-2">
+            My Personal Objectives
+          </h2>
+          <p className="text-sm text-blue-700">
+            These are objectives assigned to you by your manager. You can create
+            KPIs for these objectives and submit them for approval.
+          </p>
+          {(selectedDepartment?.department || departmentNames.length > 0) && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <p className="text-xs text-blue-600">
+                <span className="font-medium">
+                  {departmentNames.length > 1 ? "Working in:" : "Department:"}
+                </span>{" "}
+                {selectedDepartment?.department?.name ||
+                  departmentNames.join(", ")}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Filter Bar */}
       <ObjectiveFilterBar
         searchTerm={searchTerm}
@@ -143,34 +315,38 @@ export default function ObjectivesApprovalTable() {
         onStatusFilterChange={handleStatusFilterChange}
         onClearFilters={handleClearFilters}
         onAddObjective={handleAddObjective}
+        showAddButton={user?.role !== "NORMAL"}
       />
 
       {/* Summary */}
       <div className="flex justify-between items-center">
         <div>
           <p className="text-sm text-gray-600">
-            Showing {filteredObjectives.length} of {meta?.totalItems || 0}{" "}
-            objectives
+            {`Showing ${totalItems > 0 ? startIndex + 1 : 0}-${Math.min(
+              startIndex + itemsPerPage,
+              totalItems
+            )} of ${totalItems} objectives`}
           </p>
         </div>
         <div className="flex gap-2">
-          {selected.length > 0 && (
-            <Button
-              onClick={handleSubmitForApproval}
-              disabled={mutationLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+          {selectedObjectivesForSubmission.length > 0 && (
+            <BulkSubmitDialog
+              items={selectedObjectivesForSubmission}
+              itemType="objectives"
+              onSubmitSuccess={handleBulkSubmitSuccess}
             >
-              {mutationLoading
-                ? "Submitting..."
-                : `Submit ${selected.length} for Approval`}
-            </Button>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                Submit {selectedObjectivesForSubmission.length} for Approval
+              </Button>
+            </BulkSubmitDialog>
           )}
         </div>
       </div>
 
       {/* Table */}
       <ObjectiveTable
-        objectives={filteredObjectives}
+        objectives={pagedObjectives}
+        allObjectives={allObjectivesForLookup} // Use broad set to resolve parent KPI names
         kpis={kpis}
         selected={selected}
         expanded={expanded}
@@ -181,18 +357,94 @@ export default function ObjectivesApprovalTable() {
         onViewObjective={handleViewObjective}
         onEditSuccess={handleEditSuccess}
         onDeleteObjective={handleDeleteObjective}
+        onAssignSuccess={handleAssignSuccess}
         loading={loading || kpisLoading}
         error={error?.message}
+        objectiveRejectionReasons={objectiveRejectionReasons}
+        kpiRejectionReasons={kpiRejectionReasons}
+        childQuartersByParentId={(function () {
+          try {
+            // Build child quarters map for corporate objectives
+            const map: Record<
+              string,
+              Record<
+                string,
+                { q1?: number; q2?: number; q3?: number; q4?: number }
+              >
+            > = {};
+
+            // For each corporate objective in the current page
+            pagedObjectives.forEach((obj) => {
+              if (obj.type !== "CORPORATE") return;
+
+              // Find all child objectives that inherit from this corporate objective
+              const childObjectives = allObjectivesForLookup.filter(
+                (childObj) => childObj.parent?.objectiveId === obj.objectiveId
+              );
+
+              // Get corporate KPIs for this objective
+              const corporateKpis = kpis.filter(
+                (k) => k.objective?.objectiveId === obj.objectiveId
+              );
+
+              // For each corporate KPI, collect quarters from all child KPIs
+              corporateKpis.forEach((corporateKpi, kpiIndex) => {
+                const yearQuartersMap: Record<
+                  string,
+                  { q1?: number; q2?: number; q3?: number; q4?: number }
+                > = {};
+
+                // Collect quarterly data from all child objectives for this KPI index
+                childObjectives.forEach((childObj) => {
+                  const childKpis = kpis.filter(
+                    (k) => k.objective?.objectiveId === childObj.objectiveId
+                  );
+                  const childKpi = childKpis[kpiIndex]; // Match by index
+
+                  if (childKpi?.targets) {
+                    childKpi.targets.forEach((target) => {
+                      const parts = target.timeline.split("-");
+                      if (parts.length === 2) {
+                        const [year, quarter] = parts;
+                        if (quarter.startsWith("Q")) {
+                          if (!yearQuartersMap[year]) {
+                            yearQuartersMap[year] = {};
+                          }
+                          const quarterNum = quarter.toLowerCase() as
+                            | "q1"
+                            | "q2"
+                            | "q3"
+                            | "q4";
+                          yearQuartersMap[year][quarterNum] =
+                            (yearQuartersMap[year][quarterNum] || 0) +
+                            Number(target.target || 0);
+                        }
+                      }
+                    });
+                  }
+                });
+
+                map[corporateKpi.kpiId] = yearQuartersMap;
+              });
+            });
+
+            return map;
+          } catch (error) {
+            console.error("Error building childQuartersByParentId:", error);
+            return {};
+          }
+        })()}
       />
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
+      {totalPages > 0 && (
         <ObjectivePagination
           currentPage={currentPage}
-          totalPages={meta.totalPages}
-          totalItems={meta.totalItems}
+          totalPages={totalPages}
+          totalItems={totalItems}
           itemsPerPage={itemsPerPage}
           onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
         />
       )}
     </div>

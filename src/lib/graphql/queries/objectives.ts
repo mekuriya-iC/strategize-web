@@ -1,8 +1,18 @@
 import { gql } from "@apollo/client";
 
 export const GET_OBJECTIVES = gql`
-  query GetObjectives($page: Int, $limit: Int, $search: String) {
-    objectives(page: $page, limit: $limit, search: $search) {
+  query GetObjectives(
+    $page: Int
+    $limit: Int
+    $search: String
+    $assigneeId: ID
+  ) {
+    objectives(
+      page: $page
+      limit: $limit
+      search: $search
+      assigneeId: $assigneeId
+    ) {
       items {
         objectiveId
         name
@@ -13,6 +23,22 @@ export const GET_OBJECTIVES = gql`
           startDate
           endDate
           length
+        }
+        createdBy {
+          employeeId
+          fullName
+        }
+        assigneeId
+        assignerId
+        assigneeType
+        parent {
+          objectiveId
+          name
+        }
+        kpis {
+          kpiId
+          name
+          status
         }
         createdAt
         updatedAt
@@ -40,6 +66,22 @@ export const GET_OBJECTIVE = gql`
         startDate
         endDate
         length
+      }
+      createdBy {
+        employeeId
+        fullName
+      }
+      assigneeId
+      assignerId
+      assigneeType
+      parent {
+        objectiveId
+        name
+      }
+      kpis {
+        kpiId
+        name
+        status
       }
       createdAt
       updatedAt

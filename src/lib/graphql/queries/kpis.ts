@@ -8,7 +8,7 @@ export const GET_KPIS = gql`
         name
         baseline
         weight
-        weightType
+        weightType: unitType
         status
         targets {
           timeline
@@ -41,7 +41,7 @@ export const GET_KPI = gql`
       name
       baseline
       weight
-      weightType
+      weightType: unitType
       status
       targets {
         timeline

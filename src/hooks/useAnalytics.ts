@@ -2,13 +2,12 @@ import { useQuery } from "@apollo/client";
 import { useMemo } from "react";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
-import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { GET_EMPLOYEES_COUNT } from "@/lib/graphql/queries/employees";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import type {
   PaginatedDivisions,
   PaginatedDepartments,
-  PaginatedEmployees,
   PaginatedObjectives,
   PaginatedKpis,
   Division,
@@ -57,8 +56,21 @@ interface ItemWithDateFields {
   updatedAt?: string;
 }
 
-export const useAnalytics = (): AnalyticsStats => {
-  // Fetch real data from GraphQL
+interface UseAnalyticsOptions {
+  selectedUnit?: { id: string; type: "division" | "department" } | null;
+  userRole?: string;
+}
+
+export const useAnalytics = (
+  options: UseAnalyticsOptions = {}
+): AnalyticsStats => {
+  const { selectedUnit, userRole } = options;
+
+  // Check if user has permission for global data queries
+  const canAccessGlobalData =
+    userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+
+  // Fetch real data from GraphQL - conditionally skip for managers
   const {
     data: divisionsData,
     loading: divisionsLoading,
@@ -66,6 +78,7 @@ export const useAnalytics = (): AnalyticsStats => {
   } = useQuery<{ divisions: PaginatedDivisions }>(GET_DIVISIONS, {
     variables: { page: 1, limit: 1000 }, // Get all divisions for accurate count
     fetchPolicy: "cache-and-network",
+    skip: !canAccessGlobalData, // Skip for managers
   });
 
   const {
@@ -75,23 +88,32 @@ export const useAnalytics = (): AnalyticsStats => {
   } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 1000 }, // Get all departments for accurate count
     fetchPolicy: "cache-and-network",
+    skip: !canAccessGlobalData, // Skip for managers
   });
 
+  // For analytics at corporate level, use a lightweight employees count query to
+  // avoid resolver errors from nullable departments fields in some rows.
   const {
-    data: employeesData,
+    data: employeesCountData,
     loading: employeesLoading,
     error: employeesError,
-  } = useQuery<{ employees: PaginatedEmployees }>(GET_EMPLOYEES, {
-    variables: { page: 1, limit: 1000 }, // Get all employees for accurate count
+  } = useQuery(GET_EMPLOYEES_COUNT, {
+    variables: { page: 1, limit: 1 },
     fetchPolicy: "cache-and-network",
+    skip: !canAccessGlobalData, // Skip for managers
   });
 
+  // For objectives, pass assigneeId if a unit is selected
   const {
     data: objectivesData,
     loading: objectivesLoading,
     error: objectivesError,
   } = useQuery<{ objectives: PaginatedObjectives }>(GET_OBJECTIVES, {
-    variables: { page: 1, limit: 1000 },
+    variables: {
+      page: 1,
+      limit: 1000,
+      assigneeId: selectedUnit?.id || undefined,
+    },
     fetchPolicy: "cache-and-network",
   });
 
@@ -128,59 +150,105 @@ export const useAnalytics = (): AnalyticsStats => {
       return growthRate > 0 ? `+${growthRate.toFixed(1)}%` : "0%";
     };
 
-    // Basic counts
-    const divisionsCount = divisionsData?.divisions?.meta?.totalItems || 0;
-    const departmentsCount =
-      departmentsData?.departments?.meta?.totalItems || 0;
-    const employeesCount = employeesData?.employees?.meta?.totalItems || 0;
+    // Filter data based on selected unit - only if we have access to the data
+    let filteredDivisions = divisionsData?.divisions?.items || [];
+    let filteredDepartments = departmentsData?.departments?.items || [];
+    // We no longer fetch full employee rows for corporate analytics to avoid
+    // non-null departments errors. For admin context we use counts from meta.
+    let filteredEmployees: Employee[] = [];
+
+    // For managers, we'll get limited data - they won't have access to all divisions/departments/employees
+    // So we'll rely on objectives data and show placeholder values for unavailable data
+    if (selectedUnit && canAccessGlobalData) {
+      if (selectedUnit.type === "division") {
+        // Filter to show only the selected division
+        filteredDivisions = filteredDivisions.filter(
+          (d) => d.divisionId === selectedUnit.id
+        );
+        // Filter departments belonging to this division
+        filteredDepartments = filteredDepartments.filter(
+          (d) => d.division?.divisionId === selectedUnit.id
+        );
+        // Get employees from departments in this division
+        filteredEmployees = [];
+        filteredDepartments.forEach((dept) => {
+          if (dept.employees) {
+            filteredEmployees.push(...dept.employees);
+          }
+        });
+      } else if (selectedUnit.type === "department") {
+        // Filter to show only the selected department
+        filteredDepartments = filteredDepartments.filter(
+          (d) => d.departmentId === selectedUnit.id
+        );
+        // Get employees from this department
+        filteredEmployees = [];
+        const selectedDept = filteredDepartments[0];
+        if (selectedDept?.employees) {
+          filteredEmployees = selectedDept.employees;
+        }
+        // Show parent division if exists
+        if (selectedDept?.division) {
+          filteredDivisions = [selectedDept.division];
+        } else {
+          filteredDivisions = [];
+        }
+      }
+    }
+
+    // Basic counts - handle both admin and manager cases
+    const divisionsCount = canAccessGlobalData
+      ? selectedUnit
+        ? filteredDivisions.length
+        : divisionsData?.divisions?.meta?.totalItems || 0
+      : 0; // Managers don't see division counts
+    const departmentsCount = canAccessGlobalData
+      ? selectedUnit
+        ? filteredDepartments.length
+        : departmentsData?.departments?.meta?.totalItems || 0
+      : 0; // Managers don't see department counts
+    const employeesCount = canAccessGlobalData
+      ? selectedUnit
+        ? filteredEmployees.length
+        : employeesCountData?.employees?.meta?.totalItems || 0
+      : 0; // Managers don't see employee counts
     const objectivesCount = objectivesData?.objectives?.meta?.totalItems || 0;
     const kpisCount = kpisData?.kpis?.meta?.totalItems || 0;
 
-    // Calculate growth rates
-    const divisionsGrowth = calculateRecentGrowth(
-      divisionsData?.divisions?.items || []
-    );
-    const departmentsGrowth = calculateRecentGrowth(
-      departmentsData?.departments?.items || []
-    );
-    const employeesGrowth = calculateRecentGrowth(
-      employeesData?.employees?.items || []
-    );
+    // Calculate growth rates (use filtered data if available)
+    const divisionsGrowth = canAccessGlobalData
+      ? calculateRecentGrowth(filteredDivisions)
+      : "0%";
+    const departmentsGrowth = canAccessGlobalData
+      ? calculateRecentGrowth(filteredDepartments)
+      : "0%";
+    const employeesGrowth = canAccessGlobalData
+      ? calculateRecentGrowth(filteredEmployees)
+      : "0%";
     const objectivesGrowth = calculateRecentGrowth(
       objectivesData?.objectives?.items || []
     );
     const kpisGrowth = calculateRecentGrowth(kpisData?.kpis?.items || []);
 
-    // Additional insights
-    const activeDivisionsCount =
-      divisionsData?.divisions?.items?.filter(
-        (division: Division) =>
-          division.departments && division.departments.length > 0
-      ).length || 0;
+    // Additional insights (use filtered data if available)
+    const activeDivisionsCount = canAccessGlobalData
+      ? filteredDivisions.filter(
+          (division: Division) =>
+            division.departments && division.departments.length > 0
+        ).length
+      : 0;
 
-    const departmentsWithManagersCount =
-      departmentsData?.departments?.items?.filter(
-        (department: Department) => department.manager !== null
-      ).length || 0;
+    const departmentsWithManagersCount = canAccessGlobalData
+      ? filteredDepartments.filter(
+          (department: Department) => department.manager !== null
+        ).length
+      : 0;
 
-    const activeEmployeesCount =
-      employeesData?.employees?.items?.filter(
-        (employee: Employee) => employee.status === "ACTIVE"
-      ).length || 0;
+    const activeEmployeesCount = 0; // Skipped in lightweight mode
 
-    const managerCount =
-      employeesData?.employees?.items?.filter(
-        (employee: Employee) =>
-          employee.role === "MANAGER" ||
-          employee.role === "ADMIN" ||
-          employee.role === "SUPER_ADMIN"
-      ).length || 0;
+    const managerCount = 0; // Skipped in lightweight mode
 
-    const adminCount =
-      employeesData?.employees?.items?.filter(
-        (employee: Employee) =>
-          employee.role === "ADMIN" || employee.role === "SUPER_ADMIN"
-      ).length || 0;
+    const adminCount = 0; // Skipped in lightweight mode
 
     const loading =
       divisionsLoading ||
@@ -234,7 +302,7 @@ export const useAnalytics = (): AnalyticsStats => {
   }, [
     divisionsData,
     departmentsData,
-    employeesData,
+    employeesCountData,
     objectivesData,
     kpisData,
     divisionsLoading,
@@ -247,6 +315,7 @@ export const useAnalytics = (): AnalyticsStats => {
     employeesError,
     objectivesError,
     kpisError,
+    selectedUnit,
   ]);
 
   return analytics;

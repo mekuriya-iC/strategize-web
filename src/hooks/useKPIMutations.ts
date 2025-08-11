@@ -5,6 +5,7 @@ import {
   REMOVE_KPI,
 } from "@/lib/graphql/mutations/kpis";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
+import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import {
   CreateKpiMutationVariables,
   UpdateKpiMutationVariables,
@@ -15,30 +16,51 @@ export const useKPIMutations = () => {
   const [createKpi, { loading: createLoading, error: createError }] =
     useMutation(CREATE_KPI, {
       refetchQueries: [
+        // Refetch KPIs for KPI tables
         { query: GET_KPIS, variables: { page: 1, limit: 10 } },
         { query: GET_KPIS, variables: { page: 1, limit: 20 } },
         { query: GET_KPIS, variables: { page: 1, limit: 50 } },
         { query: GET_KPIS, variables: { page: 1, limit: 10, search: "" } },
+        // Refetch Objectives for approval tables (since KPIs are nested in objectives)
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
+        {
+          query: GET_OBJECTIVES,
+          variables: { page: 1, limit: 10, search: "" },
+        },
       ],
     });
 
   const [updateKpi, { loading: updateLoading, error: updateError }] =
     useMutation(UPDATE_KPI, {
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 10 } },
-        { query: GET_KPIS, variables: { page: 1, limit: 20 } },
-        { query: GET_KPIS, variables: { page: 1, limit: 50 } },
-        { query: GET_KPIS, variables: { page: 1, limit: 10, search: "" } },
-      ],
+      refetchQueries: "all",
+      // Force Apollo to completely ignore cache
+      fetchPolicy: "no-cache",
+      // Clear cache after update
+      update: (cache) => {
+        cache.evict({ fieldName: "kpis" });
+        cache.evict({ fieldName: "objectives" });
+        cache.gc();
+      },
     });
 
   const [removeKpi, { loading: removeLoading, error: removeError }] =
     useMutation(REMOVE_KPI, {
       refetchQueries: [
+        // Refetch KPIs for KPI tables
         { query: GET_KPIS, variables: { page: 1, limit: 10 } },
         { query: GET_KPIS, variables: { page: 1, limit: 20 } },
         { query: GET_KPIS, variables: { page: 1, limit: 50 } },
         { query: GET_KPIS, variables: { page: 1, limit: 10, search: "" } },
+        // Refetch Objectives for approval tables (since KPIs are nested in objectives)
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
+        {
+          query: GET_OBJECTIVES,
+          variables: { page: 1, limit: 10, search: "" },
+        },
       ],
     });
 

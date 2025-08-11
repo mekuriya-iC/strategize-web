@@ -35,3 +35,26 @@ export const REMOVE_OBJECTIVE = gql`
     }
   }
 `;
+
+export const ASSIGN_OBJECTIVE = gql`
+  mutation AssignObjective($input: AssignObjectiveInput!) {
+    assignObjective(assignObjectiveInput: $input) {
+      objectiveId
+      name
+      type
+      status
+      assigneeId
+      assignerId
+      assigneeType
+      parent {
+        objectiveId
+        name
+      }
+      kpis {
+        kpiId
+        name
+        status
+      }
+    }
+  }
+`;

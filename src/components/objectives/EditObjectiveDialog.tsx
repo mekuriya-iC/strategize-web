@@ -62,11 +62,16 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
     }
 
     try {
+      // Normalize legacy UI value if it ever sneaks in
+      const normalizedType =
+        (objectiveType as unknown as string) === "INDIVIDUAL"
+          ? ("PERSONNEL" as ObjectiveType)
+          : objectiveType;
       await updateObjective({
         input: {
           objectiveId: objective.objectiveId,
           name: objectiveName.trim(),
-          type: objectiveType,
+          type: normalizedType,
           status: objectiveStatus,
           strategicPeriodId: strategicPeriodId,
         },
@@ -141,7 +146,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                     <SelectItem value="CORPORATE">Corporate</SelectItem>
                     <SelectItem value="DIVISION">Division</SelectItem>
                     <SelectItem value="DEPARTMENT">Department</SelectItem>
-                    <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                    <SelectItem value="PERSONNEL">Personal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

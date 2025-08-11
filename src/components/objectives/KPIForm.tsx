@@ -13,13 +13,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useKPIMutations } from "@/hooks/useKPIMutations";
-import { useKPI } from "@/hooks/useKPIs";
+import { useKPI, useKPIs } from "@/hooks/useKPIs";
+import { useObjective } from "@/hooks/useObjectives";
 import {
   KpiWeightType,
   KpiTargetInput,
   Objective as GraphQLObjective,
 } from "@/types/graphql";
 import { toast } from "sonner";
+// import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
+import { buildYearRanges } from "./YearSelector";
 
 interface KPIFormProps {
   objectiveId: string;
@@ -42,18 +45,100 @@ export default function KPIForm({
     kpiId ? { kpiId } : { kpiId: "" }
   );
 
+  // Fetch all KPIs to find current and parent KPIs
+  const { kpis } = useKPIs({
+    page: 1,
+    limit: 1000,
+  });
+  // const { selected } = useStrategicPeriod();
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     baseline: "",
     weight: "",
-    weightType: "NUMBER" as KpiWeightType,
+    weightType: "PERCENT" as KpiWeightType,
   });
 
   // Use a string for target during input to avoid prefilling 0
+  // Default to first available year, independent of objective detail page selector
+  const defaultTimeline = React.useMemo(() => {
+    if (objective?.strategicPeriod) {
+      const options = buildYearRanges(objective.strategicPeriod);
+      return options[0] || "";
+    }
+    return "";
+  }, [objective?.strategicPeriod]);
+
   const [targets, setTargets] = useState<
     Array<{ timeline: string; target: string }>
-  >([{ timeline: "", target: "" }]);
+  >([{ timeline: defaultTimeline, target: "" }]);
+
+  // Quarterly mode: for inherited KPIs (when objective has parent)
+  const isInheritedKPI = Boolean(objective?.parent);
+
+  // Show quarterly inputs for inherited KPIs
+  const isQuarterlyMode = isInheritedKPI;
+
+  // Debug logging
+  console.log("KPIForm Debug:", {
+    objective: objective?.name,
+    objectiveType: objective?.type,
+    hasParent: Boolean(objective?.parent),
+    parentName: objective?.parent?.name,
+    isQuarterlyMode,
+    kpiId,
+    isEditing,
+  });
+
+  // Multi-year quarterly data structure
+  // Format: { "2025/26": { q1: "10", q2: "15", q3: "12", q4: "13" } }
+  const [yearlyQuarters, setYearlyQuarters] = useState<
+    Record<
+      string,
+      {
+        q1: string;
+        q2: string;
+        q3: string;
+        q4: string;
+        parentTarget?: number; // The target value from parent KPI
+      }
+    >
+  >({});
+
+  // Fetch parent objective and its KPIs for inherited KPIs
+  const { objective: parentObjective } = useObjective({
+    objectiveId: objective?.parent?.objectiveId || "",
+  });
+
+  const { kpis: parentKPIs } = useKPIs({
+    page: 1,
+    limit: 1000,
+  });
+
+  // Get parent KPI data for this inherited KPI
+  const getParentKPI = () => {
+    if (!objective?.parent || !parentObjective || !parentKPIs) return null;
+
+    // Find parent KPIs for the parent objective
+    const parentObjKPIs = parentKPIs.filter(
+      (kpi) => kpi.objective?.objectiveId === objective.parent?.objectiveId
+    );
+
+    // Find current KPI's index in the current objective's KPIs
+    const currentObjKPIs = kpis.filter(
+      (kpi) => kpi.objective?.objectiveId === objectiveId
+    );
+    const kpiIndex = currentObjKPIs.findIndex((k) => k.kpiId === kpiId);
+
+    // Return corresponding parent KPI by index
+    return parentObjKPIs[kpiIndex] || null;
+  };
+
+  const parentKPI = getParentKPI();
+
+  // Note: Removed automatic sync with objective detail page year selector
+  // KPI timeline selection is now independent for better UX
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -64,18 +149,91 @@ export default function KPIForm({
         name: kpi.name,
         baseline: kpi.baseline.toString(),
         weight: kpi.weight.toString(),
-        weightType: kpi.weightType,
+        // Force percent for weight per updated requirement
+        weightType: "PERCENT",
       });
-      setTargets(
+      // Parse existing targets
+      const tgs =
         kpi.targets.length > 0
           ? kpi.targets.map((t) => ({
               timeline: t.timeline,
               target: t.target.toString(),
             }))
-          : [{ timeline: "", target: "" }]
-      );
+          : [{ timeline: defaultTimeline, target: "" }];
+      setTargets(tgs);
+
+      // If quarterly mode, load quarterly data for all years
+      if (isQuarterlyMode) {
+        // Initialize yearly quarters from existing KPI targets (handles both yearly and quarterly-only datasets)
+        const newYearlyQuarters: typeof yearlyQuarters = {};
+
+        // Derive set of years from BOTH yearly and quarterly entries
+        const allYears = Array.from(
+          new Set(tgs.map((t) => t.timeline.split("-")[0]))
+        );
+
+        allYears.forEach((year) => {
+          const findQuarterVal = (q: string) =>
+            tgs.find((t) => t.timeline === `${year}-Q${q}`)?.target ?? "";
+
+          newYearlyQuarters[year] = {
+            q1: findQuarterVal("1"),
+            q2: findQuarterVal("2"),
+            q3: findQuarterVal("3"),
+            q4: findQuarterVal("4"),
+            parentTarget: undefined, // Will be set from parent data
+          };
+        });
+
+        setYearlyQuarters(newYearlyQuarters);
+      }
     }
-  }, [isEditing, kpi, kpiLoading]);
+  }, [isEditing, kpi, kpiLoading, defaultTimeline, isQuarterlyMode]);
+
+  // Load parent KPI targets when in quarterly mode (support yearly or quarterly-only parent data)
+  useEffect(() => {
+    if (isQuarterlyMode && parentKPI) {
+      setYearlyQuarters((prev) => {
+        const updated = { ...prev };
+
+        const parentTargets = parentKPI.targets || [];
+        const parentYears = Array.from(
+          new Set(parentTargets.map((t) => t.timeline.split("-")[0]))
+        );
+        parentYears.forEach((year) => {
+          // Prefer yearly entry; otherwise sum quarters
+          const yearly = parentTargets.find((t) => t.timeline === year);
+          let total: number | undefined = yearly
+            ? Number(yearly.target)
+            : undefined;
+          if (total === undefined) {
+            const sum = ["1", "2", "3", "4"].reduce((acc, q) => {
+              const qt = parentTargets.find(
+                (t) => t.timeline === `${year}-Q${q}`
+              )?.target;
+              return acc + (qt !== undefined ? Number(qt) : 0);
+            }, 0);
+            if (sum > 0) total = sum;
+          }
+          if (total !== undefined) {
+            if (updated[year]) {
+              updated[year].parentTarget = total;
+            } else {
+              updated[year] = {
+                q1: "",
+                q2: "",
+                q3: "",
+                q4: "",
+                parentTarget: total,
+              };
+            }
+          }
+        });
+
+        return updated;
+      });
+    }
+  }, [isQuarterlyMode, parentKPI]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -114,6 +272,25 @@ export default function KPIForm({
       return false;
     }
 
+    // In quarterly mode ensure quarter numbers are valid (non-blocking against corporate target)
+    if (isQuarterlyMode) {
+      for (const [year, quarters] of Object.entries(yearlyQuarters)) {
+        const vals = [quarters.q1, quarters.q2, quarters.q3, quarters.q4].map(
+          (v) => (v === "" ? 0 : Number(v))
+        );
+
+        // Validate each quarter value
+        for (const v of vals) {
+          if (isNaN(v) || v < 0) {
+            toast.error(
+              `Please enter valid non-negative quarter values for ${year}`
+            );
+            return false;
+          }
+        }
+      }
+    }
+
     return true;
   };
 
@@ -127,15 +304,31 @@ export default function KPIForm({
     setIsSubmitting(true);
 
     try {
-      const validTargets = targets
-        .map((t) => ({ ...t, target: Number(t.target) }))
-        .filter((t) => t.timeline.trim() && !isNaN(t.target) && t.target > 0);
+      let validTargets: KpiTargetInput[] = [];
+      if (isQuarterlyMode) {
+        // Generate targets for all years and their quarters
+        for (const [year, quarters] of Object.entries(yearlyQuarters)) {
+          // Add quarterly targets for this year
+          validTargets.push(
+            { timeline: `${year}-Q1`, target: Number(quarters.q1 || 0) },
+            { timeline: `${year}-Q2`, target: Number(quarters.q2 || 0) },
+            { timeline: `${year}-Q3`, target: Number(quarters.q3 || 0) },
+            { timeline: `${year}-Q4`, target: Number(quarters.q4 || 0) }
+          );
+        }
+      } else {
+        validTargets = targets
+          .map((t) => ({ ...t, target: Number(t.target) }))
+          .filter(
+            (t) => t.timeline.trim() && !isNaN(t.target) && t.target >= 0
+          ) as KpiTargetInput[];
+      }
 
       const kpiData = {
         name: formData.name.trim() || "",
         baseline: formData.baseline ? Number(formData.baseline) : 0,
         weight: formData.weight ? Number(formData.weight) : 0,
-        weightType: formData.weightType,
+        weightType: "PERCENT" as KpiWeightType,
         targets: validTargets as KpiTargetInput[],
         objectiveId,
       };
@@ -169,10 +362,25 @@ export default function KPIForm({
         });
         toast.success("KPI updated successfully!");
       } else {
-        await createKpi({
+        const created = await createKpi({
           input: kpiData,
         });
-        toast.success("KPI created successfully!");
+
+        // Auto-approve KPIs created under corporate-level objectives
+        if (objective?.type === "CORPORATE" && created?.kpiId) {
+          await updateKpi({
+            input: {
+              kpiId: created.kpiId,
+              status: "APPROVED",
+            },
+          });
+        }
+
+        toast.success(
+          objective?.type === "CORPORATE"
+            ? "KPI created and auto-approved"
+            : "KPI created successfully!"
+        );
       }
 
       onSuccess();
@@ -251,20 +459,41 @@ export default function KPIForm({
 
               <div>
                 <Label htmlFor="baseline">Baseline Value</Label>
-                <Input
-                  id="baseline"
-                  type="number"
-                  step="0.01"
-                  value={formData.baseline}
-                  onChange={(e) =>
-                    handleInputChange("baseline", e.target.value)
-                  }
-                  placeholder="Enter baseline value"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    id="baseline"
+                    type="number"
+                    step="0.01"
+                    value={formData.baseline}
+                    onChange={(e) =>
+                      handleInputChange("baseline", e.target.value)
+                    }
+                    placeholder="Enter baseline value"
+                  />
+                  <div>
+                    <Label className="sr-only" htmlFor="baseline-unit">
+                      Unit Type
+                    </Label>
+                    <Select
+                      value={formData.weightType}
+                      onValueChange={(value: KpiWeightType) =>
+                        handleInputChange("weightType", value)
+                      }
+                    >
+                      <SelectTrigger id="baseline-unit">
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NUMBER">Number</SelectItem>
+                        <SelectItem value="PERCENT">Percent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
               <div>
-                <Label htmlFor="weight">Weight</Label>
+                <Label htmlFor="weight">Weight (%)</Label>
                 <Input
                   id="weight"
                   type="number"
@@ -273,24 +502,6 @@ export default function KPIForm({
                   onChange={(e) => handleInputChange("weight", e.target.value)}
                   placeholder="Enter weight"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="weightType">Weight Type</Label>
-                <Select
-                  value={formData.weightType}
-                  onValueChange={(value: KpiWeightType) =>
-                    handleInputChange("weightType", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select weight type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NUMBER">Number</SelectItem>
-                    <SelectItem value="PERCENT">Percent</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </CardContent>
@@ -302,60 +513,178 @@ export default function KPIForm({
             <CardTitle>Targets</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {targets.map((target, index) => (
-                <div
-                  key={index}
-                  className="flex items-end gap-4 p-4 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <Label htmlFor={`timeline-${index}`}>Timeline</Label>
-                    <Input
-                      id={`timeline-${index}`}
-                      value={target.timeline}
-                      onChange={(e) =>
-                        handleTargetChange(index, "timeline", e.target.value)
-                      }
-                      placeholder="e.g., Q1 2024, 2024/25"
-                    />
-                  </div>
-
-                  <div className="flex-1">
-                    <Label htmlFor={`target-${index}`}>Target Value</Label>
-                    <Input
-                      id={`target-${index}`}
-                      type="number"
-                      step="0.01"
-                      value={target.target}
-                      onChange={(e) =>
-                        handleTargetChange(index, "target", e.target.value)
-                      }
-                      placeholder="Enter target value"
-                    />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeTarget(index)}
-                    disabled={targets.length === 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+            {isQuarterlyMode ? (
+              <div className="space-y-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">
+                    Quarterly Breakdown
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    Break down the yearly targets from your parent into
+                    quarterly values. Each year&apos;s quarters must sum to the
+                    parent target.
+                  </p>
                 </div>
-              ))}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addTarget}
-                className="w-full"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Target
-              </Button>
-            </div>
+                {Object.entries(yearlyQuarters).map(([year, quarters]) => (
+                  <div key={year} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="font-medium text-gray-900">{year}</h5>
+                      {quarters.parentTarget !== undefined && (
+                        <div className="text-sm text-gray-600">
+                          Target:{" "}
+                          <span className="font-medium">
+                            {quarters.parentTarget}
+                          </span>
+                          {(() => {
+                            const sum = [
+                              quarters.q1,
+                              quarters.q2,
+                              quarters.q3,
+                              quarters.q4,
+                            ]
+                              .map((v) => Number(v || 0))
+                              .reduce((a, b) => a + b, 0);
+                            return (
+                              <span
+                                className={`ml-2 ${
+                                  sum === quarters.parentTarget
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                (Sum: {sum})
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      {(["q1", "q2", "q3", "q4"] as const).map(
+                        (quarter, index) => (
+                          <div key={quarter}>
+                            <Label>Q{index + 1}</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={quarters[quarter]}
+                              onChange={(e) => {
+                                setYearlyQuarters((prev) => ({
+                                  ...prev,
+                                  [year]: {
+                                    ...prev[year],
+                                    [quarter]: e.target.value,
+                                  },
+                                }));
+                              }}
+                              placeholder="0"
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {Object.keys(yearlyQuarters).length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No yearly targets found from parent KPI.</p>
+                    <p className="text-sm mt-1">
+                      Your parent needs to set yearly targets first.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {targets.map((target, index) => (
+                  <div
+                    key={index}
+                    className="flex items-end gap-4 p-4 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <Label htmlFor={`timeline-${index}`}>Timeline</Label>
+                      <Select
+                        value={target.timeline}
+                        onValueChange={(val) => {
+                          handleTargetChange(index, "timeline", val);
+                        }}
+                      >
+                        <SelectTrigger id={`timeline-${index}`}>
+                          <SelectValue placeholder="Select year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {objective?.strategicPeriod &&
+                            buildYearRanges(objective.strategicPeriod).map(
+                              (yr) => (
+                                <SelectItem key={yr} value={yr}>
+                                  {yr}
+                                </SelectItem>
+                              )
+                            )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor={`target-${index}`}>Target Value</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          id={`target-${index}`}
+                          type="number"
+                          step="0.01"
+                          value={target.target}
+                          onChange={(e) =>
+                            handleTargetChange(index, "target", e.target.value)
+                          }
+                          placeholder="Enter target value"
+                        />
+                        <div>
+                          <Label
+                            className="sr-only"
+                            htmlFor={`target-unit-${index}`}
+                          >
+                            Unit Type
+                          </Label>
+                          <Select
+                            value={formData.weightType}
+                            onValueChange={(value: KpiWeightType) =>
+                              handleInputChange("weightType", value)
+                            }
+                          >
+                            <SelectTrigger id={`target-unit-${index}`}>
+                              <SelectValue placeholder="Select unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NUMBER">Number</SelectItem>
+                              <SelectItem value="PERCENT">Percent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeTarget(index)}
+                      disabled={targets.length === 1}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addTarget}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Add Target
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

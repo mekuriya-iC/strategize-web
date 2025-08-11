@@ -17,7 +17,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import OrgUnitSelector from "./OrgUnitSelector";
 import StrategySelector from "./StrategySelector";
+import DepartmentSelector from "../departments/DepartmentSelector";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/context/SidebarContext";
 import { usePathname } from "next/navigation";
@@ -84,6 +86,8 @@ export default function Topbar() {
           </span>
           {/* Strategy selector */}
           <StrategySelector className="w-40 ml-4" />
+          <OrgUnitSelector />
+          <DepartmentSelector className="ml-4" />
         </nav>
       </div>
       {/* Right: Icons, language, user */}

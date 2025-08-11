@@ -13,18 +13,26 @@ import { Label } from "@/components/ui/label";
 import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
 import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
 import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
+import { useUser } from "@/context/UserContext";
 import { ObjectiveType } from "@/types/graphql";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export default function ObjectiveForm() {
   const router = useRouter();
-  const { createObjective, loading } = useObjectiveMutations();
+  const { createObjective, updateObjective, loading } = useObjectiveMutations();
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
   const { selected } = useStrategicPeriod();
+  const { user } = useUser();
+
+  // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
+  const isCorporateUser =
+    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   const [objectiveName, setObjectiveName] = useState("");
-  const [objectiveType, setObjectiveType] = useState<ObjectiveType | "">("");
+  const [objectiveType, setObjectiveType] = useState<ObjectiveType | "">(
+    isCorporateUser ? "CORPORATE" : ""
+  );
   const [strategicPeriodValue, setStrategicPeriodValue] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,7 +70,7 @@ export default function ObjectiveForm() {
     setIsSubmitting(true);
 
     try {
-      await createObjective({
+      const created = await createObjective({
         input: {
           name: objectiveName.trim(),
           type: objectiveType,
@@ -70,7 +78,21 @@ export default function ObjectiveForm() {
         },
       });
 
-      toast.success("Objective created successfully!");
+      // Auto-approve corporate-level objectives immediately after creation
+      if (objectiveType === "CORPORATE" && created?.objectiveId) {
+        await updateObjective({
+          input: {
+            objectiveId: created.objectiveId,
+            status: "APPROVED",
+          },
+        });
+      }
+
+      toast.success(
+        objectiveType === "CORPORATE"
+          ? "Objective created and auto-approved"
+          : "Objective created successfully!"
+      );
       router.push("/dashboard/objectives");
     } catch (error) {
       console.error("Error creating objective:", error);

@@ -3,6 +3,7 @@ import Logo from "@/components/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
+import { useUser } from "@/context/UserContext";
 import StrategySelector from "./StrategySelector";
 import Image from "next/image";
 
@@ -121,6 +122,30 @@ const navLinks = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { open, closeSidebar } = useSidebar();
+  const { user } = useUser();
+
+  // Filter navigation links based on user role
+  const getFilteredNavLinks = () => {
+    if (user?.role === "MANAGER") {
+      // Managers should NOT see: Employees, Divisions, Departments, Admin Panel
+      return navLinks.filter(
+        (link) =>
+          !["Employees", "Divisions", "Departments", "Admin Panel"].includes(
+            link.label
+          )
+      );
+    } else if (user?.role === "NORMAL") {
+      // Normal users (employees) should see: Dashboard, Objectives, Reports, Settings
+      // Replace Approvals with Reports for personal users
+      return navLinks.filter((link) =>
+        ["Dashboard", "Objectives", "Reports", "Settings"].includes(link.label)
+      );
+    }
+    // For ADMIN and SUPER_ADMIN roles, show all links
+    return navLinks;
+  };
+
+  const filteredNavLinks = getFilteredNavLinks();
 
   // Helper function to determine if a navigation link is active
   const isLinkActive = (linkHref: string) => {
@@ -161,7 +186,7 @@ export default function Sidebar() {
             <Logo width={140} height={32} />
           </div>
           <nav className="flex flex-col gap-2">
-            {navLinks.map((link) => (
+            {filteredNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -212,7 +237,7 @@ export default function Sidebar() {
             )}
           </div>
           <nav className="flex flex-col gap-2">
-            {navLinks.map((link) => (
+            {filteredNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

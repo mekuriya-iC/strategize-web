@@ -19,6 +19,7 @@ interface ObjectiveFilterBarProps {
   onClearFilters: () => void;
   selectedCount: number;
   onAddObjective: () => void;
+  showAddButton?: boolean;
 }
 
 const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
@@ -27,6 +28,7 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
   statusFilter,
   onStatusFilterChange,
   onClearFilters,
+  showAddButton = true,
 }) => {
   const hasActiveFilters = searchTerm || statusFilter !== "all";
 
@@ -77,7 +79,7 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
       </div>
 
       {/* Add Objective Button */}
-      <AddObjectiveButton />
+      {showAddButton && <AddObjectiveButton />}
     </div>
   );
 };

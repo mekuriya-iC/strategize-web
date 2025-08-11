@@ -7,7 +7,7 @@ export const CREATE_KPI = gql`
       name
       baseline
       weight
-      weightType
+      weightType: unitType
       status
       targets {
         timeline
@@ -26,7 +26,7 @@ export const UPDATE_KPI = gql`
       name
       baseline
       weight
-      weightType
+      weightType: unitType
       status
       targets {
         timeline

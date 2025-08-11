@@ -11,6 +11,10 @@ import {
   Filter,
 } from "lucide-react";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useOrgUnit } from "@/context/OrgUnitContext";
+import { useUser } from "@/context/UserContext";
+import { useUserDepartments } from "@/hooks/useUserDepartments";
+import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 
 interface AnalyticsData {
   title: string;
@@ -19,67 +23,114 @@ interface AnalyticsData {
   isPositive: boolean;
   icon: React.ReactNode;
   loading?: boolean;
+  href?: string;
+  disabled?: boolean;
 }
 
 export default function AnalyticsSummary() {
-  // Use the analytics hook
-  const analytics = useAnalytics();
+  const { selectedUnit } = useOrgUnit();
+  const { user } = useUser();
+  const { departmentNames } = useUserDepartments();
+  const { selected: selectedDepartment } = useDepartmentSelection();
 
-  const analyticsData: AnalyticsData[] = [
-    {
-      title: "Objectives",
-      value: analytics.objectivesCount,
-      change: analytics.objectivesGrowth,
-      isPositive:
-        parseFloat(analytics.objectivesGrowth.replace(/[^0-9.-]/g, "")) > 0,
-      icon: <Target size={20} />,
-      loading: false, // TODO: Update when objectives query is available
-    },
-    {
-      title: "KPIs",
-      value: analytics.kpisCount,
-      change: analytics.kpisGrowth,
-      isPositive: parseFloat(analytics.kpisGrowth.replace(/[^0-9.-]/g, "")) > 0,
-      icon: <BarChart2 size={20} />,
-      loading: false, // TODO: Update when KPIs query is available
-    },
-    {
-      title: "Initiatives",
-      value: analytics.initiativesCount,
-      change: analytics.initiativesGrowth,
-      isPositive:
-        parseFloat(analytics.initiativesGrowth.replace(/[^0-9.-]/g, "")) > 0,
-      icon: <Flag size={20} />,
-      loading: false, // TODO: Update when initiatives query is available
-    },
-    {
-      title: "Divisions",
-      value: analytics.divisionsCount,
-      change: analytics.divisionsGrowth,
-      isPositive:
-        parseFloat(analytics.divisionsGrowth.replace(/[^0-9.-]/g, "")) > 0,
-      icon: <Building2 size={20} />,
-      loading: analytics.divisionsLoading,
-    },
-    {
-      title: "Departments",
-      value: analytics.departmentsCount,
-      change: analytics.departmentsGrowth,
-      isPositive:
-        parseFloat(analytics.departmentsGrowth.replace(/[^0-9.-]/g, "")) > 0,
-      icon: <Building2 size={20} />,
-      loading: analytics.departmentsLoading,
-    },
-    {
-      title: "Individuals",
-      value: analytics.employeesCount,
-      change: analytics.employeesGrowth,
-      isPositive:
-        parseFloat(analytics.employeesGrowth.replace(/[^0-9.-]/g, "")) > 0,
-      icon: <Users size={20} />,
-      loading: analytics.employeesLoading,
-    },
-  ];
+  // Normalize selected unit shape for analytics hook
+  const managerSelectedUnit =
+    user?.role === "MANAGER" && selectedUnit
+      ? selectedUnit.__typename === "Division"
+        ? {
+            id: (selectedUnit as { divisionId: string }).divisionId,
+            type: "division" as const,
+          }
+        : {
+            id: (selectedUnit as { departmentId: string }).departmentId,
+            type: "department" as const,
+          }
+      : null;
+
+  // Use the analytics hook with selected unit context and user role
+  const analytics = useAnalytics({
+    selectedUnit: managerSelectedUnit,
+    userRole: user?.role,
+  });
+
+  // Build analytics data based on context
+  const getAnalyticsData = (): AnalyticsData[] => {
+    const baseData = [
+      {
+        title: "Objectives",
+        value: analytics.objectivesCount,
+        change: analytics.objectivesGrowth,
+        isPositive:
+          parseFloat(analytics.objectivesGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        icon: <Target size={20} />,
+        href: "/dashboard/objectives",
+        loading: analytics.objectivesLoading,
+      },
+      {
+        title: "KPIs",
+        value: analytics.kpisCount,
+        change: analytics.kpisGrowth,
+        isPositive:
+          parseFloat(analytics.kpisGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        icon: <BarChart2 size={20} />,
+        href: "/dashboard/objectives", // KPIs managed within objectives detail
+        loading: analytics.kpisLoading,
+      },
+    ];
+
+    // For managers and employees, show only objectives and KPIs (they don't have access to other data)
+    if (user?.role === "MANAGER" || user?.role === "NORMAL") {
+      return baseData; // Only show Objectives and KPIs for managers and employees
+    }
+
+    // Default view (corporate level)
+    return [
+      ...baseData,
+      {
+        title: "Initiatives",
+        value: analytics.initiativesCount,
+        change: analytics.initiativesGrowth,
+        isPositive:
+          parseFloat(analytics.initiativesGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        icon: <Flag size={20} />,
+        href: undefined,
+        disabled: true,
+        loading: false, // TODO: Update when initiatives query is available
+      },
+      {
+        title: "Divisions",
+        value: analytics.divisionsCount,
+        change: analytics.divisionsGrowth,
+        isPositive:
+          parseFloat(analytics.divisionsGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        icon: <Building2 size={20} />,
+        href: "/dashboard/divisions",
+        loading: analytics.divisionsLoading,
+      },
+      {
+        title: "Departments",
+        value: analytics.departmentsCount,
+        change: analytics.departmentsGrowth,
+        isPositive:
+          parseFloat(analytics.departmentsGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        icon: <Building2 size={20} />,
+        href: "/dashboard/departments",
+        loading: analytics.departmentsLoading,
+      },
+      {
+        title: "Employees",
+        value: analytics.employeesCount,
+        change: analytics.employeesGrowth,
+        isPositive:
+          parseFloat(analytics.employeesGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        icon: <Users size={20} />,
+        href: "/dashboard/employees",
+        loading: analytics.employeesLoading,
+      },
+    ];
+  };
+
+  const analyticsData = getAnalyticsData();
 
   // Show error state if there's an error
   if (analytics.error) {
@@ -114,12 +165,49 @@ export default function AnalyticsSummary() {
     );
   }
 
+  // Get context-aware title
+  const getAnalyticsTitle = (): string => {
+    if (user?.role === "MANAGER" && selectedUnit) {
+      return selectedUnit.__typename === "Division"
+        ? "Division Analytics"
+        : "Department Analytics";
+    } else if (user?.role === "NORMAL") {
+      return "My Analytics";
+    }
+    return "Analytics";
+  };
+
   return (
     <section className="mb-10">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46]">
-          Analytics
-        </h2>
+        <div>
+          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46]">
+            {getAnalyticsTitle()}
+          </h2>
+          {user?.role === "MANAGER" && selectedUnit && (
+            <p className="text-sm text-gray-600 mt-1">
+              Showing data for selected{" "}
+              {selectedUnit.__typename === "Division"
+                ? "division"
+                : "department"}
+            </p>
+          )}
+          {user?.role === "NORMAL" && (
+            <div className="mt-1">
+              <p className="text-sm text-gray-600">
+                Showing data for your personal objectives and KPIs
+              </p>
+              {(selectedDepartment?.department ||
+                departmentNames.length > 0) && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Department:{" "}
+                  {selectedDepartment?.department?.name ||
+                    departmentNames.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
         <Button variant="outline" size="sm" className="flex items-center gap-2">
           <Filter className="w-4 h-4" /> Filter
         </Button>

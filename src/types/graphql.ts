@@ -273,7 +273,22 @@ export interface Objective {
   type: ObjectiveType;
   status: ObjectiveStatus;
   strategicPeriod: StrategicPeriod | null;
-  createdBy: Employee | null;
+  createdBy?: {
+    employeeId: string;
+    fullName: string;
+  } | null;
+  assigneeId?: string;
+  assignerId?: string;
+  assigneeType?: string;
+  parent?: {
+    objectiveId: string;
+    name: string;
+  } | null;
+  kpis?: Array<{
+    kpiId: string;
+    name: string;
+    status: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -389,6 +404,7 @@ export interface ObjectivesQueryVariables {
   page?: number;
   limit?: number;
   search?: string;
+  assigneeId?: string;
 }
 
 export interface ObjectiveQueryVariables {
@@ -440,4 +456,91 @@ export interface UpdateKpiMutationVariables {
 
 export interface RemoveKpiMutationVariables {
   id: string;
+}
+
+// Submission Types
+export type SubmissionType = "OBJECTIVE" | "KPI";
+export type SubmissionLevel = "DEPARTMENT" | "DIVISION" | "PERSONNEL"; // Reverted to match actual backend schema
+export type SubmissionStatus = "APPROVED" | "PENDING" | "REJECTED";
+
+export interface Submission {
+  submissionId: string;
+  type: SubmissionType;
+  level: SubmissionLevel;
+  status: SubmissionStatus;
+  reason: string;
+  submittedBy: {
+    employeeId: string;
+    fullName: string;
+  };
+  objective?: {
+    objectiveId: string;
+    name: string;
+  };
+  kpi?: {
+    kpiId: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PaginatedSubmissions {
+  items: Submission[];
+  meta: PaginationMeta;
+}
+
+// Submission Input Types
+export interface CreateSubmissionInput {
+  type: SubmissionType;
+  level: SubmissionLevel;
+  itemId: string; // objectiveId or kpiId
+  reason: string;
+}
+
+export interface UpdateSubmissionInput {
+  submissionId: string;
+  status?: SubmissionStatus;
+  reason?: string;
+}
+
+// Submission Query Variables
+export interface SubmissionsQueryVariables {
+  page?: number;
+  limit?: number;
+  type: ObjectiveType;
+}
+
+export interface SubmissionQueryVariables {
+  id: string;
+}
+
+// Submission Mutation Variables
+export interface CreateSubmissionMutationVariables {
+  input: CreateSubmissionInput;
+}
+
+export interface CreateSubmissionsMutationVariables {
+  inputs: CreateSubmissionInput[];
+}
+
+export interface UpdateSubmissionMutationVariables {
+  input: UpdateSubmissionInput;
+}
+
+export interface RemoveSubmissionMutationVariables {
+  id: string;
+}
+
+// Assignment Types
+export interface AssignObjectiveInput {
+  objectiveId: string;
+  assigneeId: string;
+  assignerId: string;
+  assigneeType: string;
+  kpis: string[];
+}
+
+export interface AssignObjectiveMutationVariables {
+  input: AssignObjectiveInput;
 }

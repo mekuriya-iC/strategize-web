@@ -468,6 +468,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
               </div>
             ) : (
               <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="Preview"

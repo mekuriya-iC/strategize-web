@@ -12,12 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useSubmissionMutations } from "@/hooks/useSubmissionMutations";
 import { useKPIMutations } from "@/hooks/useKPIMutations";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useKPI } from "@/hooks/useKPIs";
 import { useObjective } from "@/hooks/useObjectives";
+import { handleSmartSubmission } from "@/utils/smartSubmission";
+import { useApolloClient } from "@apollo/client";
 import type {
   ObjectiveType,
   SubmissionLevel,
@@ -48,9 +49,9 @@ export default function BulkSubmitDialog({
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { createSubmissions } = useSubmissionMutations();
   const { updateKpi } = useKPIMutations();
   const { user, isAuthenticated } = useAuth();
+  const client = useApolloClient();
 
   // Validate first KPI exists (for debugging)
   const firstKPIId =
@@ -212,40 +213,87 @@ export default function BulkSubmitDialog({
         },
       });
 
-      // Log the exact GraphQL variables being sent
-      console.log("🔍 GraphQL variables being sent:", {
-        inputs: submissionInputs,
-        userToken: user?.employeeId ? "present" : "missing",
-        authHeaders: "sent via Apollo authLink",
-      });
+      const successfulSubmissions: Array<{
+        type: "objective" | "kpi";
+        id: string;
+        result: unknown;
+      }> = [];
+      const failedSubmissions: Array<{
+        type: "objective" | "kpi";
+        id: string;
+        error: unknown;
+      }> = [];
 
-      const result = await createSubmissions({
-        inputs: submissionInputs,
-      });
+      // Submit each item using smart submission
+      for (const item of items) {
+        try {
+          const submissionData = submissionInputs.find(
+            (input) => input.itemId === item.itemId
+          );
 
-      console.log("✅ Bulk submission successful:", result);
+          if (!submissionData) {
+            console.error("❌ Submission data not found for item:", item);
+            continue;
+          }
+
+          const result = await handleSmartSubmission({
+            submissionType: submissionData.type as "KPI" | "OBJECTIVE",
+            itemId: item.itemId,
+            submissionData: submissionData,
+            reason: reason.trim() || "Submitting for approval",
+            client:
+              client as unknown as import("@/utils/smartSubmission").ApolloClient,
+          });
+
+          successfulSubmissions.push({
+            type: item.itemType,
+            id: item.itemId,
+            result: result,
+          });
+          console.log(`✅ ${item.itemType} submission successful:`, result);
+        } catch (error) {
+          failedSubmissions.push({
+            type: item.itemType,
+            id: item.itemId,
+            error: error,
+          });
+          console.error(`❌ ${item.itemType} submission failed:`, error);
+        }
+      }
+
+      // Report results
+      if (successfulSubmissions.length > 0) {
+        console.log("✅ Some submissions successful:", successfulSubmissions);
+        if (failedSubmissions.length > 0) {
+          console.warn("⚠️ Some submissions failed:", failedSubmissions);
+          toast.warning(
+            `${successfulSubmissions.length} submission(s) successful, ${failedSubmissions.length} failed.`
+          );
+        }
+      } else {
+        throw new Error("All submissions failed");
+      }
+
+      console.log("✅ Smart bulk submissions completed:", {
+        successfulCount: successfulSubmissions.length,
+        failedCount: failedSubmissions.length,
+        successfulSubmissions,
+        failedSubmissions,
+      });
 
       // Update KPI status to PENDING after successful submission
-      if (itemType === "kpis") {
-        console.log("🔄 Updating KPI status to PENDING...");
-        try {
-          for (const item of items) {
-            if (item.itemType === "kpi") {
-              await updateKpi({
-                input: {
-                  kpiId: item.itemId,
-                  status: "PENDING",
-                },
-              });
-              console.log(`✅ Updated KPI ${item.itemId} status to PENDING`);
-            }
+      for (const submission of successfulSubmissions) {
+        if (submission.type === "kpi") {
+          try {
+            await updateKpi({
+              kpiId: submission.id,
+              status: "PENDING",
+            });
+            console.log(`✅ Updated KPI ${submission.id} status to PENDING`);
+          } catch (updateError) {
+            console.error("❌ Error updating KPI status:", updateError);
+            // Don't fail the submission if status update fails
           }
-        } catch (updateError) {
-          console.error("❌ Error updating KPI status:", updateError);
-          // Don't fail the submission if status update fails
-          toast.error(
-            "Submission successful but status update failed. Please refresh the page."
-          );
         }
       }
 

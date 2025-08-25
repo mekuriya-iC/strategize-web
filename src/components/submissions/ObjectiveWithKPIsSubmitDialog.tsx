@@ -13,12 +13,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useSubmissionMutations } from "@/hooks/useSubmissionMutations";
-import { useMutation } from "@apollo/client";
-import { CREATE_SUBMISSION } from "@/lib/graphql/mutations/submissions";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
+// import { useKPIMutations } from "@/hooks/useKPIMutations";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { handleSmartSubmission } from "@/utils/smartSubmission";
+import { useApolloClient } from "@apollo/client";
 import type {
   ObjectiveType,
   SubmissionLevel,
@@ -48,10 +47,9 @@ export default function ObjectiveWithKPIsSubmitDialog({
   const [selectedKPIs, setSelectedKPIs] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { createSubmissions } = useSubmissionMutations();
-  const [createSingleSubmission] = useMutation(CREATE_SUBMISSION);
-  const { updateKpi } = useKPIMutations();
+  // const { updateKpi } = useKPIMutations();
   const { user, isAuthenticated } = useAuth();
+  const client = useApolloClient();
 
   // Initialize with all submittable KPIs selected by default
   useEffect(() => {
@@ -147,53 +145,11 @@ export default function ObjectiveWithKPIsSubmitDialog({
         ? "DEPARTMENT"
         : "DIVISION"; // DIVISION -> DIVISION level
 
-    // Prepare submissions array (objective + selected KPIs)
-    const submissionInputs = [];
-
-    // Add the objective submission
-    submissionInputs.push({
-      type: "OBJECTIVE" as SubmissionType,
-      level: submissionLevel,
-      itemId: objectiveId,
-      reason: reason.trim() || "",
-    });
-
-    // Add selected KPI submissions
-    console.log("🔍 About to add KPI submissions:", {
-      selectedKPIs,
-      selectedCount: selectedKPIs.length,
-      submittableKPIs: associatedKPIs
-        .filter((kpi) => kpi.status === "NOT_SUBMITTED")
-        .map((kpi) => ({
-          kpiId: kpi.kpiId,
-          name: kpi.name,
-          status: kpi.status,
-        })),
-    });
-
-    selectedKPIs.forEach((kpiId) => {
-      submissionInputs.push({
-        type: "KPI" as SubmissionType,
-        level: submissionLevel,
-        itemId: kpiId,
-        reason: reason.trim() || "",
-      });
-    });
-
-    console.log("📋 Final submission inputs:", submissionInputs);
-    console.log("🔧 Backend Schema Check:", {
-      objectiveType,
-      mappedSubmissionLevel: submissionLevel,
-      backendExpectedLevels: ["DEPARTMENT", "DIVISION", "PERSONNEL"],
-      note: "Using actual backend schema levels, not API docs",
-    });
-
     try {
       console.log("🚀 Objective + KPIs submission data:", {
         objectiveId,
         objectiveName,
         selectedKPIsCount: selectedKPIs.length,
-        submissionInputs,
         associatedKPIsDetails: associatedKPIs.map((kpi) => ({
           kpiId: kpi.kpiId,
           name: kpi.name,
@@ -211,251 +167,187 @@ export default function ObjectiveWithKPIsSubmitDialog({
         }),
       });
 
-      let result;
+      const successfulSubmissions: Array<{
+        type: "objective" | "kpi";
+        id: string;
+        result: unknown;
+      }> = [];
+      const failedSubmissions: Array<{
+        type: "objective" | "kpi";
+        id: string;
+        error: unknown;
+      }> = [];
 
+      // Submit objective using smart submission
       try {
-        // Try bulk submission first
-        result = await createSubmissions({
-          inputs: submissionInputs,
+        const objectiveResult = await handleSmartSubmission({
+          submissionType: "OBJECTIVE",
+          itemId: objectiveId,
+          submissionData: {
+            type: "OBJECTIVE" as SubmissionType,
+            level: submissionLevel,
+            itemId: objectiveId,
+            reason: reason.trim() || "",
+          },
+          reason: reason.trim() || "Submitting objective for approval",
+          client:
+            client as unknown as import("@/utils/smartSubmission").ApolloClient,
         });
-        console.log("✅ Bulk submission successful:", result);
-      } catch (bulkError) {
-        console.warn(
-          "⚠️ Bulk submission failed, trying individual submissions:",
-          bulkError
-        );
+        successfulSubmissions.push({
+          type: "objective",
+          id: objectiveId,
+          result: objectiveResult,
+        });
+        console.log("✅ Objective submission successful:", objectiveResult);
+      } catch (objError) {
+        failedSubmissions.push({
+          type: "objective",
+          id: objectiveId,
+          error: objError,
+        });
+        console.error("❌ Objective submission failed:", objError);
+      }
 
-        // If bulk submission fails, try individual submissions
-        const successfulSubmissions: Array<{
-          type: "objective" | "kpi";
-          id: string;
-          result: unknown;
-        }> = [];
-        const failedSubmissions: Array<{
-          type: "objective" | "kpi";
-          id: string;
-          error: unknown;
-        }> = [];
-
-        // Submit objective first
+      // Submit KPIs using smart submission
+      for (const kpiId of selectedKPIs) {
         try {
-          const objectiveResult = await createSingleSubmission({
-            variables: {
-              input: {
-                type: "OBJECTIVE" as SubmissionType,
-                level: submissionLevel,
-                itemId: objectiveId,
-                reason: reason.trim() || "",
-              },
+          const kpiResult = await handleSmartSubmission({
+            submissionType: "KPI",
+            itemId: kpiId,
+            submissionData: {
+              type: "KPI" as SubmissionType,
+              level: submissionLevel,
+              itemId: kpiId,
+              reason: reason.trim() || "",
             },
+            reason: reason.trim() || "Submitting KPI for approval",
+            client:
+              client as unknown as import("@/utils/smartSubmission").ApolloClient,
           });
           successfulSubmissions.push({
-            type: "objective",
-            id: objectiveId,
-            result: objectiveResult,
+            type: "kpi",
+            id: kpiId,
+            result: kpiResult,
           });
-          console.log("✅ Objective submission successful:", objectiveResult);
-        } catch (objError) {
+          console.log("✅ KPI submission successful:", kpiResult);
+        } catch (kpiError) {
           failedSubmissions.push({
-            type: "objective",
-            id: objectiveId,
-            error: objError,
+            type: "kpi",
+            id: kpiId,
+            error: kpiError,
           });
-          console.error("❌ Objective submission failed:", objError);
+          console.error("❌ KPI submission failed:", kpiError);
         }
-
-        // Submit each KPI individually
-        for (const kpiId of selectedKPIs) {
-          try {
-            const kpiResult = await createSingleSubmission({
-              variables: {
-                input: {
-                  type: "KPI" as SubmissionType,
-                  level: submissionLevel,
-                  itemId: kpiId,
-                  reason: reason.trim() || "",
-                },
-              },
-            });
-            successfulSubmissions.push({
-              type: "kpi",
-              id: kpiId,
-              result: kpiResult,
-            });
-            console.log(`✅ KPI ${kpiId} submission successful:`, kpiResult);
-          } catch (kpiError) {
-            failedSubmissions.push({ type: "kpi", id: kpiId, error: kpiError });
-            console.error(`❌ KPI ${kpiId} submission failed:`, kpiError);
-          }
-        }
-
-        // If no submissions succeeded, throw the original error
-        if (successfulSubmissions.length === 0) {
-          throw bulkError;
-        }
-
-        // If some failed, show a partial success message
-        if (failedSubmissions.length > 0) {
-          const successCount = successfulSubmissions.length;
-          const failCount = failedSubmissions.length;
-          toast.warning(
-            `Partial submission success: ${successCount} items submitted, ${failCount} failed`,
-            {
-              description:
-                "Some items couldn't be submitted due to data constraints. Please refresh and try again for the failed items.",
-            }
-          );
-        }
-
-        result = { successfulSubmissions, failedSubmissions };
       }
 
-      // Update KPI status to PENDING after successful submission
-      let successfulKpiIds = selectedKPIs;
+      // Report results
+      if (successfulSubmissions.length > 0) {
+        console.log("✅ Some submissions successful:", successfulSubmissions);
+        if (failedSubmissions.length > 0) {
+          console.warn("⚠️ Some submissions failed:", failedSubmissions);
+          toast.warning(
+            `${successfulSubmissions.length} submission(s) successful, ${failedSubmissions.length} failed.`
+          );
+        }
+      } else {
+        throw new Error("All submissions failed");
+      }
 
-      console.log("🔍 KPI Status Update Debug:", {
-        originalSelectedKPIs: selectedKPIs,
-        usedIndividualSubmissions: !!result.successfulSubmissions,
-        bulkResult: result.successfulSubmissions
-          ? null
-          : "Used bulk submission",
-        individualResults: result.successfulSubmissions || null,
+      console.log("✅ Smart submissions completed:", {
+        successfulCount: successfulSubmissions.length,
+        failedCount: failedSubmissions.length,
+        successfulSubmissions,
+        failedSubmissions,
       });
 
-      // If we used individual submissions, only update KPIs that succeeded
-      if (
-        (
-          result as {
-            successfulSubmissions?: Array<{ type: string; id: string }>;
-          }
-        ).successfulSubmissions
-      ) {
-        const ss = (
-          result as {
-            successfulSubmissions: Array<{ type: string; id: string }>;
-          }
-        ).successfulSubmissions;
-        successfulKpiIds = ss.filter((s) => s.type === "kpi").map((s) => s.id);
-        console.log(
-          "🔍 Filtered successful KPI IDs from individual submissions:",
-          successfulKpiIds
-        );
-      } else {
-        console.log(
-          "🔍 Using original selected KPIs from bulk submission:",
-          successfulKpiIds
-        );
-      }
+      // Note: handleSmartSubmission already updates KPI statuses to PENDING
+      // No need for additional status updates here
 
-      if (successfulKpiIds.length > 0) {
-        console.log("🔄 Updating successful KPI statuses to PENDING...");
-        console.log("📋 KPIs to update:", successfulKpiIds);
-        try {
-          for (const kpiId of successfulKpiIds) {
-            console.log(`🔄 Updating KPI ${kpiId} status to PENDING...`);
-            const updateResult = await updateKpi({
-              input: {
-                kpiId,
-                status: "PENDING",
-              },
-            });
-            console.log(
-              `✅ Updated KPI ${kpiId} status to PENDING:`,
-              updateResult
-            );
-          }
-          console.log("✅ All KPI status updates completed successfully");
-        } catch (updateError) {
-          console.error("❌ Error updating KPI status:", updateError);
-          toast.error(
-            "Submission successful but KPI status update failed. Please refresh the page."
-          );
-        }
-      } else {
-        console.log("ℹ️ No KPIs to update (successfulKpiIds is empty)");
-      }
-
-      // Show success message only if we didn't already show a partial success warning
-      if (!result.failedSubmissions || result.failedSubmissions.length === 0) {
-        const kpiText =
-          successfulKpiIds.length > 0
-            ? ` with ${successfulKpiIds.length} KPI${
-                successfulKpiIds.length !== 1 ? "s" : ""
-              }`
-            : "";
-
-        toast.success(`Objective${kpiText} submitted successfully!`);
-      }
+      toast.success(
+        `Objective and ${
+          successfulSubmissions.filter((s) => s.type === "kpi").length
+        } KPI(s) submitted successfully!`
+      );
       setOpen(false);
       setReason(""); // Reset form
-      setSelectedKPIs([]); // Reset KPI selection
       onSubmitSuccess?.();
     } catch (error) {
-      console.error("❌ Submission error:", error);
+      console.error("❌ Submission error details:", {
+        error,
+        objectiveId,
+        selectedKPIs,
+      });
 
-      // Enhanced error reporting for foreign key constraints
-      let errorMessage = "Failed to submit objective";
-      let errorDescription = "Please try again";
-
-      if (error instanceof Error) {
-        errorDescription = error.message;
-
-        // Check for specific foreign key constraint errors
-        if (error.message.includes("foreign key constraint")) {
-          if (error.message.includes("FK_fe1545d982d72b6191e19e78629")) {
-            errorMessage = "Invalid objective or KPI reference";
-            errorDescription =
-              "The objective or one of the selected KPIs may have been deleted. Please refresh the page and try again.";
-          } else {
-            errorMessage = "Database constraint violation";
-            errorDescription =
-              "There's a data integrity issue. Please contact support if this persists.";
-          }
-        } else if (error.message.includes("violates")) {
-          errorMessage = "Data validation error";
-          errorDescription =
-            "The submission data doesn't meet the required constraints. Please refresh and try again.";
-        }
+      // More specific error message
+      let errorMessage = "Failed to submit. Please try again.";
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof (error as { message?: unknown }).message === "string"
+      ) {
+        errorMessage = (error as { message: string }).message;
       }
 
-      toast.error(errorMessage, { description: errorDescription });
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Filter KPIs that can be submitted
+  const handleCancel = () => {
+    setOpen(false);
+    setReason(""); // Reset form on cancel
+  };
+
+  // Get submittable KPIs (those with NOT_SUBMITTED status)
   const submittableKPIs = associatedKPIs.filter(
     (kpi) => kpi.status === "NOT_SUBMITTED"
-  );
-  const nonSubmittableKPIs = associatedKPIs.filter(
-    (kpi) => kpi.status !== "NOT_SUBMITTED"
   );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Submit Objective with KPIs for Approval</DialogTitle>
+      <DialogContent className="max-w-[500px] sm:max-w-[600px] mx-auto p-6">
+        <DialogHeader className="text-center space-y-4">
+          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+            <Send className="h-8 w-8 text-blue-600" />
+          </div>
+          <div className="space-y-2">
+            <DialogTitle className="text-lg font-semibold text-center text-[#0F1327]">
+              Submit Objective with KPIs
+            </DialogTitle>
+            <p className="text-sm text-gray-600 text-center">
+              Submit &quot;{objectiveName}&quot; and selected KPIs for approval
+            </p>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Objective Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-medium text-blue-900 mb-2">Objective</h3>
-            <p className="text-sm text-blue-700">
-              <strong>{objectiveName}</strong> ({objectiveType})
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+          <div className="space-y-2">
+            <Label htmlFor="reason">Reason for Submission</Label>
+            <Input
+              id="reason"
+              type="text"
+              placeholder="e.g., Completed milestone 1, Ready for review..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              disabled={isSubmitting}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500">
+              Provide a brief reason for submitting this objective and KPIs for
+              approval.
             </p>
           </div>
 
-          {/* KPI Selection */}
+          {/* KPI Selection Section */}
           {submittableKPIs.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-gray-900">
-                  Associated KPIs ({submittableKPIs.length} available)
-                </h3>
+                <Label className="text-sm font-medium">
+                  Select KPIs to Submit ({selectedKPIs.length} selected)
+                </Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -478,93 +370,73 @@ export default function ObjectiveWithKPIsSubmitDialog({
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+              <div className="max-h-48 overflow-y-auto border rounded-md p-3 space-y-2">
                 {submittableKPIs.map((kpi) => (
-                  <div key={kpi.kpiId} className="flex items-center space-x-3">
+                  <div key={kpi.kpiId} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`kpi-${kpi.kpiId}`}
+                      id={kpi.kpiId}
                       checked={selectedKPIs.includes(kpi.kpiId)}
                       onCheckedChange={() => handleKPIToggle(kpi.kpiId)}
                       disabled={isSubmitting}
                     />
                     <label
-                      htmlFor={`kpi-${kpi.kpiId}`}
+                      htmlFor={kpi.kpiId}
                       className="text-sm text-gray-700 cursor-pointer flex-1"
                     >
-                      {kpi.name}
+                      {kpi.name || "Unnamed KPI"}
                     </label>
                   </div>
                 ))}
               </div>
-
-              <p className="text-xs text-gray-500">
-                {selectedKPIs.length} of {submittableKPIs.length} KPIs selected
-                for submission
-              </p>
             </div>
           )}
 
-          {/* Show non-submittable KPIs as info */}
-          {nonSubmittableKPIs.length > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                KPIs Not Available for Submission ({nonSubmittableKPIs.length})
-              </h4>
-              <div className="space-y-1">
-                {nonSubmittableKPIs.map((kpi) => (
-                  <div
-                    key={kpi.kpiId}
-                    className="flex justify-between text-xs text-gray-600"
-                  >
-                    <span>{kpi.name}</span>
-                    <span className="text-gray-500">({kpi.status})</span>
-                  </div>
-                ))}
-              </div>
+          {/* Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <h4 className="font-medium text-sm text-gray-900">
+              Submission Summary
+            </h4>
+            <div className="text-sm text-gray-600 space-y-1">
+              <p>• Objective: {objectiveName} (will be submitted)</p>
+              {selectedKPIs.length > 0 ? (
+                <p>• KPIs to submit: {selectedKPIs.length}</p>
+              ) : (
+                <p>
+                  • KPIs to submit: None (KPIs are submitted automatically when
+                  created/edited)
+                </p>
+              )}
+              <p>• Total items: {selectedKPIs.length + 1}</p>
             </div>
-          )}
-
-          {/* No KPIs message */}
-          {submittableKPIs.length === 0 && nonSubmittableKPIs.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-700">
-                This objective has no associated KPIs. Only the objective will
-                be submitted.
-              </p>
-            </div>
-          )}
-
-          {/* Reason field */}
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason for Submission (Optional)</Label>
-            <Input
-              id="reason"
-              type="text"
-              placeholder="Enter reason for submission..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={isSubmitting}
-            />
           </div>
 
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-2">
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={handleCancel}
               disabled={isSubmitting}
+              className="flex-1"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit for Approval
+                </>
               )}
-              <Send className="w-4 h-4 mr-2" />
-              Submit{" "}
-              {selectedKPIs.length > 0 &&
-                `(1 objective + ${selectedKPIs.length} KPIs)`}
             </Button>
           </div>
         </form>

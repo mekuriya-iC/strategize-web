@@ -12,11 +12,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useSubmissionMutations } from "@/hooks/useSubmissionMutations";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
+// import { useKPIMutations } from "@/hooks/useKPIMutations";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useKPI } from "@/hooks/useKPIs";
+import { handleSmartSubmission } from "@/utils/smartSubmission";
+import { useApolloClient } from "@apollo/client";
 import type {
   ObjectiveType,
   SubmissionLevel,
@@ -44,9 +45,9 @@ export default function SubmitDialog({
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { createSubmission } = useSubmissionMutations();
-  const { updateKpi } = useKPIMutations();
+  // const { updateKpi } = useKPIMutations();
   const { user, isAuthenticated } = useAuth();
+  const client = useApolloClient();
 
   // Validate KPI exists (only for KPI submissions)
   const { kpi: kpiData, loading: kpiLoading } = useKPI(
@@ -150,6 +151,27 @@ export default function SubmitDialog({
 
     try {
       console.log("🚀 Submission data being sent:", submissionData);
+      console.log("🎯 KPI Submission Type Verification:", {
+        itemType,
+        submissionType,
+        isKpiSubmission: submissionType === "KPI",
+        submissionData,
+      });
+      console.log("🔍 CREATION DEBUG - Final submission details:", {
+        itemType,
+        submissionType,
+        isKpiSubmission: submissionType === "KPI",
+        submissionData: {
+          type: submissionData.type,
+          level: submissionData.level,
+          itemId: submissionData.itemId,
+          reason: submissionData.reason,
+        },
+        expectedType: itemType === "kpi" ? "KPI" : "OBJECTIVE",
+        actualType: submissionData.type,
+        typesMatch:
+          (itemType === "kpi" ? "KPI" : "OBJECTIVE") === submissionData.type,
+      });
       console.log("🎯 Item details:", {
         itemId,
         itemName,
@@ -163,31 +185,29 @@ export default function SubmitDialog({
           : null,
       });
 
-      const result = await createSubmission({
-        input: submissionData,
+      const result = await handleSmartSubmission({
+        submissionType: submissionType,
+        itemId: finalItemId,
+        submissionData: submissionData,
+        reason: reason.trim() || "Submitting for approval",
+        client:
+          client as unknown as import("@/utils/smartSubmission").ApolloClient,
       });
 
       console.log("✅ Submission successful:", result);
+      console.log("🔍 BACKEND RESPONSE DEBUG - What backend returned:", {
+        submissionId: result?.data?.submissionId,
+        type: result?.data?.type,
+        level: result?.data?.level,
+        status: result?.data?.status,
+        reason: result?.data?.reason,
+        expectedType: submissionData.type,
+        typesMatch: result?.data?.type === submissionData.type,
+        fullResponse: result,
+      });
 
-      // Update KPI status to PENDING after successful submission
-      if (itemType === "kpi") {
-        console.log("🔄 Updating KPI status to PENDING...");
-        try {
-          await updateKpi({
-            input: {
-              kpiId: itemId,
-              status: "PENDING",
-            },
-          });
-          console.log(`✅ Updated KPI ${itemId} status to PENDING`);
-        } catch (updateError) {
-          console.error("❌ Error updating KPI status:", updateError);
-          // Don't fail the submission if status update fails
-          toast.error(
-            "Submission successful but status update failed. Please refresh the page."
-          );
-        }
-      }
+      // Note: handleSmartSubmission already updates the KPI status to PENDING
+      // No need for additional status update here
 
       toast.success(
         `${

@@ -6,6 +6,7 @@ import { useStrategicPeriodMutations } from "@/hooks/useStrategicPeriodMutations
 import { useRouter } from "next/navigation";
 import { StrategicPeriod } from "@/types/graphql";
 import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
+import { useUser } from "@/context/UserContext";
 
 const getStatusIcon = (period: StrategicPeriod, now: Date) => {
   const startDate = new Date(period.startDate);
@@ -75,6 +76,8 @@ export default function StrategyPeriodGrid() {
   const { removeStrategicPeriod } = useStrategicPeriodMutations();
   const router = useRouter();
   const { setSelected } = useStrategicPeriod();
+  const { user } = useUser();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const now = new Date();
 
   const handlePeriodSelect = (period: StrategicPeriod) => {
@@ -149,7 +152,7 @@ export default function StrategyPeriodGrid() {
             date={formatDateRange(period.startDate, period.endDate)}
             onClick={() => handlePeriodSelect(period)}
             period={period}
-            onDelete={() => handlePeriodDelete(period)}
+            onDelete={isAdmin ? () => handlePeriodDelete(period) : undefined}
           />
         ))}
       </div>

@@ -14,6 +14,7 @@ export const LOGIN_EMPLOYEE = gql`
         role
         startDate
         status
+        title
         createdAt
         updatedAt
       }
@@ -33,6 +34,7 @@ export const CREATE_EMPLOYEE = gql`
       role
       startDate
       status
+      title
       createdAt
       updatedAt
     }
@@ -50,6 +52,7 @@ export const UPDATE_EMPLOYEE = gql`
       role
       startDate
       status
+      title
       createdAt
       updatedAt
     }

@@ -39,6 +39,11 @@ export const GET_OBJECTIVES = gql`
           kpiId
           name
           status
+          targetStatus
+          parent {
+            kpiId
+            name
+          }
         }
         createdAt
         updatedAt
@@ -82,6 +87,11 @@ export const GET_OBJECTIVE = gql`
         kpiId
         name
         status
+        targetStatus
+        parent {
+          kpiId
+          name
+        }
       }
       createdAt
       updatedAt

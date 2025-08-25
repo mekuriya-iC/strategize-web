@@ -1,7 +1,12 @@
 import Image from "next/image";
 import AddObjectiveButton from "./AddObjectiveButton";
+import { useUser } from "@/context/UserContext";
 
 export default function EmptyState() {
+  const { user } = useUser();
+
+  // Only show Add Objective button for admin and super admin users
+  const showAddButton = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <Image
@@ -16,9 +21,11 @@ export default function EmptyState() {
         It seems you don&apos;t have added any objectives yet
       </h2>
       <p className="text-[#BABABA] dark:text-gray-400 mb-8 md:mb-12 text-lg max-w-sm">
-        Start adding objectives with the button below.
+        {showAddButton
+          ? "Start adding objectives with the button below."
+          : "Contact your administrator to add objectives."}
       </p>
-      <AddObjectiveButton />
+      {showAddButton && <AddObjectiveButton />}
     </div>
   );
 }

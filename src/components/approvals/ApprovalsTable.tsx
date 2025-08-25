@@ -179,10 +179,8 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
       if (selectedKPIs.length > 0) {
         const kpiRejectionPromises = selectedKPIs.map((kpiId) =>
           updateKpi({
-            input: {
-              kpiId: kpiId,
-              status: "REJECTED",
-            },
+            kpiId: kpiId,
+            status: "REJECTED",
           })
         );
 
@@ -216,10 +214,8 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
   const handleApproveKPI = async (kpi: Kpi) => {
     try {
       await updateKpi({
-        input: {
-          kpiId: kpi.kpiId,
-          status: "APPROVED",
-        },
+        kpiId: kpi.kpiId,
+        status: "APPROVED",
       });
       toast.success(`KPI "${kpi.name}" approved successfully`);
     } catch (error) {
@@ -231,10 +227,8 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
   const handleRejectKPI = async (kpi: Kpi) => {
     try {
       await updateKpi({
-        input: {
-          kpiId: kpi.kpiId,
-          status: "REJECTED",
-        },
+        kpiId: kpi.kpiId,
+        status: "REJECTED",
       });
       toast.success(`KPI "${kpi.name}" rejected successfully`);
     } catch (error) {

@@ -10,6 +10,8 @@ import {
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 import DepartmentCard from "./DepartmentCard";
 import { Department } from "@/types/graphql";
+import { X } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 interface DepartmentSelectionModalProps {
   open: boolean;
@@ -29,24 +31,42 @@ export default function DepartmentSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold text-center">
-            Select Your Department
-          </DialogTitle>
-          <DialogDescription className="text-center text-gray-600 mt-2">
-            You belong to multiple departments. Please select which department
-            context you&apos;d like to work in.
-          </DialogDescription>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto p-0 bg-white rounded-2xl shadow-2xl border-0">
+        {/* Header */}
+        <DialogHeader className="p-8 pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <DialogTitle className="text-3xl font-bold text-gray-900 text-center mb-3">
+                Select Your Department
+              </DialogTitle>
+              <DialogDescription className="text-center text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto">
+                You belong to multiple departments. Please select which
+                department context you&apos;d like to work in.
+              </DialogDescription>
+            </div>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 ml-4"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
         </DialogHeader>
 
-        <div className="mt-6">
+        {/* Content */}
+        <div className="p-8 pt-6">
           {availableDepartments.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No departments found.</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 text-lg">No departments found.</p>
+              <p className="text-gray-400 text-sm mt-2">
+                Please contact your administrator.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {availableDepartments.map((department) => (
                 <DepartmentCard
                   key={department.departmentId}

@@ -40,6 +40,7 @@ interface FormData {
   status: EmployeeStatus;
   password: string;
   picture: string;
+  title: string;
 }
 
 interface FormErrors {
@@ -51,6 +52,7 @@ interface FormErrors {
   status?: string;
   password?: string;
   picture?: string;
+  title?: string;
 }
 
 // Helper function to parse GraphQL errors and provide user-friendly messages
@@ -136,6 +138,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
     status: "ACTIVE",
     password: "",
     picture: "",
+    title: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -172,6 +175,10 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
+    }
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
     }
 
     setErrors(newErrors);
@@ -246,6 +253,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
       status: formData.status,
       password: formData.password,
       picture: formData.picture,
+      title: formData.title,
     };
 
     const result = await createEmployee(input);
@@ -261,6 +269,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
         status: "ACTIVE",
         password: "",
         picture: "",
+        title: "",
       });
       setErrors({});
       removeFile();
@@ -294,6 +303,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
         status: "ACTIVE",
         password: "",
         picture: "",
+        title: "",
       });
       setErrors({});
       removeFile();
@@ -426,7 +436,22 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Row 4: Password */}
+          {/* Row 4: Title */}
+          <div className="space-y-2 sm:space-y-3">
+            <Label htmlFor="title">Title *</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => handleInputChange("title", e.target.value)}
+              placeholder="Enter job title"
+              className={errors.title ? "border-red-500" : ""}
+            />
+            {errors.title && (
+              <p className="text-sm text-red-500">{errors.title}</p>
+            )}
+          </div>
+
+          {/* Row 5: Password */}
           <div className="space-y-2 sm:space-y-3">
             <Label htmlFor="password">Password *</Label>
             <Input
@@ -442,7 +467,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
             )}
           </div>
 
-          {/* Row 5: Profile Picture */}
+          {/* Row 6: Profile Picture */}
           <div className="space-y-2 sm:space-y-3">
             <Label>Profile Picture</Label>
             {!previewUrl ? (

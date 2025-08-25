@@ -1,12 +1,32 @@
 "use client";
 import ObjectiveForm from "@/components/objectives/ObjectiveForm";
-
+import { useUser } from "@/context/UserContext";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AddObjectivePage() {
   const router = useRouter();
+  const { user } = useUser();
   const pageTitle = "Add Objective";
+
+  // Check if user has permission to access this page
+  useEffect(() => {
+    if (user && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      router.push("/dashboard/objectives");
+    }
+  }, [user, router]);
+
+  // Show loading or redirect if user doesn't have permission
+  if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

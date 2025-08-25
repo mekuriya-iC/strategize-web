@@ -13,6 +13,7 @@ export const GET_EMPLOYEES = gql`
         role
         startDate
         status
+        title
         createdAt
         updatedAt
       }
@@ -53,6 +54,7 @@ export const GET_ME = gql`
       role
       startDate
       status
+      title
       createdAt
       updatedAt
       departments {

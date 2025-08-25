@@ -1,61 +1,13 @@
 "use client";
-import { useState } from "react";
-// import ApprovalsTable from "@/components/approvals/ApprovalsTable";
 import SubmissionApprovalsTable from "@/components/approvals/SubmissionApprovalsTable";
 import { useUser } from "@/context/UserContext";
 
 export default function ApprovalsPage() {
   const { user } = useUser();
-  // const [activeTab, setActiveTab] = useState("all");
-  // const [workflowType, setWorkflowType] = useState("submissions"); // "submissions" or "direct"
-  const [submissionTab, setSubmissionTab] = useState(
-    user?.role === "NORMAL" ? "personnel" : "division"
-  );
-
-  // const tabs = [
-  //   { id: "all", label: "All Objectives", isActive: true },
-  //   { id: "department", label: "Department Objectives", isActive: false },
-  //   { id: "personnel", label: "Personnel Objectives", isActive: false },
-  // ];
-
-  // Tab labels depending on level
-  const submissionTabs =
-    user?.role === "NORMAL"
-      ? [{ id: "personnel", label: "My Personal Objectives" }]
-      : [
-          { id: "division", label: "Department Objectives" },
-          { id: "department", label: "Personal Objectives" },
-        ];
 
   return (
     <>
       <div className="min-h-[70vh]">
-        {/* Main Workflow Tabs - Commented out for now */}
-        {/* <div className="border-b border-gray-200 mb-6">
-          <nav className="flex justify-center space-x-12">
-            <button
-              onClick={() => setWorkflowType("submissions")}
-              className={`py-3 px-4 border-b-2 font-medium text-xl transition-colors ${
-                workflowType === "submissions"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Submission-Based Approval
-            </button>
-            <button
-              onClick={() => setWorkflowType("direct")}
-              className={`py-3 px-4 border-b-2 font-medium text-xl transition-colors ${
-                workflowType === "direct"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Direct Approval
-            </button>
-          </nav>
-        </div> */}
-
         {/* Page Content */}
         <div className="space-y-6">
           {/* Page Header */}
@@ -108,25 +60,6 @@ export default function ApprovalsPage() {
 
           {/* Workflow Content - Only Submission-Based Approval */}
           <div className="px-6">
-            {/* Submission Type Tabs */}
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="flex justify-center space-x-8">
-                {submissionTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setSubmissionTab(tab.id)}
-                    className={`py-2 px-4 border-b-2 font-medium text-lg transition-colors ${
-                      submissionTab === tab.id
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
             <SubmissionApprovalsTable />
           </div>
         </div>

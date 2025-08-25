@@ -63,6 +63,11 @@ const statusMap = {
   REJECTED: { label: "Rejected", color: "bg-red-100 text-red-600" },
 };
 
+const weightTypeLabels = {
+  NUMBER: "Number",
+  PERCENT: "Percent",
+};
+
 const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
   objectives,
   allObjectives = objectives, // Default to objectives if not provided
@@ -85,13 +90,215 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
 }) => {
   const { user } = useUser();
 
+  // Function to determine column headers based on organizational level
+  const getColumnHeaders = () => {
+    // Check if all objectives are corporate level
+    const allCorporate = objectives.every((obj) => obj.type === "CORPORATE");
+
+    // For corporate level (admin/super admin), hide second column
+    if (
+      allCorporate ||
+      user?.role === "ADMIN" ||
+      user?.role === "SUPER_ADMIN"
+    ) {
+      return {
+        firstColumn: "CORPORATE OBJECTIVE",
+        secondColumn: null, // Hidden for corporate level
+        showSecondColumn: false,
+      };
+    }
+
+    // Check if we have mixed levels or specific levels
+    const hasDivision = objectives.some((obj) => obj.type === "DIVISION");
+    const hasDepartment = objectives.some((obj) => obj.type === "DEPARTMENT");
+    const hasPersonnel = objectives.some((obj) => obj.type === "PERSONNEL");
+
+    if (hasDivision && !hasDepartment && !hasPersonnel) {
+      return {
+        firstColumn: "CORPORATE OBJECTIVE",
+        secondColumn: "DIVISION OBJECTIVE",
+        showSecondColumn: true,
+      };
+    }
+
+    if (hasDepartment && !hasPersonnel) {
+      // Check if departments are descendants of divisions or directly from corporate
+      // We need to find the parent objective to check its type
+      const hasDivisionParents = objectives.some((obj) => {
+        if (obj.type === "DEPARTMENT" && obj.parent) {
+          const parentObjective = allObjectives.find(
+            (o) => o.objectiveId === obj.parent?.objectiveId
+          );
+          return parentObjective?.type === "DIVISION";
+        }
+        return false;
+      });
+
+      if (hasDivisionParents) {
+        return {
+          firstColumn: "DIVISION OBJECTIVE",
+          secondColumn: "DEPARTMENT OBJECTIVE",
+          showSecondColumn: true,
+        };
+      } else {
+        return {
+          firstColumn: "CORPORATE OBJECTIVE",
+          secondColumn: "DEPARTMENT OBJECTIVE",
+          showSecondColumn: true,
+        };
+      }
+    }
+
+    if (hasPersonnel) {
+      return {
+        firstColumn: "DEPARTMENT OBJECTIVE",
+        secondColumn: "PERSONAL OBJECTIVE",
+        showSecondColumn: true,
+      };
+    }
+
+    // Default fallback
+    return {
+      firstColumn: "STRATEGIC OBJECTIVE",
+      secondColumn: "DIVISION/DEPARTMENT/PERSONAL OBJECTIVE",
+      showSecondColumn: true,
+    };
+  };
+
+  const columnHeaders = getColumnHeaders();
+
+  // Function to get content for first column based on objective type and column header
+  const getFirstColumnContent = (obj: Objective) => {
+    // Debug logging for corporate objectives
+    if (obj.type === "CORPORATE") {
+      console.log(
+        "Corporate objective:",
+        obj.name,
+        "ID:",
+        obj.objectiveId,
+        "Full obj:",
+        obj
+      );
+    }
+
+    // First priority: show parent name if available (for assigned objectives)
+    if (obj.parent) {
+      return obj.parent.name || "Unnamed Parent Objective";
+    }
+
+    // Second priority: show objective name if no parent (standalone objectives)
+    if (!obj.name || obj.name.trim() === "") {
+      return "Please add name";
+    }
+
+    return obj.name;
+  };
+
+  // Function to get content for second column based on objective type and column header
+  const getSecondColumnContent = (obj: Objective) => {
+    // If it's a standalone corporate objective (no parent), show "N/A"
+    if (obj.type === "CORPORATE" && !obj.parent) {
+      return "N/A";
+    }
+
+    // For all other objectives (including assigned ones), show the objective name
+    // If no name is set, show a helpful placeholder
+    if (!obj.name || obj.name.trim() === "") {
+      return "Please add name";
+    }
+
+    return obj.name;
+  };
+
+  // Function to get "From:" text for first column
+  const getFromText = (obj: Objective) => {
+    if (obj.type === "CORPORATE") {
+      return null; // No "From:" text for corporate objectives
+    }
+
+    if (obj.parent) {
+      const parentObjective = allObjectives.find(
+        (o) => o.objectiveId === obj.parent?.objectiveId
+      );
+      if (parentObjective) {
+        switch (parentObjective.type) {
+          case "CORPORATE":
+            return "From: Corporate";
+          case "DIVISION":
+            return "From: Division";
+          case "DEPARTMENT":
+            return "From: Department";
+          default:
+            return "From: Parent";
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // KPI-specific functions for expanded KPI table
+  const getKpiFirstColumnContent = (kpi: Kpi) => {
+    // First priority: show parent KPI name if available (for child KPIs)
+    if (kpi.parent) {
+      return kpi.parent.name;
+    }
+
+    // Second priority: show KPI name if no parent (standalone KPIs)
+    if (!kpi.name || kpi.name.trim() === "") {
+      return "Please add name";
+    }
+
+    return kpi.name;
+  };
+
+  const getKpiSecondColumnContent = (kpi: Kpi) => {
+    // If it's a standalone corporate KPI (no parent), show "N/A"
+    if (kpi.objective?.type === "CORPORATE" && !kpi.parent) {
+      return "N/A";
+    }
+
+    // For all other KPIs (including assigned ones), show the KPI name
+    if (!kpi.name || kpi.name.trim() === "") {
+      return "Please add name";
+    }
+
+    return kpi.name;
+  };
+
+  const getKpiFromText = (kpi: Kpi) => {
+    if (kpi.objective?.type === "CORPORATE") {
+      return null; // No "From:" text for corporate KPIs
+    }
+
+    // Fallback based on current objective type
+    if (kpi.objective?.type) {
+      switch (kpi.objective.type) {
+        case "DIVISION":
+          return "From: Corporate";
+        case "DEPARTMENT":
+          return "From: Division";
+        case "PERSONNEL":
+          return "From: Department";
+        default:
+          return null;
+      }
+    }
+
+    return null;
+  };
+
   // Check if all objectives are corporate level
   const allObjectivesAreCorporate = objectives.every(
     (obj) => obj.type === "CORPORATE"
   );
 
-  // Show level-specific column only if not all objectives are corporate
-  const showLevelSpecificColumn = !allObjectivesAreCorporate;
+  // Show level-specific column only if not all objectives are corporate and user is not admin/super admin
+  const showLevelSpecificColumn =
+    !allObjectivesAreCorporate &&
+    columnHeaders.showSecondColumn &&
+    user?.role !== "ADMIN" &&
+    user?.role !== "SUPER_ADMIN";
 
   // Show reason column only if there are rejected KPIs and not all objectives are corporate
   const showReasonColumn =
@@ -243,13 +450,11 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                 )}
               </TableHead>
               <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
-                {user?.role === "NORMAL"
-                  ? "DEPARTMENT OBJECTIVE"
-                  : "STRATEGIC OBJECTIVE"}
+                {columnHeaders.firstColumn}
               </TableHead>
               {showLevelSpecificColumn && (
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
-                  DIVISION/DEPARTMENT/PERSONAL OBJECTIVE
+                  {columnHeaders.secondColumn}
                 </TableHead>
               )}
               <TableHead className="px-6 py-3 text-left text-xs font-medium text-[#9E9E9E] uppercase tracking-wider">
@@ -278,14 +483,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
           <TableBody>
             {objectives.map((obj, idx) => {
               const objectiveKPIs = getKPIsForObjective(obj.objectiveId);
-              // Resolve parent objective KPIs for strategic display when this objective is a child
-              const parentKpisForObj: Array<{ name: string }> = obj.parent
-                ? (allObjectives.find(
-                    (o) =>
-                      o.objectiveId ===
-                      (obj.parent as { objectiveId: string }).objectiveId
-                  )?.kpis as Array<{ name: string }>) || []
-                : [];
+              // Removed unused parentKpisForObj variable
               return (
                 <React.Fragment key={obj.objectiveId}>
                   <TableRow
@@ -311,15 +509,17 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                     <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
                       <div
                         className="truncate"
-                        title={obj.parent?.name || obj.name}
+                        title={getFirstColumnContent(obj)}
                       >
-                        {obj.parent?.name || obj.name}
+                        {getFirstColumnContent(obj) || (
+                          <span className="text-gray-400 italic text-sm">
+                            {obj.name || "No name"}
+                          </span>
+                        )}
                       </div>
-                      {obj.parent && (
+                      {getFromText(obj) && (
                         <div className="text-xs text-gray-500 mt-1">
-                          {user?.role === "NORMAL"
-                            ? "From: Department"
-                            : "From: Corporate"}
+                          {getFromText(obj)}
                         </div>
                       )}
                     </TableCell>
@@ -327,16 +527,14 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                       <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
                         <div
                           className="truncate"
-                          title={
-                            obj.type === "CORPORATE" ? "" : obj.name || "N/A"
-                          }
+                          title={getSecondColumnContent(obj)}
                         >
-                          {obj.type === "CORPORATE" || !obj.name ? (
+                          {getSecondColumnContent(obj) === "N/A" ? (
                             <span className="text-gray-400 italic text-sm">
                               N/A
                             </span>
                           ) : (
-                            obj.name
+                            getSecondColumnContent(obj)
                           )}
                         </div>
                       </TableCell>
@@ -543,6 +741,29 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                   </ObjectiveWithKPIsSubmitDialog>
                                 </>
                               )}
+                            {/* Resubmit option - only show if objective is rejected and not corporate */}
+                            {obj.status === "REJECTED" &&
+                              obj.type !== "CORPORATE" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <ObjectiveWithKPIsSubmitDialog
+                                    objectiveId={obj.objectiveId}
+                                    objectiveName={obj.name}
+                                    objectiveType={obj.type}
+                                    associatedKPIs={getKPIsForObjective(
+                                      obj.objectiveId
+                                    )}
+                                    onSubmitSuccess={onEditSuccess}
+                                  >
+                                    <DropdownMenuItem
+                                      onSelect={(e) => e.preventDefault()}
+                                      className="text-orange-600 hover:text-orange-700"
+                                    >
+                                      Resubmit for Approval
+                                    </DropdownMenuItem>
+                                  </ObjectiveWithKPIsSubmitDialog>
+                                </>
+                              )}
                             <DropdownMenuSeparator />
                             <DeleteObjectiveDialog
                               objectiveId={obj.objectiveId}
@@ -610,11 +831,11 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                               <thead>
                                 <tr className="border-b">
                                   <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">
-                                    Strategic KPI
+                                    {columnHeaders.firstColumn}
                                   </th>
                                   {showLevelSpecificColumn && (
                                     <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">
-                                      Division/Department/Personal KPI
+                                      {columnHeaders.secondColumn}
                                     </th>
                                   )}
                                   <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">
@@ -647,26 +868,24 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                     }
                                   >
                                     <td className="py-2 px-3 font-medium text-gray-900">
-                                      {/* Strategic KPI column - show parent KPI name when available */}
-                                      {obj.parent
-                                        ? parentKpisForObj[kpiIdx]?.name ||
-                                          kpi.name
-                                        : kpi.name}
-                                      {obj.parent && (
+                                      {/* First column - show parent KPI name when available */}
+                                      {getKpiFirstColumnContent(kpi)}
+                                      {getKpiFromText(kpi) && (
                                         <div className="text-xs text-gray-500 mt-1">
-                                          From: Corporate
+                                          {getKpiFromText(kpi)}
                                         </div>
                                       )}
                                     </td>
                                     {showLevelSpecificColumn && (
                                       <td className="py-2 px-3 font-medium text-gray-900">
-                                        {/* Level-specific KPI column - shows the actual KPI name */}
-                                        {obj.type === "CORPORATE" ? (
+                                        {/* Second column - show KPI name or N/A */}
+                                        {getKpiSecondColumnContent(kpi) ===
+                                        "N/A" ? (
                                           <span className="text-gray-400 italic text-xs">
                                             N/A
                                           </span>
                                         ) : (
-                                          kpi.name
+                                          getKpiSecondColumnContent(kpi)
                                         )}
                                       </td>
                                     )}
@@ -674,17 +893,28 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                       {kpi.weight}
                                     </td>
                                     <td className="py-2 px-3 text-gray-600">
-                                      {kpi.baseline}
+                                      <div className="flex items-center gap-2">
+                                        <span>{kpi.baseline}</span>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {weightTypeLabels[
+                                            kpi.unitType as keyof typeof weightTypeLabels
+                                          ] || "Unknown"}
+                                        </Badge>
+                                      </div>
                                     </td>
                                     <td className="py-2 px-3 text-gray-600">
                                       {kpi.targets && kpi.targets.length > 0 ? (
                                         (() => {
                                           if (kpi.status === "APPROVED") {
-                                            // Prefer child quarters from children when viewing corporate parent
+                                            // For corporate KPIs, always show their own targets
+                                            // For child KPIs, show child quarters if available
                                             const corporate =
                                               kpi.objective?.type ===
                                               "CORPORATE";
-                                            const childQuarters = corporate
+                                            const childQuarters = !corporate
                                               ? childQuartersByParentId?.[
                                                   kpi.kpiId
                                                 ] || {}
@@ -783,45 +1013,59 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                                         {y}
                                                       </span>
                                                       {/* Year total */}
-                                                      <span className="text-gray-900 font-medium mb-2">
-                                                        {totals[y]}
-                                                      </span>
-                                                      {/* Quarters */}
-                                                      {qYears.includes(y) && (
-                                                        <div className="flex flex-col gap-1">
-                                                          {(
-                                                            [
-                                                              "Q1",
-                                                              "Q2",
-                                                              "Q3",
-                                                              "Q4",
-                                                            ] as const
-                                                          ).map(
-                                                            (label, idx) => (
-                                                              <div
-                                                                key={label}
-                                                                className="flex items-center justify-between text-xs"
-                                                              >
-                                                                <span className="text-gray-600 font-medium">
-                                                                  {label}:
-                                                                </span>
-                                                                <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700 ml-1">
-                                                                  {(
-                                                                    q as Record<
-                                                                      string,
-                                                                      number
-                                                                    >
-                                                                  )[
-                                                                    `q${
-                                                                      idx + 1
-                                                                    }`
-                                                                  ] ?? 0}
-                                                                </span>
-                                                              </div>
-                                                            )
-                                                          )}
+                                                      <div className="flex flex-col gap-1 mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                          <span className="text-gray-900 font-medium">
+                                                            {totals[y]}
+                                                          </span>
+                                                          <Badge
+                                                            variant="outline"
+                                                            className="text-xs"
+                                                          >
+                                                            {weightTypeLabels[
+                                                              kpi.unitType as keyof typeof weightTypeLabels
+                                                            ] || "Unknown"}
+                                                          </Badge>
                                                         </div>
-                                                      )}
+                                                      </div>
+                                                      {/* Quarters - only show for non-corporate KPIs */}
+                                                      {qYears.includes(y) &&
+                                                        kpi.objective?.type !==
+                                                          "CORPORATE" && (
+                                                          <div className="flex flex-col gap-1">
+                                                            {(
+                                                              [
+                                                                "Q1",
+                                                                "Q2",
+                                                                "Q3",
+                                                                "Q4",
+                                                              ] as const
+                                                            ).map(
+                                                              (label, idx) => (
+                                                                <div
+                                                                  key={label}
+                                                                  className="flex items-center justify-between text-xs"
+                                                                >
+                                                                  <span className="text-gray-600 font-medium">
+                                                                    {label}:
+                                                                  </span>
+                                                                  <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700 ml-1">
+                                                                    {(
+                                                                      q as Record<
+                                                                        string,
+                                                                        number
+                                                                      >
+                                                                    )[
+                                                                      `q${
+                                                                        idx + 1
+                                                                      }`
+                                                                    ] ?? 0}
+                                                                  </span>
+                                                                </div>
+                                                              )
+                                                            )}
+                                                          </div>
+                                                        )}
                                                     </div>
                                                   );
                                                 })}
@@ -901,12 +1145,22 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                             return (
                                               <div className="flex flex-wrap gap-1">
                                                 {yearlyYears.map((y) => (
-                                                  <span
+                                                  <div
                                                     key={y}
-                                                    className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-1 text-xs font-medium text-blue-700"
+                                                    className="flex items-center gap-2"
                                                   >
-                                                    {y}: {totals[y]}
-                                                  </span>
+                                                    <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-1 text-xs font-medium text-blue-700">
+                                                      {y}: {totals[y]}
+                                                    </span>
+                                                    <Badge
+                                                      variant="outline"
+                                                      className="text-xs"
+                                                    >
+                                                      {weightTypeLabels[
+                                                        kpi.unitType as keyof typeof weightTypeLabels
+                                                      ] || "Unknown"}
+                                                    </Badge>
+                                                  </div>
                                                 ))}
                                               </div>
                                             );

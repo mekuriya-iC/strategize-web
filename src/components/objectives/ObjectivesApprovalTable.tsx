@@ -17,7 +17,10 @@ import { useUser } from "@/context/UserContext";
 import { useUserDepartments } from "@/hooks/useUserDepartments";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 import { useQuery } from "@apollo/client";
-import { GET_ALL_SUBMISSIONS_NO_TYPE } from "@/lib/graphql/queries/submissions";
+import {
+  GET_KPI_SUBMISSIONS,
+  GET_PENDING_SUBMISSIONS,
+} from "@/lib/graphql/queries/submissions";
 import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
 
 export default function ObjectivesApprovalTable() {
@@ -87,17 +90,79 @@ export default function ObjectivesApprovalTable() {
     limit: 1000,
   });
 
-  // Fetch submissions to get rejection reasons for KPIs
-  const { data: submissionsData } = useQuery(GET_ALL_SUBMISSIONS_NO_TYPE, {
-    variables: { page: 1, limit: 1000 },
+  // Fetch KPI submissions specifically to get rejection reasons
+  const { data: kpiSubmissionsData1 } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: { page: 1, limit: 1000, type: "DIVISION" },
   });
+  const { data: kpiSubmissionsData2 } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+  });
+  const { data: kpiSubmissionsData3 } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+  });
+
+  // Fetch objective submissions to get rejection reasons for objectives
+  const { data: objectiveSubmissionsData1 } = useQuery(
+    GET_PENDING_SUBMISSIONS,
+    {
+      variables: { page: 1, limit: 1000, type: "DIVISION" },
+    }
+  );
+  const { data: objectiveSubmissionsData2 } = useQuery(
+    GET_PENDING_SUBMISSIONS,
+    {
+      variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+    }
+  );
+  const { data: objectiveSubmissionsData3 } = useQuery(
+    GET_PENDING_SUBMISSIONS,
+    {
+      variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+    }
+  );
 
   // Build rejection reasons maps for Objectives and KPIs
   const { objectiveRejectionReasons, kpiRejectionReasons } = useMemo(() => {
     const objectiveReasons: Record<string, string> = {};
     const kpiReasons: Record<string, string> = {};
 
+    // Combine all submission data (both KPI and objective submissions)
+    const submissionsData = {
+      submissions: {
+        items: [
+          ...(kpiSubmissionsData1?.submissions?.items || []),
+          ...(kpiSubmissionsData2?.submissions?.items || []),
+          ...(kpiSubmissionsData3?.submissions?.items || []),
+          ...(objectiveSubmissionsData1?.submissions?.items || []),
+          ...(objectiveSubmissionsData2?.submissions?.items || []),
+          ...(objectiveSubmissionsData3?.submissions?.items || []),
+        ],
+      },
+    };
+
     const allSubmissions = submissionsData?.submissions?.items || [];
+
+    console.log("🔍 Building rejection reasons from submissions:", {
+      totalSubmissions: allSubmissions.length,
+      submissions: allSubmissions.map(
+        (sub: {
+          submissionId: string;
+          type: "OBJECTIVE" | "KPI";
+          status: string;
+          reason?: string;
+          kpi?: { kpiId: string } | null;
+          objective?: { objectiveId: string } | null;
+        }) => ({
+          submissionId: sub.submissionId,
+          type: sub.type,
+          status: sub.status,
+          reason: sub.reason,
+          kpiId: sub.kpi?.kpiId,
+          objectiveId: sub.objective?.objectiveId,
+        })
+      ),
+    });
+
     allSubmissions.forEach(
       (submission: {
         status: string;
@@ -108,30 +173,64 @@ export default function ObjectivesApprovalTable() {
       }) => {
         if (submission.status !== "REJECTED" || !submission.reason) return;
 
+        // console.log("🔍 Processing rejected submission:", {
+        //   submissionId: submission.submissionId,
+        //   type: submission.type,
+        //   status: submission.status,
+        //   reason: submission.reason,
+        //   kpiId: submission.kpi?.kpiId,
+        //   objectiveId: submission.objective?.objectiveId,
+        // });
+
         if (submission.type === "KPI" && submission.kpi?.kpiId) {
           // Direct KPI submission rejection
           kpiReasons[submission.kpi.kpiId] = submission.reason as string;
+          console.log("✅ Mapped KPI rejection reason:", {
+            kpiId: submission.kpi.kpiId,
+            reason: submission.reason,
+          });
         } else if (submission.type === "OBJECTIVE") {
           const objId = (submission.objective?.objectiveId || "") as string;
           // Store reason for the objective itself
           objectiveReasons[objId] = submission.reason as string;
+          console.log("✅ Mapped objective rejection reason:", {
+            objectiveId: objId,
+            reason: submission.reason,
+          });
           // Also map the same reason to any rejected KPIs under that objective
           kpis
             .filter((k) => k.objective?.objectiveId === objId)
             .forEach((k) => {
               if (k.status === "REJECTED") {
                 kpiReasons[k.kpiId] = submission.reason as string;
+                console.log("✅ Mapped objective KPI rejection reason:", {
+                  kpiId: k.kpiId,
+                  reason: submission.reason,
+                });
               }
             });
         }
       }
     );
 
+    console.log("📋 Final rejection reasons maps:", {
+      objectiveRejectionReasons: objectiveReasons,
+      kpiRejectionReasons: kpiReasons,
+    });
+
     return {
       objectiveRejectionReasons: objectiveReasons,
       kpiRejectionReasons: kpiReasons,
     };
-  }, [submissionsData, kpis]);
+  }, [
+    kpiSubmissionsData1,
+    kpiSubmissionsData2,
+    kpiSubmissionsData3,
+    objectiveSubmissionsData1,
+    objectiveSubmissionsData2,
+    objectiveSubmissionsData3,
+    kpis,
+  ]);
 
   // Mutations
   const {
@@ -230,7 +329,12 @@ export default function ObjectivesApprovalTable() {
   };
 
   const handleAddObjective = () => {
-    router.push("/dashboard/objectives/new");
+    // Only allow admin and super admin users to add objectives
+    if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+      router.push("/dashboard/objectives/new");
+    } else {
+      toast.error("You don't have permission to add objectives");
+    }
   };
 
   const handleSearchChange = (value: string) => {
@@ -315,7 +419,7 @@ export default function ObjectivesApprovalTable() {
         onStatusFilterChange={handleStatusFilterChange}
         onClearFilters={handleClearFilters}
         onAddObjective={handleAddObjective}
-        showAddButton={user?.role !== "NORMAL"}
+        showAddButton={user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"}
       />
 
       {/* Summary */}

@@ -39,7 +39,7 @@ const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
 
     setIsDeleting(true);
     try {
-      await removeKpi({ id: kpiId });
+      await removeKpi(kpiId);
       toast.success("KPI deleted successfully", {
         description: `${kpiName} has been removed from the system.`,
       });
@@ -66,8 +66,8 @@ const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
               Are you sure you want to delete this KPI?
             </DialogTitle>
             <p className="text-sm text-gray-600 text-center">
-              This action cannot be undone. The KPI &quot;{kpiName}&quot; will be
-              permanently removed from the system.
+              This action cannot be undone. The KPI &quot;{kpiName}&quot; will
+              be permanently removed from the system.
             </p>
           </div>
         </DialogHeader>

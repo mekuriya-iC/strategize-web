@@ -161,6 +161,46 @@ export const GET_PENDING_SUBMISSIONS = gql`
   }
 `;
 
+// New query to fetch KPI submissions specifically
+export const GET_KPI_SUBMISSIONS = gql`
+  query KPISubmissions($page: Int, $limit: Int, $type: ObjectiveType!) {
+    submissions(page: $page, limit: $limit, type: $type, submissionType: KPI) {
+      items {
+        submissionId
+        type
+        level
+        status
+        reason
+        submittedBy {
+          employeeId
+          fullName
+        }
+        kpi {
+          kpiId
+          name
+          status
+          weight
+          baseline
+          objective {
+            objectiveId
+            name
+            type
+          }
+        }
+        createdAt
+        updatedAt
+      }
+      meta {
+        totalItems
+        itemCount
+        itemsPerPage
+        totalPages
+        currentPage
+      }
+    }
+  }
+`;
+
 export const GET_SUBMISSIONS_BY_STATUS = gql`
   query SubmissionsByStatus(
     $page: Int
@@ -210,3 +250,5 @@ export const GET_SUBMISSIONS_BY_STATUS = gql`
     }
   }
 `;
+
+// New query specifically for KPI submissions

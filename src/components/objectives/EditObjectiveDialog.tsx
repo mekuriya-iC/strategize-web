@@ -19,6 +19,7 @@ import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
 import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
 import { Objective, ObjectiveType, ObjectiveStatus } from "@/types/graphql";
 import { toast } from "sonner";
+import { useUser } from "@/context/UserContext";
 
 interface EditObjectiveDialogProps {
   children: React.ReactNode;
@@ -34,6 +35,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
   const [open, setOpen] = useState(false);
   const { updateObjective, loading } = useObjectiveMutations();
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
+  const { user } = useUser();
 
   // Form state
   const [objectiveName, setObjectiveName] = useState("");
@@ -42,6 +44,11 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
   const [objectiveStatus, setObjectiveStatus] =
     useState<ObjectiveStatus>("NOT_SUBMITTED");
   const [strategicPeriodId, setStrategicPeriodId] = useState("");
+
+  // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
+  const isCorporateUser =
+    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const isNonCorporateUser = !isCorporateUser;
 
   // Initialize form with objective data when dialog opens
   useEffect(() => {
@@ -56,8 +63,15 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!objectiveName.trim() || !strategicPeriodId) {
-      toast.error("Please fill in all required fields");
+    // For non-corporate users, only validate name since other fields are disabled
+    if (!objectiveName.trim()) {
+      toast.error("Please fill in the objective name");
+      return;
+    }
+
+    // For corporate users, validate strategic period as well
+    if (isCorporateUser && !strategicPeriodId) {
+      toast.error("Please select a strategic period");
       return;
     }
 
@@ -67,14 +81,20 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
         (objectiveType as unknown as string) === "INDIVIDUAL"
           ? ("PERSONNEL" as ObjectiveType)
           : objectiveType;
+
+      // For non-corporate users, keep original status and strategic period
+      const updateInput = {
+        objectiveId: objective.objectiveId,
+        name: objectiveName.trim(),
+        type: normalizedType,
+        status: isNonCorporateUser ? objective.status : objectiveStatus,
+        strategicPeriodId: isNonCorporateUser
+          ? objective.strategicPeriod?.strategicPeriodId || ""
+          : strategicPeriodId,
+      };
+
       await updateObjective({
-        input: {
-          objectiveId: objective.objectiveId,
-          name: objectiveName.trim(),
-          type: normalizedType,
-          status: objectiveStatus,
-          strategicPeriodId: strategicPeriodId,
-        },
+        input: updateInput,
       });
 
       toast.success("Objective updated successfully");
@@ -160,7 +180,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                   onValueChange={(value: ObjectiveStatus) =>
                     setObjectiveStatus(value)
                   }
-                  disabled={loading}
+                  disabled={loading || isNonCorporateUser}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Status" />
@@ -172,6 +192,11 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                     <SelectItem value="REJECTED">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
+                {isNonCorporateUser && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status is managed by the approval process
+                  </p>
+                )}
               </div>
             </div>
 
@@ -183,7 +208,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
               <Select
                 value={strategicPeriodId}
                 onValueChange={setStrategicPeriodId}
-                disabled={loading || periodsLoading}
+                disabled={loading || periodsLoading || isNonCorporateUser}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select Strategic Period" />
@@ -218,6 +243,11 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                   )}
                 </SelectContent>
               </Select>
+              {isNonCorporateUser && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Strategic period is inherited from the parent objective
+                </p>
+              )}
             </div>
 
             {/* Buttons */}
@@ -238,7 +268,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                   loading ||
                   periodsLoading ||
                   !objectiveName.trim() ||
-                  !strategicPeriodId
+                  (isCorporateUser && !strategicPeriodId)
                 }
               >
                 {loading ? "Updating..." : "Update Objective"}

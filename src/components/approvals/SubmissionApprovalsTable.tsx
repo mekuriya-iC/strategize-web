@@ -15,7 +15,6 @@ import { useObjectives } from "@/hooks/useObjectives";
 import { useKPIs } from "@/hooks/useKPIs";
 import { toast } from "sonner";
 import { CheckCircle, XCircle } from "lucide-react";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
 import type { Kpi } from "@/types/graphql";
 import {
   Select,
@@ -25,13 +24,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Type for submissions that can be either main submissions or KPI submissions
+type SubmissionData = {
+  submissionId: string;
+  type: string;
+  status: string;
+  reason?: string;
+  kpi?: { kpiId: string } | null;
+  objective?: { objectiveId: string } | null;
+  level?: string;
+  submittedBy?: { fullName: string };
+  associatedKpiSubmissions?: SubmissionData[];
+  kpiSubmissionCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export default function SubmissionApprovalsTable() {
   const { user } = useUser();
   const { selectedUnit } = useOrgUnit();
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("pending"); // Default to pending for submissions
+  const [statusFilter, setStatusFilter] = useState("all"); // Default to all submissions for approval table
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
@@ -135,69 +150,12 @@ export default function SubmissionApprovalsTable() {
   const {
     handleApproveSubmissionWithItemUpdate,
     handleRejectSubmissionWithItemUpdate,
-    propagateQuarterlyValues,
     loading: mutationLoading,
   } = useSubmissionApprovalMutations();
 
-  // KPI mutations for nested KPIs
-  const { updateKpi } = useKPIMutations();
+  // Removed unused updateKpi variable
 
-  // Helper function to handle nested KPI approval/rejection
-  const handleNestedKPIAction = async (
-    kpiId: string,
-    action: "APPROVED" | "REJECTED"
-  ) => {
-    try {
-      await updateKpi({
-        input: {
-          kpiId: kpiId,
-          status: action,
-        },
-      });
-
-      // Propagate quarterly values up the hierarchy for KPI approvals
-      if (action === "APPROVED") {
-        console.log(
-          "🔄 Starting quarterly propagation for approved nested KPI:",
-          kpiId
-        );
-        try {
-          await propagateQuarterlyValues(kpiId);
-          // Force refetch after propagation to ensure UI updates
-          console.log("🔄 Refetching data after propagation...");
-          await refetch();
-
-          // Additional delay and force a final refetch to ensure UI sync
-          setTimeout(async () => {
-            console.log("🔄 Final refetch to ensure UI sync...");
-            await refetch();
-
-            // Ultimate fallback: force page refresh to ensure fresh data
-            setTimeout(() => {
-              console.log(
-                "🔄 Forcing page refresh for absolute data freshness..."
-              );
-              window.location.reload();
-            }, 1000);
-          }, 2000);
-        } catch (propagationError) {
-          console.error(
-            "❌ Error in propagation for nested KPI:",
-            propagationError
-          );
-          // Don't fail the main approval, just log the error
-        }
-      }
-
-      toast.success(`KPI ${action.toLowerCase()} successfully`);
-      if (action !== "APPROVED") {
-        await refetch();
-      }
-    } catch (error) {
-      console.error(`Error ${action.toLowerCase()} KPI:`, error);
-      toast.error(`Failed to ${action.toLowerCase()} KPI`);
-    }
-  };
+  // Removed unused handleNestedKPIAction function
 
   // Filter submissions based on search term (focus on objectives)
   const filteredSubmissions = useMemo(() => {
@@ -228,20 +186,6 @@ export default function SubmissionApprovalsTable() {
         ? prev.filter((id) => id !== submissionId)
         : [...prev, submissionId]
     );
-  };
-
-  const handleSelectAll = () => {
-    const objectiveSubmissions = filteredSubmissions.filter(
-      (sub) => sub.type === "OBJECTIVE"
-    );
-    const allPageIds = objectiveSubmissions.map((sub) => sub.submissionId);
-    const allSelected = allPageIds.every((id) => selected.includes(id));
-
-    if (allSelected) {
-      setSelected((prev) => prev.filter((id) => !allPageIds.includes(id)));
-    } else {
-      setSelected((prev) => [...new Set([...prev, ...allPageIds])]);
-    }
   };
 
   const handleApprove = async () => {
@@ -294,49 +238,94 @@ export default function SubmissionApprovalsTable() {
 
   const handleApproveSubmission = async (
     submissionId: string,
-    reason: string,
-    selectedKPIs?: string[]
+    reason: string
   ) => {
     try {
-      const submission = submissions.find(
+      // console.log("🔍 APPROVAL DEBUG - Starting approval for:", {
+      //   submissionId,
+      //   reason,
+      //   totalSubmissions: submissions.length,
+      // });
+
+      // First, try to find in main submissions array (for objectives)
+      let submission: SubmissionData | undefined = submissions.find(
         (sub) => sub.submissionId === submissionId
       );
 
-      // Check if this is a nested KPI (submissionId is actually a KPI ID)
+      // If not found in main array, search in associated KPI submissions
       if (!submission) {
-        // This might be a nested KPI - check if submissionId is a valid UUID format
-        const isUUID =
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            submissionId
-          );
-        if (isUUID) {
-          await handleNestedKPIAction(submissionId, "APPROVED");
-          return;
+        // console.log(
+        //   "🔍 APPROVAL DEBUG - Not found in main array, searching in KPI submissions..."
+        // );
+
+        for (const obj of submissions) {
+          const objWithKpis = obj as unknown as {
+            associatedKpiSubmissions?: Array<{
+              submissionId: string;
+              type: string;
+              status: string;
+              reason?: string;
+              kpi?: { kpiId: string };
+              objective?: { objectiveId: string };
+            }>;
+          };
+          if (objWithKpis.associatedKpiSubmissions) {
+            const kpiSubmission = objWithKpis.associatedKpiSubmissions.find(
+              (kpi: {
+                submissionId: string;
+                type: string;
+                status: string;
+                reason?: string;
+                kpi?: { kpiId: string };
+                objective?: { objectiveId: string };
+              }) => kpi.submissionId === submissionId
+            );
+            if (kpiSubmission) {
+              submission = kpiSubmission as SubmissionData;
+              // console.log("🔍 APPROVAL DEBUG - Found KPI submission:", {
+              //   submissionId: kpiSubmission.submissionId,
+              //   type: kpiSubmission.type,
+              //   status: kpiSubmission.status,
+              // });
+              break;
+            }
+          }
         }
+      }
+
+      // If submission not found, show error
+      if (!submission) {
+        // console.log("🔍 APPROVAL DEBUG - Submission not found anywhere");
         toast.error("Submission not found");
         return;
       }
 
-      await handleApproveSubmissionWithItemUpdate(submission, reason);
+      // Extract the minimal submission data required by the function
+      const minimalSubmission = {
+        submissionId: submission.submissionId,
+        type: submission.type as "OBJECTIVE" | "KPI",
+        objective: submission.objective,
+        kpi: submission.kpi,
+      };
 
-      // If selectedKPIs is provided, handle KPI approvals/rejections
-      if (selectedKPIs && selectedKPIs.length > 0) {
-        const kpiPromises = selectedKPIs.map(async (kpiId) => {
-          await handleNestedKPIAction(kpiId, "APPROVED");
-        });
+      // console.log(
+      //   "🔍 APPROVAL DEBUG - About to call handleApproveSubmissionWithItemUpdate with:",
+      //   {
+      //     submissionId: minimalSubmission.submissionId,
+      //     type: minimalSubmission.type,
+      //     reason,
+      //   }
+      // );
 
-        await Promise.all(kpiPromises);
-        toast.success(
-          `Objective approved with ${selectedKPIs.length} KPI${
-            selectedKPIs.length > 1 ? "s" : ""
-          }`
-        );
-      } else {
-        toast.success(`Submission approved successfully`);
-      }
+      await handleApproveSubmissionWithItemUpdate(minimalSubmission, reason);
+
+      // console.log(
+      //   "🔍 APPROVAL DEBUG - handleApproveSubmissionWithItemUpdate completed successfully"
+      // );
+      toast.success(`Submission approved successfully`);
 
       // Force a comprehensive refetch after all approvals and propagations
-      console.log("🔄 Comprehensive refetch after approval...");
+      // console.log("🔄 Comprehensive refetch after approval...");
       await refetch();
     } catch (error) {
       console.error("Error approving submission:", error);
@@ -349,28 +338,105 @@ export default function SubmissionApprovalsTable() {
     reason: string
   ) => {
     try {
-      const submission = submissions.find(
+      // console.log("🚨 REJECTION DEBUG - Starting rejection for:", {
+      //   submissionId,
+      //   reason,
+      //   totalSubmissions: submissions.length,
+      // });
+
+      // First, try to find in main submissions array (for objectives)
+      let submission: SubmissionData | undefined = submissions.find(
         (sub) => sub.submissionId === submissionId
       );
 
-      // Check if this is a nested KPI (submissionId is actually a KPI ID)
+      // If not found in main array, search in associated KPI submissions
       if (!submission) {
-        // This might be a nested KPI - check if submissionId is a valid UUID format
-        const isUUID =
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            submissionId
-          );
-        if (isUUID) {
-          await handleNestedKPIAction(submissionId, "REJECTED");
-          return;
+        // console.log(
+        //   "🚨 REJECTION DEBUG - Not found in main array, searching in KPI submissions..."
+        // );
+
+        for (const obj of submissions) {
+          const objWithKpis = obj as unknown as {
+            associatedKpiSubmissions?: Array<{
+              submissionId: string;
+              type: string;
+              status: string;
+              reason?: string;
+              kpi?: { kpiId: string };
+              objective?: { objectiveId: string };
+            }>;
+          };
+          if (objWithKpis.associatedKpiSubmissions) {
+            const kpiSubmission = objWithKpis.associatedKpiSubmissions.find(
+              (kpi: {
+                submissionId: string;
+                type: string;
+                status: string;
+                reason?: string;
+                kpi?: { kpiId: string };
+                objective?: { objectiveId: string };
+              }) => kpi.submissionId === submissionId
+            );
+            if (kpiSubmission) {
+              submission = kpiSubmission as SubmissionData;
+              // console.log("🚨 REJECTION DEBUG - Found KPI submission:", {
+              //   submissionId: kpiSubmission.submissionId,
+              //   type: kpiSubmission.type,
+              //   status: kpiSubmission.status,
+              // });
+              break;
+            }
+          }
         }
+      }
+
+      // console.log("🚨 REJECTION DEBUG - Found submission:", {
+      //   found: !!submission,
+      //   submissionType: submission?.type,
+      //   submissionStatus: submission?.status,
+      //   submissionReason: submission?.reason,
+      // });
+
+      // If submission not found, show error
+      if (!submission) {
+        // console.log("🚨 REJECTION DEBUG - Submission not found anywhere");
         toast.error("Submission not found");
         return;
       }
 
-      await handleRejectSubmissionWithItemUpdate(submission, reason);
+      // Extract the minimal submission data required by the function
+      const minimalSubmission = {
+        submissionId: submission.submissionId,
+        type: submission.type as "OBJECTIVE" | "KPI",
+        objective: submission.objective,
+        kpi: submission.kpi,
+      };
+
+      // console.log(
+      //   "🚨 REJECTION DEBUG - Calling handleRejectSubmissionWithItemUpdate..."
+      // );
+      // console.log(
+      //   "🔍 REJECTION DEBUG - About to call handleRejectSubmissionWithItemUpdate with:",
+      //   {
+      //     submissionId: minimalSubmission.submissionId,
+      //     type: minimalSubmission.type,
+      //     reason,
+      //   }
+      // );
+
+      await handleRejectSubmissionWithItemUpdate(minimalSubmission, reason);
+
+      // console.log(
+      //   "🚨 REJECTION DEBUG - Mutation completed, calling refetch..."
+      // );
       toast.success(`Submission rejected successfully`);
+
+      // console.log(
+      //   "🚨 REJECTION DEBUG - Before refetch, submissions count:",
+      //   submissions.length
+      // );
       await refetch();
+      // console.log("🚨 REJECTION DEBUG - After refetch completed");
     } catch (error) {
       console.error("Error rejecting submission:", error);
       toast.error("Failed to reject submission");
@@ -517,7 +583,6 @@ export default function SubmissionApprovalsTable() {
         submissions={filteredSubmissions as GroupedSubmission[]}
         selected={selected}
         onSelect={handleSelect}
-        onSelectAll={handleSelectAll}
         onApproveSubmission={handleApproveSubmission}
         onRejectSubmission={handleRejectSubmission}
         loading={loading}

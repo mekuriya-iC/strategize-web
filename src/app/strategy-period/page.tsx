@@ -3,8 +3,13 @@ import Logo from "@/components/Logo";
 import StrategyPeriodGrid from "@/components/strategy-period/StrategyPeriodGrid";
 import NewStrategyButton from "@/components/strategy-period/NewStrategyButton";
 import { StrategicPeriodProvider } from "@/context/StrategicPeriodContext";
+import { UserProvider } from "@/context/UserContext";
+import { useUser } from "@/context/UserContext";
 
-export default function StrategyPeriodPage() {
+function StrategyPeriodContent() {
+  const { user } = useUser();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
   return (
     <StrategicPeriodProvider>
       <div className="min-h-screen bg-white p-4 flex flex-col items-center">
@@ -18,11 +23,21 @@ export default function StrategyPeriodPage() {
             Choose Strategy Period
           </h1>
           <StrategyPeriodGrid />
-          <div className="flex justify-center mt-24">
-            <NewStrategyButton />
-          </div>
+          {isAdmin && (
+            <div className="flex justify-center mt-24">
+              <NewStrategyButton />
+            </div>
+          )}
         </div>
       </div>
     </StrategicPeriodProvider>
+  );
+}
+
+export default function StrategyPeriodPage() {
+  return (
+    <UserProvider>
+      <StrategyPeriodContent />
+    </UserProvider>
   );
 }

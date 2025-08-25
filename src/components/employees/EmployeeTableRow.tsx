@@ -11,6 +11,7 @@ interface Employee {
   fullName: string;
   profilePic: string;
   email: string;
+  title: string;
   department: string;
   phone: string;
   employedOn: string;
@@ -43,6 +44,9 @@ const EmployeeTableRow = ({
       </TableCell>
       <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.email}
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        {employee.title}
       </TableCell>
       <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.department}

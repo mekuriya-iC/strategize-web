@@ -42,6 +42,7 @@ interface FormData {
   status: EmployeeStatus;
   password: string;
   picture: string;
+  title: string;
 }
 
 interface FormErrors {
@@ -53,6 +54,7 @@ interface FormErrors {
   status?: string;
   password?: string;
   picture?: string;
+  title?: string;
 }
 
 // Helper function to parse GraphQL errors and provide user-friendly messages
@@ -141,6 +143,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
     status: "ACTIVE",
     password: "",
     picture: "",
+    title: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -172,6 +175,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
         status: employee.status,
         password: "", // Always empty for editing
         picture: employee.picture,
+        title: employee.title,
       });
 
       // Set existing image preview
@@ -214,6 +218,10 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
 
     if (!formData.startDate) {
       newErrors.startDate = "Start date is required";
+    }
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
     }
 
     // Password is optional for editing
@@ -297,6 +305,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
       role: formData.role,
       status: formData.status,
       picture: formData.picture,
+      title: formData.title,
     };
 
     // Only include password if it's provided
@@ -463,7 +472,22 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
             </div>
           </div>
 
-          {/* Row 4: Password (Optional for editing) */}
+          {/* Row 4: Title */}
+          <div className="space-y-2 sm:space-y-3">
+            <Label htmlFor="title">Title *</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => handleInputChange("title", e.target.value)}
+              placeholder="Enter job title"
+              className={errors.title ? "border-red-500" : ""}
+            />
+            {errors.title && (
+              <p className="text-sm text-red-500">{errors.title}</p>
+            )}
+          </div>
+
+          {/* Row 5: Password (Optional for editing) */}
           <div className="space-y-2 sm:space-y-3">
             <Label htmlFor="password">
               Password (leave empty to keep current)
@@ -481,7 +505,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
             )}
           </div>
 
-          {/* Row 5: Profile Picture */}
+          {/* Row 6: Profile Picture */}
           <div className="space-y-2 sm:space-y-3">
             <Label>Profile Picture</Label>
             {!previewUrl ? (

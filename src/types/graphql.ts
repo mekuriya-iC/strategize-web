@@ -25,6 +25,7 @@ export interface CreateEmployeeInput {
   role: EmployeeRole;
   startDate: string;
   status: EmployeeStatus;
+  title: string;
 }
 
 export interface UpdateEmployeeInput {
@@ -37,6 +38,7 @@ export interface UpdateEmployeeInput {
   role?: EmployeeRole;
   startDate?: string;
   status?: EmployeeStatus;
+  title?: string;
 }
 
 // Division Input Types
@@ -75,6 +77,7 @@ export interface Employee {
   role: EmployeeRole;
   startDate: string;
   status: EmployeeStatus;
+  title: string;
   createdAt: string;
   updatedAt: string;
   departments?: Department[];
@@ -314,27 +317,35 @@ export interface PaginatedObjectives {
 
 // KPI Types
 export type KpiWeightType = "NUMBER" | "PERCENT";
+export type KpiUnitType = "NUMBER" | "PERCENT";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
+export type KpiTargetStatus =
+  | "NOT_SUBMITTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
 
 // Restore KPI target types
 export interface KpiTarget {
   timeline: string;
-  target: number;
+  target: number; // Float in GraphQL schema
 }
 
 export interface KpiTargetInput {
   timeline: string;
-  target: number;
+  target: number; // Float in GraphQL schema
 }
 
 export interface Kpi {
   kpiId: string;
   name: string;
-  baseline: number;
-  weight: number;
-  weightType: KpiWeightType;
+  baseline: number; // Float in GraphQL schema
+  weight: number; // Float in GraphQL schema - accepts decimal values
+  unitType: KpiUnitType;
   status: KpiStatus;
+  targetStatus?: KpiTargetStatus;
   targets: KpiTarget[];
+  parent?: { kpiId: string; name?: string } | null;
   objective: Objective | null;
   createdAt: string;
   updatedAt: string;
@@ -342,22 +353,25 @@ export interface Kpi {
 
 export interface CreateKpiInput {
   name: string;
-  baseline: number;
-  weight: number;
-  weightType: KpiWeightType;
+  baseline: number; // Float in GraphQL schema
+  weight: number; // Float in GraphQL schema - accepts decimal values
+  unitType: KpiUnitType;
   targets: KpiTargetInput[];
   objectiveId: string;
+  parentId?: string;
 }
 
 export interface UpdateKpiInput {
   kpiId: string;
   name?: string;
-  baseline?: number;
-  weight?: number;
-  weightType?: KpiWeightType;
+  baseline?: number; // Float in GraphQL schema
+  weight?: number; // Float in GraphQL schema - accepts decimal values
+  unitType?: KpiUnitType;
   status?: KpiStatus;
+  targetStatus?: KpiTargetStatus;
   targets?: KpiTargetInput[];
   objectiveId?: string;
+  parentId?: string;
 }
 
 export interface PaginatedKpis {

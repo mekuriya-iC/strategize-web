@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,10 +25,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApproveSubmissionDialog from "./ApproveSubmissionDialog";
 import RejectSubmissionDialog from "./RejectSubmissionDialog";
 // import ApproveObjectiveWithKPIsDialog from "./ApproveObjectiveWithKPIsDialog";
 import { Kpi } from "@/types/graphql";
+import { useUser } from "@/context/UserContext";
 
 type KpiSubmission = {
   submissionId: string;
@@ -89,7 +91,6 @@ interface SubmissionApprovalTableProps {
   submissions: GroupedSubmission[];
   selected: string[];
   onSelect: (submissionId: string) => void;
-  onSelectAll: () => void;
   onApproveSubmission: (submissionId: string, reason: string) => Promise<void>;
   onRejectSubmission: (submissionId: string, reason: string) => Promise<void>;
   loading?: boolean;
@@ -119,7 +120,6 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   submissions,
   selected,
   onSelect,
-  onSelectAll,
   onApproveSubmission,
   onRejectSubmission,
   loading = false,
@@ -129,15 +129,58 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   allKpis = [],
 }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("division");
+  const { user } = useUser();
+
+  // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
+  const isCorporateLevel =
+    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
+  // Filter submissions based on active tab for corporate level users
+  const filteredSubmissions = useMemo(() => {
+    if (!isCorporateLevel) {
+      return submissions; // Return all submissions for non-corporate users
+    }
+
+    if (activeTab === "division") {
+      return submissions.filter(
+        (submission) => submission.level === "DIVISION"
+      );
+    } else if (activeTab === "department") {
+      return submissions.filter(
+        (submission) => submission.level === "DEPARTMENT"
+      );
+    }
+
+    return submissions;
+  }, [submissions, activeTab, isCorporateLevel]);
 
   // All submissions are objective submissions with nested KPIs
-  const objectiveSubmissions = submissions;
+  const objectiveSubmissions = filteredSubmissions;
 
   // Debug logging
   console.log("SubmissionApprovalTable Debug:", {
     totalSubmissions: submissions.length,
+    filteredSubmissions: filteredSubmissions.length,
     objectiveSubmissions: objectiveSubmissions.length,
-    objectiveSubmissionsData: objectiveSubmissions,
+    objectiveSubmissionsData: objectiveSubmissions.map((obj) => ({
+      submissionId: obj.submissionId,
+      status: obj.status,
+      reason: obj.reason,
+      objectiveId: obj.objective?.objectiveId,
+      objectiveName: obj.objective?.name,
+      objectiveType: obj.objective?.type,
+      kpisCount: obj.objective?.kpis?.length || 0,
+      kpiSubmissionsCount: obj.associatedKpiSubmissions?.length || 0,
+      kpiSubmissions: obj.associatedKpiSubmissions?.map((k) => ({
+        submissionId: k.submissionId,
+        status: k.status,
+        reason: k.reason,
+        kpiId: k.kpi?.kpiId,
+      })),
+    })),
+    activeTab,
+    isCorporateLevel,
     // Add more detailed debugging
     objectiveIds: objectiveSubmissions.map((obj) => obj.objective?.objectiveId),
   });
@@ -173,6 +216,102 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
       : undefined;
     return { strategicName, childName, hasParent };
   };
+
+  // Function to get conditional column headers based on objective type
+  const getColumnHeaders = (objectiveType?: string) => {
+    if (!objectiveType) {
+      return {
+        firstColumn: "STRATEGIC KPI",
+        secondColumn: "DIVISION/DEPARTMENT/PERSONAL KPI",
+        showSecondColumn: true,
+      };
+    }
+
+    switch (objectiveType) {
+      case "CORPORATE":
+        return {
+          firstColumn: "CORPORATE KPI",
+          secondColumn: "N/A",
+          showSecondColumn: false,
+        };
+      case "DIVISION":
+        return {
+          firstColumn: "STRATEGIC KPI",
+          secondColumn: "DIVISION KPI",
+          showSecondColumn: true,
+        };
+      case "DEPARTMENT":
+        return {
+          firstColumn: "DIVISION KPI",
+          secondColumn: "DEPARTMENT KPI",
+          showSecondColumn: true,
+        };
+      case "PERSONNEL":
+        return {
+          firstColumn: "DEPARTMENT KPI",
+          secondColumn: "PERSONAL KPI",
+          showSecondColumn: true,
+        };
+      default:
+        return {
+          firstColumn: "STRATEGIC KPI",
+          secondColumn: "DIVISION/DEPARTMENT/PERSONAL KPI",
+          showSecondColumn: true,
+        };
+    }
+  };
+
+  // Function to get conditional column headers for objectives
+  const getObjectiveColumnHeaders = (objectiveType?: string) => {
+    if (!objectiveType) {
+      return {
+        firstColumn: "STRATEGIC OBJECTIVE",
+        secondColumn: "DIVISION/DEPARTMENT/PERSONAL OBJECTIVE",
+        showSecondColumn: true,
+      };
+    }
+
+    switch (objectiveType) {
+      case "CORPORATE":
+        return {
+          firstColumn: "CORPORATE OBJECTIVE",
+          secondColumn: "N/A",
+          showSecondColumn: false,
+        };
+      case "DIVISION":
+        return {
+          firstColumn: "STRATEGIC OBJECTIVE",
+          secondColumn: "DIVISION OBJECTIVE",
+          showSecondColumn: true,
+        };
+      case "DEPARTMENT":
+        return {
+          firstColumn: "DIVISION OBJECTIVE",
+          secondColumn: "DEPARTMENT OBJECTIVE",
+          showSecondColumn: true,
+        };
+      case "PERSONNEL":
+        return {
+          firstColumn: "DEPARTMENT OBJECTIVE",
+          secondColumn: "PERSONAL OBJECTIVE",
+          showSecondColumn: true,
+        };
+      default:
+        return {
+          firstColumn: "STRATEGIC OBJECTIVE",
+          secondColumn: "DIVISION/DEPARTMENT/PERSONAL OBJECTIVE",
+          showSecondColumn: true,
+        };
+    }
+  };
+
+  // Removed unused getTargetLabel function
+
+  // Removed unused getReviewerTargetLabel function
+
+  // Removed unused getTargetLabelByActiveTab function
+
+  // Removed unused getTargetLabelByObjectiveType function
 
   // Helper: aggregate targets into yearly totals
   const getYearlyTotals = (
@@ -244,6 +383,25 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
     objectiveSubmissions.length > 0 &&
     objectiveSubmissions.every((obj) => selected.includes(obj.submissionId));
 
+  // Custom onSelectAll handler for filtered submissions
+  const handleSelectAll = () => {
+    if (allSelected) {
+      // Deselect all filtered submissions
+      objectiveSubmissions.forEach((obj) => {
+        if (selected.includes(obj.submissionId)) {
+          onSelect(obj.submissionId);
+        }
+      });
+    } else {
+      // Select all filtered submissions
+      objectiveSubmissions.forEach((obj) => {
+        if (!selected.includes(obj.submissionId)) {
+          onSelect(obj.submissionId);
+        }
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
@@ -275,24 +433,96 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
     );
   }
 
+  // If no filtered submissions but there are submissions, show empty state for current tab
+  if (filteredSubmissions.length === 0 && submissions.length > 0) {
+    return (
+      <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+        {isCorporateLevel && (
+          <div className="p-4 border-b border-gray-200">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="division">Division Objectives</TabsTrigger>
+                <TabsTrigger value="department">
+                  Department Objectives
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
+        <div className="p-8 text-center">
+          <p className="text-gray-600">
+            No {activeTab === "division" ? "division" : "department"}{" "}
+            submissions found for approval.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+      {isCorporateLevel && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="mb-4">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Showing {filteredSubmissions.length} of {submissions.length}{" "}
+                objective submissions
+              </div>
+              <div className="flex gap-4 text-xs text-gray-500">
+                <span>
+                  Division:{" "}
+                  {submissions.filter((s) => s.level === "DIVISION").length}
+                </span>
+                <span>
+                  Department:{" "}
+                  {submissions.filter((s) => s.level === "DEPARTMENT").length}
+                </span>
+              </div>
+            </div>
+          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="division">Division Objectives</TabsTrigger>
+              <TabsTrigger value="department">
+                Department Objectives
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow className="border-b border-gray-200 bg-gray-50">
             <TableHead className="px-6 py-4 w-12">
               <Checkbox
                 checked={allSelected}
-                onCheckedChange={onSelectAll}
+                onCheckedChange={handleSelectAll}
                 className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
               />
             </TableHead>
-            <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Strategic Objective
-            </TableHead>
-            <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Division/Department/Personal Objective
-            </TableHead>
+            {(() => {
+              // Get the most common objective type from the submissions to determine column headers
+              const objectiveTypes = objectiveSubmissions
+                .map((s) => s.objective?.type)
+                .filter(Boolean);
+              const mostCommonType =
+                objectiveTypes.length > 0 ? objectiveTypes[0] : undefined;
+              const columnHeaders = getObjectiveColumnHeaders(mostCommonType);
+
+              return (
+                <>
+                  <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {columnHeaders.firstColumn}
+                  </TableHead>
+                  {columnHeaders.showSecondColumn && (
+                    <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {columnHeaders.secondColumn}
+                    </TableHead>
+                  )}
+                </>
+              );
+            })()}
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Submitted By
             </TableHead>
@@ -317,23 +547,33 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
         <TableBody>
           {objectiveSubmissions.map((obj, idx) => {
             const kpiSubmissions = getKPISubmissionsForObjective(obj);
-            // Fallback: if backend nested KPIs directly on objective submission
-            const nestedKPIs = obj.objective?.kpis || [];
 
-            const effectiveKpiSubmissions =
-              kpiSubmissions.length > 0
-                ? kpiSubmissions
-                : nestedKPIs.map((k) => ({
-                    // Mark as pseudo entries derived from objective.kpis
-                    isPseudo: true,
-                    submissionId: k.kpiId,
-                    status: k.status || obj.status,
-                    reason: obj.reason, // Pass the objective's rejection reason to pseudo KPI submissions
-                    kpi: k,
-                    submittedBy: obj.submittedBy,
-                  }));
+            // Debug: Log what we're getting
+            console.log(
+              `🔍 DEBUG for objective ${obj.objective?.objectiveId}:`,
+              {
+                realKpiSubmissions: kpiSubmissions.length,
+                realKpiIds: kpiSubmissions.map((k) => k.kpi?.kpiId),
+              }
+            );
+
+            // Use only real KPI submissions - no more pseudo KPIs
+            const effectiveKpiSubmissions = kpiSubmissions;
 
             const kpiCount = effectiveKpiSubmissions.length;
+
+            // Debug: Log the final KPI count
+            console.log(
+              `🎯 FINAL KPI COUNT for objective ${obj.objective?.objectiveId}:`,
+              {
+                kpiCount,
+                effectiveKpiSubmissions: effectiveKpiSubmissions.map((k) => ({
+                  submissionId: k.submissionId,
+                  kpiId: k.kpi?.kpiId,
+                  isPseudo: (k as { isPseudo?: boolean }).isPseudo,
+                })),
+              }
+            );
             const { strategicName, childName, hasParent } =
               resolveObjectiveNames(obj);
 
@@ -358,25 +598,57 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                       className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                     />
                   </TableCell>
-                  <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
-                    <div className="truncate" title={strategicName}>
-                      {strategicName}
-                    </div>
-                    {hasParent && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        From: Corporate
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
-                    <div className="truncate" title={childName || "N/A"}>
-                      {childName
-                        ? childName
-                        : hasParent
-                        ? "N/A"
-                        : strategicName}
-                    </div>
-                  </TableCell>
+                  {(() => {
+                    const columnHeaders = getObjectiveColumnHeaders(
+                      obj.objective?.type
+                    );
+
+                    // For corporate objectives, show objective name in first column only
+                    if (obj.objective?.type === "CORPORATE") {
+                      return (
+                        <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
+                          <div className="truncate" title={strategicName}>
+                            {strategicName}
+                          </div>
+                        </TableCell>
+                      );
+                    }
+
+                    // For other objectives, show parent in first column and child in second column
+                    return (
+                      <>
+                        <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
+                          <div className="truncate" title={strategicName}>
+                            {strategicName}
+                          </div>
+                          {hasParent && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              From:{" "}
+                              {obj.objective?.type === "DEPARTMENT"
+                                ? "Division"
+                                : obj.objective?.type === "PERSONNEL"
+                                ? "Department"
+                                : "Corporate"}
+                            </div>
+                          )}
+                        </TableCell>
+                        {columnHeaders.showSecondColumn && (
+                          <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
+                            <div
+                              className="truncate"
+                              title={childName || "N/A"}
+                            >
+                              {childName
+                                ? childName
+                                : hasParent
+                                ? "N/A"
+                                : strategicName}
+                            </div>
+                          </TableCell>
+                        )}
+                      </>
+                    );
+                  })()}
                   <TableCell className="px-6 py-4 text-gray-600">
                     {obj.submittedBy.fullName}
                   </TableCell>
@@ -571,12 +843,23 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                               <Table>
                                 <TableHeader>
                                   <TableRow className="bg-gray-50">
-                                    <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                                      Strategic KPI
-                                    </TableHead>
-                                    <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                                      Division/Department/Personal KPI
-                                    </TableHead>
+                                    {(() => {
+                                      const columnHeaders = getColumnHeaders(
+                                        obj.objective?.type
+                                      );
+                                      return (
+                                        <>
+                                          <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
+                                            {columnHeaders.firstColumn}
+                                          </TableHead>
+                                          {columnHeaders.showSecondColumn && (
+                                            <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
+                                              {columnHeaders.secondColumn}
+                                            </TableHead>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                     <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                                       Weight (%)
                                     </TableHead>
@@ -602,15 +885,24 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                 </TableHeader>
                                 <TableBody>
                                   {effectiveKpiSubmissions.map(
-                                    (kpiSubmission, kpiIdx) => (
-                                      <TableRow
-                                        key={
-                                          kpiSubmission.submissionId || kpiIdx
-                                        }
-                                        className="border-b"
-                                      >
-                                        <TableCell className="px-4 py-3 font-medium text-gray-900">
+                                    (kpiSubmission, kpiIdx) => {
+                                      // Create a truly unique key by combining multiple identifiers
+                                      const uniqueKey = `${obj.submissionId}-${
+                                        kpiSubmission.submissionId ||
+                                        kpiSubmission.kpi?.kpiId ||
+                                        "unknown"
+                                      }-${kpiIdx}`;
+
+                                      return (
+                                        <TableRow
+                                          key={uniqueKey}
+                                          className="border-b"
+                                        >
                                           {(() => {
+                                            const columnHeaders =
+                                              getColumnHeaders(
+                                                obj.objective?.type
+                                              );
                                             const child = allObjectives.find(
                                               (c) =>
                                                 c.objectiveId ===
@@ -623,357 +915,482 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                     child.parent?.objectiveId
                                                 )
                                               : undefined;
-                                            const parentName =
-                                              (parent?.kpis || [])[kpiIdx]
-                                                ?.name ||
-                                              kpiSubmission.kpi?.name ||
-                                              "N/A";
-                                            return (
-                                              <div
-                                                className="truncate"
-                                                title={parentName}
-                                              >
-                                                {parentName}
-                                                {parent && (
-                                                  <div className="text-xs text-gray-500 mt-1">
-                                                    From: Corporate
+
+                                            // For corporate objectives, show KPI name in first column
+                                            if (
+                                              obj.objective?.type ===
+                                              "CORPORATE"
+                                            ) {
+                                              return (
+                                                <TableCell className="px-4 py-3 font-medium text-gray-900">
+                                                  <div
+                                                    className="truncate"
+                                                    title={
+                                                      kpiSubmission.kpi?.name ||
+                                                      "N/A"
+                                                    }
+                                                  >
+                                                    {kpiSubmission.kpi?.name ||
+                                                      "N/A"}
                                                   </div>
+                                                </TableCell>
+                                              );
+                                            }
+
+                                            // For other objectives, show parent KPI in first column and child KPI in second column
+                                            // Find the actual parent KPI for this specific child KPI
+                                            const parentName = (() => {
+                                              // Try to find the KPI in allKpis to get parent information
+                                              if (allKpis) {
+                                                const fullKpi = allKpis.find(
+                                                  (k) =>
+                                                    k.kpiId ===
+                                                    kpiSubmission.kpi?.kpiId
+                                                );
+                                                if (fullKpi?.parent?.name) {
+                                                  return fullKpi.parent.name;
+                                                }
+                                              }
+
+                                              // Fallback to index-based matching (less reliable)
+                                              const parentKpi = (parent?.kpis ||
+                                                [])[kpiIdx];
+                                              if (parentKpi?.name) {
+                                                return parentKpi.name;
+                                              }
+
+                                              // If no parent found, show the child KPI name in the first column
+                                              return (
+                                                kpiSubmission.kpi?.name || "N/A"
+                                              );
+                                            })();
+
+                                            return (
+                                              <>
+                                                <TableCell className="px-4 py-3 font-medium text-gray-900">
+                                                  <div
+                                                    className="truncate"
+                                                    title={parentName}
+                                                  >
+                                                    {parentName}
+                                                    {parent && (
+                                                      <div className="text-xs text-gray-500 mt-1">
+                                                        From:{" "}
+                                                        {obj.objective?.type ===
+                                                        "DEPARTMENT"
+                                                          ? "Division"
+                                                          : obj.objective
+                                                              ?.type ===
+                                                            "PERSONNEL"
+                                                          ? "Department"
+                                                          : "Corporate"}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </TableCell>
+                                                {columnHeaders.showSecondColumn && (
+                                                  <TableCell className="px-4 py-3 font-medium text-gray-900">
+                                                    <div
+                                                      className="truncate"
+                                                      title={
+                                                        kpiSubmission.kpi
+                                                          ?.name || "N/A"
+                                                      }
+                                                    >
+                                                      {kpiSubmission.kpi
+                                                        ?.name || "N/A"}
+                                                    </div>
+                                                  </TableCell>
                                                 )}
-                                              </div>
+                                              </>
                                             );
                                           })()}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 font-medium text-gray-900">
-                                          <div
-                                            className="truncate"
-                                            title={
-                                              kpiSubmission.kpi?.name || "N/A"
-                                            }
-                                          >
-                                            {kpiSubmission.kpi?.name || "N/A"}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-gray-600">
-                                          {kpiSubmission.kpi?.weight ?? "N/A"}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-gray-600">
-                                          {kpiSubmission.kpi?.baseline || "N/A"}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-gray-600">
-                                          {(() => {
-                                            const childId =
-                                              kpiSubmission.kpi?.kpiId || "";
-                                            const childKpi = allKpis.find(
-                                              (k) => k.kpiId === childId
-                                            );
-                                            if (!childKpi)
-                                              return (
-                                                <span className="text-gray-400 italic">
-                                                  No targets
-                                                </span>
+                                          <TableCell className="px-4 py-3 text-gray-600">
+                                            {kpiSubmission.kpi?.weight ?? "N/A"}
+                                          </TableCell>
+                                          <TableCell className="px-4 py-3 text-gray-600">
+                                            {kpiSubmission.kpi?.baseline ||
+                                              "N/A"}
+                                          </TableCell>
+                                          <TableCell className="px-4 py-3 text-gray-600">
+                                            {(() => {
+                                              const childId =
+                                                kpiSubmission.kpi?.kpiId || "";
+                                              const childKpi = allKpis.find(
+                                                (k) => k.kpiId === childId
                                               );
-                                            if (
-                                              kpiSubmission.status ===
-                                              "APPROVED"
-                                            ) {
-                                              const { years, totals } =
-                                                getYearlyTotals(
-                                                  childKpi.targets
-                                                );
-                                              if (years.length === 0)
+                                              if (!childKpi)
                                                 return (
                                                   <span className="text-gray-400 italic">
                                                     No targets
                                                   </span>
                                                 );
-                                              return (
-                                                <div
-                                                  className="inline-grid gap-x-6"
-                                                  style={{
-                                                    gridTemplateColumns: `repeat(${years.length}, minmax(64px, auto))`,
-                                                  }}
-                                                >
-                                                  {years.map((y) => (
-                                                    <span
-                                                      key={`hdr-${y}`}
-                                                      className="text-[10px] text-gray-500 uppercase tracking-wider"
-                                                    >
-                                                      {y}
-                                                    </span>
-                                                  ))}
-                                                  {years.map((y) => (
-                                                    <span
-                                                      key={`val-${y}`}
-                                                      className="text-gray-900 font-medium mt-1"
-                                                    >
-                                                      {totals[y]}
-                                                    </span>
-                                                  ))}
-                                                </div>
-                                              );
-                                            }
-                                            // Pending/Not approved: show corporate target and quarters
-                                            const byYear =
-                                              strategicTargetsById[childId] ||
-                                              {};
-                                            const { years, map } =
-                                              getQuartersByYear(
-                                                childKpi.targets
-                                              );
-                                            if (
-                                              years.length === 0 &&
-                                              Object.keys(byYear).length === 0
-                                            ) {
-                                              return (
-                                                <span className="text-gray-400 italic">
-                                                  No targets
-                                                </span>
-                                              );
-                                            }
-                                            const displayYears =
-                                              years.length > 0
-                                                ? years
-                                                : Object.keys(byYear).sort(
-                                                    (a, b) =>
-                                                      parseInt(
-                                                        a.split("/")?.[0] || "0"
-                                                      ) -
-                                                      parseInt(
-                                                        b.split("/")?.[0] || "0"
-                                                      )
+                                              if (
+                                                kpiSubmission.status ===
+                                                "APPROVED"
+                                              ) {
+                                                const { years, totals } =
+                                                  getYearlyTotals(
+                                                    childKpi.targets
                                                   );
-                                            return (
-                                              <div
-                                                className="inline-grid gap-x-8"
-                                                style={{
-                                                  gridTemplateColumns: `repeat(${displayYears.length}, minmax(80px, auto))`,
-                                                }}
-                                              >
-                                                {displayYears.map((y) => {
-                                                  const q =
-                                                    (
-                                                      map as Record<
-                                                        string,
-                                                        {
-                                                          q1?: number;
-                                                          q2?: number;
-                                                          q3?: number;
-                                                          q4?: number;
-                                                        }
-                                                      >
-                                                    )[y] || {};
-                                                  const corporate = byYear[y];
+                                                if (years.length === 0)
                                                   return (
-                                                    <div
-                                                      key={`col-${y}`}
-                                                      className="flex flex-col"
-                                                    >
-                                                      {/* Year header */}
-                                                      <span className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                                                    <span className="text-gray-400 italic">
+                                                      No targets
+                                                    </span>
+                                                  );
+                                                return (
+                                                  <div
+                                                    className="inline-grid gap-x-6"
+                                                    style={{
+                                                      gridTemplateColumns: `repeat(${years.length}, minmax(64px, auto))`,
+                                                    }}
+                                                  >
+                                                    {years.map((y) => (
+                                                      <span
+                                                        key={`hdr-${y}`}
+                                                        className="text-[10px] text-gray-500 uppercase tracking-wider"
+                                                      >
                                                         {y}
                                                       </span>
-                                                      {/* Corporate target */}
-                                                      {corporate !==
+                                                    ))}
+                                                    {years.map((y) => (
+                                                      <span
+                                                        key={`val-${y}`}
+                                                        className="text-gray-900 font-medium mt-1"
+                                                      >
+                                                        {totals[y]}
+                                                      </span>
+                                                    ))}
+                                                  </div>
+                                                );
+                                              }
+                                              // Pending/Not approved: show corporate target and quarters
+                                              const byYear =
+                                                strategicTargetsById[childId] ||
+                                                {};
+                                              const { years, map } =
+                                                getQuartersByYear(
+                                                  childKpi.targets
+                                                );
+                                              if (
+                                                years.length === 0 &&
+                                                Object.keys(byYear).length === 0
+                                              ) {
+                                                return (
+                                                  <span className="text-gray-400 italic">
+                                                    No targets
+                                                  </span>
+                                                );
+                                              }
+                                              const displayYears =
+                                                years.length > 0
+                                                  ? years
+                                                  : Object.keys(byYear).sort(
+                                                      (a, b) =>
+                                                        parseInt(
+                                                          a.split("/")?.[0] ||
+                                                            "0"
+                                                        ) -
+                                                        parseInt(
+                                                          b.split("/")?.[0] ||
+                                                            "0"
+                                                        )
+                                                    );
+                                              return (
+                                                <div
+                                                  className="inline-grid gap-x-8"
+                                                  style={{
+                                                    gridTemplateColumns: `repeat(${displayYears.length}, minmax(80px, auto))`,
+                                                  }}
+                                                >
+                                                  {displayYears.map((y) => {
+                                                    const q =
+                                                      (
+                                                        map as Record<
+                                                          string,
+                                                          {
+                                                            q1?: number;
+                                                            q2?: number;
+                                                            q3?: number;
+                                                            q4?: number;
+                                                          }
+                                                        >
+                                                      )[y] || {};
+                                                    // Removed unused corporate variable
+                                                    return (
+                                                      <div
+                                                        key={`col-${y}`}
+                                                        className="flex flex-col"
+                                                      >
+                                                        {/* Year header */}
+                                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                                                          {y}
+                                                        </span>
+                                                        {/* Dynamic target label - COMMENTED OUT */}
+                                                        {/* {corporate !==
                                                         undefined && (
                                                         <div className="text-[11px] text-gray-500 mb-2">
-                                                          Target:{" "}
-                                                          <span className="font-medium">
+                                                          {(() => {
+                                                            const label =
+                                                              getTargetLabelByActiveTab(
+                                                                activeTab
+                                                              );
+                                                            console.log(
+                                                              "🔍 Target Label Debug:",
+                                                              {
+                                                                activeTab:
+                                                                  activeTab,
+                                                                objectiveType:
+                                                                  obj.objective
+                                                                    ?.type,
+                                                                label: label,
+                                                                corporate:
+                                                                  corporate,
+                                                              }
+                                                            );
+                                                            return label;
+                                                          })()}
+                                                          :{" "}
+                                                          <span className="font-medium text-purple-600">
                                                             {corporate}
                                                           </span>
                                                         </div>
-                                                      )}
-                                                      {/* Quarters */}
-                                                      <div className="flex flex-col gap-1">
-                                                        {[
-                                                          "Q1",
-                                                          "Q2",
-                                                          "Q3",
-                                                          "Q4",
-                                                        ].map((label, idx) => (
-                                                          <div
-                                                            key={label}
-                                                            className="flex items-center justify-between text-xs"
-                                                          >
-                                                            <span className="text-gray-600 font-medium">
-                                                              {label}:
-                                                            </span>
-                                                            <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700 ml-1">
-                                                              {(
-                                                                q as Record<
-                                                                  string,
-                                                                  number
-                                                                >
-                                                              )[
-                                                                `q${idx + 1}`
-                                                              ] ?? 0}
-                                                            </span>
-                                                          </div>
-                                                        ))}
+                                                      )} */}
+                                                        {/* Quarters */}
+                                                        <div className="flex flex-wrap gap-1">
+                                                          {[
+                                                            "Q1",
+                                                            "Q2",
+                                                            "Q3",
+                                                            "Q4",
+                                                          ].map(
+                                                            (label, idx) => (
+                                                              <span
+                                                                key={label}
+                                                                className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700"
+                                                              >
+                                                                {label}:{" "}
+                                                                {(
+                                                                  q as Record<
+                                                                    string,
+                                                                    number
+                                                                  >
+                                                                )[
+                                                                  `q${idx + 1}`
+                                                                ] ?? 0}
+                                                              </span>
+                                                            )
+                                                          )}
+                                                        </div>
+                                                        {/* Sum of quarters */}
+                                                        {(() => {
+                                                          const q1 =
+                                                            (
+                                                              q as Record<
+                                                                string,
+                                                                number
+                                                              >
+                                                            )["q1"] ?? 0;
+                                                          const q2 =
+                                                            (
+                                                              q as Record<
+                                                                string,
+                                                                number
+                                                              >
+                                                            )["q2"] ?? 0;
+                                                          const q3 =
+                                                            (
+                                                              q as Record<
+                                                                string,
+                                                                number
+                                                              >
+                                                            )["q3"] ?? 0;
+                                                          const q4 =
+                                                            (
+                                                              q as Record<
+                                                                string,
+                                                                number
+                                                              >
+                                                            )["q4"] ?? 0;
+                                                          const quarterlySum =
+                                                            q1 + q2 + q3 + q4;
+
+                                                          if (
+                                                            quarterlySum > 0
+                                                          ) {
+                                                            return (
+                                                              <div className="text-[11px] text-gray-500 mt-2">
+                                                                <span className="text-gray-400">
+                                                                  Sum:
+                                                                </span>{" "}
+                                                                <span className="font-medium text-green-600">
+                                                                  {quarterlySum}
+                                                                </span>
+                                                              </div>
+                                                            );
+                                                          }
+                                                          return null;
+                                                        })()}
                                                       </div>
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            );
-                                          })()}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-gray-600">
-                                          {kpiSubmission.submittedBy
-                                            ?.fullName ||
-                                            obj.submittedBy.fullName}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                          <Badge
-                                            className={`${
-                                              statusMap[
+                                                    );
+                                                  })}
+                                                </div>
+                                              );
+                                            })()}
+                                          </TableCell>
+                                          <TableCell className="px-4 py-3 text-gray-600">
+                                            {kpiSubmission.submittedBy
+                                              ?.fullName ||
+                                              obj.submittedBy.fullName}
+                                          </TableCell>
+                                          <TableCell className="px-4 py-3">
+                                            <Badge
+                                              className={`${
+                                                statusMap[
+                                                  kpiSubmission.status as keyof typeof statusMap
+                                                ]?.color ||
+                                                "bg-gray-100 text-gray-600"
+                                              } rounded-full px-2 py-1 text-xs font-medium border-0`}
+                                            >
+                                              {statusMap[
                                                 kpiSubmission.status as keyof typeof statusMap
-                                              ]?.color ||
-                                              "bg-gray-100 text-gray-600"
-                                            } rounded-full px-2 py-1 text-xs font-medium border-0`}
-                                          >
-                                            {statusMap[
-                                              kpiSubmission.status as keyof typeof statusMap
-                                            ]?.label || kpiSubmission.status}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                          {kpiSubmission.status ===
-                                          "REJECTED" ? (
-                                            <div className="max-w-48">
-                                              <span className="text-sm text-red-600">
-                                                {kpiSubmission.reason?.trim() ||
-                                                  "No reason provided"}
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            <span className="text-gray-400 text-sm">
-                                              -
-                                            </span>
-                                          )}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                          {kpiSubmission.status ===
-                                            "APPROVED" ||
-                                          kpiSubmission.status ===
-                                            "REJECTED" ? (
-                                            <div className="flex items-center gap-2">
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled
-                                                className="text-gray-400 border-gray-300 h-7 px-2 text-xs cursor-not-allowed"
-                                              >
-                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                {kpiSubmission.status ===
-                                                "APPROVED"
-                                                  ? "Approved"
-                                                  : "Approve"}
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled
-                                                className="text-gray-400 border-gray-300 h-7 px-2 text-xs cursor-not-allowed"
-                                              >
-                                                <XCircle className="h-3 w-3 mr-1" />
-                                                {kpiSubmission.status ===
-                                                "REJECTED"
-                                                  ? "Rejected"
-                                                  : "Reject"}
-                                              </Button>
-                                            </div>
-                                          ) : (
-                                            <div className="flex items-center gap-2">
-                                              <ApproveSubmissionDialog
-                                                submission={{
+                                              ]?.label || kpiSubmission.status}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell className="px-4 py-3">
+                                            {/* Debug: Log KPI submission reason */}
+                                            {(() => {
+                                              console.log(
+                                                "🔍 KPI Submission Reason Debug:",
+                                                {
                                                   submissionId:
                                                     kpiSubmission.submissionId,
-                                                  type: "KPI",
-                                                  level: obj.level,
-                                                  status:
-                                                    kpiSubmission.status as
-                                                      | "PENDING"
-                                                      | "APPROVED"
-                                                      | "REJECTED",
-                                                  reason:
-                                                    kpiSubmission.reason || "",
-                                                  submittedBy: {
-                                                    employeeId:
-                                                      obj.submittedBy
-                                                        .employeeId || "",
-                                                    fullName:
-                                                      kpiSubmission.submittedBy
-                                                        ?.fullName ||
-                                                      obj.submittedBy.fullName,
-                                                  },
-                                                  kpi: {
-                                                    kpiId:
-                                                      kpiSubmission.kpi
-                                                        ?.kpiId || "",
-                                                    name:
-                                                      kpiSubmission.kpi?.name ||
-                                                      "",
-                                                    status:
-                                                      kpiSubmission.status as string,
-                                                    objective: obj.objective
-                                                      ? {
-                                                          objectiveId:
-                                                            obj.objective
-                                                              .objectiveId,
-                                                          name:
-                                                            obj.objective
-                                                              .name || "",
-                                                          type:
-                                                            obj.objective
-                                                              .type || "",
-                                                        }
-                                                      : undefined,
-                                                  },
-                                                  createdAt:
-                                                    new Date().toISOString(),
-                                                }}
-                                                onApprove={onApproveSubmission}
-                                              >
+                                                  status: kpiSubmission.status,
+                                                  reason: kpiSubmission.reason,
+                                                  reasonType:
+                                                    typeof kpiSubmission.reason,
+                                                  reasonLength:
+                                                    kpiSubmission.reason
+                                                      ?.length,
+                                                  hasReason:
+                                                    !!kpiSubmission.reason?.trim(),
+                                                  fullKpiSubmission:
+                                                    kpiSubmission,
+                                                }
+                                              );
+                                              return null;
+                                            })()}
+
+                                            {kpiSubmission.reason?.trim() ? (
+                                              <div className="max-w-48">
+                                                <span
+                                                  className={`text-sm ${
+                                                    kpiSubmission.status ===
+                                                    "REJECTED"
+                                                      ? "text-red-600"
+                                                      : "text-green-600"
+                                                  }`}
+                                                >
+                                                  {kpiSubmission.reason.trim()}
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <span className="text-gray-400 text-sm">
+                                                -
+                                              </span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="px-4 py-3">
+                                            {kpiSubmission.status ===
+                                              "APPROVED" ||
+                                            kpiSubmission.status ===
+                                              "REJECTED" ? (
+                                              <div className="flex items-center gap-2">
                                                 <Button
                                                   size="sm"
                                                   variant="outline"
-                                                  className="text-green-600 border-green-600 hover:bg-green-50 h-7 px-2 text-xs"
+                                                  disabled
+                                                  className="text-gray-400 border-gray-300 h-7 px-2 text-xs cursor-not-allowed"
                                                 >
                                                   <CheckCircle className="h-3 w-3 mr-1" />
-                                                  Approve
+                                                  {kpiSubmission.status ===
+                                                  "APPROVED"
+                                                    ? "Approved"
+                                                    : "Approve"}
                                                 </Button>
-                                              </ApproveSubmissionDialog>
-                                              <RejectSubmissionDialog
-                                                submission={{
-                                                  submissionId:
-                                                    kpiSubmission.submissionId,
-                                                  type: "KPI",
-                                                  level: obj.level,
-                                                  status:
-                                                    kpiSubmission.status as
-                                                      | "PENDING"
-                                                      | "APPROVED"
-                                                      | "REJECTED",
-                                                  reason:
-                                                    kpiSubmission.reason || "",
-                                                  submittedBy: {
-                                                    employeeId:
-                                                      obj.submittedBy
-                                                        .employeeId || "",
-                                                    fullName:
-                                                      kpiSubmission.submittedBy
-                                                        ?.fullName ||
-                                                      obj.submittedBy.fullName,
-                                                  },
-                                                  kpi: {
-                                                    kpiId:
-                                                      kpiSubmission.kpi
-                                                        ?.kpiId || "",
-                                                    name:
-                                                      kpiSubmission.kpi?.name ||
-                                                      "",
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  disabled
+                                                  className="text-gray-400 border-gray-300 h-7 px-2 text-xs cursor-not-allowed"
+                                                >
+                                                  <XCircle className="h-3 w-3 mr-1" />
+                                                  {kpiSubmission.status ===
+                                                  "REJECTED"
+                                                    ? "Rejected"
+                                                    : "Reject"}
+                                                </Button>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-2">
+                                                {(() => {
+                                                  // Debug: Log what we're passing to approval/rejection dialogs
+                                                  // console.log(
+                                                  //   `🎯 APPROVAL/REJECTION DEBUG for KPI ${kpiSubmission.kpi?.kpiId}:`,
+                                                  //   {
+                                                  //     kpiSubmissionId:
+                                                  //       kpiSubmission.submissionId,
+                                                  //     submissionType: "KPI",
+                                                  //     fullKpiSubmission:
+                                                  //       kpiSubmission,
+                                                  //     // Check if this submission ID exists in the parent submissions array
+                                                  //     existsInParentArray:
+                                                  //       obj.associatedKpiSubmissions?.some(
+                                                  //         (s: any) =>
+                                                  //           s.submissionId ===
+                                                  //           kpiSubmission.submissionId
+                                                  //       ),
+                                                  //     parentArraySubmissionIds:
+                                                  //       obj.associatedKpiSubmissions?.map(
+                                                  //         (s: any) =>
+                                                  //       s.submissionId
+                                                  //     ),
+                                                  //   }
+                                                  // );
+                                                  return null;
+                                                })()}
+                                                <ApproveSubmissionDialog
+                                                  submission={{
+                                                    submissionId:
+                                                      kpiSubmission.submissionId,
+                                                    type: "KPI",
+                                                    level: obj.level,
                                                     status:
-                                                      kpiSubmission.status as string,
+                                                      kpiSubmission.status as
+                                                        | "PENDING"
+                                                        | "APPROVED"
+                                                        | "REJECTED",
+                                                    reason:
+                                                      kpiSubmission.reason ||
+                                                      "",
+                                                    submittedBy: {
+                                                      employeeId:
+                                                        (
+                                                          kpiSubmission.submittedBy as {
+                                                            employeeId?: string;
+                                                          }
+                                                        )?.employeeId ||
+                                                        obj.submittedBy
+                                                          .employeeId ||
+                                                        "",
+                                                      fullName:
+                                                        kpiSubmission
+                                                          .submittedBy
+                                                          ?.fullName ||
+                                                        obj.submittedBy
+                                                          .fullName,
+                                                    },
                                                     objective: obj.objective
                                                       ? {
                                                           objectiveId:
@@ -985,28 +1402,94 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                           type:
                                                             obj.objective
                                                               .type || "",
+                                                          status:
+                                                            obj.objective
+                                                              .status || "",
                                                         }
                                                       : undefined,
-                                                  },
-                                                  createdAt:
-                                                    new Date().toISOString(),
-                                                }}
-                                                onReject={onRejectSubmission}
-                                              >
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="text-red-600 border-red-600 hover:bg-red-50 h-7 px-2 text-xs"
+                                                    createdAt:
+                                                      new Date().toISOString(),
+                                                  }}
+                                                  onApprove={
+                                                    onApproveSubmission
+                                                  }
                                                 >
-                                                  <XCircle className="h-3 w-3 mr-1" />
-                                                  Reject
-                                                </Button>
-                                              </RejectSubmissionDialog>
-                                            </div>
-                                          )}
-                                        </TableCell>
-                                      </TableRow>
-                                    )
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-green-600 border-green-600 hover:bg-green-50 h-7 px-2 text-xs"
+                                                  >
+                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                    Approve
+                                                  </Button>
+                                                </ApproveSubmissionDialog>
+                                                <RejectSubmissionDialog
+                                                  submission={{
+                                                    submissionId:
+                                                      kpiSubmission.submissionId,
+                                                    type: "KPI",
+                                                    level: obj.level,
+                                                    status:
+                                                      kpiSubmission.status as
+                                                        | "PENDING"
+                                                        | "APPROVED"
+                                                        | "REJECTED",
+                                                    reason:
+                                                      kpiSubmission.reason ||
+                                                      "",
+                                                    submittedBy: {
+                                                      employeeId:
+                                                        (
+                                                          kpiSubmission.submittedBy as {
+                                                            employeeId?: string;
+                                                          }
+                                                        )?.employeeId ||
+                                                        obj.submittedBy
+                                                          .employeeId ||
+                                                        "",
+                                                      fullName:
+                                                        kpiSubmission
+                                                          .submittedBy
+                                                          ?.fullName ||
+                                                        obj.submittedBy
+                                                          .fullName,
+                                                    },
+                                                    objective: obj.objective
+                                                      ? {
+                                                          objectiveId:
+                                                            obj.objective
+                                                              .objectiveId,
+                                                          name:
+                                                            obj.objective
+                                                              .name || "",
+                                                          type:
+                                                            obj.objective
+                                                              .type || "",
+                                                          status:
+                                                            obj.objective
+                                                              .status || "",
+                                                        }
+                                                      : undefined,
+                                                    createdAt:
+                                                      new Date().toISOString(),
+                                                  }}
+                                                  onReject={onRejectSubmission}
+                                                >
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-red-600 border-red-600 hover:bg-red-50 h-7 px-2 text-xs"
+                                                  >
+                                                    <XCircle className="h-3 w-3 mr-1" />
+                                                    Reject
+                                                  </Button>
+                                                </RejectSubmissionDialog>
+                                              </div>
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    }
                                   )}
                                 </TableBody>
                               </Table>

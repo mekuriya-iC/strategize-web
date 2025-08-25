@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  Table,
-  TableBody,
-} from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import EmployeeTableRow from "./EmployeeTableRow";
 import ReusableTableHeader, {
   HeaderColumn,
@@ -20,6 +17,7 @@ export interface Employee {
   role: string;
   status: "ACTIVE" | "INACTIVE";
   startDate: string;
+  title: string;
   // Add optional fields for UI compatibility
   profilePic?: string;
   department?: string;
@@ -37,6 +35,7 @@ export interface LegacyEmployee {
   phone: string;
   employedOn: string;
   status: "Active" | "Deactivated";
+  title: string;
   // Add original employeeId for delete operations
   employeeId?: string;
 }
@@ -74,7 +73,8 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
     { key: "fullName", label: "FULL NAME" },
     { key: "profilePic", label: "PROFILE PICTURE" },
     { key: "email", label: "EMAIL" },
-    { key: "department", label: "DEPARTMENT/ROLE" },
+    { key: "title", label: "TITLE" },
+    { key: "department", label: "ACCESS ROLE" },
     { key: "phone", label: "PHONE NUMBER" },
     { key: "employedOn", label: "EMPLOYED ON" },
     { key: "status", label: "STATUS" },
@@ -121,6 +121,7 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
               : "N/A",
             status:
               graphqlEmployee.status === "ACTIVE" ? "Active" : "Deactivated",
+            title: graphqlEmployee.title || "N/A",
           },
           original: graphqlEmployee as GraphQLEmployee,
         };

@@ -132,17 +132,17 @@ const DepartmentsPage = () => {
   // Get available divisions for filter
   const divisions = divisionsData?.divisions?.items || [];
 
-  // Get managers (employees with MANAGER, ADMIN, or SUPER_ADMIN roles)
+  // Get managers (employees with MANAGER role only)
   const managers =
     employeesData?.employees?.items?.filter(
-      (emp: Employee) =>
-        emp.role === EmployeeRole.MANAGER ||
-        emp.role === EmployeeRole.ADMIN ||
-        emp.role === EmployeeRole.SUPER_ADMIN
+      (emp: Employee) => emp.role === EmployeeRole.MANAGER
     ) || [];
 
-  // Get all employees for member selection
-  const allEmployees = employeesData?.employees?.items || [];
+  // Get all employees for member selection (NORMAL role only)
+  const allEmployees =
+    employeesData?.employees?.items?.filter(
+      (emp: Employee) => emp.role === EmployeeRole.NORMAL
+    ) || [];
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);

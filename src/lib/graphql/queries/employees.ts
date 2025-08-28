@@ -2,8 +2,8 @@ import { gql } from "@apollo/client";
 
 // Employee pagination query (matches schema exactly)
 export const GET_EMPLOYEES = gql`
-  query Employees($page: Int = 1, $limit: Int = 10) {
-    employees(page: $page, limit: $limit) {
+  query Employees($page: Int = 1, $limit: Int = 10, $search: String) {
+    employees(page: $page, limit: $limit, search: $search) {
       items {
         employeeId
         email

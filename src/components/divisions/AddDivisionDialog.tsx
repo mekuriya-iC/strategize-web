@@ -123,7 +123,7 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
                     {managers.length === 0 ? (
                       <div className="p-2 text-sm text-gray-500">
                         No managers found. Please ensure there are employees
-                        with MANAGER, ADMIN, or SUPER_ADMIN roles.
+                        with MANAGER role.
                       </div>
                     ) : (
                       managers.map((manager) => (
@@ -136,8 +136,8 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
                 </Select>
                 {managers.length === 0 && (
                   <p className="text-sm text-red-600 mt-1">
-                    No managers available. Please create employees with
-                    appropriate roles first.
+                    No managers available. Please create employees with MANAGER
+                    role first.
                   </p>
                 )}
               </div>

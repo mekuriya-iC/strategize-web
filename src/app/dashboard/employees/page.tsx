@@ -43,6 +43,7 @@ const EmployeesPage = () => {
     variables: {
       page: currentPage,
       limit: itemsPerPage,
+      search: searchTerm || undefined,
     },
     errorPolicy: "all",
   });
@@ -64,7 +65,7 @@ const EmployeesPage = () => {
   const totalPages = meta?.totalPages || 1;
   const totalItems = meta?.totalItems || 0;
 
-  // Filter and sort employees based on search, filter, and sort criteria
+  // Apply client-side filtering for status and sorting (search is handled server-side)
   const filteredEmployees = employees
     .filter(
       (employee: {
@@ -74,22 +75,14 @@ const EmployeesPage = () => {
         role?: string;
         status?: string;
       }) => {
-        // Search filter
-        const matchesSearch =
-          !searchTerm ||
-          employee.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          employee.phoneNumber?.includes(searchTerm) ||
-          employee.role?.toLowerCase().includes(searchTerm.toLowerCase());
-
-        // Status filter
+        // Status filter (client-side since it's not in the GraphQL schema)
         const matchesStatus =
           filterStatus === "all" ||
           (filterStatus === "active" && employee.status === "ACTIVE") ||
           (filterStatus === "inactive" &&
             (employee.status === "INACTIVE" || employee.status === "DISABLED"));
 
-        return matchesSearch && matchesStatus;
+        return matchesStatus;
       }
     )
     .sort(
@@ -182,13 +175,10 @@ const EmployeesPage = () => {
   // Get available divisions for department creation
   const divisions = divisionsData?.divisions?.items || [];
 
-  // Get managers (employees with MANAGER, ADMIN, or SUPER_ADMIN roles)
+  // Get managers (employees with MANAGER role only)
   const managers =
     employees?.filter(
-      (emp: { role?: string }) =>
-        emp.role === EmployeeRole.MANAGER ||
-        emp.role === EmployeeRole.ADMIN ||
-        emp.role === EmployeeRole.SUPER_ADMIN
+      (emp: { role?: string }) => emp.role === EmployeeRole.MANAGER
     ) || [];
 
   // Check if user has permission to add employees
@@ -204,7 +194,8 @@ const EmployeesPage = () => {
       </div>
 
       {/* Only show filter bar and actions when there's data or loading */}
-      {(loading || error || employees.length > 0) && (
+      {/* Always show search and filter controls, except when there are truly no employees */}
+      {!(employees.length === 0 && !searchTerm && !loading && !error) && (
         <>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <EmployeeFilterBar
@@ -280,7 +271,7 @@ const EmployeesPage = () => {
       )}
 
       {/* Empty State or Table */}
-      {!loading && !error && employees.length === 0 ? (
+      {!loading && !error && employees.length === 0 && !searchTerm ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
           <Image
             src="/images/dashboard/objective-empty.png"
@@ -316,8 +307,8 @@ const EmployeesPage = () => {
             />
           </div>
 
-          {/* Pagination - only show if we have unfiltered results or no filters applied */}
-          {!searchTerm && filterStatus === "all" && sortOrder === "none" && (
+          {/* Pagination - show when we have results (server-side search and pagination work together) */}
+          {filteredEmployees.length > 0 && (
             <EmployeePagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -353,7 +344,9 @@ const EmployeesPage = () => {
           divisionId: d.divisionId,
           name: d.name,
         }))}
-        allMembers={employees}
+        allMembers={employees.filter(
+          (emp: { role?: string }) => emp.role === EmployeeRole.NORMAL
+        )}
         onSubmit={handleSubmitDepartment}
         loading={departmentMutationLoading.create}
       />

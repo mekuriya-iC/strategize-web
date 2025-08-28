@@ -239,15 +239,27 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                 {/* Selected Members Tags */}
                 <div className="flex flex-wrap gap-2 mb-2">
                   {departmentMembers.map((memberId) => {
-                    const member = allMembers.find(
+                    // First try to find the member in the department data (for current members)
+                    const departmentMember =
+                      departmentData?.department?.employees?.find(
+                        (emp) => emp.employeeId === memberId
+                      );
+                    // Then try to find in allMembers (for newly added members)
+                    const allMembersMember = allMembers.find(
                       (m) => m.employeeId === memberId
                     );
+                    // Use department member name if available, otherwise use allMembers, fallback to ID
+                    const memberName =
+                      departmentMember?.fullName ||
+                      allMembersMember?.fullName ||
+                      memberId;
+
                     return (
                       <div
                         key={memberId}
                         className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
                       >
-                        <span>{member?.fullName || memberId}</span>
+                        <span>{memberName}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveMember(memberId)}

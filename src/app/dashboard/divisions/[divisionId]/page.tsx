@@ -79,13 +79,13 @@ const DivisionDetailsPage = () => {
   // Get managers and employees
   const managers =
     employeesData?.employees?.items?.filter(
-      (emp: Employee) =>
-        emp.role === "MANAGER" ||
-        emp.role === "ADMIN" ||
-        emp.role === "SUPER_ADMIN"
+      (emp: Employee) => emp.role === "MANAGER"
     ) || [];
 
-  const allEmployees = employeesData?.employees?.items || [];
+  const allEmployees =
+    employeesData?.employees?.items?.filter(
+      (emp: Employee) => emp.role === "NORMAL"
+    ) || [];
 
   // Transform departments for table (filter by division)
   const departments =

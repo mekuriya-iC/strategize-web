@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, TableBody } from "@/components/ui/table";
+import { Table, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import EmployeeTableRow from "./EmployeeTableRow";
 import ReusableTableHeader, {
   HeaderColumn,
@@ -143,15 +143,30 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
     <Table className="border-none">
       <ReusableTableHeader headers={headers} />
       <TableBody>
-        {transformedEmployees.map((employeeData, idx) => (
-          <EmployeeTableRow
-            key={employeeData.transformed.employeeId || `employee-${idx}`}
-            employee={employeeData.transformed}
-            odd={idx % 2 === 1}
-            originalEmployee={employeeData.original}
-            onAddDepartment={onAddDepartment}
-          />
-        ))}
+        {transformedEmployees.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={headers.length} className="text-center py-8">
+              <div className="flex flex-col items-center justify-center text-gray-500">
+                <p className="text-lg font-medium mb-2">No employees found</p>
+                <p className="text-sm">
+                  {error
+                    ? "Error loading employees. Try adjusting your search and filters"
+                    : "Try adjusting your search and filters"}
+                </p>
+              </div>
+            </TableCell>
+          </TableRow>
+        ) : (
+          transformedEmployees.map((employeeData, idx) => (
+            <EmployeeTableRow
+              key={employeeData.transformed.employeeId || `employee-${idx}`}
+              employee={employeeData.transformed}
+              odd={idx % 2 === 1}
+              originalEmployee={employeeData.original}
+              onAddDepartment={onAddDepartment}
+            />
+          ))
+        )}
       </TableBody>
     </Table>
   );

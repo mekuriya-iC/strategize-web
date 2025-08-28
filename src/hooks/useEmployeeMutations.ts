@@ -1,12 +1,12 @@
 "use client";
 
-import { useMutation } from "@apollo/client";
+import { useMutation, Reference } from "@apollo/client";
 import {
   CREATE_EMPLOYEE,
   UPDATE_EMPLOYEE,
   REMOVE_EMPLOYEE,
 } from "@/lib/graphql/mutations/employees";
-import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+// GET_EMPLOYEES is used in cache updates but not directly referenced
 import { CreateEmployeeInput, UpdateEmployeeInput } from "@/types/graphql";
 
 export const useEmployeeMutations = () => {
@@ -15,12 +15,28 @@ export const useEmployeeMutations = () => {
     createEmployeeMutation,
     { loading: createLoading, error: createError },
   ] = useMutation(CREATE_EMPLOYEE, {
-    // Refetch employees list after creation
-    refetchQueries: [{ query: GET_EMPLOYEES }],
-    // Optimistically update cache
     update: (cache, { data }) => {
       if (data?.createEmployee) {
-        console.log("Employee created:", data.createEmployee);
+        const newEmployee = data.createEmployee;
+
+        // Add the new employee to all cached employee queries
+        cache.modify({
+          fields: {
+            employees(existingEmployees = null) {
+              if (!existingEmployees) return existingEmployees;
+
+              const items = existingEmployees.items || [];
+              return {
+                ...existingEmployees,
+                items: [newEmployee, ...items],
+                meta: {
+                  ...existingEmployees.meta,
+                  totalItems: (existingEmployees.meta?.totalItems || 0) + 1,
+                },
+              };
+            },
+          },
+        });
       }
     },
   });
@@ -30,7 +46,33 @@ export const useEmployeeMutations = () => {
     updateEmployeeMutation,
     { loading: updateLoading, error: updateError },
   ] = useMutation(UPDATE_EMPLOYEE, {
-    refetchQueries: [{ query: GET_EMPLOYEES }],
+    update: (cache, { data }) => {
+      if (data?.updateEmployee) {
+        const updatedEmployee = data.updateEmployee;
+
+        // Update all cached employee queries
+        cache.modify({
+          fields: {
+            employees(existingEmployees = null, { readField }) {
+              if (!existingEmployees) return existingEmployees;
+
+              const items = existingEmployees.items || [];
+              const updatedItems = items.map((item: Reference) => {
+                const employeeId = readField("employeeId", item);
+                return employeeId === updatedEmployee.employeeId
+                  ? updatedEmployee
+                  : item;
+              });
+
+              return {
+                ...existingEmployees,
+                items: updatedItems,
+              };
+            },
+          },
+        });
+      }
+    },
   });
 
   // Remove Employee Mutation
@@ -38,7 +80,38 @@ export const useEmployeeMutations = () => {
     removeEmployeeMutation,
     { loading: removeLoading, error: removeError },
   ] = useMutation(REMOVE_EMPLOYEE, {
-    refetchQueries: [{ query: GET_EMPLOYEES }],
+    update: (cache, { data }, { variables }) => {
+      if (data?.removeEmployee && variables?.id) {
+        const deletedEmployeeId = variables.id;
+
+        // Remove the employee from all cached employee queries
+        cache.modify({
+          fields: {
+            employees(existingEmployees = null, { readField }) {
+              if (!existingEmployees) return existingEmployees;
+
+              const items = existingEmployees.items || [];
+              const filteredItems = items.filter((item: Reference) => {
+                const employeeId = readField("employeeId", item);
+                return employeeId !== deletedEmployeeId;
+              });
+
+              return {
+                ...existingEmployees,
+                items: filteredItems,
+                meta: {
+                  ...existingEmployees.meta,
+                  totalItems: Math.max(
+                    0,
+                    (existingEmployees.meta?.totalItems || 0) - 1
+                  ),
+                },
+              };
+            },
+          },
+        });
+      }
+    },
   });
 
   // Create Employee Function

@@ -141,17 +141,12 @@ const DivisionsPage = () => {
     }));
   }, [divisionsData, filterType]);
 
-  // Filter managers (MANAGER and ADMIN roles only)
+  // Filter managers (MANAGER role only)
   const managers = React.useMemo(() => {
     if (!employeesData?.employees.items) return [];
 
     return employeesData.employees.items
-      .filter(
-        (employee: GraphQLEmployee) =>
-          employee.role === "MANAGER" ||
-          employee.role === "ADMIN" ||
-          employee.role === "SUPER_ADMIN"
-      )
+      .filter((employee: GraphQLEmployee) => employee.role === "MANAGER")
       .map((employee: GraphQLEmployee) => ({
         id: employee.employeeId,
         name: employee.fullName,
@@ -167,14 +162,16 @@ const DivisionsPage = () => {
     );
   }, [departmentsData]);
 
-  // Transform employees data for department members
+  // Transform employees data for department members (NORMAL role only)
   const allMembers = React.useMemo(() => {
     if (!employeesData?.employees.items) return [];
 
-    return employeesData.employees.items.map((employee: GraphQLEmployee) => ({
-      employeeId: employee.employeeId,
-      fullName: employee.fullName,
-    }));
+    return employeesData.employees.items
+      .filter((employee: GraphQLEmployee) => employee.role === "NORMAL")
+      .map((employee: GraphQLEmployee) => ({
+        employeeId: employee.employeeId,
+        fullName: employee.fullName,
+      }));
   }, [employeesData]);
 
   const handlePageChange = (page: number) => {

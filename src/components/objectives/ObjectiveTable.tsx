@@ -1016,7 +1016,9 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                                       <div className="flex flex-col gap-1 mb-2">
                                                         <div className="flex items-center gap-2">
                                                           <span className="text-gray-900 font-medium">
-                                                            {totals[y]}
+                                                            {Number(
+                                                              totals[y]
+                                                            ).toFixed(1)}
                                                           </span>
                                                           <Badge
                                                             variant="outline"
@@ -1050,16 +1052,21 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                                                     {label}:
                                                                   </span>
                                                                   <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700 ml-1">
-                                                                    {(
-                                                                      q as Record<
-                                                                        string,
-                                                                        number
-                                                                      >
-                                                                    )[
-                                                                      `q${
-                                                                        idx + 1
-                                                                      }`
-                                                                    ] ?? 0}
+                                                                    {Number(
+                                                                      (
+                                                                        q as Record<
+                                                                          string,
+                                                                          number
+                                                                        >
+                                                                      )[
+                                                                        `q${
+                                                                          idx +
+                                                                          1
+                                                                        }`
+                                                                      ] ?? 0
+                                                                    ).toFixed(
+                                                                      1
+                                                                    )}
                                                                   </span>
                                                                 </div>
                                                               )
@@ -1107,19 +1114,27 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                                   const chips = [
                                                     {
                                                       label: "Q1",
-                                                      value: q.q1 ?? 0,
+                                                      value: Number(
+                                                        q.q1 ?? 0
+                                                      ).toFixed(1),
                                                     },
                                                     {
                                                       label: "Q2",
-                                                      value: q.q2 ?? 0,
+                                                      value: Number(
+                                                        q.q2 ?? 0
+                                                      ).toFixed(1),
                                                     },
                                                     {
                                                       label: "Q3",
-                                                      value: q.q3 ?? 0,
+                                                      value: Number(
+                                                        q.q3 ?? 0
+                                                      ).toFixed(1),
                                                     },
                                                     {
                                                       label: "Q4",
-                                                      value: q.q4 ?? 0,
+                                                      value: Number(
+                                                        q.q4 ?? 0
+                                                      ).toFixed(1),
                                                     },
                                                   ];
                                                   return (
@@ -1150,7 +1165,10 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                                     className="flex items-center gap-2"
                                                   >
                                                     <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-1 text-xs font-medium text-blue-700">
-                                                      {y}: {totals[y]}
+                                                      {y}:{" "}
+                                                      {Number(
+                                                        totals[y]
+                                                      ).toFixed(1)}
                                                     </span>
                                                     <Badge
                                                       variant="outline"

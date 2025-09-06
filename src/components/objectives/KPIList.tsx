@@ -665,7 +665,7 @@ export default function KPIList({
                                     <div className="flex flex-col gap-1 mb-2">
                                       <div className="flex items-center gap-2">
                                         <span className="text-gray-900 font-medium">
-                                          {totals[y]}
+                                          {Number(totals[y]).toFixed(1)}
                                         </span>
                                         <Badge
                                           variant="outline"
@@ -939,10 +939,22 @@ export default function KPIList({
                               {quarterYears.map((y) => {
                                 const q = qByYear[y] || {};
                                 const chips = [
-                                  { label: "Q1", value: q.q1 ?? 0 },
-                                  { label: "Q2", value: q.q2 ?? 0 },
-                                  { label: "Q3", value: q.q3 ?? 0 },
-                                  { label: "Q4", value: q.q4 ?? 0 },
+                                  {
+                                    label: "Q1",
+                                    value: Number(q.q1 ?? 0).toFixed(1),
+                                  },
+                                  {
+                                    label: "Q2",
+                                    value: Number(q.q2 ?? 0).toFixed(1),
+                                  },
+                                  {
+                                    label: "Q3",
+                                    value: Number(q.q3 ?? 0).toFixed(1),
+                                  },
+                                  {
+                                    label: "Q4",
+                                    value: Number(q.q4 ?? 0).toFixed(1),
+                                  },
                                 ];
                                 // Removed unused corporate variable
                                 return (
@@ -1016,7 +1028,7 @@ export default function KPIList({
                                               Sum:
                                             </span>{" "}
                                             <span className="font-medium text-green-600">
-                                              {quarterlySum}
+                                              {Number(quarterlySum).toFixed(1)}
                                             </span>
                                           </div>
                                         );
@@ -1040,7 +1052,7 @@ export default function KPIList({
                                   <div key={y} className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                       <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-3 py-1 text-sm font-medium text-blue-700">
-                                        {y}: {totals[y]}
+                                        {y}: {Number(totals[y]).toFixed(1)}
                                       </span>
                                       <Badge
                                         variant="outline"
@@ -1072,12 +1084,14 @@ export default function KPIList({
                                             <div className="flex flex-col gap-1">
                                               {allocated > 0 && (
                                                 <div className="text-[11px] text-blue-600 font-medium">
-                                                  Allocated: {allocated}
+                                                  Allocated:{" "}
+                                                  {Number(allocated).toFixed(1)}
                                                 </div>
                                               )}
                                               {remaining > 0 ? (
                                                 <div className="text-[11px] text-green-600 font-medium">
-                                                  Available: {remaining}
+                                                  Available:{" "}
+                                                  {Number(remaining).toFixed(1)}
                                                 </div>
                                               ) : (
                                                 <div className="text-[11px] text-orange-600 font-medium">

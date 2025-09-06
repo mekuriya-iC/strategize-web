@@ -1059,7 +1059,9 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                         key={`val-${y}`}
                                                         className="text-gray-900 font-medium mt-1"
                                                       >
-                                                        {totals[y]}
+                                                        {Number(
+                                                          totals[y]
+                                                        ).toFixed(1)}
                                                       </span>
                                                     ))}
                                                   </div>

@@ -39,6 +39,11 @@ interface KPIFormProps {
   strategicTargetsById?: Record<string, Record<string, number>>;
 }
 
+// Utility function to round target numbers to 1 decimal place
+const roundTarget = (value: number): string => {
+  return Number(value).toFixed(1);
+};
+
 export default function KPIForm({
   objectiveId,
   kpiId,
@@ -885,7 +890,11 @@ export default function KPIForm({
       if (currentSum > maxAllowed) {
         return {
           isValid: false,
-          message: `Quarterly sum (${currentSum} ${unitLabel}) exceeds available allocation (${maxAllowed} ${unitLabel})`,
+          message: `Quarterly sum (${roundTarget(
+            currentSum
+          )} ${unitLabel}) exceeds available allocation (${roundTarget(
+            maxAllowed
+          )} ${unitLabel})`,
           assignedTarget,
           currentSum,
           unitLabel,
@@ -897,7 +906,11 @@ export default function KPIForm({
       if (currentSum > assignedTarget) {
         return {
           isValid: false,
-          message: `Quarterly sum (${currentSum} ${unitLabel}) exceeds assigned target (${assignedTarget} ${unitLabel})`,
+          message: `Quarterly sum (${roundTarget(
+            currentSum
+          )} ${unitLabel}) exceeds assigned target (${roundTarget(
+            assignedTarget
+          )} ${unitLabel})`,
           assignedTarget,
           currentSum,
           unitLabel,
@@ -918,7 +931,11 @@ export default function KPIForm({
 
     return {
       isValid: true,
-      message: `Quarterly sum (${currentSum} ${unitLabel}) is below assigned target (${assignedTarget} ${unitLabel})`,
+      message: `Quarterly sum (${roundTarget(
+        currentSum
+      )} ${unitLabel}) is below assigned target (${roundTarget(
+        assignedTarget
+      )} ${unitLabel})`,
       assignedTarget,
       currentSum,
       unitLabel,
@@ -1484,13 +1501,13 @@ export default function KPIForm({
                           Parent Target:
                         </span>
                         <span className="text-blue-700">
-                          {allocation.available}{" "}
+                          {roundTarget(allocation.available)}{" "}
                           {kpi ? getDetailedUnitLabel(kpi) : "units"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-blue-600">
-                          Used by Siblings: {allocation.used}
+                          Used by Siblings: {roundTarget(allocation.used)}
                         </span>
                         <span className="text-blue-600">
                           ({siblingUsagePercentage}%)
@@ -1510,7 +1527,8 @@ export default function KPIForm({
                     </div>
                     */}
                     <div className="mt-1 text-xs text-blue-600">
-                      Available for this KPI: {allocation.remaining}{" "}
+                      Available for this KPI:{" "}
+                      {roundTarget(allocation.remaining)}{" "}
                       {kpi ? getDetailedUnitLabel(kpi) : "units"}
                     </div>
                   </div>
@@ -1586,7 +1604,7 @@ export default function KPIForm({
                                 <>
                                   Available Allocation:{" "}
                                   <span className="font-medium">
-                                    {allocation.remaining}{" "}
+                                    {roundTarget(allocation.remaining)}{" "}
                                     {validation.unitLabel}
                                   </span>
                                 </>
@@ -1596,7 +1614,7 @@ export default function KPIForm({
                                 <>
                                   Assigned Target:{" "}
                                   <span className="font-medium">
-                                    {validation.assignedTarget}{" "}
+                                    {roundTarget(validation.assignedTarget)}{" "}
                                     {validation.unitLabel}
                                   </span>
                                 </>
@@ -1643,11 +1661,13 @@ export default function KPIForm({
                             </p>
                           )}
                           <div className="text-xs mt-1 text-gray-600">
-                            Current quarterly sum: {validation.currentSum}{" "}
+                            Current quarterly sum:{" "}
+                            {roundTarget(validation.currentSum)}{" "}
                             {validation.unitLabel}
                             {validation.remainingAllocation !== undefined && (
                               <span className="ml-2 text-blue-600">
-                                (Available: {validation.remainingAllocation}{" "}
+                                (Available:{" "}
+                                {roundTarget(validation.remainingAllocation)}{" "}
                                 {validation.unitLabel})
                               </span>
                             )}

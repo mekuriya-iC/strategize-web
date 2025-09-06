@@ -567,9 +567,9 @@ export default function AssignObjectiveDialog({
       });
 
       toast.success("Bulk assignment completed", {
-        description: `Assigned ${targetValue}${getDetailedUnitLabel(
-          kpi
-        )} to all ${assignments.length} assignees.`,
+        description: `Assigned ${Number(targetValue).toFixed(
+          1
+        )}${getDetailedUnitLabel(kpi)} to all ${assignments.length} assignees.`,
       });
     } else {
       console.warn(
@@ -699,7 +699,11 @@ export default function AssignObjectiveDialog({
         if (Math.abs(totalAssigned - parentTarget) > 0.01) {
           // Allow small rounding differences
           errors.push(
-            `Total assigned target for "${cleanName}" (${totalAssigned}) must equal parent target (${parentTarget})`
+            `Total assigned target for "${cleanName}" (${Number(
+              totalAssigned
+            ).toFixed(1)}) must equal parent target (${Number(
+              parentTarget
+            ).toFixed(1)})`
           );
         }
       } else {
@@ -1565,7 +1569,11 @@ export default function AssignObjectiveDialog({
                                 <Input
                                   type="number"
                                   step="0.01"
-                                  value={currentTarget}
+                                  value={
+                                    currentTarget === 0
+                                      ? ""
+                                      : currentTarget.toString()
+                                  }
                                   onChange={(e) => {
                                     const newTarget =
                                       parseFloat(e.target.value) || 0;

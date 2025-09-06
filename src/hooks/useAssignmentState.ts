@@ -158,7 +158,11 @@ export const useAssignmentState = () => {
           if (Math.abs(totalAssigned - parentTarget) > 0.01) {
             // Allow small rounding differences
             errors.push(
-              `Total assigned target for "${parentKPI.name}" (${totalAssigned}) must equal parent target (${parentTarget})`
+              `Total assigned target for "${parentKPI.name}" (${Number(
+                totalAssigned
+              ).toFixed(1)}) must equal parent target (${Number(
+                parentTarget
+              ).toFixed(1)})`
             );
           }
         } else {

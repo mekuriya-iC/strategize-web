@@ -3,7 +3,14 @@ import { useUser } from "@/context/UserContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Eye, MoreVertical, Users } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  MoreVertical,
+  Users,
+  Plus,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +32,7 @@ import DeleteObjectiveDialog from "./DeleteObjectiveDialog";
 // import SubmitDialog from "../submissions/SubmitDialog";
 import ObjectiveWithKPIsSubmitDialog from "../submissions/ObjectiveWithKPIsSubmitDialog";
 import AssignObjectiveDialog from "./AssignObjectiveDialog";
+import AddKPIDialog from "./AddKPIDialog";
 
 // Re-export the GraphQL Objective type for backward compatibility
 export type Objective = GraphQLObjective;
@@ -670,6 +678,18 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = ({
                                 Edit
                               </DropdownMenuItem>
                             </EditObjectiveDialog>
+                            <AddKPIDialog
+                              objective={obj}
+                              onSuccess={onEditSuccess}
+                            >
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add KPI
+                              </DropdownMenuItem>
+                            </AddKPIDialog>
                             {/* Assign option - show for CORPORATE, DIVISION, and DEPARTMENT objectives (never for PERSONNEL) */}
                             {(obj.type === "CORPORATE" ||
                               obj.type === "DIVISION" ||

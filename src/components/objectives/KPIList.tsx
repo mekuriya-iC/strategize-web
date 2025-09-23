@@ -515,7 +515,8 @@ export default function KPIList({
                       : idx % 2 === 1
                       ? "bg-white"
                       : "bg-[#ECECFF]"
-                  } hover:bg-gray-50 transition-colors`}
+                  } hover:bg-gray-50 transition-colors cursor-pointer`}
+                  onClick={() => onEdit(kpi.kpiId)}
                 >
                   {showBulkActions && (
                     <TableCell
@@ -1150,7 +1151,10 @@ export default function KPIList({
                     </TableCell>
                   )}
 
-                  <TableCell className="px-6 py-4">
+                  <TableCell
+                    className="px-6 py-4"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex items-center gap-2">
                       {/* Expand/Collapse button for corporate, division, and department KPIs */}
                       {(kpi.objective?.type === "CORPORATE" ||
@@ -1160,7 +1164,10 @@ export default function KPIList({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toggleExpanded(kpi.kpiId)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpanded(kpi.kpiId);
+                            }}
                             className="h-6 w-6 p-0"
                           >
                             {isExpanded ? (
@@ -1180,6 +1187,7 @@ export default function KPIList({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>

@@ -79,6 +79,8 @@ export const GET_ALL_SUBMISSIONS_NO_TYPE = gql`
           name
           type
           status
+          assigneeId
+          assigneeType
         }
         kpi {
           kpiId
@@ -86,10 +88,14 @@ export const GET_ALL_SUBMISSIONS_NO_TYPE = gql`
           status
           weight
           baseline
+          assigneeId
+          assigneeType
           objective {
             objectiveId
             name
             type
+            assigneeId
+            assigneeType
           }
         }
         createdAt
@@ -125,6 +131,8 @@ export const GET_PENDING_SUBMISSIONS = gql`
           name
           type
           status
+          assigneeId
+          assigneeType
           kpis {
             kpiId
             name
@@ -141,10 +149,14 @@ export const GET_PENDING_SUBMISSIONS = gql`
           status
           weight
           baseline
+          assigneeId
+          assigneeType
           objective {
             objectiveId
             name
             type
+            assigneeId
+            assigneeType
           }
         }
         createdAt
@@ -181,10 +193,14 @@ export const GET_KPI_SUBMISSIONS = gql`
           status
           weight
           baseline
+          assigneeId
+          assigneeType
           objective {
             objectiveId
             name
             type
+            assigneeId
+            assigneeType
           }
         }
         createdAt
@@ -206,7 +222,6 @@ export const GET_SUBMISSIONS_BY_STATUS = gql`
     $page: Int
     $limit: Int
     $type: ObjectiveType!
-    $status: SubmissionStatus!
   ) {
     submissions(page: $page, limit: $limit, type: $type) {
       items {
@@ -224,6 +239,8 @@ export const GET_SUBMISSIONS_BY_STATUS = gql`
           name
           type
           status
+          assigneeId
+          assigneeType
         }
         kpi {
           kpiId
@@ -231,10 +248,14 @@ export const GET_SUBMISSIONS_BY_STATUS = gql`
           status
           weight
           baseline
+          assigneeId
+          assigneeType
           objective {
             objectiveId
             name
             type
+            assigneeId
+            assigneeType
           }
         }
         createdAt

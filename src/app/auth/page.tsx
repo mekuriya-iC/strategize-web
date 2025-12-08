@@ -1,7 +1,20 @@
 // src/app/auth/page.tsx
+import { Suspense } from "react";
 import Image from "next/image";
 import LoginForm from "@/components/auth/LoginForm";
 import Logo from "@/components/Logo";
+
+// Loading fallback for the login form
+function LoginFormFallback() {
+  return (
+    <div className="w-full max-w-md animate-pulse">
+      <div className="h-8 bg-gray-200 rounded mb-4"></div>
+      <div className="h-12 bg-gray-200 rounded mb-4"></div>
+      <div className="h-12 bg-gray-200 rounded mb-4"></div>
+      <div className="h-12 bg-gray-200 rounded"></div>
+    </div>
+  );
+}
 
 export default function AuthPage() {
   return (
@@ -17,7 +30,9 @@ export default function AuthPage() {
         <div className="h-20 md:hidden" />
         {/* Login Form */}
         <div className="w-full max-w-md">
-          <LoginForm />
+          <Suspense fallback={<LoginFormFallback />}>
+            <LoginForm />
+          </Suspense>
         </div>
         {/* Footer */}
         <div className="w-full max-w-md mt-8 text-xs text-gray-400 text-center font-sans">

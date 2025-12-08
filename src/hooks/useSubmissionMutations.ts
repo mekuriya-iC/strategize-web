@@ -14,45 +14,24 @@ import {
   UpdateSubmissionMutationVariables,
   RemoveSubmissionMutationVariables,
 } from "@/types/graphql";
+import { submissionLogger } from "@/lib/logger";
+import { invalidateAfterMutation } from "@/stores/cacheStore";
 
 export const useSubmissionMutations = () => {
   const [createSubmission, { loading: createLoading, error: createError }] =
     useMutation(CREATE_SUBMISSION, {
+      onCompleted: () => {
+        invalidateAfterMutation.submission();
+      },
       refetchQueries: [
-        // Refetch submissions for all types and common pagination
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "CORPORATE" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "DIVISION" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "PERSONNEL" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "CORPORATE" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "DIVISION" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "PERSONNEL" },
-        },
-        // Refetch objectives and KPIs as their status might change
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "PERSONNEL" } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
@@ -62,129 +41,60 @@ export const useSubmissionMutations = () => {
       ],
     });
 
-  const [
-    createSubmissions,
-    { loading: createBulkLoading, error: createBulkError },
-  ] = useMutation(CREATE_SUBMISSIONS, {
-    refetchQueries: [
-      // Same refetch queries as single create
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 10, type: "CORPORATE" },
+  const [createSubmissions, { loading: createBulkLoading, error: createBulkError }] =
+    useMutation(CREATE_SUBMISSIONS, {
+      onCompleted: () => {
+        invalidateAfterMutation.submission();
       },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 10, type: "DIVISION" },
-      },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 10, type: "DEPARTMENT" },
-      },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 10, type: "PERSONNEL" },
-      },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 20, type: "CORPORATE" },
-      },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 20, type: "DIVISION" },
-      },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 20, type: "DEPARTMENT" },
-      },
-      {
-        query: GET_SUBMISSIONS,
-        variables: { page: 1, limit: 20, type: "PERSONNEL" },
-      },
-      { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
-      { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
-      { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
-      { query: GET_KPIS, variables: { page: 1, limit: 10 } },
-      { query: GET_KPIS, variables: { page: 1, limit: 20 } },
-      { query: GET_KPIS, variables: { page: 1, limit: 50 } },
-    ],
-  });
+      refetchQueries: [
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "PERSONNEL" } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
+        { query: GET_KPIS, variables: { page: 1, limit: 10 } },
+        { query: GET_KPIS, variables: { page: 1, limit: 20 } },
+        { query: GET_KPIS, variables: { page: 1, limit: 50 } },
+      ],
+    });
 
   const [updateSubmission, { loading: updateLoading, error: updateError }] =
     useMutation(UPDATE_SUBMISSION, {
+      onCompleted: () => {
+        invalidateAfterMutation.submission();
+      },
       refetchQueries: [
-        // Refetch submissions
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "CORPORATE" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "DIVISION" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "PERSONNEL" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "CORPORATE" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "DIVISION" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "PERSONNEL" },
-        },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "PERSONNEL" } },
       ],
     });
 
   const [removeSubmission, { loading: removeLoading, error: removeError }] =
     useMutation(REMOVE_SUBMISSION, {
+      onCompleted: () => {
+        invalidateAfterMutation.submission();
+      },
       refetchQueries: [
-        // Refetch submissions
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "CORPORATE" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "DIVISION" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 10, type: "PERSONNEL" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "CORPORATE" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "DIVISION" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_SUBMISSIONS,
-          variables: { page: 1, limit: 20, type: "PERSONNEL" },
-        },
-        // Also refetch objectives and KPIs as status might change back
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "CORPORATE" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DIVISION" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "DEPARTMENT" } },
+        { query: GET_SUBMISSIONS, variables: { page: 1, limit: 20, type: "PERSONNEL" } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
@@ -194,50 +104,42 @@ export const useSubmissionMutations = () => {
       ],
     });
 
-  const handleCreateSubmission = async (
-    variables: CreateSubmissionMutationVariables
-  ) => {
+  const handleCreateSubmission = async (variables: CreateSubmissionMutationVariables) => {
     try {
       const result = await createSubmission({ variables });
       return result.data?.createSubmission;
     } catch (error) {
-      console.error("Error creating submission:", error);
+      submissionLogger.error("Error creating submission:", error);
       throw error;
     }
   };
 
-  const handleCreateSubmissions = async (
-    variables: CreateSubmissionsMutationVariables
-  ) => {
+  const handleCreateSubmissions = async (variables: CreateSubmissionsMutationVariables) => {
     try {
       const result = await createSubmissions({ variables });
       return result.data?.createSubmissions;
     } catch (error) {
-      console.error("Error creating bulk submissions:", error);
+      submissionLogger.error("Error creating bulk submissions:", error);
       throw error;
     }
   };
 
-  const handleUpdateSubmission = async (
-    variables: UpdateSubmissionMutationVariables
-  ) => {
+  const handleUpdateSubmission = async (variables: UpdateSubmissionMutationVariables) => {
     try {
       const result = await updateSubmission({ variables });
       return result.data?.updateSubmission;
     } catch (error) {
-      console.error("Error updating submission:", error);
+      submissionLogger.error("Error updating submission:", error);
       throw error;
     }
   };
 
-  const handleRemoveSubmission = async (
-    variables: RemoveSubmissionMutationVariables
-  ) => {
+  const handleRemoveSubmission = async (variables: RemoveSubmissionMutationVariables) => {
     try {
       const result = await removeSubmission({ variables });
       return result.data?.removeSubmission;
     } catch (error) {
-      console.error("Error removing submission:", error);
+      submissionLogger.error("Error removing submission:", error);
       throw error;
     }
   };
@@ -247,8 +149,7 @@ export const useSubmissionMutations = () => {
     createSubmissions: handleCreateSubmissions,
     updateSubmission: handleUpdateSubmission,
     removeSubmission: handleRemoveSubmission,
-    loading:
-      createLoading || createBulkLoading || updateLoading || removeLoading,
+    loading: createLoading || createBulkLoading || updateLoading || removeLoading,
     error: createError || createBulkError || updateError || removeError,
   };
 };

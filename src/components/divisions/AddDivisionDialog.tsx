@@ -104,7 +104,7 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Division Manager
+                  Division Director
                 </label>
                 <Select
                   value={divisionManager}
@@ -112,23 +112,23 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
                   disabled={loading || managers.length === 0}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Manager">
+                    <SelectValue placeholder="Select Director">
                       {selectedManagerName ||
                         (managers.length === 0
-                          ? "No managers available"
-                          : "Select Manager")}
+                          ? "No directors available"
+                          : "Select Director")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {managers.length === 0 ? (
                       <div className="p-2 text-sm text-gray-500">
-                        No managers found. Please ensure there are employees
-                        with MANAGER role.
+                        No directors found. Please ensure there are employees
+                        with DIRECTOR role.
                       </div>
                     ) : (
                       managers.map((manager) => (
                         <SelectItem key={manager.id} value={manager.id}>
-                          {manager.name} (ID: {manager.id})
+                          {manager.name}
                         </SelectItem>
                       ))
                     )}
@@ -136,8 +136,8 @@ const AddDivisionDialog: React.FC<AddDivisionDialogProps> = ({
                 </Select>
                 {managers.length === 0 && (
                   <p className="text-sm text-red-600 mt-1">
-                    No managers available. Please create employees with MANAGER
-                    role first.
+                    No directors available. Please create employees with
+                    DIRECTOR role first.
                   </p>
                 )}
               </div>

@@ -20,8 +20,19 @@ export const UPDATE_OBJECTIVE = gql`
       name
       type
       status
+      order
       createdAt
       updatedAt
+    }
+  }
+`;
+
+export const UPDATE_OBJECTIVES_ORDER = gql`
+  mutation UpdateObjectivesOrder($input: [UpdateObjectiveInput!]!) {
+    updateObjectives(updateObjectiveInputs: $input) {
+      objectiveId
+      name
+      order
     }
   }
 `;

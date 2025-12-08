@@ -36,6 +36,8 @@ export const useKPI = (variables: KpiQueryVariables) => {
   >(GET_KPI, {
     variables,
     fetchPolicy: "cache-and-network",
+    // Skip query if kpiId is empty or undefined
+    skip: !variables.kpiId,
   });
 
   return {

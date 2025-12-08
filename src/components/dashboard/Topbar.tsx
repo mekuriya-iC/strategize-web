@@ -8,6 +8,9 @@ import {
   SidebarClose,
   SidebarOpen,
   LogOut,
+  Settings,
+  User,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +24,7 @@ import OrgUnitSelector from "./OrgUnitSelector";
 import StrategySelector from "./StrategySelector";
 import DepartmentSelector from "../departments/DepartmentSelector";
 import { useTheme } from "next-themes";
-import { useSidebar } from "@/context/SidebarContext";
+import { useUIStore, useAuthStore } from "@/stores";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -29,9 +32,10 @@ import UserAvatar from "@/components/UserAvatar";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
-  const { open, toggleSidebar } = useSidebar();
+  const { sidebarOpen: open, toggleSidebar } = useUIStore();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const user = useAuthStore((state) => state.user);
+  const { logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -164,10 +168,32 @@ export default function Topbar() {
               </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Account Settings</DropdownMenuItem>
-            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push("/dashboard/settings?tab=security")}
+              className="cursor-pointer"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Account Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push("/dashboard/settings?tab=profile")}
+              className="cursor-pointer"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push("/dashboard/settings")}
+              className="cursor-pointer"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              All Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-red-600 cursor-pointer"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </DropdownMenuItem>

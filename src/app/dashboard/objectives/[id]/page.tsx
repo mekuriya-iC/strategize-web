@@ -399,9 +399,10 @@ export default function ObjectiveDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {/* Submit button - show for unsubmitted objectives that are not corporate */}
+          {/* Submit button - show for unsubmitted objectives that are not corporate and have KPIs */}
           {objective.status === "NOT_SUBMITTED" &&
-            objective.type !== "CORPORATE" && (
+            objective.type !== "CORPORATE" &&
+            ((objective.kpis?.length ?? 0) > 0 ? (
               <ObjectiveWithKPIsSubmitDialog
                 objectiveId={objective.objectiveId}
                 objectiveName={objective.name}
@@ -424,7 +425,16 @@ export default function ObjectiveDetailPage() {
                   Submit for Approval
                 </Button>
               </ObjectiveWithKPIsSubmitDialog>
-            )}
+            ) : (
+              <Button
+                disabled
+                className="bg-gray-300 text-gray-500 cursor-not-allowed"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Submit for Approval
+                <span className="ml-2 text-xs">(Add KPI first)</span>
+              </Button>
+            ))}
 
           {/* Assign button - show for unassigned objectives that can be assigned */}
           {!hasBeenAssigned() &&
@@ -433,24 +443,30 @@ export default function ObjectiveDetailPage() {
               objective.type === "DEPARTMENT") && (
               <Button
                 onClick={() => {
-                  // Only allow assignment if CORPORATE or if DIVISION/DEPARTMENT is APPROVED
+                  // Only allow assignment if has KPIs AND (CORPORATE or DIVISION/DEPARTMENT is APPROVED)
+                  const hasKPIs = (objective.kpis?.length ?? 0) > 0;
                   if (
-                    objective.type === "CORPORATE" ||
+                    hasKPIs &&
+                    (objective.type === "CORPORATE" ||
                     (objective.type === "DIVISION" &&
                       objective.status === "APPROVED") ||
                     (objective.type === "DEPARTMENT" &&
-                      objective.status === "APPROVED")
+                        objective.status === "APPROVED"))
                   ) {
                     setShowAssignDialog(true);
                   }
                 }}
                 disabled={
-                  objective.type !== "CORPORATE" &&
-                  objective.status !== "APPROVED"
+                  // Disable if no KPIs
+                  (objective.kpis?.length ?? 0) === 0 ||
+                  // Disable if not CORPORATE and not APPROVED
+                  (objective.type !== "CORPORATE" &&
+                    objective.status !== "APPROVED")
                 }
                 className={
-                  objective.type === "CORPORATE" ||
-                  objective.status === "APPROVED"
+                  (objective.kpis?.length ?? 0) > 0 &&
+                  (objective.type === "CORPORATE" ||
+                    objective.status === "APPROVED")
                     ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }
@@ -461,9 +477,13 @@ export default function ObjectiveDetailPage() {
                   : objective.type === "DIVISION"
                   ? "Assign to Department"
                   : "Assign to Personnel"}
-                {objective.type !== "CORPORATE" &&
+                {(objective.kpis?.length ?? 0) === 0 ? (
+                  <span className="ml-2 text-xs">(Add KPI first)</span>
+                ) : (
+                  objective.type !== "CORPORATE" &&
                   objective.status !== "APPROVED" && (
                     <span className="ml-2 text-xs">(Requires Approval)</span>
+                  )
                   )}
               </Button>
             )}

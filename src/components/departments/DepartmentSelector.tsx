@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Building2, RotateCcw } from "lucide-react";
 import { useState } from "react";
@@ -20,7 +20,7 @@ interface DepartmentSelectorProps {
 export default function DepartmentSelector({
   className = "",
 }: DepartmentSelectorProps) {
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
   const { selected, setSelected, availableDepartments, isMultipleDepartments } =
     useDepartmentSelection();
   const [showModal, setShowModal] = useState(false);
@@ -62,17 +62,7 @@ export default function DepartmentSelector({
                 key={department.departmentId}
                 value={department.departmentId}
               >
-                <div className="flex flex-col">
-                  <span className="font-medium">
-                    {department.name}
-                    {department.division && ` (${department.division.name})`}
-                  </span>
-                  {department.manager && (
-                    <span className="text-xs text-gray-500">
-                      Manager: {department.manager.fullName}
-                    </span>
-                  )}
-                </div>
+                <span className="font-medium">{department.name}</span>
               </SelectItem>
             ))}
           </SelectContent>

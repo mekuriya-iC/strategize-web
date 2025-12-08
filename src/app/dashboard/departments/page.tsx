@@ -14,6 +14,7 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   DepartmentsQueryVariables,
   Department as GraphQLDepartment,
@@ -37,6 +38,10 @@ const DepartmentsPage = () => {
     | "recent"
   >("all");
 
+  // Get permissions to check if user can access employees
+  const { guards } = usePermissions();
+  const canAccessEmployees = guards.isAdmin || guards.isSuperAdmin;
+
   // GraphQL queries
   const {
     data: departmentsData,
@@ -59,10 +64,12 @@ const DepartmentsPage = () => {
     }
   );
 
+  // Only fetch employees if user has admin access (backend requires ADMIN or SUPER_ADMIN)
   const { data: employeesData } = useQuery<{ employees: PaginatedEmployees }>(
     GET_EMPLOYEES,
     {
       variables: { page: 1, limit: 100 },
+      skip: !canAccessEmployees,
     }
   );
 
@@ -221,6 +228,8 @@ const DepartmentsPage = () => {
               filterValue={filterStatus}
               disabled={loading}
             />
+            {/* Only show Add Department button for admins */}
+            {canAccessEmployees && (
             <div className="flex gap-2 items-center">
               <Button
                 className="ml-2"
@@ -231,6 +240,7 @@ const DepartmentsPage = () => {
                 Add Department
               </Button>
             </div>
+            )}
           </div>
 
           {/* Results Summary */}
@@ -273,13 +283,20 @@ const DepartmentsPage = () => {
 
       {/* Empty State or Table */}
       {!departmentsLoading && !departmentsError && departments.length === 0 ? (
+        canAccessEmployees ? (
         <EmptyState onAddDepartment={handleAddDepartment} />
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            No departments found.
+          </div>
+        )
       ) : (
         <>
           {/* Table */}
           <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
             <DepartmentTable
               departments={departments}
+              readOnly={!canAccessEmployees}
               loading={departmentsLoading}
               error={departmentsError?.message}
               onAddDepartment={handleAddDepartment}

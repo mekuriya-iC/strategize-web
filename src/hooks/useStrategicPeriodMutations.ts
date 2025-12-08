@@ -10,6 +10,9 @@ import {
   UpdateStrategicPeriodMutationVariables,
   RemoveStrategicPeriodMutationVariables,
 } from "@/types/graphql";
+import logger from "@/lib/logger";
+
+const periodLogger = logger.createChild("StrategicPeriod");
 
 export const useStrategicPeriodMutations = () => {
   const [
@@ -52,7 +55,7 @@ export const useStrategicPeriodMutations = () => {
       const result = await createStrategicPeriod({ variables });
       return result.data?.createStrategicPeriod;
     } catch (error) {
-      console.error("Error creating strategic period:", error);
+      periodLogger.error("Error creating strategic period:", error);
       throw error;
     }
   };
@@ -64,7 +67,7 @@ export const useStrategicPeriodMutations = () => {
       const result = await updateStrategicPeriod({ variables });
       return result.data?.updateStrategicPeriod;
     } catch (error) {
-      console.error("Error updating strategic period:", error);
+      periodLogger.error("Error updating strategic period:", error);
       throw error;
     }
   };
@@ -76,7 +79,7 @@ export const useStrategicPeriodMutations = () => {
       const result = await removeStrategicPeriod({ variables });
       return result.data?.removeStrategicPeriod;
     } catch (error) {
-      console.error("Error removing strategic period:", error);
+      periodLogger.error("Error removing strategic period:", error);
       throw error;
     }
   };

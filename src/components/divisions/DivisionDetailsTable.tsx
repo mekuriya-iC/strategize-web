@@ -101,7 +101,7 @@ const DivisionDetailsTable: React.FC<DivisionDetailsTableProps> = ({
     { key: "departmentName", label: "DEPARTMENT NAME" },
     { key: "createdBy", label: "CREATED BY" },
     { key: "createdOn", label: "CREATED ON" },
-    { key: "managedBy", label: "MANAGED BY" },
+    { key: "managedBy", label: "MANAGER" },
     { key: "members", label: "MEMBERS" },
     { key: "action", label: "ACTION" },
   ];

@@ -13,12 +13,14 @@ interface DeleteDivisionDialogProps {
   children: React.ReactNode;
   divisionName: string;
   divisionId: string | number;
+  onDeleteSuccess?: () => void;
 }
 
 const DeleteDivisionDialog: React.FC<DeleteDivisionDialogProps> = ({
   children,
   divisionName,
   divisionId,
+  onDeleteSuccess,
 }) => {
   const [open, setOpen] = useState(false);
   const { removeDivision, loading } = useDivisionMutations();
@@ -29,6 +31,7 @@ const DeleteDivisionDialog: React.FC<DeleteDivisionDialogProps> = ({
         id: String(divisionId),
       });
       setOpen(false);
+      onDeleteSuccess?.();
     } catch (error) {
       console.error("Error deleting division:", error);
 

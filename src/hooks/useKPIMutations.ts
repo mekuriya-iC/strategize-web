@@ -15,6 +15,8 @@ import type {
   UpdateKpiInput,
   KpiTargetInput,
 } from "@/types/graphql";
+import { kpiLogger } from "@/lib/logger";
+import { invalidateAfterMutation } from "@/stores/cacheStore";
 
 export const useKPIMutations = () => {
   const [createKpiMutation, { loading: createLoading }] = useMutation(
@@ -25,9 +27,11 @@ export const useKPIMutations = () => {
         toast.success("KPI created successfully!", {
           description: `"${createdKpi.name}" has been created.`,
         });
+        // Invalidate related caches
+        invalidateAfterMutation.kpi();
       },
       onError: (error) => {
-        console.error("Error creating KPI:", error);
+        kpiLogger.error("Error creating KPI:", error);
         toast.error("Failed to create KPI", {
           description: error.message,
         });
@@ -45,17 +49,42 @@ export const useKPIMutations = () => {
         toast.success("KPI updated successfully!", {
           description: `"${updatedKpi.name}" has been updated.`,
         });
+        // Invalidate related caches
+        invalidateAfterMutation.kpi();
       },
       onError: (error) => {
-        console.error("Error updating KPI:", error);
+        kpiLogger.error("Error updating KPI:", error);
         toast.error("Failed to update KPI", {
           description: error.message,
         });
       },
       refetchQueries: [
         { query: GET_KPIS },
-        { query: GET_PENDING_SUBMISSIONS },
-        { query: GET_KPI_SUBMISSIONS },
+        // Refetch submissions for all objective types
+        {
+          query: GET_PENDING_SUBMISSIONS,
+          variables: { page: 1, limit: 1000, type: "CORPORATE" },
+        },
+        {
+          query: GET_PENDING_SUBMISSIONS,
+          variables: { page: 1, limit: 1000, type: "DIVISION" },
+        },
+        {
+          query: GET_PENDING_SUBMISSIONS,
+          variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+        },
+        {
+          query: GET_KPI_SUBMISSIONS,
+          variables: { page: 1, limit: 1000, type: "CORPORATE" },
+        },
+        {
+          query: GET_KPI_SUBMISSIONS,
+          variables: { page: 1, limit: 1000, type: "DIVISION" },
+        },
+        {
+          query: GET_KPI_SUBMISSIONS,
+          variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+        },
       ],
       awaitRefetchQueries: true,
     }
@@ -69,9 +98,12 @@ export const useKPIMutations = () => {
         toast.success("KPI removed successfully!", {
           description: `"${removedKpi.name}" has been removed.`,
         });
+        // Invalidate related caches - especially submissions that might reference this KPI
+        invalidateAfterMutation.kpi();
+        invalidateAfterMutation.submission();
       },
       onError: (error) => {
-        console.error("Error removing KPI:", error);
+        kpiLogger.error("Error removing KPI:", error);
         toast.error("Failed to remove KPI", {
           description: error.message,
         });
@@ -86,7 +118,7 @@ export const useKPIMutations = () => {
       const result = await createKpiMutation({ variables: { input } });
       return result.data?.createKpi;
     } catch (error) {
-      console.error("Error in createKpi:", error);
+      kpiLogger.error("Error in createKpi:", error);
       throw error;
     }
   };
@@ -96,7 +128,7 @@ export const useKPIMutations = () => {
       const result = await updateKpiMutation({ variables: { input } });
       return result.data?.updateKpi;
     } catch (error) {
-      console.error("Error in updateKpi:", error);
+      kpiLogger.error("Error in updateKpi:", error);
       throw error;
     }
   };
@@ -106,21 +138,14 @@ export const useKPIMutations = () => {
       const result = await removeKpiMutation({ variables: { id: kpiId } });
       return result.data?.removeKpi;
     } catch (error) {
-      console.error("Error in removeKpi:", error);
+      kpiLogger.error("Error in removeKpi:", error);
       throw error;
     }
   };
 
-  // New function to update KPI targets for assignment
+  // Function to update KPI targets for assignment
   const updateKpiTargets = async (kpiId: string, targets: KpiTargetInput[]) => {
-    console.log("🔧 updateKpiTargets called:", {
-      kpiId,
-      targets,
-      input: {
-        kpiId,
-        targets,
-      },
-    });
+    kpiLogger.debug("updateKpiTargets called:", { kpiId, targets });
 
     try {
       const result = await updateKpiMutation({
@@ -132,15 +157,14 @@ export const useKPIMutations = () => {
         },
       });
 
-      console.log("🔧 updateKpiTargets result:", {
+      kpiLogger.debug("updateKpiTargets result:", {
         success: !!result.data?.updateKpi,
         updatedKpi: result.data?.updateKpi,
-        targets: result.data?.updateKpi?.targets,
       });
 
       return result.data?.updateKpi;
     } catch (error) {
-      console.error("Error in updateKpiTargets:", error);
+      kpiLogger.error("Error in updateKpiTargets:", error);
       throw error;
     }
   };
@@ -149,7 +173,7 @@ export const useKPIMutations = () => {
     createKpi,
     updateKpi,
     removeKpi,
-    updateKpiTargets, // New function for target updates
+    updateKpiTargets,
     loading: createLoading || updateLoading || removeLoading,
   };
 };

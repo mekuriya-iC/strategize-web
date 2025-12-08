@@ -6,9 +6,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Plus } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Building2 } from "lucide-react";
 import DeleteEmployeeDialog from "./DeleteEmployeeDialog";
 import EditEmployeeDialog from "./EditEmployeeDialog";
+import AddToDepartmentDialog from "./AddToDepartmentDialog";
 import { Employee as GraphQLEmployee } from "@/types/graphql";
 
 const EmployeeActionsMenu = ({
@@ -16,14 +17,18 @@ const EmployeeActionsMenu = ({
   employeeName,
   employeeId,
   originalEmployee,
-  onAddDepartment,
 }: {
   onView: () => void;
   employeeName?: string;
   employeeId?: string;
   originalEmployee?: GraphQLEmployee;
-  onAddDepartment?: () => void;
 }) => {
+  // Only show "Add to Department" for NORMAL and COORDINATOR roles
+  // Higher roles (MANAGER, DIRECTOR, ADMIN, SUPER_ADMIN) manage departments, not join them
+  const canBeAddedToDepartment =
+    originalEmployee?.role === "NORMAL" ||
+    originalEmployee?.role === "COORDINATOR";
+
   return (
     <div className="flex items-center gap-2">
       <Button variant="link" size="sm" onClick={onView} className="px-0">
@@ -36,13 +41,20 @@ const EmployeeActionsMenu = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem
-            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-orange-50"
-            onClick={onAddDepartment}
-          >
-            <Plus className="h-4 w-4" />
-            Add Department
-          </DropdownMenuItem>
+          {employeeId && employeeName && canBeAddedToDepartment && (
+            <AddToDepartmentDialog
+              employeeId={employeeId}
+              employeeName={employeeName}
+            >
+              <DropdownMenuItem
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-blue-50"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <Building2 className="h-4 w-4" />
+                Add to Department
+              </DropdownMenuItem>
+            </AddToDepartmentDialog>
+          )}
           {originalEmployee && (
             <EditEmployeeDialog employee={originalEmployee}>
               <DropdownMenuItem

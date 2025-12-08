@@ -12,8 +12,7 @@ import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
 import { useKPIs } from "@/hooks/useKPIs";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useOrgUnit } from "@/context/OrgUnitContext";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore, useOrgUnitStore } from "@/stores";
 import { useUserDepartments } from "@/hooks/useUserDepartments";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 import { useQuery } from "@apollo/client";
@@ -22,11 +21,12 @@ import {
   GET_PENDING_SUBMISSIONS,
 } from "@/lib/graphql/queries/submissions";
 import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function ObjectivesApprovalTable() {
   const router = useRouter();
-  const { user } = useUser();
-  const { selectedUnit } = useOrgUnit();
+  const user = useAuthStore((state) => state.user);
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
   const { departmentNames } = useUserDepartments();
   const { selected: selectedDepartment } = useDepartmentSelection();
   const [selected, setSelected] = useState<string[]>([]);
@@ -34,24 +34,21 @@ export default function ObjectivesApprovalTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  // State for optimistic ordering updates
+  const [orderedObjectives, setOrderedObjectives] = useState<Objective[] | null>(null);
+
+  // Use RBAC permissions
+  const { guards, objectives: objectivePermissions } = usePermissions();
 
   // Determine the assigneeId based on the user role and selected organizational unit
   const getAssigneeId = (): string | undefined => {
-    if (user?.role === "MANAGER" && selectedUnit) {
+    if (guards.isManager && selectedUnit) {
       // For managers, show objectives assigned to their selected unit
-      if (selectedUnit.__typename === "Division") {
-        return (selectedUnit as { __typename: "Division"; divisionId: string })
-          .divisionId;
-      } else {
-        return (
-          selectedUnit as { __typename: "Department"; departmentId: string }
-        ).departmentId;
-      }
-    } else if (user?.role === "NORMAL") {
+      return selectedUnit.id;
+    } else if (guards.isEmployee) {
       // For employees, show objectives assigned to them personally
-      return user.employeeId;
+      return user?.employeeId;
     }
     return undefined;
   };
@@ -243,17 +240,61 @@ export default function ObjectivesApprovalTable() {
   const filteredObjectives = useMemo(() => {
     let filtered = objectives;
 
-    // Role-based filtering
-    if (user?.role === "NORMAL") {
-      // Employees: rely on assigneeId filtering only.
-      // Some backends create employee-assigned children with the parent's type
-      // (e.g., DEPARTMENT), so filtering strictly by type would hide them.
-      // Do not filter by obj.type here.
-    } else if (user?.role === "MANAGER") {
-      // Managers can see all objectives assigned to their units
-      // No additional filtering needed as assigneeId handles this
+    // Role-based filtering using RBAC guards
+    // Each role should see their assigned objectives (children) AND parent objectives from the level above
+    if (guards.isEmployee) {
+      // Employees see:
+      // - All PERSONNEL objectives (their assigned objectives)
+      // - Parent DEPARTMENT objectives (without children at their level)
+      filtered = filtered.filter((obj) => {
+        if (obj.type === "PERSONNEL") {
+          // Always show PERSONNEL objectives to employees - these are their assigned objectives
+          return true;
+        }
+        if (obj.type === "DEPARTMENT") {
+          // Show DEPARTMENT objectives only if they are parents (not children)
+          return !obj.parent;
+        }
+        return false;
+      });
+    } else if (guards.isCoordinator) {
+      // Coordinators see:
+      // - All DEPARTMENT objectives (their assigned objectives)
+      // - All PERSONNEL objectives (for their unit)
+      // - Parent DIVISION objectives (without children at their level)
+      filtered = filtered.filter((obj) => {
+        if (obj.type === "DEPARTMENT" || obj.type === "PERSONNEL") {
+          // Always show DEPARTMENT and PERSONNEL objectives
+          return true;
+        }
+        if (obj.type === "DIVISION") {
+          // Show DIVISION objectives only if they are parents (not children)
+          return !obj.parent;
+        }
+        return false;
+      });
+    } else if (guards.isManager) {
+      // Managers see:
+      // - All DEPARTMENT objectives (their assigned objectives)
+      // - Parent DIVISION objectives (without children at their level)
+      filtered = filtered.filter((obj) => {
+        if (obj.type === "DEPARTMENT") {
+          // Always show DEPARTMENT objectives to managers - these are their assigned objectives
+          return true;
+        }
+        if (obj.type === "DIVISION") {
+          // Show DIVISION objectives only if they are parents (not children)
+          return !obj.parent;
+        }
+        return false;
+      });
+    } else if (guards.isDirector) {
+      // Directors see ONLY their assigned DIVISION objectives
+      // They should NOT see CORPORATE objectives - those are for admins only
+      filtered = filtered.filter((obj) => obj.type === "DIVISION");
     } else {
-      // For admins/super admins, filter out assigned objectives (children) when not in unit context
+      // For admins/super admins, show all objectives
+      // Filter out children when not in unit context to avoid duplicates
       if (!assigneeId) {
         filtered = filtered.filter((obj) => !obj.parent);
       }
@@ -272,13 +313,39 @@ export default function ObjectivesApprovalTable() {
       | "APPROVED"
       | "REJECTED";
     return filtered.filter((obj) => obj.status === mapped);
-  }, [objectives, statusFilter, user?.role, assigneeId]);
+  }, [objectives, statusFilter, guards, assigneeId]);
 
-  // Client-side pagination after filtering
-  const totalItems = filteredObjectives.length;
+  // Sort objectives by order field
+  const sortedObjectives = useMemo(() => {
+    const objectivesToSort = orderedObjectives || filteredObjectives;
+    return [...objectivesToSort].sort((a, b) => {
+      const orderA = (a as Objective & { order?: number }).order ?? Infinity;
+      const orderB = (b as Objective & { order?: number }).order ?? Infinity;
+      return orderA - orderB;
+    });
+  }, [filteredObjectives, orderedObjectives]);
+
+  // Reset ordered objectives when filtered objectives change
+  React.useEffect(() => {
+    setOrderedObjectives(null);
+  }, [filteredObjectives]);
+
+  // Determine if sorting is enabled (only for users who can edit)
+  const canEnableSorting = useMemo(() => {
+    // Enable sorting for admins and directors with edit permission
+    return guards.isAdmin || guards.isSuperAdmin || guards.isDirector || guards.isManager;
+  }, [guards]);
+
+  // Handle order change (optimistic update)
+  const handleOrderChange = (newOrderedObjectives: Objective[]) => {
+    setOrderedObjectives(newOrderedObjectives);
+  };
+
+  // Client-side pagination after filtering and sorting
+  const totalItems = sortedObjectives.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const pagedObjectives = filteredObjectives.slice(
+  const pagedObjectives = sortedObjectives.slice(
     startIndex,
     startIndex + itemsPerPage
   );
@@ -329,8 +396,8 @@ export default function ObjectivesApprovalTable() {
   };
 
   const handleAddObjective = () => {
-    // Only allow admin and super admin users to add objectives
-    if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+    // Only allow users with objective creation permission
+    if (objectivePermissions.creatableTypes.length > 0) {
       router.push("/dashboard/objectives/new");
     } else {
       toast.error("You don't have permission to add objectives");
@@ -387,7 +454,7 @@ export default function ObjectivesApprovalTable() {
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6">
       {/* Context Header for Employees */}
-      {user?.role === "NORMAL" && (
+      {guards.isEmployee && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-blue-900 mb-2">
             My Personal Objectives
@@ -419,7 +486,7 @@ export default function ObjectivesApprovalTable() {
         onStatusFilterChange={handleStatusFilterChange}
         onClearFilters={handleClearFilters}
         onAddObjective={handleAddObjective}
-        showAddButton={user?.role === "ADMIN" || user?.role === "SUPER_ADMIN"}
+        showAddButton={objectivePermissions.creatableTypes.length > 0}
       />
 
       {/* Summary */}
@@ -466,6 +533,8 @@ export default function ObjectivesApprovalTable() {
         error={error?.message}
         objectiveRejectionReasons={objectiveRejectionReasons}
         kpiRejectionReasons={kpiRejectionReasons}
+        enableSorting={canEnableSorting}
+        onOrderChange={handleOrderChange}
         childQuartersByParentId={(function () {
           try {
             // Build child quarters map for corporate objectives

@@ -10,7 +10,7 @@ import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
 import { StrategicPeriod } from "@/types/graphql";
 import { useEffect, useState } from "react";
 import React from "react";
-import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
+import { useStrategicPeriodStore } from "@/stores";
 
 interface StrategySelectorProps {
   value?: string;
@@ -34,18 +34,18 @@ export default function StrategySelector({
   className = "",
 }: StrategySelectorProps) {
   const { strategicPeriods, loading } = useStrategicPeriods();
-  const { selected: ctxSelected, setSelected: ctxSet } = useStrategicPeriod();
+  const { selectedPeriod: storeSelectedPeriod, setSelectedPeriod: storeSetPeriod } = useStrategicPeriodStore();
   const [selectedPeriod, setSelectedPeriod] = useState<StrategicPeriod | null>(
     null
   );
   const [selectedValue, setSelectedValue] = useState<string>("");
 
   useEffect(() => {
-    if (ctxSelected?.period) {
-      setSelectedPeriod(ctxSelected.period);
-      setSelectedValue(ctxSelected.period.strategicPeriodId);
+    if (storeSelectedPeriod) {
+      setSelectedPeriod(storeSelectedPeriod);
+      setSelectedValue(storeSelectedPeriod.strategicPeriodId);
     }
-  }, [ctxSelected]);
+  }, [storeSelectedPeriod]);
 
   const handlePeriodChange = (value: string) => {
     const period = strategicPeriods.find((p) => p.strategicPeriodId === value);
@@ -54,7 +54,7 @@ export default function StrategySelector({
     setSelectedPeriod(period);
     setSelectedValue(value);
 
-    ctxSet({ period });
+    storeSetPeriod(period);
 
     onChange?.(value);
   };

@@ -4,6 +4,7 @@ import { ASSIGN_OBJECTIVE } from "@/lib/graphql/mutations/objectives";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import type { AssignObjectiveMutationVariables } from "@/types/graphql";
+import { objectiveLogger } from "@/lib/logger";
 
 export const useObjectiveAssignment = () => {
   const [assignObjectiveMutation, { loading }] = useMutation(ASSIGN_OBJECTIVE, {
@@ -16,12 +17,11 @@ export const useObjectiveAssignment = () => {
       });
     },
     onError: (error) => {
-      console.error("Error assigning objective:", error);
+      objectiveLogger.error("Error assigning objective:", error);
       toast.error("Failed to assign objective", {
         description: error.message,
       });
     },
-    // Refetch objectives and KPIs to update the UI
     refetchQueries: [{ query: GET_OBJECTIVES }, { query: GET_KPIS }],
     awaitRefetchQueries: true,
   });
@@ -33,7 +33,7 @@ export const useObjectiveAssignment = () => {
       const result = await assignObjectiveMutation({ variables: { input } });
       return result.data?.assignObjective;
     } catch (error) {
-      console.error("Error in assignObjective:", error);
+      objectiveLogger.error("Error in assignObjective:", error);
       throw error;
     }
   };

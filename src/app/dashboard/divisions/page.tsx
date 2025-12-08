@@ -15,6 +15,7 @@ import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { useDivisionMutations } from "@/hooks/useDivisionMutations";
 import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { usePermissions } from "@/hooks/usePermissions";
 import type {
   PaginatedDivisions,
   PaginatedEmployees,
@@ -32,11 +33,16 @@ const DivisionsPage = () => {
     "all" | "managed" | "recent" | "with_departments" | "no_departments"
   >("all");
 
+  // Get permissions to check if user can access employees
+  const { guards } = usePermissions();
+  const canAccessEmployees = guards.isAdmin || guards.isSuperAdmin;
+
   // GraphQL queries
   const {
     data: divisionsData,
     loading: divisionsLoading,
     error: divisionsError,
+    refetch: refetchDivisions,
   } = useQuery<{ divisions: PaginatedDivisions }>(GET_DIVISIONS, {
     variables: {
       page: currentPage,
@@ -46,15 +52,17 @@ const DivisionsPage = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // Fetch employees for manager selection (only MANAGER and ADMIN roles)
+  // Fetch employees for director selection (DIRECTOR role for divisions)
+  // Only fetch if user has admin access (backend requires ADMIN or SUPER_ADMIN)
   const { data: employeesData } = useQuery<{ employees: PaginatedEmployees }>(
     GET_EMPLOYEES,
     {
       variables: {
         page: 1,
-        limit: 100, // Get enough managers for the dropdown
+        limit: 100, // Get enough directors for the dropdown
       },
       fetchPolicy: "cache-first",
+      skip: !canAccessEmployees,
     }
   );
 
@@ -141,12 +149,12 @@ const DivisionsPage = () => {
     }));
   }, [divisionsData, filterType]);
 
-  // Filter managers (MANAGER role only)
+  // Filter directors (DIRECTOR role only) for division management
   const managers = React.useMemo(() => {
     if (!employeesData?.employees.items) return [];
 
     return employeesData.employees.items
-      .filter((employee: GraphQLEmployee) => employee.role === "MANAGER")
+      .filter((employee: GraphQLEmployee) => employee.role === "DIRECTOR")
       .map((employee: GraphQLEmployee) => ({
         id: employee.employeeId,
         name: employee.fullName,
@@ -330,6 +338,8 @@ const DivisionsPage = () => {
               filterValue={filterType}
               disabled={loading}
             />
+            {/* Only show Add Division button for admins */}
+            {canAccessEmployees && (
             <div className="flex gap-2 items-center">
               <Button
                 className="ml-2"
@@ -340,6 +350,7 @@ const DivisionsPage = () => {
                 Add Division
               </Button>
             </div>
+            )}
           </div>
 
           {/* Results Summary */}
@@ -362,7 +373,13 @@ const DivisionsPage = () => {
       {!divisionsLoading &&
       !divisionsError &&
       transformedDivisions.length === 0 ? (
+        canAccessEmployees ? (
         <EmptyState onAddDivision={handleAddDivision} />
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            No divisions found.
+          </div>
+        )
       ) : (
         <>
           {/* Table */}
@@ -372,7 +389,16 @@ const DivisionsPage = () => {
               loading={loading}
               error={divisionsError ? String(divisionsError) : undefined}
               managers={managers}
+              allDepartments={departmentsData?.departments?.items?.map((d) => ({
+                departmentId: d.departmentId,
+                name: d.name,
+                divisionId: d.division?.divisionId || null,
+              })) || []}
               onAddDepartment={handleAddDepartment}
+              onEditSuccess={() => {
+                refetchDivisions();
+              }}
+              readOnly={!canAccessEmployees}
             />
           </div>
 

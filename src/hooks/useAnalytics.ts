@@ -117,6 +117,8 @@ export const useAnalytics = (
     fetchPolicy: "cache-and-network",
   });
 
+  // Only fetch global KPIs when no unit is selected (for admin analytics)
+  // When a unit is selected, we count KPIs from the objectives data
   const {
     data: kpisData,
     loading: kpisLoading,
@@ -124,6 +126,7 @@ export const useAnalytics = (
   } = useQuery<{ kpis: PaginatedKpis }>(GET_KPIS, {
     variables: { page: 1, limit: 1000 },
     fetchPolicy: "cache-and-network",
+    skip: !!selectedUnit, // Skip when a specific unit is selected
   });
 
   // Calculate statistics
@@ -213,7 +216,19 @@ export const useAnalytics = (
         : employeesCountData?.employees?.meta?.totalItems || 0
       : 0; // Managers don't see employee counts
     const objectivesCount = objectivesData?.objectives?.meta?.totalItems || 0;
-    const kpisCount = kpisData?.kpis?.meta?.totalItems || 0;
+    
+    // Calculate KPIs count - when a unit is selected, count KPIs from the filtered objectives
+    // Otherwise use the global KPIs count
+    let kpisCount = 0;
+    if (selectedUnit) {
+      // Count KPIs from the objectives that belong to this unit
+      const objectives = objectivesData?.objectives?.items || [];
+      kpisCount = objectives.reduce((count, obj) => {
+        return count + (obj.kpis?.length || 0);
+      }, 0);
+    } else {
+      kpisCount = kpisData?.kpis?.meta?.totalItems || 0;
+    }
 
     // Calculate growth rates (use filtered data if available)
     const divisionsGrowth = canAccessGlobalData
@@ -228,7 +243,21 @@ export const useAnalytics = (
     const objectivesGrowth = calculateRecentGrowth(
       objectivesData?.objectives?.items || []
     );
-    const kpisGrowth = calculateRecentGrowth(kpisData?.kpis?.items || []);
+    
+    // Calculate KPIs growth - use KPIs from objectives when unit is selected
+    let kpisForGrowth: ItemWithDateFields[] = [];
+    if (selectedUnit) {
+      const objectives = objectivesData?.objectives?.items || [];
+      objectives.forEach((obj) => {
+        if (obj.kpis) {
+          // KPIs from objectives may not have date fields, treat as current items
+          kpisForGrowth.push(...obj.kpis.map(() => ({ createdAt: undefined, updatedAt: undefined })));
+        }
+      });
+    } else {
+      kpisForGrowth = kpisData?.kpis?.items || [];
+    }
+    const kpisGrowth = calculateRecentGrowth(kpisForGrowth);
 
     // Additional insights (use filtered data if available)
     const activeDivisionsCount = canAccessGlobalData
@@ -316,6 +345,7 @@ export const useAnalytics = (
     objectivesError,
     kpisError,
     selectedUnit,
+    canAccessGlobalData,
   ]);
 
   return analytics;

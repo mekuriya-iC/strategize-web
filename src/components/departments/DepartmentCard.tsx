@@ -1,11 +1,18 @@
 "use client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Department } from "@/types/graphql";
 import { Building2, Users, User } from "lucide-react";
 
+// Allow both full Department and simplified UserDepartment
+interface SimpleDepartment {
+  departmentId: string;
+  name: string;
+  manager?: { fullName: string } | null;
+  division?: { name: string } | null;
+}
+
 interface DepartmentCardProps {
-  department: Department;
+  department: SimpleDepartment;
   selected?: boolean;
   onClick?: () => void;
 }

@@ -2,7 +2,6 @@
 // import { ProgressSteps } from "@/components/objectives/ProgressSteps";
 import ObjectivesApprovalTable from "@/components/objectives/ObjectivesApprovalTable";
 // import DataCleanup from "@/components/admin/DataCleanup";
-// import { useUser } from "@/context/UserContext";
 
 export default function ObjectivesPage() {
   return (

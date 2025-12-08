@@ -2,8 +2,7 @@
 
 import React, { useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client";
-import { useUser } from "@/context/UserContext";
-import { useOrgUnit } from "@/context/OrgUnitContext";
+import { useAuthStore, useOrgUnitStore } from "@/stores";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import {
@@ -21,8 +20,8 @@ type OrgUnitUnion =
   | (Department & { __typename: "Department" });
 
 export default function OrgUnitSelector() {
-  const { user, loading: userLoading } = useUser();
-  const { selectedUnit, setSelectedUnit } = useOrgUnit();
+  const { user, isLoading: userLoading } = useAuthStore();
+  const { selectedUnit, setSelectedUnit } = useOrgUnitStore();
 
   // Debug logging - remove in production
   // console.log("OrgUnitSelector Debug:", {
@@ -32,31 +31,38 @@ export default function OrgUnitSelector() {
   //   userLoading,
   // });
 
+  // Directors and Managers need to fetch their managed units
+  const needsOrgUnitSelection = user?.role === "MANAGER" || user?.role === "DIRECTOR";
+  
   const { data: divisionsData, loading: divisionsLoading } = useQuery(
     GET_DIVISIONS,
     {
-      skip: user?.role !== "MANAGER",
+      skip: !needsOrgUnitSelection,
       variables: { page: 1, limit: 1000 }, // Fetch all
     }
   );
   const { data: departmentsData, loading: departmentsLoading } = useQuery(
     GET_DEPARTMENTS,
     {
-      skip: user?.role !== "MANAGER",
+      skip: !needsOrgUnitSelection,
       variables: { page: 1, limit: 1000 }, // Fetch all
     }
   );
 
   const orgUnits: OrgUnitUnion[] = useMemo(() => {
+    // Directors only see divisions they manage
+    // Managers see both divisions and departments they manage
     const divisions =
       divisionsData?.divisions.items.filter(
         (d: Division) => d.manager?.employeeId === user?.employeeId
       ) || [];
 
-    const departments =
-      departmentsData?.departments.items.filter(
+    // Only include departments for Managers, not Directors
+    const departments = user?.role === "MANAGER"
+      ? departmentsData?.departments.items.filter(
         (d: Department) => d.manager?.employeeId === user?.employeeId
-      ) || [];
+        ) || []
+      : [];
 
     return [
       ...divisions.map((d: Division) => ({
@@ -68,7 +74,7 @@ export default function OrgUnitSelector() {
         __typename: "Department" as const,
       })),
     ];
-  }, [divisionsData, departmentsData, user?.employeeId]);
+  }, [divisionsData, departmentsData, user?.employeeId, user?.role]);
 
   // Debug logging for data - remove in production
   // console.log("OrgUnitSelector Data Debug:", {
@@ -82,16 +88,45 @@ export default function OrgUnitSelector() {
 
   // Default selection: prefer first Division, otherwise first Department
   // This hook MUST always run, regardless of early returns
+  // Auto-select when:
+  // 1. No unit is selected AND units are available
+  // 2. Selected unit is no longer in the available units (e.g., user switched accounts)
   useEffect(() => {
-    if (!selectedUnit && orgUnits.length > 0) {
+    if (orgUnits.length === 0) return;
+
+    // Check if current selection is still valid
+    const isCurrentSelectionValid = selectedUnit && orgUnits.some((u) => {
+      if (u.__typename === "Division" && selectedUnit.type === "division") {
+        return (u as Division).divisionId === selectedUnit.id;
+      }
+      if (u.__typename === "Department" && selectedUnit.type === "department") {
+        return (u as Department).departmentId === selectedUnit.id;
+      }
+      return false;
+    });
+
+    // Auto-select if no selection or selection is invalid
+    if (!selectedUnit || !isCurrentSelectionValid) {
       const firstDivision = orgUnits.find((u) => u.__typename === "Division");
       const firstDepartment = orgUnits.find(
         (u) => u.__typename === "Department"
       );
       if (firstDivision) {
-        setSelectedUnit(firstDivision as OrgUnitUnion);
+        const div = firstDivision as Division & { __typename: "Division" };
+        setSelectedUnit({
+          id: div.divisionId,
+          name: div.name,
+          type: "division",
+          data: div,
+        });
       } else if (firstDepartment) {
-        setSelectedUnit(firstDepartment as OrgUnitUnion);
+        const dept = firstDepartment as Department & { __typename: "Department" };
+        setSelectedUnit({
+          id: dept.departmentId,
+          name: dept.name,
+          type: "department",
+          data: dept,
+        });
       }
     }
   }, [orgUnits, selectedUnit, setSelectedUnit]);
@@ -101,7 +136,7 @@ export default function OrgUnitSelector() {
     return <Skeleton className="h-10 w-48 ml-4" />;
   }
 
-  if (user?.role !== "MANAGER") {
+  if (user?.role !== "MANAGER" && user?.role !== "DIRECTOR") {
     return null;
   }
 
@@ -122,15 +157,29 @@ export default function OrgUnitSelector() {
       return false;
     });
 
-    setSelectedUnit(unit || null);
+    if (unit) {
+      if (unit.__typename === "Division") {
+        setSelectedUnit({
+          id: (unit as Division).divisionId,
+          name: unit.name,
+          type: "division",
+          data: unit,
+        });
+      } else {
+        setSelectedUnit({
+          id: (unit as Department).departmentId,
+          name: unit.name,
+          type: "department",
+          data: unit,
+        });
+      }
+    } else {
+      setSelectedUnit(null);
+    }
   };
 
   const selectedValue = selectedUnit
-    ? `${selectedUnit.__typename}:${
-        selectedUnit.__typename === "Division"
-          ? (selectedUnit as Division).divisionId
-          : (selectedUnit as Department).departmentId
-      }`
+    ? `${selectedUnit.type === "division" ? "Division" : "Department"}:${selectedUnit.id}`
     : "";
 
   return (

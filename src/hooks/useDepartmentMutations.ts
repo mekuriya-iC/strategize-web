@@ -16,6 +16,9 @@ import type {
   RemoveEmployeeFromDepartmentMutationVariables,
   PaginatedDepartments,
 } from "@/types/graphql";
+import logger from "@/lib/logger";
+
+const deptLogger = logger.createChild("Department");
 
 export const useDepartmentMutations = () => {
   const [createDepartmentMutation, { loading: createLoading }] = useMutation(
@@ -31,15 +34,10 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      // Refetch all possible departments queries that might be cached
       refetchQueries: [
-        // Generic refetch (handles most cases)
         { query: GET_DEPARTMENTS },
-        // For main departments page
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 10 } },
-        // For forms that need all departments (dropdowns)
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
-        // For analytics (all departments)
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
       ],
       awaitRefetchQueries: true,
@@ -59,13 +57,9 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      // Refetch all possible departments queries that might be cached
       refetchQueries: [
-        // Generic refetch (handles most cases)
         { query: GET_DEPARTMENTS },
-        // For analytics (all departments)
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
-        // For forms that need all departments (dropdowns)
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
@@ -85,19 +79,14 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      // Refetch all possible departments queries that might be cached
       refetchQueries: [
-        // Generic refetch (handles most cases)
         { query: GET_DEPARTMENTS },
-        // For analytics (all departments)
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
-        // For forms that need all departments (dropdowns)
         { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
       update: (cache, { data }) => {
         if (data?.removeDepartment) {
-          // Update the departments list cache by removing the deleted department
           const existingDepartments = cache.readQuery<{
             departments: PaginatedDepartments;
           }>({
@@ -114,13 +103,11 @@ export const useDepartmentMutations = () => {
                   ...existingDepartments.departments,
                   items: existingDepartments.departments.items.filter(
                     (department) =>
-                      department.departmentId !==
-                      data.removeDepartment.departmentId
+                      department.departmentId !== data.removeDepartment.departmentId
                   ),
                   meta: {
                     ...existingDepartments.departments.meta,
-                    totalItems:
-                      existingDepartments.departments.meta.totalItems - 1,
+                    totalItems: existingDepartments.departments.meta.totalItems - 1,
                   },
                 },
               },
@@ -133,104 +120,67 @@ export const useDepartmentMutations = () => {
 
   const [addEmployeeToDepartmentMutation, { loading: addEmployeeLoading }] =
     useMutation(ADD_EMPLOYEE_TO_DEPARTMENT, {
-      onCompleted: () => {
-        // Don't show toast for individual employee additions to avoid spam
-        // The main department creation toast is sufficient
-      },
       onError: (error) => {
-        // Only log errors, don't show toast to avoid spam
-        console.error("Failed to add employee to department:", error.message);
+        deptLogger.error("Failed to add employee to department:", error.message);
       },
-      // Don't refetch after each individual employee addition
-      // We'll handle refetching after all employees are added
     });
 
-  const [
-    removeEmployeeFromDepartmentMutation,
-    { loading: removeEmployeeLoading },
-  ] = useMutation(REMOVE_EMPLOYEE_FROM_DEPARTMENT, {
-    onCompleted: (data) => {
-      toast.success("Employee removed from department successfully!", {
-        description: `Employee has been removed from ${data.removeEmployeeFromDepartment.name}.`,
-      });
-    },
-    onError: (error) => {
-      toast.error("Failed to remove employee from department", {
-        description: error.message,
-      });
-    },
-  });
+  const [removeEmployeeFromDepartmentMutation, { loading: removeEmployeeLoading }] =
+    useMutation(REMOVE_EMPLOYEE_FROM_DEPARTMENT, {
+      onCompleted: (data) => {
+        toast.success("Employee removed from department successfully!", {
+          description: `Employee has been removed from ${data.removeEmployeeFromDepartment.name}.`,
+        });
+      },
+      onError: (error) => {
+        toast.error("Failed to remove employee from department", {
+          description: error.message,
+        });
+      },
+    });
 
   const createDepartment = async (
     variables: CreateDepartmentMutationVariables & { employeeIds?: string[] }
   ) => {
     try {
-      // First create the department
       const result = await createDepartmentMutation({
-        variables: {
-          input: variables.input,
-        },
+        variables: { input: variables.input },
       });
       const createdDepartment = result.data?.createDepartment;
 
-      // If employees were specified and department was created successfully, add them
-      if (
-        createdDepartment &&
-        variables.employeeIds &&
-        variables.employeeIds.length > 0
-      ) {
-        console.log(
-          `Adding ${variables.employeeIds.length} employees to department ${createdDepartment.departmentId}`
-        );
+      if (createdDepartment && variables.employeeIds && variables.employeeIds.length > 0) {
+        deptLogger.debug(`Adding ${variables.employeeIds.length} employees to department`);
 
-        // Add employees one by one and wait for all to complete
-        const employeePromises = variables.employeeIds.map(
-          async (employeeId) => {
-            try {
-              await addEmployeeToDepartmentMutation({
-                variables: {
-                  departmentId: createdDepartment.departmentId,
-                  employeeId: employeeId,
-                },
-              });
-              console.log(
-                `Successfully added employee ${employeeId} to department`
-              );
-              return { success: true, employeeId };
-            } catch (error) {
-              console.error(
-                `Failed to add employee ${employeeId} to department:`,
-                error
-              );
-              return { success: false, employeeId, error };
-            }
+        const employeePromises = variables.employeeIds.map(async (employeeId) => {
+          try {
+            await addEmployeeToDepartmentMutation({
+              variables: {
+                departmentId: createdDepartment.departmentId,
+                employeeId: employeeId,
+              },
+            });
+            return { success: true, employeeId };
+          } catch (error) {
+            deptLogger.error(`Failed to add employee ${employeeId} to department:`, error);
+            return { success: false, employeeId, error };
           }
-        );
+        });
 
-        // Wait for all employee additions to complete
         const results = await Promise.all(employeePromises);
-        console.log("Finished adding employees to department", results);
-
-        // Check if any employee additions failed
         const failedAdditions = results.filter((r) => !r.success);
+
         if (failedAdditions.length > 0) {
-          console.warn(
-            `${failedAdditions.length} employee additions failed:`,
-            failedAdditions
-          );
+          deptLogger.warn(`${failedAdditions.length} employee additions failed`);
           toast.error(
             `Department created but failed to add ${failedAdditions.length} member(s)`,
-            {
-              description:
-                "You can manually add them later from the department details.",
-            }
+            { description: "You can manually add them later from the department details." }
           );
         }
       }
 
       return createdDepartment;
     } catch (error) {
-      console.error("Error creating department:", error);
+      deptLogger.error("Error creating department:", error);
       throw error;
     }
   };
@@ -242,39 +192,18 @@ export const useDepartmentMutations = () => {
     }
   ) => {
     try {
-      // First update the department basic information
       const result = await updateDepartmentMutation({
-        variables: {
-          input: variables.input,
-        },
+        variables: { input: variables.input },
       });
       const updatedDepartment = result.data?.updateDepartment;
 
-      // Handle member changes if specified
       if (updatedDepartment && variables.employeeIds !== undefined) {
         const newEmployeeIds = variables.employeeIds || [];
         const currentEmployeeIds = variables.currentEmployeeIds || [];
 
-        console.log("Updating department members:", {
-          current: currentEmployeeIds,
-          new: newEmployeeIds,
-          departmentId: updatedDepartment.departmentId,
-        });
+        const employeesToAdd = newEmployeeIds.filter((id) => !currentEmployeeIds.includes(id));
+        const employeesToRemove = currentEmployeeIds.filter((id) => !newEmployeeIds.includes(id));
 
-        // Find employees to add and remove
-        const employeesToAdd = newEmployeeIds.filter(
-          (id) => !currentEmployeeIds.includes(id)
-        );
-        const employeesToRemove = currentEmployeeIds.filter(
-          (id) => !newEmployeeIds.includes(id)
-        );
-
-        console.log("Member changes:", {
-          toAdd: employeesToAdd,
-          toRemove: employeesToRemove,
-        });
-
-        // Add new employees
         if (employeesToAdd.length > 0) {
           const addPromises = employeesToAdd.map(async (employeeId) => {
             try {
@@ -284,23 +213,15 @@ export const useDepartmentMutations = () => {
                   employeeId: employeeId,
                 },
               });
-              console.log(
-                `Successfully added employee ${employeeId} to department`
-              );
-              return { success: true, employeeId, action: "add" };
+              return { success: true, employeeId };
             } catch (error) {
-              console.error(
-                `Failed to add employee ${employeeId} to department:`,
-                error
-              );
-              return { success: false, employeeId, error, action: "add" };
+              deptLogger.error(`Failed to add employee ${employeeId}:`, error);
+              return { success: false, employeeId, error };
             }
           });
-
           await Promise.all(addPromises);
         }
 
-        // Remove employees
         if (employeesToRemove.length > 0) {
           const removePromises = employeesToRemove.map(async (employeeId) => {
             try {
@@ -310,40 +231,29 @@ export const useDepartmentMutations = () => {
                   employeeId: employeeId,
                 },
               });
-              console.log(
-                `Successfully removed employee ${employeeId} from department`
-              );
-              return { success: true, employeeId, action: "remove" };
+              return { success: true, employeeId };
             } catch (error) {
-              console.error(
-                `Failed to remove employee ${employeeId} from department:`,
-                error
-              );
-              return { success: false, employeeId, error, action: "remove" };
+              deptLogger.error(`Failed to remove employee ${employeeId}:`, error);
+              return { success: false, employeeId, error };
             }
           });
-
           await Promise.all(removePromises);
         }
-
-        console.log("Finished updating department members");
       }
 
       return updatedDepartment;
     } catch (error) {
-      console.error("Error updating department:", error);
+      deptLogger.error("Error updating department:", error);
       throw error;
     }
   };
 
-  const removeDepartment = async (
-    variables: RemoveDepartmentMutationVariables
-  ) => {
+  const removeDepartment = async (variables: RemoveDepartmentMutationVariables) => {
     try {
       const result = await removeDepartmentMutation({ variables });
       return result.data?.removeDepartment;
     } catch (error) {
-      console.error("Error removing department:", error);
+      deptLogger.error("Error removing department:", error);
       throw error;
     }
   };
@@ -355,7 +265,7 @@ export const useDepartmentMutations = () => {
       const result = await addEmployeeToDepartmentMutation({ variables });
       return result.data?.addEmployeeToDepartment;
     } catch (error) {
-      console.error("Error adding employee to department:", error);
+      deptLogger.error("Error adding employee to department:", error);
       throw error;
     }
   };
@@ -367,7 +277,7 @@ export const useDepartmentMutations = () => {
       const result = await removeEmployeeFromDepartmentMutation({ variables });
       return result.data?.removeEmployeeFromDepartment;
     } catch (error) {
-      console.error("Error removing employee from department:", error);
+      deptLogger.error("Error removing employee from department:", error);
       throw error;
     }
   };

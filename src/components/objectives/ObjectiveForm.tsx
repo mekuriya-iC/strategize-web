@@ -12,8 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
 import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
-import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { ObjectiveType } from "@/types/graphql";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -22,8 +21,11 @@ export default function ObjectiveForm() {
   const router = useRouter();
   const { createObjective, updateObjective, loading } = useObjectiveMutations();
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
-  const { selected } = useStrategicPeriod();
-  const { user } = useUser();
+  const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+  const user = useAuthStore((state) => state.user);
+  
+  // For backwards compatibility
+  const selected = selectedPeriod ? { period: selectedPeriod } : null;
 
   // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
   const isCorporateUser =

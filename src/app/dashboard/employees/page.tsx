@@ -12,8 +12,10 @@ import AddDepartmentDialog from "@/components/departments/AddDepartmentDialog";
 import { Plus } from "lucide-react";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
-import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
+import { AccessDenied } from "@/components/auth/RequirePermission";
 import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useRouter } from "next/navigation";
 import {
   PaginatedDivisions,
   Division as GraphQLDivision,
@@ -21,6 +23,7 @@ import {
 } from "@/types/graphql";
 
 const EmployeesPage = () => {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,7 +40,8 @@ const EmployeesPage = () => {
   const [selectedDivision, setSelectedDivision] = useState("");
   const [departmentMembers, setDepartmentMembers] = useState<string[]>([]);
 
-  const { user } = useAuth();
+  // Use new RBAC system
+  const { employees: employeePermissions, isLoading: permissionsLoading } = usePermissions();
 
   const { data, loading, error } = useQuery(GET_EMPLOYEES, {
     variables: {
@@ -46,6 +50,7 @@ const EmployeesPage = () => {
       search: searchTerm || undefined,
     },
     errorPolicy: "all",
+    skip: !employeePermissions.canView(), // Don't fetch if no permission
   });
 
   // Fetch divisions for department creation
@@ -142,10 +147,6 @@ const EmployeesPage = () => {
   };
 
   // Department dialog handlers
-  const handleAddDepartment = () => {
-    setIsAddDepartmentDialogOpen(true);
-  };
-
   const handleSubmitDepartment = async () => {
     if (!departmentName.trim() || !selectedDivision) {
       return;
@@ -181,16 +182,56 @@ const EmployeesPage = () => {
       (emp: { role?: string }) => emp.role === EmployeeRole.MANAGER
     ) || [];
 
-  // Check if user has permission to add employees
-  const canAddEmployee = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  // Permission checks using new RBAC
+  const canAddEmployee = employeePermissions.canCreate();
+
+  // Show loading while checking permissions
+  if (permissionsLoading) {
+    return (
+      <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+        <div className="animate-pulse">
+          <div className="h-10 w-48 bg-gray-200 rounded mb-6" />
+          <div className="h-12 w-full bg-gray-200 rounded mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has permission to view employees
+  if (!employeePermissions.canView()) {
+    return (
+      <AccessDenied
+        title="Access Denied"
+        message="You do not have permission to view employees. This area is restricted to administrators only."
+        action={
+          <Button
+            variant="outline"
+            onClick={() => router.push("/dashboard")}
+          >
+            Go to Dashboard
+          </Button>
+        }
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
       {/* Header and Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
         <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
           Employees
         </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage your organization&apos;s employees
+          </p>
+        </div>
       </div>
 
       {/* Only show filter bar and actions when there's data or loading */}
@@ -210,7 +251,7 @@ const EmployeesPage = () => {
             <div className="flex gap-2 items-center">
               {canAddEmployee && (
                 <AddEmployeeDialog>
-                  <Button className="ml-2">
+                  <Button className="ml-2 bg-[#3838EC] hover:bg-[#2828DC]">
                     <Plus width={16} height={16} />
                     Add Employee
                   </Button>
@@ -303,7 +344,6 @@ const EmployeesPage = () => {
               employees={filteredEmployees}
               loading={loading}
               error={error && !loading ? error.message : undefined}
-              onAddDepartment={handleAddDepartment}
             />
           </div>
 

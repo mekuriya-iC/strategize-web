@@ -19,7 +19,7 @@ import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
 import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
 import { Objective, ObjectiveType, ObjectiveStatus } from "@/types/graphql";
 import { toast } from "sonner";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
 
 interface EditObjectiveDialogProps {
   children: React.ReactNode;
@@ -35,7 +35,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
   const [open, setOpen] = useState(false);
   const { updateObjective, loading } = useObjectiveMutations();
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
 
   // Form state
   const [objectiveName, setObjectiveName] = useState("");

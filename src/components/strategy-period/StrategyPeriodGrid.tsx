@@ -5,8 +5,7 @@ import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
 import { useStrategicPeriodMutations } from "@/hooks/useStrategicPeriodMutations";
 import { useRouter } from "next/navigation";
 import { StrategicPeriod } from "@/types/graphql";
-import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
-import { useUser } from "@/context/UserContext";
+import { useStrategicPeriodStore, useAuthStore } from "@/stores";
 
 const getStatusIcon = (period: StrategicPeriod, now: Date) => {
   const startDate = new Date(period.startDate);
@@ -75,14 +74,14 @@ export default function StrategyPeriodGrid() {
   const { strategicPeriods, loading, error, refetch } = useStrategicPeriods();
   const { removeStrategicPeriod } = useStrategicPeriodMutations();
   const router = useRouter();
-  const { setSelected } = useStrategicPeriod();
-  const { user } = useUser();
+  const { setSelectedPeriod } = useStrategicPeriodStore();
+  const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const now = new Date();
 
   const handlePeriodSelect = (period: StrategicPeriod) => {
-    // Update context (which also syncs to sessionStorage)
-    setSelected({ period });
+    // Update store (which also syncs to sessionStorage)
+    setSelectedPeriod(period);
     router.push("/dashboard");
   };
 

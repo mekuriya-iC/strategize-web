@@ -1,12 +1,34 @@
 // GraphQL Enums
 export const EmployeeRole = {
   NORMAL: "NORMAL",
+  COORDINATOR: "COORDINATOR",
   MANAGER: "MANAGER",
+  DIRECTOR: "DIRECTOR",
   ADMIN: "ADMIN",
   SUPER_ADMIN: "SUPER_ADMIN",
 } as const;
 
 export type EmployeeRole = (typeof EmployeeRole)[keyof typeof EmployeeRole];
+
+// Role hierarchy for display and permissions
+export const ROLE_HIERARCHY = [
+  "NORMAL",
+  "COORDINATOR",
+  "MANAGER",
+  "DIRECTOR",
+  "ADMIN",
+  "SUPER_ADMIN",
+] as const;
+
+// Human-readable role labels
+export const ROLE_LABELS: Record<EmployeeRole, string> = {
+  NORMAL: "Employee",
+  COORDINATOR: "Coordinator",
+  MANAGER: "Manager",
+  DIRECTOR: "Director",
+  ADMIN: "Admin",
+  SUPER_ADMIN: "Super Admin",
+};
 
 export type EmployeeStatus = "ACTIVE" | "DISABLED" | "DELETED";
 
@@ -64,7 +86,7 @@ export interface UpdateDepartmentInput {
   departmentId: string;
   name?: string;
   managerId?: string;
-  divisionId?: string;
+  divisionId?: string | null; // null to explicitly remove division association
 }
 
 // GraphQL Response Types
@@ -80,7 +102,9 @@ export interface Employee {
   title: string;
   createdAt: string;
   updatedAt: string;
-  departments?: Department[];
+  departments?: Array<{ departmentId: string; name: string }>;
+  // Alias for single department (first in array)
+  department?: { departmentId: string; name?: string };
 }
 
 export interface Division {

@@ -30,7 +30,7 @@ import ApproveSubmissionDialog from "./ApproveSubmissionDialog";
 import RejectSubmissionDialog from "./RejectSubmissionDialog";
 // import ApproveObjectiveWithKPIsDialog from "./ApproveObjectiveWithKPIsDialog";
 import { Kpi } from "@/types/graphql";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
 
 type KpiSubmission = {
   submissionId: string;
@@ -38,6 +38,11 @@ type KpiSubmission = {
   status: "PENDING" | "APPROVED" | "REJECTED";
   reason?: string;
   submittedBy?: { fullName: string };
+  objective?: {
+    objectiveId: string;
+    name?: string;
+    type?: string;
+  } | null;
   kpi?: {
     kpiId: string;
     name?: string;
@@ -130,7 +135,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
 }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("division");
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
 
   // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
   const isCorporateLevel =
@@ -339,11 +344,16 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
       }
     }
 
-    // Merge the quarterly sums into the main totals object
+    // Merge the quarterly sums into the main totals object (rounded to 2 decimal places)
     for (const year in quarterlySums) {
       if (!totals[year]) {
-        totals[year] = quarterlySums[year];
+        totals[year] = Math.round(quarterlySums[year] * 100) / 100;
       }
+    }
+
+    // Also round explicit totals to 2 decimal places
+    for (const year in totals) {
+      totals[year] = Math.round(totals[year] * 100) / 100;
     }
 
     const years = Object.keys(totals).sort(
@@ -671,6 +681,21 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                     </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-4">
+                    {/* For virtual submissions (KPI-only), show a different status */}
+                    {obj.submissionId.startsWith("virtual-") ? (
+                      <div className="flex flex-col gap-1">
+                        <Badge
+                          className="bg-green-100 text-green-600 rounded-full px-3 py-1 text-xs font-medium border-0"
+                        >
+                          Obj Approved
+                        </Badge>
+                        <Badge
+                          className="bg-yellow-100 text-yellow-600 rounded-full px-3 py-1 text-xs font-medium border-0"
+                        >
+                          KPIs Pending
+                        </Badge>
+                      </div>
+                    ) : (
                     <Badge
                       className={`${
                         statusMap[obj.status as keyof typeof statusMap]
@@ -680,6 +705,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                       {statusMap[obj.status as keyof typeof statusMap]?.label ||
                         obj.status}
                     </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <DropdownMenu>
@@ -693,7 +719,71 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {kpiCount > 0 ? (
+                        {/* Virtual submissions (KPI-only) - show KPI approval/rejection options */}
+                        {obj.submissionId.startsWith("virtual-") ? (
+                          <>
+                            <DropdownMenuItem asChild>
+                              <ApproveSubmissionDialog
+                                submission={{
+                                  submissionId: obj.submissionId,
+                                  type: "OBJECTIVE",
+                                  level: obj.level,
+                                  status: "PENDING", // KPIs are pending
+                                  reason: obj.reason || "",
+                                  submittedBy: {
+                                    employeeId: obj.submittedBy.employeeId || "",
+                                    fullName: obj.submittedBy.fullName,
+                                  },
+                                  objective: obj.objective
+                                    ? {
+                                        objectiveId: obj.objective.objectiveId,
+                                        name: obj.objective.name || "",
+                                        type: obj.objective.type || "",
+                                        status: "APPROVED",
+                                      }
+                                    : undefined,
+                                  createdAt: new Date().toISOString(),
+                                }}
+                                onApprove={onApproveSubmission}
+                              >
+                                <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center">
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Approve All KPIs ({kpiCount})
+                                </div>
+                              </ApproveSubmissionDialog>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <RejectSubmissionDialog
+                                submission={{
+                                  submissionId: obj.submissionId,
+                                  type: "OBJECTIVE",
+                                  level: obj.level,
+                                  status: "PENDING",
+                                  reason: obj.reason || "",
+                                  submittedBy: {
+                                    employeeId: obj.submittedBy.employeeId || "",
+                                    fullName: obj.submittedBy.fullName,
+                                  },
+                                  objective: obj.objective
+                                    ? {
+                                        objectiveId: obj.objective.objectiveId,
+                                        name: obj.objective.name || "",
+                                        type: obj.objective.type || "",
+                                        status: "APPROVED",
+                                      }
+                                    : undefined,
+                                  createdAt: new Date().toISOString(),
+                                }}
+                                onReject={onRejectSubmission}
+                              >
+                                <div className="text-red-600 hover:bg-red-50 cursor-pointer flex items-center">
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Reject All KPIs ({kpiCount})
+                                </div>
+                              </RejectSubmissionDialog>
+                            </DropdownMenuItem>
+                          </>
+                        ) : kpiCount > 0 ? (
                           <>
                             {/* TODO: Re-enable bulk objective + KPI approval when backend supports it */}
                             {/* <DropdownMenuItem asChild>
@@ -1217,6 +1307,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                             )["q4"] ?? 0;
                                                           const quarterlySum =
                                                             q1 + q2 + q3 + q4;
+                                                          // Round to max 2 decimal places
+                                                          const roundedSum = Math.round(quarterlySum * 100) / 100;
 
                                                           if (
                                                             quarterlySum > 0
@@ -1227,7 +1319,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                                   Sum:
                                                                 </span>{" "}
                                                                 <span className="font-medium text-green-600">
-                                                                  {quarterlySum}
+                                                                  {roundedSum}
                                                                 </span>
                                                               </div>
                                                             );
@@ -1261,33 +1353,13 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                             </Badge>
                                           </TableCell>
                                           <TableCell className="px-4 py-3">
-                                            {/* Debug: Log KPI submission reason */}
-                                            {(() => {
-                                              console.log(
-                                                "🔍 KPI Submission Reason Debug:",
-                                                {
-                                                  submissionId:
-                                                    kpiSubmission.submissionId,
-                                                  status: kpiSubmission.status,
-                                                  reason: kpiSubmission.reason,
-                                                  reasonType:
-                                                    typeof kpiSubmission.reason,
-                                                  reasonLength:
-                                                    kpiSubmission.reason
-                                                      ?.length,
-                                                  hasReason:
-                                                    !!kpiSubmission.reason?.trim(),
-                                                  fullKpiSubmission:
-                                                    kpiSubmission,
-                                                }
-                                              );
-                                              return null;
-                                            })()}
-
                                             {kpiSubmission.reason?.trim() ? (
-                                              <div className="max-w-48">
+                                              <div 
+                                                className="max-w-[200px] cursor-help"
+                                                title={kpiSubmission.reason.trim()}
+                                              >
                                                 <span
-                                                  className={`text-sm ${
+                                                  className={`text-sm block truncate ${
                                                     kpiSubmission.status ===
                                                     "REJECTED"
                                                       ? "text-red-600"

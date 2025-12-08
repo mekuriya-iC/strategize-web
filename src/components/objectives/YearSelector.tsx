@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StrategicPeriod } from "@/types/graphql";
-import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
+import { useStrategicPeriodStore } from "@/stores";
 
 export interface YearSelectorProps {
   period: StrategicPeriod;
@@ -30,18 +30,18 @@ export default function YearSelector({
   period,
   className = "",
 }: YearSelectorProps) {
-  const { selected, setSelected } = useStrategicPeriod();
+  const { annualTimeline, selectPeriodWithTimeline } = useStrategicPeriodStore();
 
   const options = useMemo(() => buildYearRanges(period), [period]);
 
   const value =
-    selected?.annualTimeline && options.includes(selected.annualTimeline)
-      ? selected.annualTimeline
+    annualTimeline && options.includes(annualTimeline)
+      ? annualTimeline
       : options[0];
 
   const handleChange = (val: string) => {
     // Update shared year; KPI form listens and syncs all target timelines
-    setSelected({ period, annualTimeline: val });
+    selectPeriodWithTimeline(period, val);
   };
 
   return (

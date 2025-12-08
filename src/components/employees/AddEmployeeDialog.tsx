@@ -409,8 +409,10 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children }) => {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NORMAL">Normal</SelectItem>
+                  <SelectItem value="NORMAL">Employee</SelectItem>
+                  <SelectItem value="COORDINATOR">Coordinator</SelectItem>
                   <SelectItem value="MANAGER">Manager</SelectItem>
+                  <SelectItem value="DIRECTOR">Director</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 </SelectContent>

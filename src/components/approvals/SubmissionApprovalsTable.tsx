@@ -9,8 +9,7 @@ import type { GroupedSubmission } from "./SubmissionApprovalTable";
 import ObjectivePagination from "../objectives/ObjectivePagination";
 import { useSubmissionApprovals } from "@/hooks/useSubmissionApprovals";
 import { useSubmissionApprovalMutations } from "@/hooks/useSubmissionApprovalMutations";
-import { useUser } from "@/context/UserContext";
-import { useOrgUnit } from "@/context/OrgUnitContext";
+import { useAuthStore, useOrgUnitStore } from "@/stores";
 import { useObjectives } from "@/hooks/useObjectives";
 import { useKPIs } from "@/hooks/useKPIs";
 import { toast } from "sonner";
@@ -41,8 +40,8 @@ type SubmissionData = {
 };
 
 export default function SubmissionApprovalsTable() {
-  const { user } = useUser();
-  const { selectedUnit } = useOrgUnit();
+  const user = useAuthStore((state) => state.user);
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,11 +57,16 @@ export default function SubmissionApprovalsTable() {
       return "CORPORATE";
     }
 
+    // Directors are always division-level approvers
+    if (user?.role === "DIRECTOR" && selectedUnit) {
+      return "DIVISION";
+    }
+
     // For managers, determine their level based on what unit they've selected
     if (user?.role === "MANAGER" && selectedUnit) {
-      if (selectedUnit.__typename === "Division") {
+      if (selectedUnit.type === "division") {
         return "DIVISION";
-      } else if (selectedUnit.__typename === "Department") {
+      } else if (selectedUnit.type === "department") {
         return "DEPARTMENT";
       }
     }
@@ -241,11 +245,37 @@ export default function SubmissionApprovalsTable() {
     reason: string
   ) => {
     try {
-      // console.log("🔍 APPROVAL DEBUG - Starting approval for:", {
-      //   submissionId,
-      //   reason,
-      //   totalSubmissions: submissions.length,
-      // });
+      // Handle virtual objective submissions (KPI-only groupings)
+      // Virtual submissions are created when KPIs are submitted but their parent objective is already approved
+      if (submissionId.startsWith("virtual-")) {
+        const virtualSubmission = submissions.find(
+          (sub) => sub.submissionId === submissionId
+        ) as GroupedSubmission | undefined;
+        
+        if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
+          console.log(`📦 Approving ${virtualSubmission.associatedKpiSubmissions.length} KPI submissions from virtual objective...`);
+          
+          const kpiApprovalPromises = virtualSubmission.associatedKpiSubmissions
+            .filter((kpiSub) => kpiSub.status === "PENDING")
+            .map((kpiSub) => {
+              const kpiMinimalSubmission = {
+                submissionId: kpiSub.submissionId,
+                type: "KPI" as const,
+                objective: kpiSub.objective,
+                kpi: kpiSub.kpi,
+              };
+              return handleApproveSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+            });
+          
+          await Promise.all(kpiApprovalPromises);
+          toast.success(`${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) approved successfully`);
+          await refetch();
+          return;
+        } else {
+          toast.error("No KPI submissions found to approve");
+          return;
+        }
+      }
 
       // First, try to find in main submissions array (for objectives)
       let submission: SubmissionData | undefined = submissions.find(
@@ -254,10 +284,6 @@ export default function SubmissionApprovalsTable() {
 
       // If not found in main array, search in associated KPI submissions
       if (!submission) {
-        // console.log(
-        //   "🔍 APPROVAL DEBUG - Not found in main array, searching in KPI submissions..."
-        // );
-
         for (const obj of submissions) {
           const objWithKpis = obj as unknown as {
             associatedKpiSubmissions?: Array<{
@@ -282,11 +308,6 @@ export default function SubmissionApprovalsTable() {
             );
             if (kpiSubmission) {
               submission = kpiSubmission as SubmissionData;
-              // console.log("🔍 APPROVAL DEBUG - Found KPI submission:", {
-              //   submissionId: kpiSubmission.submissionId,
-              //   type: kpiSubmission.type,
-              //   status: kpiSubmission.status,
-              // });
               break;
             }
           }
@@ -295,7 +316,6 @@ export default function SubmissionApprovalsTable() {
 
       // If submission not found, show error
       if (!submission) {
-        // console.log("🔍 APPROVAL DEBUG - Submission not found anywhere");
         toast.error("Submission not found");
         return;
       }
@@ -308,24 +328,37 @@ export default function SubmissionApprovalsTable() {
         kpi: submission.kpi,
       };
 
-      // console.log(
-      //   "🔍 APPROVAL DEBUG - About to call handleApproveSubmissionWithItemUpdate with:",
-      //   {
-      //     submissionId: minimalSubmission.submissionId,
-      //     type: minimalSubmission.type,
-      //     reason,
-      //   }
-      // );
-
       await handleApproveSubmissionWithItemUpdate(minimalSubmission, reason);
 
-      // console.log(
-      //   "🔍 APPROVAL DEBUG - handleApproveSubmissionWithItemUpdate completed successfully"
-      // );
+      // If this is an objective submission, also approve all associated KPI submissions
+      if (submission.type === "OBJECTIVE") {
+        const objectiveSubmission = submissions.find(
+          (sub) => sub.submissionId === submissionId
+        ) as GroupedSubmission | undefined;
+        
+        if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
+          console.log(`📦 Also approving ${objectiveSubmission.associatedKpiSubmissions.length} associated KPI submissions...`);
+          
+          const kpiApprovalPromises = objectiveSubmission.associatedKpiSubmissions
+            .filter((kpiSub) => kpiSub.status === "PENDING")
+            .map((kpiSub) => {
+              const kpiMinimalSubmission = {
+                submissionId: kpiSub.submissionId,
+                type: "KPI" as const,
+                objective: kpiSub.objective,
+                kpi: kpiSub.kpi,
+              };
+              return handleApproveSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+            });
+          
+          await Promise.all(kpiApprovalPromises);
+          console.log(`✅ All associated KPI submissions approved`);
+        }
+      }
+
       toast.success(`Submission approved successfully`);
 
       // Force a comprehensive refetch after all approvals and propagations
-      // console.log("🔄 Comprehensive refetch after approval...");
       await refetch();
     } catch (error) {
       console.error("Error approving submission:", error);
@@ -338,11 +371,37 @@ export default function SubmissionApprovalsTable() {
     reason: string
   ) => {
     try {
-      // console.log("🚨 REJECTION DEBUG - Starting rejection for:", {
-      //   submissionId,
-      //   reason,
-      //   totalSubmissions: submissions.length,
-      // });
+      // Handle virtual objective submissions (KPI-only groupings)
+      // Virtual submissions are created when KPIs are submitted but their parent objective is already approved
+      if (submissionId.startsWith("virtual-")) {
+        const virtualSubmission = submissions.find(
+          (sub) => sub.submissionId === submissionId
+        ) as GroupedSubmission | undefined;
+        
+        if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
+          console.log(`📦 Rejecting ${virtualSubmission.associatedKpiSubmissions.length} KPI submissions from virtual objective...`);
+          
+          const kpiRejectPromises = virtualSubmission.associatedKpiSubmissions
+            .filter((kpiSub) => kpiSub.status === "PENDING")
+            .map((kpiSub) => {
+              const kpiMinimalSubmission = {
+                submissionId: kpiSub.submissionId,
+                type: "KPI" as const,
+                objective: kpiSub.objective,
+                kpi: kpiSub.kpi,
+              };
+              return handleRejectSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+            });
+          
+          await Promise.all(kpiRejectPromises);
+          toast.success(`${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) rejected`);
+          await refetch();
+          return;
+        } else {
+          toast.error("No KPI submissions found to reject");
+          return;
+        }
+      }
 
       // First, try to find in main submissions array (for objectives)
       let submission: SubmissionData | undefined = submissions.find(
@@ -351,10 +410,6 @@ export default function SubmissionApprovalsTable() {
 
       // If not found in main array, search in associated KPI submissions
       if (!submission) {
-        // console.log(
-        //   "🚨 REJECTION DEBUG - Not found in main array, searching in KPI submissions..."
-        // );
-
         for (const obj of submissions) {
           const objWithKpis = obj as unknown as {
             associatedKpiSubmissions?: Array<{
@@ -379,27 +434,14 @@ export default function SubmissionApprovalsTable() {
             );
             if (kpiSubmission) {
               submission = kpiSubmission as SubmissionData;
-              // console.log("🚨 REJECTION DEBUG - Found KPI submission:", {
-              //   submissionId: kpiSubmission.submissionId,
-              //   type: kpiSubmission.type,
-              //   status: kpiSubmission.status,
-              // });
               break;
             }
           }
         }
       }
 
-      // console.log("🚨 REJECTION DEBUG - Found submission:", {
-      //   found: !!submission,
-      //   submissionType: submission?.type,
-      //   submissionStatus: submission?.status,
-      //   submissionReason: submission?.reason,
-      // });
-
       // If submission not found, show error
       if (!submission) {
-        // console.log("🚨 REJECTION DEBUG - Submission not found anywhere");
         toast.error("Submission not found");
         return;
       }
@@ -412,31 +454,37 @@ export default function SubmissionApprovalsTable() {
         kpi: submission.kpi,
       };
 
-      // console.log(
-      //   "🚨 REJECTION DEBUG - Calling handleRejectSubmissionWithItemUpdate..."
-      // );
-      // console.log(
-      //   "🔍 REJECTION DEBUG - About to call handleRejectSubmissionWithItemUpdate with:",
-      //   {
-      //     submissionId: minimalSubmission.submissionId,
-      //     type: minimalSubmission.type,
-      //     reason,
-      //   }
-      // );
-
       await handleRejectSubmissionWithItemUpdate(minimalSubmission, reason);
 
-      // console.log(
-      //   "🚨 REJECTION DEBUG - Mutation completed, calling refetch..."
-      // );
+      // If this is an objective submission, also reject all associated KPI submissions
+      if (submission.type === "OBJECTIVE") {
+        const objectiveSubmission = submissions.find(
+          (sub) => sub.submissionId === submissionId
+        ) as GroupedSubmission | undefined;
+        
+        if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
+          console.log(`📦 Also rejecting ${objectiveSubmission.associatedKpiSubmissions.length} associated KPI submissions...`);
+          
+          const kpiRejectPromises = objectiveSubmission.associatedKpiSubmissions
+            .filter((kpiSub) => kpiSub.status === "PENDING")
+            .map((kpiSub) => {
+              const kpiMinimalSubmission = {
+                submissionId: kpiSub.submissionId,
+                type: "KPI" as const,
+                objective: kpiSub.objective,
+                kpi: kpiSub.kpi,
+              };
+              return handleRejectSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+            });
+          
+          await Promise.all(kpiRejectPromises);
+          console.log(`❌ All associated KPI submissions rejected`);
+        }
+      }
+
       toast.success(`Submission rejected successfully`);
 
-      // console.log(
-      //   "🚨 REJECTION DEBUG - Before refetch, submissions count:",
-      //   submissions.length
-      // );
       await refetch();
-      // console.log("🚨 REJECTION DEBUG - After refetch completed");
     } catch (error) {
       console.error("Error rejecting submission:", error);
       toast.error("Failed to reject submission");

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Kpi } from "@/types/graphql";
 import { detectKPIType, getInferredUnitType } from "@/utils/unitTypeDetection";
+import { kpiLogger } from "@/lib/logger";
 
 // Types for assignment state
 export interface TargetAssignment {
@@ -29,15 +30,11 @@ export const useAssignmentState = () => {
     errors: [],
   });
 
-  // Debug errors state changes
-  console.log("🔧 DEBUG: useAssignmentState errors:", state.errors);
-
   // Update selected KPIs
   const updateSelectedKPIs = useCallback((kpiIds: string[]) => {
     setState((prev) => ({
       ...prev,
       selectedKPIs: kpiIds,
-      // Clear target assignments for unselected KPIs
       targetAssignments: prev.targetAssignments.filter((ta) =>
         kpiIds.includes(ta.kpiId)
       ),
@@ -49,7 +46,6 @@ export const useAssignmentState = () => {
     setState((prev) => ({
       ...prev,
       selectedAssignees: assigneeIds,
-      // Clear target assignments for unselected assignees
       targetAssignments: prev.targetAssignments.filter((ta) =>
         assigneeIds.includes(ta.assigneeId)
       ),
@@ -62,7 +58,6 @@ export const useAssignmentState = () => {
       setState((prev) => ({
         ...prev,
         assigneeType: type,
-        // Clear all target assignments when type changes
         targetAssignments: [],
         selectedAssignees: [],
       }));
@@ -88,7 +83,6 @@ export const useAssignmentState = () => {
         };
 
         if (existingIndex >= 0) {
-          // Update existing assignment
           const newTargetAssignments = [...prev.targetAssignments];
           newTargetAssignments[existingIndex] = newAssignment;
           return {
@@ -96,7 +90,6 @@ export const useAssignmentState = () => {
             targetAssignments: newTargetAssignments,
           };
         } else {
-          // Add new assignment
           return {
             ...prev,
             targetAssignments: [...prev.targetAssignments, newAssignment],
@@ -121,9 +114,11 @@ export const useAssignmentState = () => {
   // Calculate total assigned target for a KPI
   const getTotalAssignedTarget = useCallback(
     (kpiId: string): number => {
-      return state.targetAssignments
+      const total = state.targetAssignments
         .filter((ta) => ta.kpiId === kpiId)
         .reduce((sum, ta) => sum + ta.target, 0);
+      // Round to max 2 decimal places to avoid floating-point precision issues
+      return Math.round(total * 100) / 100;
     },
     [state.targetAssignments]
   );
@@ -133,7 +128,6 @@ export const useAssignmentState = () => {
     (parentKPIs: Kpi[]): string[] => {
       const errors: string[] = [];
 
-      // Check if KPIs and assignees are selected
       if (state.selectedKPIs.length === 0) {
         errors.push("Please select at least one KPI to assign");
       }
@@ -142,21 +136,17 @@ export const useAssignmentState = () => {
         errors.push("Please select at least one assignee");
       }
 
-      // Validate target assignments for each selected KPI
       state.selectedKPIs.forEach((kpiId) => {
         const parentKPI = parentKPIs.find((k) => k.kpiId === kpiId);
         if (!parentKPI) return;
 
         const kpiType = detectKPIType(parentKPI);
-        // Removed unused unitType variable
 
         if (kpiType === "SUMMABLE") {
-          // For summable KPIs, check if total assigned equals parent target
           const totalAssigned = getTotalAssignedTarget(kpiId);
           const parentTarget = parentKPI.targets[0]?.target || 0;
 
           if (Math.abs(totalAssigned - parentTarget) > 0.01) {
-            // Allow small rounding differences
             errors.push(
               `Total assigned target for "${parentKPI.name}" (${Number(
                 totalAssigned
@@ -166,7 +156,6 @@ export const useAssignmentState = () => {
             );
           }
         } else {
-          // For percentage KPIs, check if all assignees have targets
           const missingAssignments = state.selectedAssignees.filter(
             (assigneeId) => getTargetAssignment(kpiId, assigneeId) === null
           );
@@ -208,16 +197,12 @@ export const useAssignmentState = () => {
 
   // Set errors
   const setErrors = useCallback((errors: string[]) => {
-    console.log("🔧 DEBUG: setErrors called with:", errors);
-    console.log("🔧 DEBUG: Error stack trace:", new Error().stack);
+    kpiLogger.debug("setErrors called with:", errors);
     setState((prev) => ({ ...prev, errors }));
   }, []);
 
   return {
-    // State
     ...state,
-
-    // Actions
     updateSelectedKPIs,
     updateSelectedAssignees,
     updateAssigneeType,

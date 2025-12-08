@@ -1,13 +1,13 @@
 "use client";
 import ObjectiveForm from "@/components/objectives/ObjectiveForm";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AddObjectivePage() {
   const router = useRouter();
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
   const pageTitle = "Add Objective";
 
   // Check if user has permission to access this page

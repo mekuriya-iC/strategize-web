@@ -39,6 +39,8 @@ export const useObjective = (variables: ObjectiveQueryVariables) => {
   >(GET_OBJECTIVE, {
     variables,
     fetchPolicy: "cache-and-network",
+    // Skip query if objectiveId is empty or undefined
+    skip: !variables.objectiveId,
   });
 
   return {

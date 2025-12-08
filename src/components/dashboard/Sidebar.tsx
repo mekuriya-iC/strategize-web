@@ -2,15 +2,24 @@
 import Logo from "@/components/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSidebar } from "@/context/SidebarContext";
-import { useUser } from "@/context/UserContext";
+import { useUIStore } from "@/stores";
+import { usePermissions } from "@/hooks/usePermissions";
 import StrategySelector from "./StrategySelector";
 import Image from "next/image";
+import type { Permission } from "@/lib/rbac/permissions";
 
-const navLinks = [
+interface NavLink {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  permission: Permission;
+}
+
+const navLinks: NavLink[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
+    permission: "nav:dashboard",
     icon: (
       <Image
         src="/images/dashboard/sidebar/dashboard.png"
@@ -23,6 +32,7 @@ const navLinks = [
   {
     label: "Objectives",
     href: "/dashboard/objectives",
+    permission: "nav:objectives",
     icon: (
       <Image
         src="/images/dashboard/sidebar/objective.png"
@@ -35,6 +45,7 @@ const navLinks = [
   {
     label: "Divisions",
     href: "/dashboard/divisions",
+    permission: "nav:divisions",
     icon: (
       <Image
         src="/images/dashboard/sidebar/divisions.png"
@@ -47,6 +58,7 @@ const navLinks = [
   {
     label: "Departments",
     href: "/dashboard/departments",
+    permission: "nav:departments",
     icon: (
       <Image
         src="/images/dashboard/sidebar/departments.png"
@@ -59,6 +71,7 @@ const navLinks = [
   {
     label: "Employees",
     href: "/dashboard/employees",
+    permission: "nav:employees",
     icon: (
       <Image
         src="/images/dashboard/sidebar/employees.png"
@@ -71,6 +84,7 @@ const navLinks = [
   {
     label: "Reports",
     href: "/dashboard/reports",
+    permission: "nav:reports",
     icon: (
       <Image
         src="/images/dashboard/sidebar/reports.png"
@@ -84,6 +98,7 @@ const navLinks = [
   {
     label: "Approvals",
     href: "/dashboard/approvals",
+    permission: "nav:approvals",
     icon: (
       <Image
         src="/images/dashboard/sidebar/approvals.png"
@@ -96,6 +111,7 @@ const navLinks = [
   {
     label: "Admin Panel",
     href: "/dashboard/admin",
+    permission: "nav:admin",
     icon: (
       <Image
         src="/images/dashboard/sidebar/admin-panel.png"
@@ -108,6 +124,7 @@ const navLinks = [
   {
     label: "Settings",
     href: "/dashboard/settings",
+    permission: "nav:settings",
     icon: (
       <Image
         src="/images/dashboard/sidebar/settings.png"
@@ -121,31 +138,11 @@ const navLinks = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { open, closeSidebar } = useSidebar();
-  const { user } = useUser();
+  const { sidebarOpen: open, closeSidebar } = useUIStore();
+  const { can } = usePermissions();
 
-  // Filter navigation links based on user role
-  const getFilteredNavLinks = () => {
-    if (user?.role === "MANAGER") {
-      // Managers should NOT see: Employees, Divisions, Departments, Admin Panel
-      return navLinks.filter(
-        (link) =>
-          !["Employees", "Divisions", "Departments", "Admin Panel"].includes(
-            link.label
-          )
-      );
-    } else if (user?.role === "NORMAL") {
-      // Normal users (employees) should see: Dashboard, Objectives, Reports, Settings
-      // Replace Approvals with Reports for personal users
-      return navLinks.filter((link) =>
-        ["Dashboard", "Objectives", "Reports", "Settings"].includes(link.label)
-      );
-    }
-    // For ADMIN and SUPER_ADMIN roles, show all links
-    return navLinks;
-  };
-
-  const filteredNavLinks = getFilteredNavLinks();
+  // Filter navigation links based on user permissions
+  const filteredNavLinks = navLinks.filter((link) => can(link.permission));
 
   // Helper function to determine if a navigation link is active
   const isLinkActive = (linkHref: string) => {

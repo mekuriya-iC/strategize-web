@@ -6,8 +6,10 @@ import {
   UPDATE_EMPLOYEE,
   REMOVE_EMPLOYEE,
 } from "@/lib/graphql/mutations/employees";
-// GET_EMPLOYEES is used in cache updates but not directly referenced
 import { CreateEmployeeInput, UpdateEmployeeInput } from "@/types/graphql";
+import logger from "@/lib/logger";
+
+const empLogger = logger.createChild("Employee");
 
 export const useEmployeeMutations = () => {
   // Create Employee Mutation
@@ -19,7 +21,6 @@ export const useEmployeeMutations = () => {
       if (data?.createEmployee) {
         const newEmployee = data.createEmployee;
 
-        // Add the new employee to all cached employee queries
         cache.modify({
           fields: {
             employees(existingEmployees = null) {
@@ -50,7 +51,6 @@ export const useEmployeeMutations = () => {
       if (data?.updateEmployee) {
         const updatedEmployee = data.updateEmployee;
 
-        // Update all cached employee queries
         cache.modify({
           fields: {
             employees(existingEmployees = null, { readField }) {
@@ -84,7 +84,6 @@ export const useEmployeeMutations = () => {
       if (data?.removeEmployee && variables?.id) {
         const deletedEmployeeId = variables.id;
 
-        // Remove the employee from all cached employee queries
         cache.modify({
           fields: {
             employees(existingEmployees = null, { readField }) {
@@ -122,7 +121,7 @@ export const useEmployeeMutations = () => {
       });
       return { success: true, employee: data?.createEmployee };
     } catch (error) {
-      console.error("Create employee error:", error);
+      empLogger.error("Create employee error:", error);
       return { success: false, error };
     }
   };
@@ -135,7 +134,7 @@ export const useEmployeeMutations = () => {
       });
       return { success: true, employee: data?.updateEmployee };
     } catch (error) {
-      console.error("Update employee error:", error);
+      empLogger.error("Update employee error:", error);
       return { success: false, error };
     }
   };
@@ -149,26 +148,21 @@ export const useEmployeeMutations = () => {
       return {
         success: true,
         deletedEmployee: data?.removeEmployee,
-        deletedEmployeeId: employeeId, // Use the original ID since backend can't return it
+        deletedEmployeeId: employeeId,
       };
     } catch (error) {
-      console.error("Remove employee error:", error);
+      empLogger.error("Remove employee error:", error);
       return { success: false, error };
     }
   };
 
   return {
-    // Functions
     createEmployee,
     updateEmployee,
     removeEmployee,
-
-    // Loading states
     createLoading,
     updateLoading,
     removeLoading,
-
-    // Error states
     createError,
     updateError,
     removeError,

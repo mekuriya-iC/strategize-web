@@ -76,15 +76,21 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
     if (open && department) {
       setDepartmentName(department.departmentName);
 
-      // Find manager ID by name - use undefined if not found to avoid empty string
-      const manager = managers.find((m) => m.fullName === department.managedBy);
-      setDepartmentManager(manager?.employeeId || undefined);
-
       // Find division ID by name - use undefined if not found to avoid empty string
       const division = divisions.find((d) => d.name === department.division);
       setSelectedDivision(division?.divisionId || undefined);
     }
-  }, [open, department, managers, divisions]);
+  }, [open, department, divisions]);
+
+  // Set manager from department query data (more reliable than matching by name)
+  useEffect(() => {
+    if (departmentData?.department?.manager) {
+      setDepartmentManager(departmentData.department.manager.employeeId);
+    } else if (departmentData?.department && !departmentData.department.manager) {
+      // Department loaded but has no manager
+      setDepartmentManager(undefined);
+    }
+  }, [departmentData]);
 
   // Load current members when department data is fetched
   useEffect(() => {
@@ -112,7 +118,7 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!departmentName.trim() || !selectedDivision) {
+    if (!departmentName.trim()) {
       return;
     }
 
@@ -121,7 +127,8 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
         input: {
           departmentId: String(department.id),
           name: departmentName.trim(),
-          divisionId: selectedDivision,
+          // Use null to explicitly remove division association, undefined if not changing
+          divisionId: selectedDivision === undefined ? null : selectedDivision,
           managerId: departmentManager || undefined,
         },
         employeeIds: departmentMembers, // New member IDs
@@ -183,12 +190,28 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                   onValueChange={(value) =>
                     setDepartmentManager(value || undefined)
                   }
-                  disabled={loading.update}
+                  disabled={loading.update || managers.length === 0}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Manager" />
+                    <SelectValue placeholder={
+                      departmentLoading 
+                        ? "Loading..." 
+                        : managers.length === 0 
+                          ? departmentData?.department?.manager?.fullName || "No managers available"
+                          : "Select Manager"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Show current manager from department data if not in managers list */}
+                    {departmentData?.department?.manager && 
+                     !managers.find(m => m.employeeId === departmentData.department?.manager?.employeeId) && (
+                      <SelectItem
+                        key={departmentData.department.manager.employeeId}
+                        value={departmentData.department.manager.employeeId}
+                      >
+                        {departmentData.department.manager.fullName} (Current)
+                      </SelectItem>
+                    )}
                     {managers.map((manager) => (
                       <SelectItem
                         key={manager.employeeId}
@@ -205,12 +228,15 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
             {/* Division */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Division
+                Division{" "}
+                <span className="text-sm font-normal text-gray-500">
+                  (Optional)
+                </span>
               </label>
               <Select
-                value={selectedDivision || ""}
+                value={selectedDivision || "none"}
                 onValueChange={(value) =>
-                  setSelectedDivision(value || undefined)
+                  setSelectedDivision(value === "none" ? undefined : value)
                 }
                 disabled={loading.update}
               >
@@ -218,6 +244,9 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                   <SelectValue placeholder="Select Division" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none" className="text-gray-500">
+                    None (No Division)
+                  </SelectItem>
                   {divisions.map((division) => (
                     <SelectItem
                       key={division.divisionId}
@@ -320,8 +349,7 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                 disabled={
                   loading.update ||
                   departmentLoading ||
-                  !departmentName.trim() ||
-                  !selectedDivision
+                  !departmentName.trim()
                 }
               >
                 {loading.update

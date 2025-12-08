@@ -9,9 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 import DepartmentCard from "./DepartmentCard";
-import { Department } from "@/types/graphql";
-import { X } from "lucide-react";
-import { Building2 } from "lucide-react";
+import { X, Building2 } from "lucide-react";
+
+// Simplified department type matching what useUserDepartments returns
+interface UserDepartment {
+  departmentId: string;
+  name: string;
+}
 
 interface DepartmentSelectionModalProps {
   open: boolean;
@@ -24,7 +28,7 @@ export default function DepartmentSelectionModal({
 }: DepartmentSelectionModalProps) {
   const { availableDepartments, setSelected } = useDepartmentSelection();
 
-  const handleDepartmentSelect = (department: Department) => {
+  const handleDepartmentSelect = (department: UserDepartment) => {
     setSelected({ department });
     onOpenChange(false);
   };

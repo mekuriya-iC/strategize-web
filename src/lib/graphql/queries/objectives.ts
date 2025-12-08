@@ -18,6 +18,7 @@ export const GET_OBJECTIVES = gql`
         name
         type
         status
+        order
         strategicPeriod {
           strategicPeriodId
           startDate
@@ -66,6 +67,7 @@ export const GET_OBJECTIVE = gql`
       name
       type
       status
+      order
       strategicPeriod {
         strategicPeriodId
         startDate

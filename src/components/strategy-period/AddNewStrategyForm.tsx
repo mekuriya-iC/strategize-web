@@ -14,13 +14,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { useRouter } from "next/navigation";
 import { useStrategicPeriodMutations } from "@/hooks/useStrategicPeriodMutations";
 import { toast } from "sonner";
-import { useStrategicPeriod } from "@/context/StrategicPeriodContext";
+import { useStrategicPeriodStore } from "@/stores";
 
 export default function AddNewStrategyForm() {
   const router = useRouter();
   const { createStrategicPeriod, loading, error } =
     useStrategicPeriodMutations();
-  const { setSelected } = useStrategicPeriod();
+  const { setSelectedPeriod } = useStrategicPeriodStore();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [timeline, setTimeline] = useState<string>("3");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,9 +48,9 @@ export default function AddNewStrategyForm() {
 
       toast.success("Strategic period created successfully!");
 
-      // Update context with the newly created period and redirect to list page
+      // Update store with the newly created period and redirect to list page
       if (newPeriod) {
-        setSelected({ period: newPeriod });
+        setSelectedPeriod(newPeriod);
       }
       router.push("/strategy-period");
     } catch (err) {

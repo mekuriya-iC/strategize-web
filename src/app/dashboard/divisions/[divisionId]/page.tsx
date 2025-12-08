@@ -11,6 +11,7 @@ import { GET_DIVISION_BASIC } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { usePermissions } from "@/hooks/usePermissions";
 import type {
   GetDivisionResponse,
   DivisionQueryVariables,
@@ -26,6 +27,10 @@ const DivisionDetailsPage = () => {
   const divisionId = params.divisionId as string;
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
+  // Get permissions to check if user can access employees
+  const { guards } = usePermissions();
+  const canAccessEmployees = guards.isAdmin || guards.isSuperAdmin;
 
   // Query to get basic division info (without departments to avoid manager constraint)
   const {
@@ -56,10 +61,12 @@ const DivisionDetailsPage = () => {
   });
 
   // Query to get employees for manager selection
+  // Only fetch if user has admin access (backend requires ADMIN or SUPER_ADMIN)
   const { data: employeesData } = useQuery<{ employees: PaginatedEmployees }>(
     GET_EMPLOYEES,
     {
       variables: { page: 1, limit: 100 },
+      skip: !canAccessEmployees,
     }
   );
 

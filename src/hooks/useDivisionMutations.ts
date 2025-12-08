@@ -11,6 +11,9 @@ import type {
   UpdateDivisionMutationVariables,
   RemoveDivisionMutationVariables,
 } from "@/types/graphql";
+import logger from "@/lib/logger";
+
+const divLogger = logger.createChild("Division");
 
 export const useDivisionMutations = () => {
   const [createDivisionMutation, { loading: createLoading }] = useMutation(
@@ -22,22 +25,16 @@ export const useDivisionMutations = () => {
         });
       },
       onError: (error) => {
-        console.error("GraphQL Error:", error);
+        divLogger.error("Error creating division:", error);
         toast.error("Failed to create division", {
           description: error.message,
         });
       },
-      // Refetch all possible divisions queries that might be cached
       refetchQueries: [
-        // For divisions page with pagination
         { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
-        // For analytics (all divisions)
         { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
-        // For forms that need all divisions (dropdowns)
         { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
       ],
-      // Alternative: Use refetchQueries: "all" to refetch ALL queries that include GET_DIVISIONS
-      // refetchQueries: "all",
       awaitRefetchQueries: true,
     }
   );
@@ -55,13 +52,9 @@ export const useDivisionMutations = () => {
           description: error.message,
         });
       },
-      // Refetch all possible divisions queries that might be cached
       refetchQueries: [
-        // For divisions page with pagination
         { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
-        // For analytics (all divisions)
         { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
-        // For forms that need all divisions (dropdowns)
         { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
@@ -79,7 +72,6 @@ export const useDivisionMutations = () => {
       onError: (error) => {
         let errorMessage = error.message;
 
-        // Provide user-friendly message for foreign key constraint errors
         if (
           error.message?.includes("foreign key constraint") ||
           error.message?.includes("FK_") ||
@@ -93,13 +85,9 @@ export const useDivisionMutations = () => {
           description: errorMessage,
         });
       },
-      // Refetch all possible divisions queries that might be cached
       refetchQueries: [
-        // For divisions page with pagination
         { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
-        // For analytics (all divisions)
         { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
-        // For forms that need all divisions (dropdowns)
         { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
       ],
       awaitRefetchQueries: true,
@@ -111,7 +99,7 @@ export const useDivisionMutations = () => {
       const result = await createDivisionMutation({ variables });
       return result.data?.createDivision;
     } catch (error) {
-      console.error("Error creating division:", error);
+      divLogger.error("Error creating division:", error);
       throw error;
     }
   };
@@ -121,7 +109,7 @@ export const useDivisionMutations = () => {
       const result = await updateDivisionMutation({ variables });
       return result.data?.updateDivision;
     } catch (error) {
-      console.error("Error updating division:", error);
+      divLogger.error("Error updating division:", error);
       throw error;
     }
   };
@@ -131,7 +119,7 @@ export const useDivisionMutations = () => {
       const result = await removeDivisionMutation({ variables });
       return result.data?.removeDivision;
     } catch (error) {
-      console.error("Error removing division:", error);
+      divLogger.error("Error removing division:", error);
       throw error;
     }
   };

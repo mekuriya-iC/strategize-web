@@ -1,9 +1,9 @@
 import Image from "next/image";
 import AddObjectiveButton from "./AddObjectiveButton";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
 
 export default function EmptyState() {
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
 
   // Only show Add Objective button for admin and super admin users
   const showAddButton = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";

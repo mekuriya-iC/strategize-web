@@ -10,10 +10,15 @@ import {
   UpdateObjectiveMutationVariables,
   RemoveObjectiveMutationVariables,
 } from "@/types/graphql";
+import { objectiveLogger } from "@/lib/logger";
+import { invalidateAfterMutation } from "@/stores/cacheStore";
 
 export const useObjectiveMutations = () => {
   const [createObjective, { loading: createLoading, error: createError }] =
     useMutation(CREATE_OBJECTIVE, {
+      onCompleted: () => {
+        invalidateAfterMutation.objective();
+      },
       refetchQueries: [
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
@@ -27,6 +32,9 @@ export const useObjectiveMutations = () => {
 
   const [updateObjective, { loading: updateLoading, error: updateError }] =
     useMutation(UPDATE_OBJECTIVE, {
+      onCompleted: () => {
+        invalidateAfterMutation.objective();
+      },
       refetchQueries: [
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
@@ -40,6 +48,10 @@ export const useObjectiveMutations = () => {
 
   const [removeObjective, { loading: removeLoading, error: removeError }] =
     useMutation(REMOVE_OBJECTIVE, {
+      onCompleted: () => {
+        invalidateAfterMutation.objective();
+        invalidateAfterMutation.submission();
+      },
       refetchQueries: [
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
         { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
@@ -58,7 +70,7 @@ export const useObjectiveMutations = () => {
       const result = await createObjective({ variables });
       return result.data?.createObjective;
     } catch (error) {
-      console.error("Error creating objective:", error);
+      objectiveLogger.error("Error creating objective:", error);
       throw error;
     }
   };
@@ -70,7 +82,7 @@ export const useObjectiveMutations = () => {
       const result = await updateObjective({ variables });
       return result.data?.updateObjective;
     } catch (error) {
-      console.error("Error updating objective:", error);
+      objectiveLogger.error("Error updating objective:", error);
       throw error;
     }
   };
@@ -82,7 +94,7 @@ export const useObjectiveMutations = () => {
       const result = await removeObjective({ variables });
       return result.data?.removeObjective;
     } catch (error) {
-      console.error("Error removing objective:", error);
+      objectiveLogger.error("Error removing objective:", error);
       throw error;
     }
   };

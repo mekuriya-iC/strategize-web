@@ -11,8 +11,7 @@ import {
   Filter,
 } from "lucide-react";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { useOrgUnit } from "@/context/OrgUnitContext";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore, useOrgUnitStore } from "@/stores";
 import { useUserDepartments } from "@/hooks/useUserDepartments";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 
@@ -28,28 +27,24 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsSummary() {
-  const { selectedUnit } = useOrgUnit();
-  const { user } = useUser();
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const user = useAuthStore((state) => state.user);
   const { departmentNames } = useUserDepartments();
   const { selected: selectedDepartment } = useDepartmentSelection();
 
   // Normalize selected unit shape for analytics hook
-  const managerSelectedUnit =
-    user?.role === "MANAGER" && selectedUnit
-      ? selectedUnit.__typename === "Division"
-        ? {
-            id: (selectedUnit as { divisionId: string }).divisionId,
-            type: "division" as const,
-          }
-        : {
-            id: (selectedUnit as { departmentId: string }).departmentId,
-            type: "department" as const,
-          }
+  // Directors and Managers both need filtered analytics based on their selected unit
+  const roleSelectedUnit =
+    (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
+      ? {
+          id: selectedUnit.id,
+          type: selectedUnit.type,
+        }
       : null;
 
   // Use the analytics hook with selected unit context and user role
   const analytics = useAnalytics({
-    selectedUnit: managerSelectedUnit,
+    selectedUnit: roleSelectedUnit,
     userRole: user?.role,
   });
 
@@ -78,9 +73,9 @@ export default function AnalyticsSummary() {
       },
     ];
 
-    // For managers and employees, show only objectives and KPIs (they don't have access to other data)
-    if (user?.role === "MANAGER" || user?.role === "NORMAL") {
-      return baseData; // Only show Objectives and KPIs for managers and employees
+    // For directors, managers and employees, show only objectives and KPIs (they don't have access to other data)
+    if (user?.role === "DIRECTOR" || user?.role === "MANAGER" || user?.role === "NORMAL") {
+      return baseData; // Only show Objectives and KPIs for these roles
     }
 
     // Default view (corporate level)
@@ -167,8 +162,10 @@ export default function AnalyticsSummary() {
 
   // Get context-aware title
   const getAnalyticsTitle = (): string => {
-    if (user?.role === "MANAGER" && selectedUnit) {
-      return selectedUnit.__typename === "Division"
+    if (user?.role === "DIRECTOR" && selectedUnit) {
+      return "Division Analytics";
+    } else if (user?.role === "MANAGER" && selectedUnit) {
+      return selectedUnit.type === "division"
         ? "Division Analytics"
         : "Department Analytics";
     } else if (user?.role === "NORMAL") {
@@ -184,10 +181,15 @@ export default function AnalyticsSummary() {
           <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46]">
             {getAnalyticsTitle()}
           </h2>
+          {user?.role === "DIRECTOR" && selectedUnit && (
+            <p className="text-sm text-gray-600 mt-1">
+              Showing data for selected division
+            </p>
+          )}
           {user?.role === "MANAGER" && selectedUnit && (
             <p className="text-sm text-gray-600 mt-1">
               Showing data for selected{" "}
-              {selectedUnit.__typename === "Division"
+              {selectedUnit.type === "division"
                 ? "division"
                 : "department"}
             </p>

@@ -46,7 +46,6 @@ interface EmployeeTableProps {
   headers?: HeaderColumn[];
   loading?: boolean;
   error?: string;
-  onAddDepartment?: () => void;
 }
 
 // Helper function to format phone number with +251 prefix
@@ -82,7 +81,6 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
   ],
   loading = false,
   error,
-  onAddDepartment,
 }) => {
   if (loading) {
     return <EmployeeTableSkeleton rows={6} headers={headers} />;
@@ -163,7 +161,6 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
               employee={employeeData.transformed}
               odd={idx % 2 === 1}
               originalEmployee={employeeData.original}
-              onAddDepartment={onAddDepartment}
             />
           ))
         )}

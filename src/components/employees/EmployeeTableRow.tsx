@@ -3,6 +3,7 @@ import React from "react";
 import { TableRow, TableCell } from "@/components/ui/table";
 import EmployeeAvatar from "./EmployeeAvatar";
 import EmployeeStatusBadge from "./EmployeeStatusBadge";
+import EmployeeRoleBadge from "./EmployeeRoleBadge";
 import EmployeeActionsMenu from "./EmployeeActionsMenu";
 import { Employee as GraphQLEmployee } from "@/types/graphql";
 
@@ -23,12 +24,10 @@ const EmployeeTableRow = ({
   employee,
   odd,
   originalEmployee,
-  onAddDepartment,
 }: {
   employee: Employee;
   odd: boolean;
   originalEmployee?: GraphQLEmployee;
-  onAddDepartment?: () => void;
 }) => {
   return (
     <TableRow className={odd ? "bg-white" : "bg-[#ECECFF] "}>
@@ -49,7 +48,7 @@ const EmployeeTableRow = ({
         {employee.title}
       </TableCell>
       <TableCell className="px-6 py-4 text-[#11181C]">
-        {employee.department}
+        <EmployeeRoleBadge role={employee.department} />
       </TableCell>
       <TableCell className="px-6 py-4 text-[#11181C]">
         {employee.phone}
@@ -66,7 +65,6 @@ const EmployeeTableRow = ({
           employeeName={employee.fullName}
           employeeId={employee.employeeId}
           originalEmployee={originalEmployee}
-          onAddDepartment={onAddDepartment}
         />
       </TableCell>
     </TableRow>

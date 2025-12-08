@@ -7,18 +7,23 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { Department } from "@/types/graphql";
 import { useUserDepartments } from "@/hooks/useUserDepartments";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
+
+// Simplified department type that matches what's returned from user query
+interface UserDepartment {
+  departmentId: string;
+  name: string;
+}
 
 interface DepartmentSelectionState {
-  department: Department | null;
+  department: UserDepartment | null;
 }
 
 interface DepartmentSelectionContextType {
   selected: DepartmentSelectionState | null;
   setSelected: (val: DepartmentSelectionState) => void;
-  availableDepartments: Department[];
+  availableDepartments: UserDepartment[];
   isMultipleDepartments: boolean;
   needsSelection: boolean;
 }
@@ -32,7 +37,7 @@ export function DepartmentSelectionProvider({
 }: {
   children: ReactNode;
 }) {
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
   const { departments, isMultipleDepartments, hasDepartments } =
     useUserDepartments();
   const [selected, setSelected] = useState<DepartmentSelectionState | null>(

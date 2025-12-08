@@ -29,7 +29,7 @@ import {
 import DeleteKpiDialog from "./DeleteKpiDialog";
 import SubmitDialog from "../submissions/SubmitDialog";
 import { Kpi } from "@/types/graphql";
-import { useUser } from "@/context/UserContext";
+import { useAuthStore } from "@/stores";
 
 interface KPIListProps {
   kpis: Kpi[];
@@ -71,7 +71,6 @@ export default function KPIList({
   strategicTargetsById,
   kpiRejectionReasons,
   childQuartersByParentId,
-  currentObjective,
   allKpis = kpis,
 }: KPIListProps) {
   console.log("🚀 KPIList component received:", {
@@ -82,7 +81,7 @@ export default function KPIList({
       ? Object.keys(strategicTargetsById)
       : [],
   });
-  const { user } = useUser();
+  const user = useAuthStore((state) => state.user);
   const [expandedKPIs, setExpandedKPIs] = useState<Set<string>>(new Set());
 
   const toggleExpanded = (kpiId: string) => {
@@ -116,74 +115,55 @@ export default function KPIList({
     kpis.map((k) => ({ kpiId: k.kpiId, name: k.name, parent: k.parent }))
   );
 
-  // Function to determine column headers based on organizational level
+  // Function to determine column headers based on user's role level
   const getColumnHeaders = () => {
-    // Check if all KPIs belong to a corporate objective
     const allCorporate =
       kpis.length > 0 &&
       kpis.every((kpi) => kpi.objective?.type === "CORPORATE");
+    const hasDiv = kpis.some((kpi) => kpi.objective?.type === "DIVISION");
+    const hasDept = kpis.some((kpi) => kpi.objective?.type === "DEPARTMENT");
+    const hasPers = kpis.some((kpi) => kpi.objective?.type === "PERSONNEL");
 
-    // For corporate level (admin/super admin), hide second column
-    if (
-      allCorporate ||
-      user?.role === "ADMIN" ||
-      user?.role === "SUPER_ADMIN"
-    ) {
-      return {
-        firstColumn: "CORPORATE KPI",
-        secondColumn: null, // Hidden for corporate level
-        showSecondColumn: false,
-      };
+    // Role-based column headers
+    switch (user?.role) {
+      case "SUPER_ADMIN":
+      case "ADMIN":
+        if (allCorporate) {
+          return { firstColumn: "CORPORATE KPI", secondColumn: null, showSecondColumn: false };
+        }
+        if (hasDiv && !hasDept && !hasPers) {
+          return { firstColumn: "CORPORATE KPI", secondColumn: "DIVISION KPI", showSecondColumn: true };
     }
+        if (hasDept && !hasPers) {
+          return { firstColumn: "PARENT KPI", secondColumn: "DEPARTMENT KPI", showSecondColumn: true };
+        }
+        if (hasPers) {
+          return { firstColumn: "DEPARTMENT KPI", secondColumn: "PERSONAL KPI", showSecondColumn: true };
+        }
+        return { firstColumn: "CORPORATE KPI", secondColumn: "CHILD KPI", showSecondColumn: true };
 
-    // Check if we have mixed levels or specific levels
-    const hasDivision = kpis.some((kpi) => kpi.objective?.type === "DIVISION");
-    const hasDepartment = kpis.some(
-      (kpi) => kpi.objective?.type === "DEPARTMENT"
-    );
-    const hasPersonnel = kpis.some(
-      (kpi) => kpi.objective?.type === "PERSONNEL"
-    );
+      case "DIRECTOR":
+        // Directors see DIVISION KPIs with their parent CORPORATE KPI info
+        return { firstColumn: "CORPORATE KPI", secondColumn: "DIVISION KPI", showSecondColumn: true };
 
-    if (hasDivision && !hasDepartment && !hasPersonnel) {
-      return {
-        firstColumn: "CORPORATE KPI",
-        secondColumn: "DIVISION KPI",
-        showSecondColumn: true,
-      };
+      case "MANAGER":
+        // Managers see DIVISION (parent) → DEPARTMENT (their assigned KPIs)
+        if (allCorporate) {
+          return { firstColumn: "CORPORATE KPI", secondColumn: null, showSecondColumn: false };
+        }
+        return { firstColumn: "DIVISION KPI", secondColumn: "DEPARTMENT KPI", showSecondColumn: true };
+
+      case "COORDINATOR":
+        // Coordinators see DIVISION (parent) → DEPARTMENT (their unit KPIs)
+        return { firstColumn: "DIVISION KPI", secondColumn: "DEPARTMENT KPI", showSecondColumn: true };
+
+      case "NORMAL":
+        // Employees see DEPARTMENT (parent) → PERSONNEL (their assigned KPIs)
+        return { firstColumn: "DEPARTMENT KPI", secondColumn: "PERSONNEL KPI", showSecondColumn: true };
+
+      default:
+        return { firstColumn: "STRATEGIC KPI", secondColumn: "KPI", showSecondColumn: true };
     }
-
-    if (hasDepartment && !hasPersonnel) {
-      // Use current objective information to determine parent type
-      if (currentObjective?.parent?.type === "DIVISION") {
-        return {
-          firstColumn: "DIVISION KPI",
-          secondColumn: "DEPARTMENT KPI",
-          showSecondColumn: true,
-        };
-      } else {
-        return {
-          firstColumn: "CORPORATE KPI",
-          secondColumn: "DEPARTMENT KPI",
-          showSecondColumn: true,
-        };
-      }
-    }
-
-    if (hasPersonnel) {
-      return {
-        firstColumn: "DEPARTMENT KPI",
-        secondColumn: "PERSONAL KPI",
-        showSecondColumn: true,
-      };
-    }
-
-    // Default fallback
-    return {
-      firstColumn: "STRATEGIC KPI",
-      secondColumn: "DIVISION/DEPARTMENT/PERSONAL KPI",
-      showSecondColumn: true,
-    };
   };
 
   const columnHeaders = getColumnHeaders();
@@ -245,12 +225,8 @@ export default function KPIList({
   const isCorporateObjective =
     kpis.length > 0 && kpis.every((kpi) => kpi.objective?.type === "CORPORATE");
 
-  // Show level-specific column only when the objective is NOT corporate and user is not admin/super admin
-  const showLevelSpecificColumn =
-    !isCorporateObjective &&
-    columnHeaders.showSecondColumn &&
-    user?.role !== "ADMIN" &&
-    user?.role !== "SUPER_ADMIN";
+  // Show level-specific column based on columnHeaders configuration
+  const showLevelSpecificColumn = columnHeaders.showSecondColumn;
 
   // Show reason column only if there are rejected items and not corporate level
   const showReasonColumn =
@@ -286,11 +262,16 @@ export default function KPIList({
       }
     }
 
-    // Merge the quarterly sums into the main totals object
+    // Merge the quarterly sums into the main totals object (rounded to 2 decimal places)
     for (const year in quarterlySums) {
       if (!totals[year]) {
-        totals[year] = quarterlySums[year];
+        totals[year] = Math.round(quarterlySums[year] * 100) / 100;
       }
+    }
+
+    // Also round explicit totals to 2 decimal places
+    for (const year in totals) {
+      totals[year] = Math.round(totals[year] * 100) / 100;
     }
 
     const years = Object.keys(totals).sort((a, b) => {
@@ -813,13 +794,14 @@ export default function KPIList({
                                           );
 
                                           if (childSum > 0) {
+                                            const roundedChildSum = Math.round(childSum * 100) / 100;
                                             return (
                                               <div className="text-[11px] text-gray-500">
                                                 <span className="text-gray-400">
                                                   Child Sum:
                                                 </span>{" "}
                                                 <span className="font-medium text-blue-600">
-                                                  {childSum}
+                                                  {roundedChildSum}
                                                 </span>
                                               </div>
                                             );
@@ -851,6 +833,7 @@ export default function KPIList({
                                               ] ?? 0;
                                             const quarterlySum =
                                               q1 + q2 + q3 + q4;
+                                            const roundedQuarterlySum = Math.round(quarterlySum * 100) / 100;
 
                                             return (
                                               <>
@@ -861,7 +844,7 @@ export default function KPIList({
                                                   </span>
                                                   <div className="flex items-center gap-1">
                                                     <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-2 py-0.5 text-xs font-medium text-green-700">
-                                                      {quarterlySum}
+                                                      {roundedQuarterlySum}
                                                     </span>
                                                     <Badge
                                                       variant="outline"
@@ -1021,6 +1004,7 @@ export default function KPIList({
                                       const q3 = q.q3 ?? 0;
                                       const q4 = q.q4 ?? 0;
                                       const quarterlySum = q1 + q2 + q3 + q4;
+                                      const roundedSum = Math.round(quarterlySum * 100) / 100;
 
                                       if (quarterlySum > 0) {
                                         return (
@@ -1029,7 +1013,7 @@ export default function KPIList({
                                               Sum:
                                             </span>{" "}
                                             <span className="font-medium text-green-600">
-                                              {Number(quarterlySum).toFixed(1)}
+                                              {roundedSum}
                                             </span>
                                           </div>
                                         );
@@ -1443,6 +1427,7 @@ export default function KPIList({
                                                   quarters.q2 +
                                                   quarters.q3 +
                                                   quarters.q4;
+                                                const roundedQuarterlySum = Math.round(quarterlySum * 100) / 100;
 
                                                 return (
                                                   <div
@@ -1453,7 +1438,7 @@ export default function KPIList({
                                                     <div className="flex items-center gap-1">
                                                       <div className="flex items-center gap-1">
                                                         <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-2 py-1 text-xs font-medium text-green-700">
-                                                          Sum: {quarterlySum}
+                                                          Sum: {roundedQuarterlySum}
                                                         </span>
                                                         <Badge
                                                           variant="outline"
@@ -1693,6 +1678,7 @@ export default function KPIList({
                                                                         quarters.q2 +
                                                                         quarters.q3 +
                                                                         quarters.q4;
+                                                                      const roundedQuarterlySum = Math.round(quarterlySum * 100) / 100;
 
                                                                       return (
                                                                         <div
@@ -1707,7 +1693,7 @@ export default function KPIList({
                                                                               <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-2 py-1 text-xs font-medium text-green-700">
                                                                                 Sum:{" "}
                                                                                 {
-                                                                                  quarterlySum
+                                                                                  roundedQuarterlySum
                                                                                 }
                                                                               </span>
                                                                               <Badge

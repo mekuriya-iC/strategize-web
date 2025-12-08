@@ -26,20 +26,20 @@ const ROLE_HIERARCHY: Record<string, number> = {
 const ROUTE_PERMISSIONS: Record<string, string> = {
   // Admin routes - require ADMIN or higher
   "/dashboard/admin": "ADMIN",
-  
+
   // Employee management - require ADMIN or higher
   "/dashboard/employees": "ADMIN",
-  
+
   // Organizational structure - require DIRECTOR or higher
   "/dashboard/divisions": "DIRECTOR",
   "/dashboard/departments": "DIRECTOR",
-  
+
   // Approvals - require COORDINATOR or higher (to view, actual approval needs MANAGER+)
   "/dashboard/approvals": "COORDINATOR",
-  
+
   // Strategy period management - require ADMIN
   "/strategy-period": "ADMIN",
-  
+
   // These are accessible by all authenticated users
   "/dashboard": "NORMAL",
   "/dashboard/objectives": "NORMAL",
@@ -50,7 +50,10 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
 /**
  * Check if a role has at least the minimum required level
  */
-function hasMinimumRole(userRole: string | undefined, minimumRole: string): boolean {
+function hasMinimumRole(
+  userRole: string | undefined,
+  minimumRole: string
+): boolean {
   if (!userRole) return false;
   const userLevel = ROLE_HIERARCHY[userRole] ?? -1;
   const requiredLevel = ROLE_HIERARCHY[minimumRole] ?? 999;
@@ -65,17 +68,19 @@ function getRouteMinimumRole(pathname: string): string | null {
   if (ROUTE_PERMISSIONS[pathname]) {
     return ROUTE_PERMISSIONS[pathname];
   }
-  
+
   // Check for prefix matches (for nested routes)
   // Sort by length descending to match most specific route first
-  const sortedRoutes = Object.keys(ROUTE_PERMISSIONS).sort((a, b) => b.length - a.length);
-  
+  const sortedRoutes = Object.keys(ROUTE_PERMISSIONS).sort(
+    (a, b) => b.length - a.length
+  );
+
   for (const route of sortedRoutes) {
     if (pathname.startsWith(route + "/") || pathname === route) {
       return ROUTE_PERMISSIONS[route];
     }
   }
-  
+
   return null;
 }
 
@@ -85,21 +90,22 @@ function getRouteMinimumRole(pathname: string): string | null {
 function getRoleFromToken(token: string): string | null {
   try {
     const decoded = jwtDecode<JWTPayload>(token);
-    
+
     // Check if token is expired
     const now = Date.now() / 1000;
     if (decoded.exp < now) {
       return null;
     }
-    
+
     return decoded.role;
   } catch {
     return null;
   }
 }
 
-// Middleware to handle authentication and role-based access control
-export function middleware(request: NextRequest) {
+// Proxy to handle authentication and role-based access control
+// Note: Next.js 16 expects this to be exported as "proxy" when the file is named proxy.ts
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get("accessToken")?.value;
 
@@ -126,7 +132,7 @@ export function middleware(request: NextRequest) {
 
     // Get role from token
     const userRole = getRoleFromToken(accessToken);
-    
+
     // If token is invalid or expired, redirect to auth
     if (!userRole) {
       const authUrl = new URL("/auth", request.url);
@@ -140,7 +146,7 @@ export function middleware(request: NextRequest) {
 
     // Check role-based access
     const minimumRole = getRouteMinimumRole(pathname);
-    
+
     if (minimumRole && !hasMinimumRole(userRole, minimumRole)) {
       // User doesn't have permission - redirect to dashboard with error
       const dashboardUrl = new URL("/dashboard", request.url);
@@ -191,7 +197,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure which routes the middleware should run on
+// Configure which routes the proxy should run on
 export const config = {
   /*
    * Match all request paths except for the ones starting with:

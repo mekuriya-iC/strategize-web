@@ -1,13 +1,26 @@
-import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
-import nextTypescript from "eslint-config-next/typescript";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import { createRequire } from "module";
+import { pathToFileURL } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
-const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"]
-}];
+// Use require.resolve to get the actual path, then convert to file:// URL for ESM import
+const coreWebVitalsPath = require.resolve("eslint-config-next/core-web-vitals");
+const typescriptPath = require.resolve("eslint-config-next/typescript");
+
+const nextCoreWebVitals = await import(pathToFileURL(coreWebVitalsPath).href);
+const nextTypescript = await import(pathToFileURL(typescriptPath).href);
+
+// Handle both default and named exports
+const coreWebVitalsConfig = nextCoreWebVitals.default || nextCoreWebVitals;
+const typescriptConfig = nextTypescript.default || nextTypescript;
+
+const eslintConfig = [
+  ...(Array.isArray(coreWebVitalsConfig) ? coreWebVitalsConfig : [coreWebVitalsConfig]),
+  ...(Array.isArray(typescriptConfig) ? typescriptConfig : [typescriptConfig]),
+  {
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"]
+  }
+];
 
 export default eslintConfig;
+

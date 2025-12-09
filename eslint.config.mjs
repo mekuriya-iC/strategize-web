@@ -15,12 +15,19 @@ const coreWebVitalsConfig = nextCoreWebVitals.default || nextCoreWebVitals;
 const typescriptConfig = nextTypescript.default || nextTypescript;
 
 const eslintConfig = [
-  ...(Array.isArray(coreWebVitalsConfig) ? coreWebVitalsConfig : [coreWebVitalsConfig]),
+  ...(Array.isArray(coreWebVitalsConfig)
+    ? coreWebVitalsConfig
+    : [coreWebVitalsConfig]),
   ...(Array.isArray(typescriptConfig) ? typescriptConfig : [typescriptConfig]),
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"]
-  }
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+    ],
+  },
 ];
 
 export default eslintConfig;
-

@@ -13,9 +13,9 @@ import EmptyState from "@/components/divisions/EmptyState";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
-import { useDivisionMutations } from "@/hooks/useDivisionMutations";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import type {
   PaginatedDivisions,
   PaginatedEmployees,
@@ -329,52 +329,52 @@ const DivisionsPage = () => {
       {(divisionsLoading ||
         divisionsError ||
         transformedDivisions.length > 0) && (
-        <>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <DivisionFilterBar
-              onSearchChange={handleSearchChange}
-              onFilterChange={handleFilterChange}
-              searchValue={searchTerm}
-              filterValue={filterType}
-              disabled={loading}
-            />
-            {/* Only show Add Division button for admins */}
-            {canAccessEmployees && (
-            <div className="flex gap-2 items-center">
-              <Button
-                className="ml-2"
-                onClick={handleAddDivision}
+          <>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <DivisionFilterBar
+                onSearchChange={handleSearchChange}
+                onFilterChange={handleFilterChange}
+                searchValue={searchTerm}
+                filterValue={filterType}
                 disabled={loading}
-              >
-                <Plus width={16} height={16} />
-                Add Division
-              </Button>
+              />
+              {/* Only show Add Division button for admins */}
+              {canAccessEmployees && (
+                <div className="flex gap-2 items-center">
+                  <Button
+                    className="ml-2"
+                    onClick={handleAddDivision}
+                    disabled={loading}
+                  >
+                    <Plus width={16} height={16} />
+                    Add Division
+                  </Button>
+                </div>
+              )}
             </div>
-            )}
-          </div>
 
-          {/* Results Summary */}
-          {(searchTerm || filterType !== "all") && (
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>
-                Showing {transformedDivisions.length} of {totalItems} divisions
-                {searchTerm && (
-                  <span className="ml-1">
-                    matching &quot;{searchTerm}&quot;
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
-        </>
-      )}
+            {/* Results Summary */}
+            {(searchTerm || filterType !== "all") && (
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <span>
+                  Showing {transformedDivisions.length} of {totalItems} divisions
+                  {searchTerm && (
+                    <span className="ml-1">
+                      matching &quot;{searchTerm}&quot;
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+          </>
+        )}
 
       {/* Empty State or Table */}
       {!divisionsLoading &&
-      !divisionsError &&
-      transformedDivisions.length === 0 ? (
+        !divisionsError &&
+        transformedDivisions.length === 0 ? (
         canAccessEmployees ? (
-        <EmptyState onAddDivision={handleAddDivision} />
+          <EmptyState onAddDivision={handleAddDivision} />
         ) : (
           <div className="p-8 text-center text-gray-500">
             No divisions found.

@@ -12,11 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
+import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
-import { useKPI } from "@/hooks/useKPIs";
-import { useObjective } from "@/hooks/useObjectives";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { useKPI } from "@/hooks/objectives/useKPIs";
+import { useObjective } from "@/hooks/objectives/useObjectives";
 import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
 import type {
@@ -127,12 +127,12 @@ export default function BulkSubmitDialog({
           exists: !!firstKPI,
           kpiData: firstKPI
             ? {
-                kpiId: firstKPI.kpiId,
-                name: firstKPI.name,
-                status: firstKPI.status,
-                hasObjective: !!firstKPI.objective,
-                objectiveId: firstKPI.objective?.objectiveId,
-              }
+              kpiId: firstKPI.kpiId,
+              name: firstKPI.name,
+              status: firstKPI.status,
+              hasObjective: !!firstKPI.objective,
+              objectiveId: firstKPI.objective?.objectiveId,
+            }
             : null,
         });
 
@@ -144,11 +144,11 @@ export default function BulkSubmitDialog({
             exists: !!objectiveData,
             objectiveData: objectiveData
               ? {
-                  objectiveId: objectiveData.objectiveId,
-                  name: objectiveData.name,
-                  type: objectiveData.type,
-                  status: objectiveData.status,
-                }
+                objectiveId: objectiveData.objectiveId,
+                name: objectiveData.name,
+                type: objectiveData.type,
+                status: objectiveData.status,
+              }
               : null,
           });
         }
@@ -164,8 +164,8 @@ export default function BulkSubmitDialog({
         item.objectiveType === "PERSONNEL"
           ? "PERSONNEL"
           : item.objectiveType === "DEPARTMENT"
-          ? "DEPARTMENT"
-          : "DIVISION"; // DIVISION maps to DIVISION level
+            ? "DEPARTMENT"
+            : "DIVISION"; // DIVISION maps to DIVISION level
 
       // Set submission type based on item type
       const submissionType: SubmissionType =
@@ -301,8 +301,8 @@ export default function BulkSubmitDialog({
         itemType === "objectives"
           ? "objectives"
           : itemType === "kpis"
-          ? "KPIs"
-          : "items";
+            ? "KPIs"
+            : "items";
 
       toast.success(`${items.length} ${itemTypeLabel} submitted successfully!`);
       setOpen(false);

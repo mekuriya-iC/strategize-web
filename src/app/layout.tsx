@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ApolloWrapper } from "@/components/ApolloWrapper";
 import { Toaster } from "@/components/ui/sonner";
+import DebugInfoPanel from "@/components/debug/DebugInfoPanel";
 
 import "./globals.css";
 
@@ -22,6 +23,8 @@ export default function RootLayout({
           <ThemeProvider>
             {children}
             <Toaster />
+            {/* Temporary Debug Panel - Remove before production */}
+            <DebugInfoPanel />
           </ThemeProvider>
         </ApolloWrapper>
       </body>

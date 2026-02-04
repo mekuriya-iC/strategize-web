@@ -26,7 +26,7 @@ import DepartmentSelector from "../departments/DepartmentSelector";
 import { useTheme } from "next-themes";
 import { useUIStore, useAuthStore } from "@/stores";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
 

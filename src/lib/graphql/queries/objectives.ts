@@ -41,6 +41,10 @@ export const GET_OBJECTIVES = gql`
           name
           status
           targetStatus
+          targets {
+            timeline
+            target
+          }
           parent {
             kpiId
             name
@@ -90,6 +94,10 @@ export const GET_OBJECTIVE = gql`
         name
         status
         targetStatus
+        targets {
+          timeline
+          target
+        }
         parent {
           kpiId
           name

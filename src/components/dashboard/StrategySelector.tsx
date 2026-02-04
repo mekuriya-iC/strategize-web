@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
+import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { StrategicPeriod } from "@/types/graphql";
 import { useEffect, useState } from "react";
 import React from "react";

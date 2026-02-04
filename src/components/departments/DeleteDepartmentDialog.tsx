@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 
 interface DeleteDepartmentDialogProps {
   children: React.ReactNode;

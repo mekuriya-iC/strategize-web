@@ -7,19 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import type { Kpi } from "@/types/graphql";
 
-interface KPISelectionCardProps {
-  kpis: Kpi[];
-  selectedKPIs: string[];
-  onKPISelection: (kpiId: string, checked: boolean) => void;
-  onSelectAllKPIs: (checked: boolean) => void;
-}
+import { useAssignmentContext } from "@/context/AssignmentContext";
 
-export function KPISelectionCard({
-  kpis,
-  selectedKPIs,
-  onKPISelection,
-  onSelectAllKPIs,
-}: KPISelectionCardProps) {
+export function KPISelectionCard() {
+  const {
+    availableKPIs: kpis,
+    selectedKPIs,
+    toggleKPI,
+    selectAllKPIs
+  } = useAssignmentContext();
   return (
     <Card>
       <CardHeader>
@@ -28,7 +24,7 @@ export function KPISelectionCard({
           <div className="flex items-center gap-2">
             <Checkbox
               checked={selectedKPIs.length === kpis.length && kpis.length > 0}
-              onCheckedChange={onSelectAllKPIs}
+              onCheckedChange={selectAllKPIs}
             />
             <Label className="text-sm">Select All</Label>
           </div>
@@ -44,7 +40,7 @@ export function KPISelectionCard({
               <Checkbox
                 checked={selectedKPIs.includes(kpi.kpiId)}
                 onCheckedChange={(checked) =>
-                  onKPISelection(kpi.kpiId, checked as boolean)
+                  toggleKPI(kpi.kpiId, checked as boolean)
                 }
               />
               <div className="flex-1">

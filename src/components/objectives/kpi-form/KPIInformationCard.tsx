@@ -11,11 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import type {
   KpiWeightType,
   Objective as GraphQLObjective,
 } from "@/types/graphql";
-import type { KPIFormData } from "@/hooks/useKPIFormState";
+import type { KPIFormData } from "@/hooks/objectives/useKPIFormState";
 
 interface KPIInformationCardProps {
   formData: KPIFormData;
@@ -26,6 +27,8 @@ interface KPIInformationCardProps {
   kpiId?: string | null;
   onInputChange: (field: string, value: string) => void;
   onParentIdChange: (value: string) => void;
+  mode?: "create" | "edit";
+  hideParentSelector?: boolean;
 }
 
 export function KPIInformationCard({
@@ -37,6 +40,8 @@ export function KPIInformationCard({
   kpiId,
   onInputChange,
   onParentIdChange,
+  mode = "create",
+  hideParentSelector = false,
 }: KPIInformationCardProps) {
   return (
     <Card className="mb-6">
@@ -45,18 +50,28 @@ export function KPIInformationCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Parent KPI Selector */}
-        {objective?.parent && (
-          <div>
-            <Label htmlFor="parent-kpi">Strategic KPI (Parent)</Label>
+        {!hideParentSelector && objective?.parent && (
+          <div className="bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="parent-kpi" className="text-gray-900 font-semibold">
+                Strategic KPI (Parent Reference)
+              </Label>
+              {objective.type !== "CORPORATE" && (
+                <Badge variant="outline" className="text-[10px] bg-white">
+                  Cascading Optional
+                </Badge>
+              )}
+            </div>
             <Select
               value={parentId}
               onValueChange={onParentIdChange}
               disabled={!canEditStructure}
             >
-              <SelectTrigger id="parent-kpi">
-                <SelectValue placeholder="Select strategic KPI (optional)" />
+              <SelectTrigger id="parent-kpi" className="bg-white">
+                <SelectValue placeholder="Skip to create an independent KPI" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none_standalone">-- Create Independent KPI (No Parent) --</SelectItem>
                 {candidateParentKPIs.map((pk) => (
                   <SelectItem key={pk.kpiId} value={pk.kpiId}>
                     {pk.name}
@@ -64,15 +79,11 @@ export function KPIInformationCard({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
-              Link this KPI to a corporate KPI. You can create multiple child
-              KPIs for the same strategic KPI.
+            <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+              {parentId
+                ? "Linked to a higher-level goal. Baseline and weight are inherited."
+                : "Creation of a new standalone KPI. You will define your own weight and baseline."}
             </p>
-            {parentId && (
-              <p className="text-xs text-blue-600 mt-1">
-                ✓ Auto-populated from parent KPI
-              </p>
-            )}
             {!canEditStructure && (
               <p className="text-xs text-orange-600 mt-1">
                 Parent selection is locked after approval
@@ -122,10 +133,10 @@ export function KPIInformationCard({
                   Unit Type
                 </Label>
                 <Select
-                  key={`baseline-unit-${kpiId}-${formData.weightType}`}
-                  value={formData.weightType}
-                  onValueChange={(value: KpiWeightType) =>
-                    onInputChange("weightType", value)
+                  key={`baseline-unit-${kpiId}-${formData.unitType}`}
+                  value={formData.unitType}
+                  onValueChange={(value: string) =>
+                    onInputChange("unitType", value)
                   }
                   disabled={!canEditStructure}
                 >

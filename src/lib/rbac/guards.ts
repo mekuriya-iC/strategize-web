@@ -76,7 +76,7 @@ export function canAccessRoute(
 
   // Find matching route (handle dynamic routes)
   let permission: Permission | undefined;
-  
+
   // Exact match first
   if (routePermissions[route]) {
     permission = routePermissions[route];
@@ -146,15 +146,15 @@ export function canViewEmployees(
   if (hasPermission(userRole, 'employees:read_all')) {
     return { allowed: true };
   }
-  
+
   if (hasPermission(userRole, 'employees:read_division') && scope?.managedDivisionIds.length) {
     return { allowed: true, reason: 'Can view employees in managed divisions' };
   }
-  
+
   if (hasPermission(userRole, 'employees:read_department') && scope?.departmentIds.length) {
     return { allowed: true, reason: 'Can view employees in own department(s)' };
   }
-  
+
   return { allowed: false, reason: 'No permission to view employees' };
 }
 
@@ -183,19 +183,19 @@ export function canEditEmployee(
   if (scope?.employeeId === targetEmployeeId) {
     return { allowed: true };
   }
-  
+
   // Full access
   if (hasPermission(userRole, 'employees:update_all')) {
     return { allowed: true };
   }
-  
+
   // Department-level access
   if (hasPermission(userRole, 'employees:update_department') && targetDepartmentId) {
     if (scope?.managedDepartmentIds.includes(targetDepartmentId)) {
       return { allowed: true };
     }
   }
-  
+
   return { allowed: false, reason: 'No permission to edit this employee' };
 }
 
@@ -226,15 +226,15 @@ export function canCreateObjective(
     'DEPARTMENT': 'objectives:create_department',
     'PERSONNEL': 'objectives:create_personnel',
   };
-  
+
   const permission = permissionMap[objectiveType];
   if (hasPermission(userRole, permission)) {
     return { allowed: true };
   }
-  
-  return { 
-    allowed: false, 
-    reason: `Cannot create ${objectiveType.toLowerCase()}-level objectives` 
+
+  return {
+    allowed: false,
+    reason: `Cannot create ${objectiveType.toLowerCase()}-level objectives`
   };
 }
 
@@ -255,7 +255,7 @@ export function canApproveObjective(
     }
     return { allowed: false, reason: 'Only administrators can approve corporate objectives' };
   }
-  
+
   // Division objectives - only admin+
   if (objectiveType === 'DIVISION') {
     if (hasPermission(userRole, 'objectives:approve_division')) {
@@ -263,20 +263,29 @@ export function canApproveObjective(
     }
     return { allowed: false, reason: 'Only administrators can approve division objectives' };
   }
-  
-  // Department objectives - director of the division or admin
+
+  // Department objectives - follow hierarchy
   if (objectiveType === 'DEPARTMENT') {
+    // Ultimate authority: Corporate Admin
     if (hasPermission(userRole, 'objectives:approve_corporate')) {
       return { allowed: true };
     }
+
+    // Role-based hierarchy: Division Director approves their departments
     if (hasPermission(userRole, 'objectives:approve_department') && objectiveDivisionId && scope) {
       if (scope.managedDivisionIds.includes(objectiveDivisionId)) {
         return { allowed: true };
       }
+      return { allowed: false, reason: 'Division Directors can only approve objectives for their own divisions' };
     }
-    return { allowed: false, reason: 'Cannot approve this department objective' };
+
+    if (!objectiveDivisionId) {
+      return { allowed: false, reason: 'Stand-alone departments must be approved by Corporate Admin' };
+    }
+
+    return { allowed: false, reason: 'No permission to approve this department objective' };
   }
-  
+
   // Personnel objectives - manager of the department
   if (objectiveType === 'PERSONNEL') {
     if (hasPermission(userRole, 'objectives:approve_corporate')) {
@@ -289,7 +298,7 @@ export function canApproveObjective(
     }
     return { allowed: false, reason: 'Cannot approve this personnel objective' };
   }
-  
+
   return { allowed: false, reason: 'Unknown objective type' };
 }
 
@@ -305,15 +314,15 @@ export function canAssignObjective(
     'DEPARTMENT': 'objectives:assign_department',
     'PERSONNEL': 'objectives:assign_personnel',
   };
-  
+
   const permission = permissionMap[assigneeType];
   if (hasPermission(userRole, permission)) {
     return { allowed: true };
   }
-  
-  return { 
-    allowed: false, 
-    reason: `Cannot assign objectives to ${assigneeType.toLowerCase()} level` 
+
+  return {
+    allowed: false,
+    reason: `Cannot assign objectives to ${assigneeType.toLowerCase()} level`
   };
 }
 
@@ -341,11 +350,11 @@ export function canManageDepartments(
   if (hasPermission(userRole, 'departments:create')) {
     return { allowed: true };
   }
-  
+
   if (hasPermission(userRole, 'departments:create_in_division') && scope?.managedDivisionIds.length) {
     return { allowed: true, reason: 'Can create departments in managed divisions' };
   }
-  
+
   return { allowed: false, reason: 'No permission to manage departments' };
 }
 
@@ -360,13 +369,13 @@ export function canViewDivision(
   if (hasPermission(userRole, 'divisions:read_all')) {
     return { allowed: true };
   }
-  
+
   if (hasPermission(userRole, 'divisions:read_own') && scope) {
     if (canAccessDivision(scope, divisionId)) {
       return { allowed: true };
     }
   }
-  
+
   return { allowed: false, reason: 'No access to this division' };
 }
 
@@ -382,19 +391,19 @@ export function canViewDepartment(
   if (hasPermission(userRole, 'departments:read_all')) {
     return { allowed: true };
   }
-  
+
   if (hasPermission(userRole, 'departments:read_division') && scope && departmentDivisionId) {
     if (scope.managedDivisionIds.includes(departmentDivisionId)) {
       return { allowed: true };
     }
   }
-  
+
   if (hasPermission(userRole, 'departments:read_own') && scope) {
     if (canAccessDepartment(scope, departmentId, departmentDivisionId)) {
       return { allowed: true };
     }
   }
-  
+
   return { allowed: false, reason: 'No access to this department' };
 }
 

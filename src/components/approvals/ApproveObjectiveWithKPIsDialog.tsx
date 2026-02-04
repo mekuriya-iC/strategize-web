@@ -154,11 +154,10 @@ export default function ApproveObjectiveWithKPIsDialog({
                 {associatedKPIs.map((kpi) => (
                   <div
                     key={kpi.kpiId}
-                    className={`flex items-center space-x-3 p-3 border rounded-lg transition-colors ${
-                      selectedKPIs.includes(kpi.kpiId)
+                    className={`flex items-center space-x-3 p-3 border rounded-lg transition-colors ${selectedKPIs.includes(kpi.kpiId)
                         ? "bg-green-50 border-green-200"
                         : "bg-gray-50 border-gray-200"
-                    }`}
+                      }`}
                   >
                     <Checkbox
                       checked={selectedKPIs.includes(kpi.kpiId)}
@@ -173,13 +172,12 @@ export default function ApproveObjectiveWithKPIsDialog({
                         <span>Weight: {kpi.weight ?? "N/A"}%</span>
                         <span>Baseline: {kpi.baseline || "N/A"}</span>
                         <Badge
-                          className={`text-xs ${
-                            kpi.status === "PENDING"
+                          className={`text-xs ${kpi.status === "PENDING"
                               ? "bg-yellow-100 text-yellow-600"
                               : kpi.status === "APPROVED"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
+                                ? "bg-green-100 text-green-600"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
                         >
                           {kpi.status}
                         </Badge>

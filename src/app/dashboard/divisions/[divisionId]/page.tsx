@@ -10,8 +10,8 @@ import AddDepartmentDialog from "@/components/departments/AddDepartmentDialog";
 import { GET_DIVISION_BASIC } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import type {
   GetDivisionResponse,
   DivisionQueryVariables,
@@ -246,7 +246,7 @@ const DivisionDetailsPage = () => {
         departmentManager={departmentManager}
         setDepartmentManager={setDepartmentManager}
         selectedDivision={divisionId}
-        setSelectedDivision={() => {}} // Not needed for this context
+        setSelectedDivision={() => { }} // Not needed for this context
         departmentMembers={departmentMembers}
         setDepartmentMembers={setDepartmentMembers}
         managers={managers.map((m) => ({

@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@apollo/client";
-import { useObjectiveAssignment } from "@/hooks/useObjectiveAssignment";
-import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
-import { useAssignmentState } from "@/hooks/useAssignmentState";
+import { useObjectiveAssignment } from "@/hooks/objectives/useObjectiveAssignment";
+import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
+import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
+import { useAssignmentState } from "@/hooks/objectives/useAssignmentState";
 import { useStrategicPeriodStore } from "@/stores";
-import { useObjectives } from "@/hooks/useObjectives";
+import { useObjectives } from "@/hooks/objectives/useObjectives";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { GET_ME, GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { detectKPIType, getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import type {
   Objective,
@@ -117,36 +117,22 @@ export function useAssignmentDialog({
     },
   });
 
-  // Extract employees from department data
+  // Fetch global employees for safe joining
+  const isAdmin = meData?.me?.role === "ADMIN" || meData?.me?.role === "SUPER_ADMIN";
+  const { data: globalEmployeesData, loading: employeesLoading, error: employeesError } = useQuery(GET_EMPLOYEES, {
+    variables: {
+      page: 1,
+      limit: 1000,
+      search: isAdmin ? (searchTerm || undefined) : undefined // Consistent with other pages
+    },
+    fetchPolicy: "cache-first",
+    skip: !open,
+  });
+
+  // Extract employees using safe joining
   const extractedEmployees = useMemo(() => {
-    if (!departmentsData?.departments?.items) return [];
-
-    const employeeMap = new Map();
-
-    departmentsData.departments.items.forEach((dept) => {
-      dept.employees?.forEach((emp) => {
-        if (!employeeMap.has(emp.employeeId)) {
-          employeeMap.set(emp.employeeId, {
-            ...emp,
-            departments: [{ departmentId: dept.departmentId, name: dept.name }],
-          });
-        } else {
-          const existingEmp = employeeMap.get(emp.employeeId);
-          (existingEmp.departments ||= []).push({
-            departmentId: dept.departmentId,
-            name: dept.name,
-          });
-        }
-      });
-    });
-
-    return Array.from(employeeMap.values()) as Array<
-      Employee & { departments?: Array<{ departmentId: string; name: string }> }
-    >;
-  }, [departmentsData]);
-
-  const employeesLoading = departmentsLoading;
-  const employeesError = departmentsError;
+    return globalEmployeesData?.employees?.items || [];
+  }, [globalEmployeesData]);
 
   // Get available assignees
   const divisions = divisionsData?.divisions?.items || [];
@@ -199,7 +185,7 @@ export function useAssignmentDialog({
         );
       } else {
         return (
-          employees.find((e) => e.employeeId === assigneeId)?.fullName ||
+          employees.find((e: any) => e.employeeId === assigneeId)?.fullName ||
           assigneeId
         );
       }
@@ -228,8 +214,8 @@ export function useAssignmentDialog({
       childType === "DIVISION"
         ? "Division"
         : childType === "DEPARTMENT"
-        ? "Department"
-        : "Personnel";
+          ? "Department"
+          : "Personnel";
 
     // Generate a simple prompt for the user to add their objective name
     return `Please add ${typeLabel} objective name`;
@@ -252,7 +238,7 @@ export function useAssignmentDialog({
         case "DEPARTMENT":
           return departments.find((d) => d.departmentId === assigneeId);
         case "PERSONNEL":
-          return employees.find((e) => e.employeeId === assigneeId);
+          return employees.find((e: any) => e.employeeId === assigneeId);
         default:
           return null;
       }
@@ -271,9 +257,8 @@ export function useAssignmentDialog({
 
   const filteredDepartments = useMemo(() => {
     return departments.filter((department: Department) => {
-      const matchesSearch = department.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const matchesSearch =
+        (!department.division?.name || "");
 
       if (objective.type === "DIVISION" && objective.assigneeId) {
         const belongsToThisDivision =
@@ -455,9 +440,8 @@ export function useAssignmentDialog({
         toast.success("Bulk assignment completed", {
           description: `Assigned ${Number(targetValue).toFixed(
             1
-          )}${getDetailedUnitLabel(kpi)} to all ${
-            assignments.length
-          } assignees.`,
+          )}${getDetailedUnitLabel(kpi)} to all ${assignments.length
+            } assignees.`,
         });
       } else {
         toast.error("Bulk assignment failed", {

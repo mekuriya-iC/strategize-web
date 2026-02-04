@@ -7,28 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search } from "lucide-react";
 import type { Division, Department, Employee } from "@/types/graphql";
-
-interface AssigneeTabProps {
-  type: "DIVISION" | "DEPARTMENT" | "PERSONNEL";
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
-  items: Division[] | Department[] | Employee[];
-  selectedAssignees: string[];
-  onAssigneeSelection: (assigneeId: string, checked: boolean) => void;
-  loading?: boolean;
-  error?: Error | null;
-}
+import { useAssignmentContext } from "@/context/AssignmentContext";
+import { useAssignmentData } from "@/hooks/objectives/useAssignmentData";
 
 export function AssigneeTab({
   type,
-  searchTerm,
-  onSearchChange,
-  items,
-  selectedAssignees,
-  onAssigneeSelection,
-  loading,
-  error,
-}: AssigneeTabProps) {
+}: { type: "DIVISION" | "DEPARTMENT" | "PERSONNEL" }) {
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedAssignees,
+    toggleAssignee,
+    sourceObjective
+  } = useAssignmentContext();
+
+  const { items, loading, error } = useAssignmentData(type);
+
   const getDisplayName = (item: Division | Department | Employee) => {
     if (type === "PERSONNEL") {
       return (item as Employee).fullName;
@@ -96,8 +90,12 @@ export function AssigneeTab({
 
   const pluralType = type === "DIVISION" ? "Divisions" : type === "DEPARTMENT" ? "Departments" : "Employees";
 
+  // Typing issue workaround: hooks return broad types, needed for specific rendering
+  // Ideally, useAssignmentData would return generic type T based on assignType.
+  const castItems = items as (Division | Department | Employee)[];
+
   return (
-    <TabsContent value={type} className="space-y-4">
+    <div className="space-y-4">
       <div className="space-y-2">
         <Label>Search {pluralType}</Label>
         <div className="relative">
@@ -105,7 +103,7 @@ export function AssigneeTab({
           <Input
             placeholder={`Search ${pluralType.toLowerCase()}...`}
             value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -117,35 +115,44 @@ export function AssigneeTab({
             Loading {pluralType.toLowerCase()}...
           </div>
         )}
-        {error && (
-          <div className="p-4 text-center text-red-500">
-            Error loading {pluralType.toLowerCase()}: {error.message}
+        {!loading && castItems.length === 0 && (
+          <div className="p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
+            {type === "PERSONNEL" ? (
+              <div className="space-y-2">
+                <p className="font-medium text-gray-500 italic">
+                  {sourceObjective?.type === "DEPARTMENT"
+                    ? "No employees found in this department"
+                    : sourceObjective?.type === "DIVISION"
+                      ? "Searching for employees in this division..."
+                      : "No personnel available for selection"}
+                </p>
+                <p className="text-xs">
+                  Make sure employees are assigned to the relevant departments in your organization.
+                </p>
+              </div>
+            ) : (
+              <p>No {pluralType.toLowerCase()} found</p>
+            )}
           </div>
         )}
-        {!loading && !error && items.length === 0 && (
-          <div className="p-4 text-center text-gray-500">
-            No {pluralType.toLowerCase()} found
-          </div>
-        )}
-        {items.map((item) => {
+        {castItems.map((item) => {
           const id = getId(item);
           const name = getDisplayName(item);
-          const isSelected = selectedAssignees.includes(id);
+          const isSelected = selectedAssignees.some((a) => a.id === id);
 
           return (
             <div
               key={id}
-              className={`p-3 border rounded-lg transition-colors ${
-                isSelected
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
+              className={`p-3 border rounded-lg transition-colors ${isSelected
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-200 hover:border-gray-300"
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={(checked) =>
-                    onAssigneeSelection(id, checked as boolean)
+                    toggleAssignee({ id, name, type }, checked as boolean)
                   }
                 />
                 <div className="flex-1">
@@ -157,7 +164,7 @@ export function AssigneeTab({
           );
         })}
       </div>
-    </TabsContent>
+    </div>
   );
 }
 

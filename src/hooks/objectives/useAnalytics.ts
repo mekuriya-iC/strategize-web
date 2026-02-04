@@ -1,10 +1,12 @@
 import { useQuery } from "@apollo/client";
 import { useMemo } from "react";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
-import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import { GET_DEPARTMENTS, GET_DEPARTMENTS_ANALYTICS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES_COUNT } from "@/lib/graphql/queries/employees";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
+import { GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
+import { GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
 import type {
   PaginatedDivisions,
   PaginatedDepartments,
@@ -59,12 +61,13 @@ interface ItemWithDateFields {
 interface UseAnalyticsOptions {
   selectedUnit?: { id: string; type: "division" | "department" } | null;
   userRole?: string;
+  annualTimeline?: string | null;
 }
 
 export const useAnalytics = (
   options: UseAnalyticsOptions = {}
 ): AnalyticsStats => {
-  const { selectedUnit, userRole } = options;
+  const { selectedUnit, userRole, annualTimeline } = options;
 
   // Check if user has permission for global data queries
   const canAccessGlobalData =
@@ -85,7 +88,7 @@ export const useAnalytics = (
     data: departmentsData,
     loading: departmentsLoading,
     error: departmentsError,
-  } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS, {
+  } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS_ANALYTICS, {
     variables: { page: 1, limit: 1000 }, // Get all departments for accurate count
     fetchPolicy: "cache-and-network",
     skip: !canAccessGlobalData, // Skip for managers
@@ -127,6 +130,27 @@ export const useAnalytics = (
     variables: { page: 1, limit: 1000 },
     fetchPolicy: "cache-and-network",
     skip: !!selectedUnit, // Skip when a specific unit is selected
+  });
+
+  // Scoped queries for Directors/Managers who can't access global data
+  const {
+    data: scopedDivisionData,
+    loading: scopedDivisionLoading,
+    error: scopedDivisionError,
+  } = useQuery<{ division: Division }>(GET_DIVISION_SAFE, {
+    variables: { divisionId: selectedUnit?.id },
+    skip: !selectedUnit || selectedUnit.type !== "division",
+    fetchPolicy: "cache-and-network",
+  });
+
+  const {
+    data: scopedDepartmentData,
+    loading: scopedDepartmentLoading,
+    error: scopedDepartmentError,
+  } = useQuery<{ department: Department }>(GET_DEPARTMENT_SAFE, {
+    variables: { departmentId: selectedUnit?.id },
+    skip: !selectedUnit || selectedUnit.type !== "department",
+    fetchPolicy: "cache-and-network",
   });
 
   // Calculate statistics
@@ -209,26 +233,47 @@ export const useAnalytics = (
       ? selectedUnit
         ? filteredDepartments.length
         : departmentsData?.departments?.meta?.totalItems || 0
-      : 0; // Managers don't see department counts
+      : selectedUnit?.type === "division"
+        ? scopedDivisionData?.division?.departments?.length || 0
+        : 0;
+
     const employeesCount = canAccessGlobalData
       ? selectedUnit
-        ? filteredEmployees.length
-        : employeesCountData?.employees?.meta?.totalItems || 0
-      : 0; // Managers don't see employee counts
-    const objectivesCount = objectivesData?.objectives?.meta?.totalItems || 0;
-    
-    // Calculate KPIs count - when a unit is selected, count KPIs from the filtered objectives
-    // Otherwise use the global KPIs count
+        ? (filteredEmployees?.length || 0)
+        : (employeesCountData?.employees?.meta?.totalItems || 0)
+      : selectedUnit?.type === "department"
+        ? (scopedDepartmentData?.department?.employees?.length || 0)
+        : selectedUnit?.type === "division"
+          ? (scopedDivisionData?.division?.departments?.reduce((acc: number, dept: any) => acc + (dept.employees?.length || 0), 0) || 0)
+          : 0;
+    // 4. Filtering Objectives & KPIs based on Role (Corporate filter) and Timeline
+    const allObjectivesRaw = objectivesData?.objectives?.items || [];
+
+    // Admin/Super Admin should only see CORPORATE objectives and their KPIs at the landing dashboard
+    // unless they have a specific unit selected (which we assume happens in other views or via selectedUnit)
+    const filteredObjectivesByRole = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && !selectedUnit
+      ? allObjectivesRaw.filter(obj => obj.type === 'CORPORATE')
+      : allObjectivesRaw;
+
+    // Filter by Annual Timeline
+    const filteredObjectivesByTimeline = annualTimeline
+      ? filteredObjectivesByRole.filter(obj =>
+        obj.kpis?.some((kpi: any) =>
+          kpi.targets?.some((t: any) => t.timeline === annualTimeline || t.timeline.startsWith(`${annualTimeline}-`))
+        )
+      )
+      : filteredObjectivesByRole;
+
+    const objectivesCount = filteredObjectivesByTimeline.length;
+
+    // Calculate KPIs count from the filtered objectives
     let kpisCount = 0;
-    if (selectedUnit) {
-      // Count KPIs from the objectives that belong to this unit
-      const objectives = objectivesData?.objectives?.items || [];
-      kpisCount = objectives.reduce((count, obj) => {
-        return count + (obj.kpis?.length || 0);
-      }, 0);
-    } else {
-      kpisCount = kpisData?.kpis?.meta?.totalItems || 0;
-    }
+    filteredObjectivesByTimeline.forEach(obj => {
+      if (obj.kpis) {
+        // Count all KPIs in the filtered objectives
+        kpisCount += obj.kpis.length;
+      }
+    });
 
     // Calculate growth rates (use filtered data if available)
     const divisionsGrowth = canAccessGlobalData
@@ -243,7 +288,7 @@ export const useAnalytics = (
     const objectivesGrowth = calculateRecentGrowth(
       objectivesData?.objectives?.items || []
     );
-    
+
     // Calculate KPIs growth - use KPIs from objectives when unit is selected
     let kpisForGrowth: ItemWithDateFields[] = [];
     if (selectedUnit) {
@@ -262,15 +307,15 @@ export const useAnalytics = (
     // Additional insights (use filtered data if available)
     const activeDivisionsCount = canAccessGlobalData
       ? filteredDivisions.filter(
-          (division: Division) =>
-            division.departments && division.departments.length > 0
-        ).length
+        (division: Division) =>
+          division.departments && division.departments.length > 0
+      ).length
       : 0;
 
     const departmentsWithManagersCount = canAccessGlobalData
       ? filteredDepartments.filter(
-          (department: Department) => department.manager !== null
-        ).length
+        (department: any) => department.manager && department.manager !== null
+      ).length
       : 0;
 
     const activeEmployeesCount = 0; // Skipped in lightweight mode
@@ -284,13 +329,17 @@ export const useAnalytics = (
       departmentsLoading ||
       employeesLoading ||
       objectivesLoading ||
-      kpisLoading;
+      kpisLoading ||
+      scopedDivisionLoading ||
+      scopedDepartmentLoading;
     const error =
       divisionsError?.message ||
       departmentsError?.message ||
       employeesError?.message ||
       objectivesError?.message ||
       kpisError?.message ||
+      scopedDivisionError?.message ||
+      scopedDepartmentError?.message ||
       null;
 
     return {
@@ -346,6 +395,7 @@ export const useAnalytics = (
     kpisError,
     selectedUnit,
     canAccessGlobalData,
+    annualTimeline,
   ]);
 
   return analytics;

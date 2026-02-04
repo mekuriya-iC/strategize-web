@@ -15,24 +15,30 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
-import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
+import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
+import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { Objective, ObjectiveType, ObjectiveStatus } from "@/types/graphql";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores";
 
 interface EditObjectiveDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   objective: Objective;
   onEditSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
   children,
   objective,
   onEditSuccess,
+  open: externalOpen,
+  onOpenChange: setExternalOpen,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen || setInternalOpen;
   const { updateObjective, loading } = useObjectiveMutations();
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
   const user = useAuthStore((state) => state.user);

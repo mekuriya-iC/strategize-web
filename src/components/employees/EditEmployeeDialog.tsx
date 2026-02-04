@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useEmployeeMutations } from "@/hooks/useEmployeeMutations";
+import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { uploadFile, validateImageFile } from "@/utils/fileUpload";
 import {
   UpdateEmployeeInput,
@@ -183,7 +183,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
         // Convert GCS URL to proxy URL for preview
         const imageUrl =
           employee.picture.includes("storage.googleapis.com") ||
-          employee.picture.includes("storage.cloud.google.com")
+            employee.picture.includes("storage.cloud.google.com")
             ? `/api/storage/${employee.picture.split("/").pop()}`
             : employee.picture;
         setPreviewUrl(imageUrl);
@@ -406,9 +406,8 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
                     handleInputChange("phoneNumber", e.target.value)
                   }
                   placeholder="912345678"
-                  className={`rounded-l-none ${
-                    errors.phoneNumber ? "border-red-500" : ""
-                  }`}
+                  className={`rounded-l-none ${errors.phoneNumber ? "border-red-500" : ""
+                    }`}
                   maxLength={9}
                 />
               </div>
@@ -512,9 +511,8 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
             <Label>Profile Picture</Label>
             {!previewUrl ? (
               <div
-                className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center hover:border-gray-400 transition-colors cursor-pointer ${
-                  errors.picture ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center hover:border-gray-400 transition-colors cursor-pointer ${errors.picture ? "border-red-500" : "border-gray-300"
+                  }`}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />

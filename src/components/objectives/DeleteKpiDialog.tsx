@@ -10,13 +10,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
+import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
 
 interface DeleteKpiDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   kpiName?: string;
   kpiId?: string;
   onDeleteSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
@@ -24,8 +26,12 @@ const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
   kpiName = "this KPI",
   kpiId,
   onDeleteSuccess,
+  open: externalOpen,
+  onOpenChange: setExternalOpen,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen || setInternalOpen;
   const { removeKpi } = useKPIMutations();
   const [isDeleting, setIsDeleting] = useState(false);
 

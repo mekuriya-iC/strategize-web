@@ -17,6 +17,7 @@ export const GET_EMPLOYEES = gql`
         title
         createdAt
         updatedAt
+        updatedAt
       }
       meta {
         currentPage
@@ -58,10 +59,7 @@ export const GET_ME = gql`
       title
       createdAt
       updatedAt
-      departments {
-        departmentId
-        name
-      }
+      updatedAt
     }
   }
 `;

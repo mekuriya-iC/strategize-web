@@ -8,21 +8,29 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import KPIForm from "./KPIForm";
+import CreateKPIForm from "@/components/objectives/CreateKPIForm"; // Updated import
 import type { Objective as GraphQLObjective } from "@/types/graphql";
 
 interface AddKPIDialogProps {
   children?: React.ReactNode;
   objective: GraphQLObjective;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  renderTrigger?: boolean;
 }
 
 export default function AddKPIDialog({
   children,
   objective,
   onSuccess,
+  open: externalOpen,
+  onOpenChange: setExternalOpen,
+  renderTrigger = true,
 }: AddKPIDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen || setInternalOpen;
 
   const handleSuccess = () => {
     setOpen(false);
@@ -35,18 +43,20 @@ export default function AddKPIDialog({
 
   return (
     <>
-      <div onClick={() => setOpen(true)}>
-        {children || (
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add KPI
-          </Button>
-        )}
-      </div>
+      {renderTrigger && (
+        <div onClick={() => setOpen(true)}>
+          {children || (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add KPI
+            </Button>
+          )}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -57,7 +67,7 @@ export default function AddKPIDialog({
           </DialogHeader>
 
           <div className="mt-4">
-            <KPIForm
+            <CreateKPIForm
               objectiveId={objective.objectiveId}
               onSuccess={handleSuccess}
               onCancel={handleCancel}

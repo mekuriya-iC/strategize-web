@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Objective } from "../objectives/ObjectiveTable";
+import { Objective } from "@/components/features/objectives/ObjectiveTable";
 import { Kpi } from "@/types/graphql";
 
 interface RejectObjectiveDialogProps {
@@ -66,7 +66,7 @@ export default function RejectObjectiveDialog({
           <DialogTitle className="text-lg font-semibold text-gray-900">
             Reject Objective
           </DialogTitle>
-      
+
         </DialogHeader>
 
         <div className="space-y-6">

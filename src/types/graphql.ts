@@ -124,7 +124,7 @@ export interface Department {
   employees?: Employee[];
   createdAt: string;
   updatedAt: string;
-  createdBy?: Employee;
+
 }
 
 export interface AuthPayload {
@@ -314,7 +314,9 @@ export interface Objective {
   kpis?: Array<{
     kpiId: string;
     name: string;
+    weight: number;
     status: string;
+    targetStatus?: string;
   }>;
   createdAt: string;
   updatedAt: string;
@@ -380,7 +382,7 @@ export interface CreateKpiInput {
   baseline: number; // Float in GraphQL schema
   weight: number; // Float in GraphQL schema - accepts decimal values
   unitType: KpiUnitType;
-  targets: KpiTargetInput[];
+  targets: KpiTargetInput[]
   objectiveId: string;
   parentId?: string;
 }

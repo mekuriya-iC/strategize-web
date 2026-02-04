@@ -25,7 +25,7 @@ export const getDepartmentIdFromSubmission = (
   ) {
     return submission.objective.assigneeId;
   }
-  
+
   // Fallback: If the objective type is DEPARTMENT and has an assigneeId, use it
   // (even if assigneeType isn't explicitly set to DEPARTMENT)
   if (
@@ -34,7 +34,7 @@ export const getDepartmentIdFromSubmission = (
   ) {
     return submission.objective.assigneeId;
   }
-  
+
   // Check KPI's assignee
   if (
     submission.kpi?.assigneeType === "DEPARTMENT" &&
@@ -42,7 +42,7 @@ export const getDepartmentIdFromSubmission = (
   ) {
     return submission.kpi.assigneeId;
   }
-  
+
   // For KPI submissions, check the nested objective inside the KPI
   // This is needed when KPIs are added via "Add KPI" button
   const nestedObjective = submission.kpi?.objective as {
@@ -51,22 +51,52 @@ export const getDepartmentIdFromSubmission = (
     type?: string;
     assigneeId?: string;
     assigneeType?: string;
+    parent?: {
+      objectiveId: string;
+      name?: string;
+      type?: string;
+      assigneeId?: string;
+      assigneeType?: string;
+    } | null;
   } | undefined;
-  
+
   if (nestedObjective) {
     // First check if the nested objective has assigneeType = DEPARTMENT
     if (nestedObjective.assigneeType === "DEPARTMENT" && nestedObjective.assigneeId) {
       return nestedObjective.assigneeId;
     }
-    
+
     // Fallback: If the objective type is DEPARTMENT and has an assigneeId
     if (nestedObjective.type === "DEPARTMENT" && nestedObjective.assigneeId) {
       return nestedObjective.assigneeId;
     }
   }
-  
+
+  // For PERSONNEL level, resolve department from parent objective
+  if (submission.level === "PERSONNEL") {
+    // If it's an objective submission
+    if (submission.objective?.parent) {
+      if (submission.objective.parent.assigneeType === "DEPARTMENT" && submission.objective.parent.assigneeId) {
+        return submission.objective.parent.assigneeId;
+      }
+      if (submission.objective.parent.type === "DEPARTMENT" && submission.objective.parent.assigneeId) {
+        return submission.objective.parent.assigneeId;
+      }
+    }
+
+    // If it's a KPI submission
+    if (nestedObjective?.parent) {
+      if (nestedObjective.parent.assigneeType === "DEPARTMENT" && nestedObjective.parent.assigneeId) {
+        return nestedObjective.parent.assigneeId;
+      }
+      if (nestedObjective.parent.type === "DEPARTMENT" && nestedObjective.parent.assigneeId) {
+        return nestedObjective.parent.assigneeId;
+      }
+    }
+  }
+
   return null;
-};
+}
 
 /**
  * Remove duplicate submissions based on submissionId
@@ -186,6 +216,10 @@ export const filterSubmissionsByHierarchy = (
           // If we can't determine the department, show it (safe default)
           // If the department has no division, show it
           return !deptId || departmentsWithoutDivision.has(deptId);
+        }
+        // Always show PERSONNEL level submissions for Corporate Approvers in the new tab
+        if (submission.level === "PERSONNEL") {
+          return true;
         }
         return false;
 

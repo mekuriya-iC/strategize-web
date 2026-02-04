@@ -1,8 +1,8 @@
 "use client";
 import StrategyPeriodCard from "./StrategyPeriodCard";
 import Image from "next/image";
-import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
-import { useStrategicPeriodMutations } from "@/hooks/useStrategicPeriodMutations";
+import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
+import { useStrategicPeriodMutations } from "@/hooks/objectives/useStrategicPeriodMutations";
 import { useRouter } from "next/navigation";
 import { StrategicPeriod } from "@/types/graphql";
 import { useStrategicPeriodStore, useAuthStore } from "@/stores";

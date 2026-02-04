@@ -3,17 +3,17 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import React from "react";
 import ObjectiveFilterBar from "./ObjectiveFilterBar";
-import ObjectiveTable, { Objective } from "./ObjectiveTable";
+import ObjectiveTable, { Objective } from "@/components/features/objectives/ObjectiveTable";
 // import EditObjectiveDialog from "./EditObjectiveDialog";
-import ObjectivePagination from "./ObjectivePagination";
-import { useObjectives } from "@/hooks/useObjectives";
+import DataTablePagination from "@/components/shared/DataTablePagination";
+import { useObjectives } from "@/hooks/objectives/useObjectives";
 import type { ObjectivesQueryVariables } from "@/types/graphql";
-import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
-import { useKPIs } from "@/hooks/useKPIs";
+import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
+import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuthStore, useOrgUnitStore } from "@/stores";
-import { useUserDepartments } from "@/hooks/useUserDepartments";
+import { useUserDepartments } from "@/hooks/org-structure/useUserDepartments";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 import { useQuery } from "@apollo/client";
 import {
@@ -21,7 +21,12 @@ import {
   GET_PENDING_SUBMISSIONS,
 } from "@/lib/graphql/queries/submissions";
 import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
+import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
+import { Building2 } from "lucide-react";
 
 export default function ObjectivesApprovalTable() {
   const router = useRouter();
@@ -37,9 +42,38 @@ export default function ObjectivesApprovalTable() {
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   // State for optimistic ordering updates
   const [orderedObjectives, setOrderedObjectives] = useState<Objective[] | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("corporate");
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>({
+    key: "createdAt",
+    direction: "desc"
+  });
+  const selectedPeriod = useSelectedStrategicPeriod();
+
+  const showTabs = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "DIRECTOR" || user?.role === "MANAGER";
+  const isCorporateRole = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   // Use RBAC permissions
-  const { guards, objectives: objectivePermissions } = usePermissions();
+  const { guards, objectives: objectivePermissions, scope } = usePermissions();
+
+  // Set default tab based on role once
+  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
+  React.useEffect(() => {
+    if (hasSetDefaultTab) return;
+
+    if (guards.isDirector) {
+      setActiveTab("division");
+      setHasSetDefaultTab(true);
+    } else if (guards.isManager) {
+      setActiveTab("department");
+      setHasSetDefaultTab(true);
+    } else if (guards.isEmployee) {
+      setActiveTab("personnel");
+      setHasSetDefaultTab(true);
+    } else if (isCorporateRole) {
+      setActiveTab("corporate");
+      setHasSetDefaultTab(true);
+    }
+  }, [guards, isCorporateRole, hasSetDefaultTab]);
 
   // Determine the assigneeId based on the user role and selected organizational unit
   const getAssigneeId = (): string | undefined => {
@@ -117,6 +151,33 @@ export default function ObjectivesApprovalTable() {
       variables: { page: 1, limit: 1000, type: "PERSONNEL" },
     }
   );
+
+  // Fetch Divisions for names lookup
+  const { data: divisionsData } = useQuery(GET_DIVISIONS, {
+    variables: { page: 1, limit: 1000 },
+    skip: !showTabs
+  });
+
+  // Fetch Departments for names lookup
+  const { data: departmentsData } = useQuery(GET_DEPARTMENTS, {
+    variables: { page: 1, limit: 1000 },
+    skip: !showTabs
+  });
+
+  // Fetch Employees for names lookup
+  const { data: employeesData } = useQuery(GET_EMPLOYEES, {
+    variables: { page: 1, limit: 1000 },
+    skip: !showTabs
+  });
+
+  // Build names lookup map
+  const unitNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    divisionsData?.divisions?.items?.forEach((d: any) => { map[d.divisionId] = d.name; });
+    departmentsData?.departments?.items?.forEach((d: any) => { map[d.departmentId] = d.name; });
+    employeesData?.employees?.items?.forEach((e: any) => { map[e.employeeId] = e.fullName; });
+    return map;
+  }, [divisionsData, departmentsData, employeesData]);
 
   // Build rejection reasons maps for Objectives and KPIs
   const { objectiveRejectionReasons, kpiRejectionReasons } = useMemo(() => {
@@ -238,82 +299,77 @@ export default function ObjectivesApprovalTable() {
 
   // Filter objectives based on status and user role
   const filteredObjectives = useMemo(() => {
+    console.log("[ObjectivesApprovalTable] Starting filtering...");
     let filtered = objectives;
 
-    // Role-based filtering using RBAC guards
-    // Each role should see their assigned objectives (children) AND parent objectives from the level above
+    // First, handle role-based scope filtering with strict hierarchical alignment
     if (guards.isEmployee) {
-      // Employees see:
-      // - All PERSONNEL objectives (their assigned objectives)
-      // - Parent DEPARTMENT objectives (without children at their level)
       filtered = filtered.filter((obj) => {
-        if (obj.type === "PERSONNEL") {
-          // Always show PERSONNEL objectives to employees - these are their assigned objectives
-          return true;
-        }
-        if (obj.type === "DEPARTMENT") {
-          // Show DEPARTMENT objectives only if they are parents (not children)
-          return !obj.parent;
-        }
-        return false;
-      });
-    } else if (guards.isCoordinator) {
-      // Coordinators see:
-      // - All DEPARTMENT objectives (their assigned objectives)
-      // - All PERSONNEL objectives (for their unit)
-      // - Parent DIVISION objectives (without children at their level)
-      filtered = filtered.filter((obj) => {
-        if (obj.type === "DEPARTMENT" || obj.type === "PERSONNEL") {
-          // Always show DEPARTMENT and PERSONNEL objectives
-          return true;
-        }
-        if (obj.type === "DIVISION") {
-          // Show DIVISION objectives only if they are parents (not children)
-          return !obj.parent;
-        }
+        if (obj.type === "PERSONNEL") return obj.assigneeId === user?.employeeId;
+        if (obj.type === "DEPARTMENT") return !obj.parent; // Show context
         return false;
       });
     } else if (guards.isManager) {
-      // Managers see:
-      // - All DEPARTMENT objectives (their assigned objectives)
-      // - Parent DIVISION objectives (without children at their level)
+      const myDeptIds = scope?.managedDepartmentIds || [];
       filtered = filtered.filter((obj) => {
-        if (obj.type === "DEPARTMENT") {
-          // Always show DEPARTMENT objectives to managers - these are their assigned objectives
-          return true;
+        if (obj.type === "DEPARTMENT") return myDeptIds.includes(obj.assigneeId || "");
+        if (obj.type === "PERSONNEL") {
+          // Trace parent - must belong to manager's departments
+          const parentObj = objectives.find(o => o.objectiveId === obj.parent?.objectiveId);
+          return parentObj && parentObj.type === "DEPARTMENT" && myDeptIds.includes(parentObj.assigneeId || "");
         }
-        if (obj.type === "DIVISION") {
-          // Show DIVISION objectives only if they are parents (not children)
-          return !obj.parent;
-        }
+        if (obj.type === "DIVISION") return !obj.parent; // Context
         return false;
       });
     } else if (guards.isDirector) {
-      // Directors see ONLY their assigned DIVISION objectives
-      // They should NOT see CORPORATE objectives - those are for admins only
-      filtered = filtered.filter((obj) => obj.type === "DIVISION");
+      const myDivIds = scope?.managedDivisionIds || [];
+      filtered = filtered.filter((obj) => {
+        if (obj.type === "DIVISION") return myDivIds.includes(obj.assigneeId || "");
+
+        // trace recursive parentage
+        const isDescendantOfMyDiv = (currentObj: Objective): boolean => {
+          if (!currentObj.parent) return false;
+          const parentObj = objectives.find(o => o.objectiveId === currentObj.parent?.objectiveId);
+          if (!parentObj) return false;
+          if (parentObj.type === "DIVISION" && myDivIds.includes(parentObj.assigneeId || "")) return true;
+          return isDescendantOfMyDiv(parentObj);
+        };
+
+        if (obj.type === "DEPARTMENT" || obj.type === "PERSONNEL") {
+          return isDescendantOfMyDiv(obj);
+        }
+
+        if (obj.type === "CORPORATE") return !obj.parent; // Context
+        return false;
+      });
     } else {
-      // For admins/super admins, show all objectives
-      // Filter out children when not in unit context to avoid duplicates
-      if (!assigneeId) {
-        filtered = filtered.filter((obj) => !obj.parent);
-      }
+      // ADMIN/SUPER_ADMIN see everything
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (obj) =>
+          obj.name?.toLowerCase().includes(term)
+      );
     }
 
     // Apply status filter
-    if (statusFilter === "all") {
-      return filtered;
+    if (statusFilter !== "all") {
+      const mapped = statusFilter.toUpperCase() as any;
+      filtered = filtered.filter((obj) => obj.status === mapped);
     }
-    // Map UI filter values to server enum
-    const mapped = statusFilter
-      .toUpperCase()
-      .replace("NOT_SUBMITTED", "NOT_SUBMITTED") as
-      | "NOT_SUBMITTED"
-      | "PENDING"
-      | "APPROVED"
-      | "REJECTED";
-    return filtered.filter((obj) => obj.status === mapped);
-  }, [objectives, statusFilter, guards, assigneeId]);
+
+    // Apply strategic period filter
+    if (selectedPeriod) {
+      filtered = filtered.filter(
+        (obj) => obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId
+      );
+    }
+
+    return filtered;
+  }, [objectives, statusFilter, searchTerm, guards, user?.employeeId, scope, selectedPeriod]);
 
   // Sort objectives by order field
   const sortedObjectives = useMemo(() => {
@@ -377,7 +433,7 @@ export default function ObjectivesApprovalTable() {
       .filter(
         (obj) =>
           selected.includes(obj.objectiveId) &&
-          obj.status === "NOT_SUBMITTED" &&
+          (obj.status === "NOT_SUBMITTED" || obj.status === "REJECTED") &&
           obj.type !== "CORPORATE"
       )
       .map((obj) => ({
@@ -451,6 +507,42 @@ export default function ObjectivesApprovalTable() {
     await refetch();
   };
 
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "desc" };
+    });
+  };
+
+  // Group objectives by type for corporate tabs
+  const corporateObjectives = useMemo(() => filteredObjectives.filter(o => o.type === "CORPORATE"), [filteredObjectives]);
+  const divisionObjectives = useMemo(() => filteredObjectives.filter(o => o.type === "DIVISION"), [filteredObjectives]);
+  const departmentObjectives = useMemo(() => filteredObjectives.filter(o => o.type === "DEPARTMENT"), [filteredObjectives]);
+  const personnelObjectives = useMemo(() => filteredObjectives.filter(o => o.type === "PERSONNEL"), [filteredObjectives]);
+
+  // Calculate cumulative weight for the current level (tab)
+  const cumulativeTabWeight = useMemo(() => {
+    const group =
+      activeTab === "corporate" ? corporateObjectives :
+        activeTab === "division" ? divisionObjectives :
+          activeTab === "department" ? departmentObjectives :
+            personnelObjectives;
+
+    return group.reduce((total, obj) => {
+      const objKPIs = kpis.filter(k => k.objective?.objectiveId === obj.objectiveId);
+      return total + objKPIs.reduce((sum, kpi) => sum + (kpi.weight || 0), 0);
+    }, 0);
+  }, [activeTab, corporateObjectives, divisionObjectives, departmentObjectives, personnelObjectives, kpis]);
+
+  const getPagedObjectivesForTab = (group: Objective[]) => {
+    const total = group.length;
+    const currentTabTotalPages = Math.max(1, Math.ceil(total / itemsPerPage));
+    const start = (currentPage - 1) * itemsPerPage;
+    return group.slice(start, start + itemsPerPage);
+  };
+
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6">
       {/* Context Header for Employees */}
@@ -474,6 +566,132 @@ export default function ObjectivesApprovalTable() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Hierarchical Level Tabs and Global Weight Tracker */}
+      {showTabs && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-lg border border-gray-100 shadow-sm sticky top-0 z-10">
+            <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1">
+              {["corporate", "division", "department", "personnel"].filter(tab => {
+                if (isCorporateRole) return true;
+                if (guards.isDirector) return ["division", "department", "personnel"].includes(tab);
+                if (guards.isManager) return ["department", "personnel"].includes(tab);
+                return false;
+              }).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-6 py-2.5 text-sm font-medium rounded-md whitespace-nowrap transition-all duration-200 ${activeTab === tab
+                    ? "bg-blue-600 text-white shadow-md transform scale-105"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)} Objectives
+                </button>
+              ))}
+            </div>
+
+            {/* Level Weight Progress Tracker - Only show for non-grouped view (Corporate) */}
+            {activeTab === "corporate" && (
+              <div className="flex flex-col gap-1 min-w-[200px] px-2">
+                <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider">
+                  <span className={cumulativeTabWeight > 100 ? "text-red-600" : "text-gray-500"}>
+                    STRATEGIC WEIGHT BUDGET
+                  </span>
+                  <span className={cumulativeTabWeight > 100 ? "text-red-600 font-bold animate-pulse" : "text-blue-600"}>
+                    {cumulativeTabWeight.toFixed(1)}% / 100%
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden shadow-inner border border-gray-100">
+                  <div
+                    className={`h-full transition-all duration-500 ease-out rounded-full ${cumulativeTabWeight > 100 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"}`}
+                    style={{ width: `${Math.min(cumulativeTabWeight, 105)}%` }}
+                  />
+                </div>
+                {cumulativeTabWeight > 100 && (
+                  <p className="text-[10px] text-red-500 font-medium text-right">
+                    ⚠️ Cumulative limit exceeded!
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Debug Info Card for Directors/Managers */}
+      {(guards.isDirector || guards.isManager) && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-purple-900 mb-2">
+            {guards.isDirector ? "Division Manager" : "Department Manager"} - Debug Info
+          </h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="font-medium text-purple-800">User Role:</p>
+              <p className="text-purple-700">{user?.role}</p>
+            </div>
+            <div>
+              <p className="font-medium text-purple-800">User ID:</p>
+              <p className="text-purple-700">{user?.employeeId}</p>
+            </div>
+            {guards.isDirector && (
+              <>
+                <div>
+                  <p className="font-medium text-purple-800">Managed Division IDs:</p>
+                  <p className="text-purple-700">
+                    {scope?.managedDivisionIds?.length ?
+                      scope.managedDivisionIds.join(", ") :
+                      "⚠️ EMPTY - This is why you see no objectives!"}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-purple-800">Division Objectives Assigned to Me:</p>
+                  <p className="text-purple-700">
+                    {objectives.filter(o =>
+                      o.type === "DIVISION" &&
+                      o.assigneeId &&
+                      scope?.managedDivisionIds?.includes(o.assigneeId)
+                    ).length}
+                  </p>
+                </div>
+              </>
+            )}
+            {guards.isManager && (
+              <>
+                <div>
+                  <p className="font-medium text-purple-800">Managed Department IDs:</p>
+                  <p className="text-purple-700">
+                    {scope?.managedDepartmentIds?.length ?
+                      scope.managedDepartmentIds.join(", ") :
+                      "⚠️ EMPTY - This is why you see no objectives!"}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-purple-800">Department Objectives Assigned to Me:</p>
+                  <p className="text-purple-700">
+                    {objectives.filter(o =>
+                      o.type === "DEPARTMENT" &&
+                      o.assigneeId &&
+                      scope?.managedDepartmentIds?.includes(o.assigneeId)
+                    ).length}
+                  </p>
+                </div>
+              </>
+            )}
+            <div className="col-span-2">
+              <p className="font-medium text-purple-800">Total Objectives in Database:</p>
+              <p className="text-purple-700">{objectives.length}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="font-medium text-purple-800">Filtered Objectives (What you see):</p>
+              <p className="text-purple-700">{filteredObjectives.length}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -516,7 +734,12 @@ export default function ObjectivesApprovalTable() {
 
       {/* Table */}
       <ObjectiveTable
-        objectives={pagedObjectives}
+        objectives={showTabs ?
+          (activeTab === "corporate" ? getPagedObjectivesForTab(corporateObjectives) :
+            activeTab === "division" ? getPagedObjectivesForTab(divisionObjectives) :
+              activeTab === "department" ? getPagedObjectivesForTab(departmentObjectives) :
+                getPagedObjectivesForTab(personnelObjectives)) :
+          pagedObjectives}
         allObjectives={allObjectivesForLookup} // Use broad set to resolve parent KPI names
         kpis={kpis}
         selected={selected}
@@ -533,8 +756,16 @@ export default function ObjectivesApprovalTable() {
         error={error?.message}
         objectiveRejectionReasons={objectiveRejectionReasons}
         kpiRejectionReasons={kpiRejectionReasons}
-        enableSorting={canEnableSorting}
+        enableSorting={canEnableSorting && activeTab === "corporate"}
         onOrderChange={handleOrderChange}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        groupBy={showTabs ?
+          (activeTab === "corporate" ? "none" :
+            activeTab === "division" ? "division" :
+              activeTab === "department" ? "department" :
+                "personnel") : "none"}
+        unitNames={unitNames}
         childQuartersByParentId={(function () {
           try {
             // Build child quarters map for corporate objectives
@@ -611,13 +842,15 @@ export default function ObjectivesApprovalTable() {
 
       {/* Pagination */}
       {totalPages > 0 && (
-        <ObjectivePagination
+        <DataTablePagination
           currentPage={currentPage}
           totalPages={totalPages}
           totalItems={totalItems}
           itemsPerPage={itemsPerPage}
           onPageChange={handlePageChange}
           onRowsPerPageChange={handleRowsPerPageChange}
+          loading={loading || kpisLoading}
+          itemName="objectives"
         />
       )}
     </div>

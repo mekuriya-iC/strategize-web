@@ -5,7 +5,7 @@
 import { toast } from "sonner";
 import { getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import type { Kpi, Objective as GraphQLObjective } from "@/types/graphql";
-import type { YearlyQuarters, AllocationInfo } from "@/hooks/useKPIFormState";
+import type { YearlyQuarters, AllocationInfo } from "@/hooks/objectives/useKPIFormState";
 
 // Utility function to round target numbers to max 2 decimal places
 export const roundTarget = (value: number): string => {
@@ -38,7 +38,7 @@ export const calculateQuarterlySum = (
     (quarters.q2 === "" ? 0 : Number(quarters.q2)) +
     (quarters.q3 === "" ? 0 : Number(quarters.q3)) +
     (quarters.q4 === "" ? 0 : Number(quarters.q4));
-  
+
   // Round to avoid floating-point precision issues
   return Math.round(sum * 100) / 100;
 };
@@ -52,38 +52,42 @@ export const getAssignedTarget = (
   strategicTargetsById?: Record<string, Record<string, number>>,
   yearlyQuarters?: Record<string, YearlyQuarters>
 ): number | null => {
-  // Check current KPI's targets
-  if (kpi?.targets && kpi.targets.length > 0) {
-    const currentTarget = kpi.targets.find((t) => t.timeline === year);
-    if (currentTarget) return currentTarget.target;
-
-    // Sum quarterly targets for this year
-    const quarterlyTargets = kpi.targets.filter(
-      (t) =>
-        t.timeline.startsWith(year.split("/")[0]) && t.timeline.includes("-Q")
-    );
-
-    if (quarterlyTargets.length > 0) {
-      return quarterlyTargets.reduce((sum, t) => sum + t.target, 0);
-    }
+  // 1. PRIMARY: Check strategicTargetsById if provided (usually Passed from Form)
+  // This helps when we want to override the base KPI targets (e.g. during unsaved edits)
+  if (kpi?.kpiId && strategicTargetsById?.[kpi.kpiId]) {
+    const targets = strategicTargetsById[kpi.kpiId];
+    // Try exact match
+    if (targets[year] !== undefined) return targets[year];
+    // Try matching if the key starts with the year (e.g. "2025/26" starts with "2025")
+    const matchingKey = Object.keys(targets).find(k => k === year || k.startsWith(year));
+    if (matchingKey) return targets[matchingKey];
   }
 
-  // Check if yearlyQuarters has a parentTarget set (for new KPIs with parent)
+  // 2. SECONDARY: Check current KPI's own specific yearly target records
+  if (kpi?.targets && kpi.targets.length > 0) {
+    // Try to find an exactly matching timeline (e.g. "2025" or "2025/26")
+    const currentTarget = kpi.targets.find((t) =>
+      !t.timeline.includes("-Q") && (t.timeline === year || t.timeline.startsWith(year))
+    );
+    if (currentTarget) return currentTarget.target;
+  }
+
+  // 3. TERTIARY: Check if yearlyQuarters has a parentTarget set (mostly for new KPIs)
   if (yearlyQuarters?.[year]?.parentTarget !== undefined && yearlyQuarters[year].parentTarget! > 0) {
     return yearlyQuarters[year].parentTarget!;
   }
 
-  // For child KPIs without targets, don't fall back to strategic targets
-  if (kpi?.parent?.kpiId) {
-    return null;
-  }
+  // 4. LAST RESORT: Sum/Average existing quarterly targets if yearly record is missing
+  // This is a fallback but might be risky if we rely on it for validation
+  if (kpi?.targets && kpi.targets.length > 0) {
+    const quarterlyTargets = kpi.targets.filter(
+      (t) => t.timeline.startsWith(year.split("/")[0]) && t.timeline.includes("-Q")
+    );
 
-  // For corporate KPIs, fall back to strategic targets
-  if (
-    !kpi?.parent?.kpiId &&
-    strategicTargetsById?.[kpi?.kpiId || ""]?.[year] !== undefined
-  ) {
-    return strategicTargetsById[kpi?.kpiId || ""][year];
+    if (quarterlyTargets.length > 0) {
+      const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
+      return kpi.unitType === "PERCENT" ? sum / quarterlyTargets.length : sum;
+    }
   }
 
   return null;
@@ -97,15 +101,16 @@ export const validateQuarterlyBreakdown = (
   yearlyQuarters: Record<string, YearlyQuarters>,
   kpi: Kpi | undefined,
   remainingAllocation: AllocationInfo | null,
-  strategicTargetsById?: Record<string, Record<string, number>>
-): QuarterlyValidationResult => {
+  strategicTargetsById?: Record<string, Record<string, number>>,
+  weightType?: string
+) => {
   let assignedTarget = getAssignedTarget(year, kpi, strategicTargetsById, yearlyQuarters);
   const currentSum = calculateQuarterlySum(year, yearlyQuarters);
-  const unitLabel = kpi ? getDetailedUnitLabel(kpi) : "units";
+  const unitLabel = kpi ? getDetailedUnitLabel(kpi) : (weightType === "PERCENT" ? "%" : "units");
+  const isPercent = kpi?.unitType ? kpi.unitType === "PERCENT" : weightType === "PERCENT";
 
-  // If no assigned target from KPI but we have remaining allocation, use that
-  // This handles the case of adding a new KPI where kpi is undefined
-  if (assignedTarget === null && remainingAllocation) {
+  // If no assigned target found from direct mapping, fallback to remaining allocation
+  if (assignedTarget === null && remainingAllocation !== null) {
     assignedTarget = remainingAllocation.remaining;
   }
 
@@ -116,54 +121,30 @@ export const validateQuarterlyBreakdown = (
       assignedTarget: null,
       currentSum,
       unitLabel,
+      remainingAllocation: remainingAllocation?.remaining,
+    };
+  }
+  //here is tollerance 0.01
+  const TOLERANCE = 0.001;
+  const currentVal = isPercent ? (currentSum / 4) : currentSum;
+
+  if (currentVal < assignedTarget - TOLERANCE) {
+    return {
+      isValid: false,
+      message: `${isPercent ? "Average" : "Sum"} (${roundTarget(currentVal)} ${unitLabel}) is below Target (${roundTarget(assignedTarget)} ${unitLabel})`,
+      assignedTarget,
+      currentSum: currentVal,
+      unitLabel,
+      remainingAllocation: remainingAllocation?.remaining,
     };
   }
 
-  // Tolerance for floating-point precision (0.01 = 2 decimal places)
-  const TOLERANCE = 0.01;
-
-  // Check against remaining allocation if available
-  if (remainingAllocation) {
-    const maxAllowed = remainingAllocation.remaining;
-
-    // Use tolerance to handle floating-point precision issues
-    if (currentSum - maxAllowed > TOLERANCE) {
-      return {
-        isValid: false,
-        message: `Quarterly sum (${roundTarget(
-          currentSum
-        )} ${unitLabel}) exceeds available allocation (${roundTarget(
-          maxAllowed
-        )} ${unitLabel})`,
-        assignedTarget,
-        currentSum,
-        unitLabel,
-        remainingAllocation: remainingAllocation.remaining,
-      };
-    }
-  } else {
-    // Use tolerance to handle floating-point precision issues
-    if (currentSum - assignedTarget > TOLERANCE) {
-      return {
-        isValid: false,
-        message: `Quarterly sum (${roundTarget(
-          currentSum
-        )} ${unitLabel}) exceeds assigned target (${roundTarget(
-          assignedTarget
-        )} ${unitLabel})`,
-        assignedTarget,
-        currentSum,
-        unitLabel,
-      };
-    }
-  }
-
-  if (Math.abs(currentSum - assignedTarget) < 0.01) {
+  if (currentVal > assignedTarget + TOLERANCE) {
     return {
-      isValid: true,
-      message: `Perfect! Quarterly sum matches assigned target`,
+      isValid: false,
+      message: `${isPercent ? "Average" : "Sum"} (${roundTarget(currentVal)} ${unitLabel}) exceeds Target (${roundTarget(assignedTarget)} ${unitLabel})`,
       assignedTarget,
-      currentSum,
+      currentSum: currentVal,
       unitLabel,
       remainingAllocation: remainingAllocation?.remaining,
     };
@@ -171,13 +152,9 @@ export const validateQuarterlyBreakdown = (
 
   return {
     isValid: true,
-    message: `Quarterly sum (${roundTarget(
-      currentSum
-    )} ${unitLabel}) is below assigned target (${roundTarget(
-      assignedTarget
-    )} ${unitLabel})`,
+    message: `Perfect! Quarterly planning matches Target`,
     assignedTarget,
-    currentSum,
+    currentSum: currentVal,
     unitLabel,
     remainingAllocation: remainingAllocation?.remaining,
   };
@@ -187,7 +164,7 @@ export const validateQuarterlyBreakdown = (
  * Validate the entire form
  */
 export const validateForm = (params: {
-  formData: { name: string; baseline: string; weight: string };
+  formData: { name: string; baseline: string; weight: string; weightType: string };
   objective?: GraphQLObjective;
   isQuarterlyMode: boolean;
   yearlyQuarters: Record<string, YearlyQuarters>;
@@ -195,6 +172,7 @@ export const validateForm = (params: {
   canEditTargets: boolean;
   kpi: Kpi | undefined;
   remainingAllocation: AllocationInfo | null;
+  levelAllocation?: { used: number; remaining: number };
   strategicTargetsById?: Record<string, Record<string, number>>;
 }): boolean => {
   const {
@@ -225,6 +203,18 @@ export const validateForm = (params: {
       toast.error("Please enter a valid weight value");
       return false;
     }
+
+    // Check cumulative level weight
+    const currentWeight = Number(formData.weight || 0);
+    const { used: levelUsed } = params.levelAllocation || { used: 0, remaining: 100 };
+    if (levelUsed + currentWeight > 100.01) { // 0.01 tolerance
+      toast.error(
+        `Cannot save KPI. The total weight for this level would be ${(
+          levelUsed + currentWeight
+        ).toFixed(1)}%, exceeding the 100% limit.`
+      );
+      return false;
+    }
   }
 
   // Validate targets for non-corporate objectives
@@ -246,7 +236,7 @@ export const validateForm = (params: {
           t.timeline.trim() && !isNaN(Number(t.target)) && Number(t.target) > 0
       );
       if (!hasYearlyTargets) {
-        toast.error("Please set at least one target value");
+        toast.error("Please set at least one yearly target value");
         return false;
       }
     }
@@ -268,12 +258,12 @@ export const validateForm = (params: {
         }
       }
 
-      const validation = validateQuarterlyBreakdown(
-        year,
+      const validation = validateQuarterlyBreakdown(year,
         yearlyQuarters,
         kpi,
         remainingAllocation,
-        strategicTargetsById
+        strategicTargetsById,
+        formData.weightType
       );
 
       if (!validation.isValid) {

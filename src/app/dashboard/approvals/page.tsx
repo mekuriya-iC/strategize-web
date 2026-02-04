@@ -1,6 +1,6 @@
 "use client";
 import SubmissionApprovalsTable from "@/components/approvals/SubmissionApprovalsTable";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { AccessDenied } from "@/components/auth/RequirePermission";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -102,13 +102,13 @@ export default function ApprovalsPage() {
                           employees in your department requesting your approval
                         </p>
                       ) : (
-                      <p>
-                        <strong>Division Objectives:</strong> Submissions from
-                        divisions requesting corporate approval
-                        <br />
-                        <strong>Department Objectives:</strong> Submissions from
-                        departments requesting approval from their division or
-                        corporate
+                        <p>
+                          <strong>Division Objectives:</strong> Submissions from
+                          divisions requesting corporate approval
+                          <br />
+                          <strong>Department Objectives:</strong> Submissions from
+                          departments requesting approval from their division or
+                          corporate
                           <br />
                           <strong>Personnel Objectives:</strong> Submissions from
                           employees requesting approval from their department

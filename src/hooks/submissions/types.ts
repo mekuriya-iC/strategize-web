@@ -33,6 +33,13 @@ export interface SubmissionObjective extends SubmissionAssignee {
   name?: string;
   type?: string;
   status?: string;
+  parent?: {
+    objectiveId: string;
+    name?: string;
+    type?: string;
+    assigneeId?: string;
+    assigneeType?: string;
+  } | null;
   kpis?: Array<SubmissionKpi>;
 }
 

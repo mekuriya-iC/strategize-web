@@ -10,11 +10,11 @@ import DepartmentFilterBar from "@/components/departments/DepartmentFilterBar";
 import DepartmentPagination from "@/components/departments/DepartmentPagination";
 import AddDepartmentDialog from "@/components/departments/AddDepartmentDialog";
 import EmptyState from "@/components/departments/EmptyState";
-import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
-import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
+import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
+import { GET_DIVISIONS, GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {
   DepartmentsQueryVariables,
   Department as GraphQLDepartment,
@@ -39,15 +39,17 @@ const DepartmentsPage = () => {
   >("all");
 
   // Get permissions to check if user can access employees
-  const { guards } = usePermissions();
+  const { guards, scope, isLoading: permissionsLoading } = usePermissions();
   const canAccessEmployees = guards.isAdmin || guards.isSuperAdmin;
+  const isAdmin = guards.isAdmin || guards.isSuperAdmin;
+  const isManagement = guards.isDirector || guards.isManager;
 
   // GraphQL queries
   const {
-    data: departmentsData,
-    loading: departmentsLoading,
-    error: departmentsError,
-    refetch,
+    data: globalDepartmentsData,
+    loading: globalDepartmentsLoading,
+    error: globalDepartmentsError,
+    refetch: globalRefetch,
   } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS, {
     variables: {
       page: currentPage,
@@ -55,12 +57,37 @@ const DepartmentsPage = () => {
       search: searchTerm || undefined,
     } as DepartmentsQueryVariables,
     fetchPolicy: "cache-and-network",
+    skip: isManagement,
+  });
+
+  // Scoped queries for Directors/Managers
+  const {
+    data: scopedDivisionData,
+    loading: divisionLoading,
+    error: divisionError,
+    refetch: divisionRefetch,
+  } = useQuery<{ division: any }>(GET_DIVISION_SAFE, {
+    variables: { divisionId: scope?.managedDivisionIds[0] },
+    skip: !guards.isDirector || !scope?.managedDivisionIds?.[0],
+    fetchPolicy: "cache-and-network",
+  });
+
+  const {
+    data: scopedDepartmentData,
+    loading: departmentLoading,
+    error: departmentError,
+    refetch: departmentRefetch,
+  } = useQuery<{ department: any }>(GET_DEPARTMENT_SAFE, {
+    variables: { departmentId: scope?.managedDepartmentIds[0] },
+    skip: !guards.isManager || !scope?.managedDepartmentIds?.[0],
+    fetchPolicy: "cache-and-network",
   });
 
   const { data: divisionsData } = useQuery<{ divisions: PaginatedDivisions }>(
     GET_DIVISIONS,
     {
       variables: { page: 1, limit: 100 },
+      skip: !isAdmin,
     }
   );
 
@@ -85,7 +112,7 @@ const DepartmentsPage = () => {
   const [departmentMembers, setDepartmentMembers] = useState<string[]>([]);
 
   // Transform GraphQL data to UI format
-  const transformDepartment = (dept: GraphQLDepartment): Department => ({
+  const transformDepartment = (dept: any): Department => ({
     id: dept.departmentId,
     departmentName: dept.name,
     createdBy: "System",
@@ -103,14 +130,28 @@ const DepartmentsPage = () => {
 
   // Transform and filter departments
   const departments = React.useMemo(() => {
-    if (!departmentsData?.departments?.items) return [];
+    let rawItems: any[] = [];
+    if (isAdmin) {
+      rawItems = globalDepartmentsData?.departments?.items || [];
+    } else if (guards.isDirector) {
+      rawItems = scopedDivisionData?.division?.departments || [];
+    } else if (guards.isManager) {
+      rawItems = scopedDepartmentData?.department ? [scopedDepartmentData.department] : [];
+    }
 
-    let filteredDepartments = departmentsData.departments.items;
+    let filteredDepartments = [...rawItems];
+
+    // Local search for non-admins
+    if (!isAdmin && searchTerm) {
+      filteredDepartments = filteredDepartments.filter((dept: any) =>
+        dept.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
     // Apply status filters (client-side)
     if (filterStatus !== "all") {
       filteredDepartments = filteredDepartments.filter(
-        (dept: GraphQLDepartment) => {
+        (dept: any) => {
           switch (filterStatus) {
             case "with_manager":
               return dept.manager !== null;
@@ -132,9 +173,20 @@ const DepartmentsPage = () => {
     }
 
     return filteredDepartments.map(transformDepartment);
-  }, [departmentsData, filterStatus]);
-  const totalItems = departmentsData?.departments?.meta?.totalItems || 0;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  }, [globalDepartmentsData, scopedDivisionData, scopedDepartmentData, isAdmin, guards, filterStatus, searchTerm]);
+
+  const totalItems = isAdmin
+    ? (globalDepartmentsData?.departments?.meta?.totalItems || 0)
+    : departments.length;
+  const totalPages = isAdmin
+    ? Math.ceil(totalItems / itemsPerPage)
+    : 1;
+
+  const refetch = () => {
+    if (isAdmin) globalRefetch();
+    if (guards.isDirector) divisionRefetch();
+    if (guards.isManager) departmentRefetch();
+  };
 
   // Get available divisions for filter
   const divisions = divisionsData?.divisions?.items || [];
@@ -206,19 +258,41 @@ const DepartmentsPage = () => {
     }
   };
 
-  const loading = departmentsLoading || mutationLoading.create;
+  const loading = (isAdmin ? globalDepartmentsLoading : (divisionLoading || departmentLoading)) || mutationLoading.create;
+  const error = isAdmin ? globalDepartmentsError : (divisionError || departmentError);
+
+  if (permissionsLoading || (isManagement && loading && departments.length === 0)) {
+    return (
+      <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+        <div className="animate-pulse">
+          <div className="h-10 w-48 bg-gray-200 rounded mb-6" />
+          <div className="h-12 w-full bg-gray-200 rounded mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
       {/* Header and Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
-          Departments
-        </h1>
+        <div>
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+            Departments
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {isAdmin ? "Manage organization-wide departments" : guards.isDirector ? "Manage departments in your division" : "Manage your department"}
+          </p>
+        </div>
       </div>
 
       {/* Only show filter bar and actions when there's data or loading */}
-      {(departmentsLoading || departmentsError || departments.length > 0) && (
+      {(loading || error || departments.length > 0) && (
         <>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <DepartmentFilterBar
@@ -230,16 +304,16 @@ const DepartmentsPage = () => {
             />
             {/* Only show Add Department button for admins */}
             {canAccessEmployees && (
-            <div className="flex gap-2 items-center">
-              <Button
-                className="ml-2"
-                onClick={handleAddDepartment}
-                disabled={loading}
-              >
-                <Plus width={16} height={16} />
-                Add Department
-              </Button>
-            </div>
+              <div className="flex gap-2 items-center">
+                <Button
+                  className="ml-2"
+                  onClick={handleAddDepartment}
+                  disabled={loading}
+                >
+                  <Plus width={16} height={16} />
+                  Add Department
+                </Button>
+              </div>
             )}
           </div>
 
@@ -265,10 +339,10 @@ const DepartmentsPage = () => {
       )}
 
       {/* Error State */}
-      {departmentsError && (
+      {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">
-            Error loading departments: {departmentsError.message}
+            Error loading departments: {error.message}
           </p>
           <Button
             variant="outline"
@@ -282,9 +356,9 @@ const DepartmentsPage = () => {
       )}
 
       {/* Empty State or Table */}
-      {!departmentsLoading && !departmentsError && departments.length === 0 ? (
+      {!loading && !error && departments.length === 0 ? (
         canAccessEmployees ? (
-        <EmptyState onAddDepartment={handleAddDepartment} />
+          <EmptyState onAddDepartment={handleAddDepartment} />
         ) : (
           <div className="p-8 text-center text-gray-500">
             No departments found.
@@ -297,8 +371,8 @@ const DepartmentsPage = () => {
             <DepartmentTable
               departments={departments}
               readOnly={!canAccessEmployees}
-              loading={departmentsLoading}
-              error={departmentsError?.message}
+              loading={loading}
+              error={error?.message}
               onAddDepartment={handleAddDepartment}
               managers={managers}
               divisions={divisions}

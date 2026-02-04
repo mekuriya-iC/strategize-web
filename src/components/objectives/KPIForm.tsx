@@ -19,7 +19,7 @@ import type { Objective as GraphQLObjective, KpiTargetInput, KpiStatus, KpiWeigh
 import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import { buildYearRanges } from "./YearSelector";
-import { useKPIFormState } from "@/hooks/useKPIFormState";
+import { useKPIFormState } from "@/hooks/objectives/useKPIFormState";
 import {
   KPIFormHeader,
   KPIInformationCard,
@@ -76,6 +76,7 @@ export default function KPIForm({
     addTarget,
     removeTarget,
     getRemainingAllocation,
+    getLevelAllocation,
     createKpi,
     updateKpi,
     client,
@@ -86,6 +87,7 @@ export default function KPIForm({
     e.preventDefault();
 
     const remainingAllocation = getRemainingAllocation();
+    const levelAllocation = getLevelAllocation();
 
     const isValid = validateForm({
       formData,
@@ -96,10 +98,16 @@ export default function KPIForm({
       canEditTargets,
       kpi,
       remainingAllocation,
+      levelAllocation,
       strategicTargetsById,
     });
 
     if (!isValid) return;
+
+    if (isKPIApproved && objective?.type !== "CORPORATE") {
+      toast.error("Approved KPIs cannot be modified.");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -107,6 +115,7 @@ export default function KPIForm({
       let validTargets: KpiTargetInput[] = [];
 
       if (isQuarterlyMode) {
+        // Collect quarterly targets
         for (const [year, quarters] of Object.entries(yearlyQuarters)) {
           validTargets.push(
             { timeline: `${year}-Q1`, target: Number(quarters.q1 || 0) },
@@ -114,6 +123,18 @@ export default function KPIForm({
             { timeline: `${year}-Q3`, target: Number(quarters.q3 || 0) },
             { timeline: `${year}-Q4`, target: Number(quarters.q4 || 0) }
           );
+        }
+
+        // IMPORTANT: Also save the annual targets entered in "Define Annual Goals" (for independent KPIs)
+        if (!parentId) {
+          targets.forEach(t => {
+            if (t.timeline.trim() && !isNaN(Number(t.target))) {
+              // Avoid duplicates if timeline already exists
+              if (!validTargets.some(vt => vt.timeline === t.timeline)) {
+                validTargets.push({ timeline: t.timeline, target: Number(t.target) });
+              }
+            }
+          });
         }
       } else {
         validTargets = targets
@@ -146,75 +167,18 @@ export default function KPIForm({
         const mutationInput = {
           kpiId,
           ...kpiData,
-          ...(isCurrentlyRejected ? { status: "PENDING" as KpiStatus } : {}),
+          // If it was rejected, reset it to NOT_SUBMITTED so it can be submitted again manually
+          ...(isCurrentlyRejected ? { status: "NOT_SUBMITTED" as KpiStatus } : {}),
         };
 
         await updateKpi(mutationInput);
-
-        const shouldSubmitUpdate =
-          objective?.type !== "CORPORATE" &&
-          (isCurrentlyRejected || !isKPIApproved);
-
-        if (shouldSubmitUpdate) {
-          try {
-            await handleSmartSubmission({
-              submissionType: "KPI",
-              itemId: kpiId,
-              submissionData: {
-                type: "KPI",
-                level: objective.type as "DIVISION" | "DEPARTMENT" | "PERSONNEL",
-                itemId: kpiId,
-                reason: isCurrentlyRejected
-                  ? "KPI updated after rejection - resubmitted for approval"
-                  : "KPI structure and targets submitted for approval",
-              },
-              reason: isCurrentlyRejected
-                ? "KPI updated after rejection - resubmitted for approval"
-                : "KPI structure and targets submitted for approval",
-              client: client as unknown as import("@/utils/smartSubmission").ApolloClient,
-            });
-
-            toast.success(
-              isCurrentlyRejected
-                ? "KPI updated and resubmitted for approval!"
-                : "KPI structure and targets submitted for approval!"
-            );
-          } catch (submissionError) {
-            kpiLogger.error("Error creating submission:", submissionError);
-            toast.success(
-              "KPI updated successfully, but failed to create submission."
-            );
-          }
-        } else {
-          toast.success("KPI updated successfully!");
-        }
+        toast.success("KPI updated successfully!");
       } else {
         const created = await createKpi(kpiData);
 
         if (objective?.type === "CORPORATE" && created?.kpiId) {
           await updateKpi({ kpiId: created.kpiId, status: "APPROVED" });
           toast.success("KPI created and auto-approved");
-        } else if (created?.kpiId && objective?.type !== "CORPORATE") {
-          try {
-            await handleSmartSubmission({
-              submissionType: "KPI",
-              itemId: created.kpiId,
-              submissionData: {
-                type: "KPI",
-                level: objective.type as "DIVISION" | "DEPARTMENT" | "PERSONNEL",
-                itemId: created.kpiId,
-                reason: "KPI structure and targets submitted for approval",
-              },
-              reason: "KPI structure and targets submitted for approval",
-              client: client as unknown as import("@/utils/smartSubmission").ApolloClient,
-            });
-            toast.success("KPI created and submitted for approval");
-          } catch (submissionError) {
-            kpiLogger.error("Error creating submission:", submissionError);
-            toast.success(
-              "KPI created successfully, but failed to create submission."
-            );
-          }
         } else {
           toast.success("KPI created successfully!");
         }
@@ -255,7 +219,7 @@ export default function KPIForm({
           canEditStructure={canEditStructure}
           kpiId={kpiId}
           onInputChange={handleInputChange}
-          onParentIdChange={setParentId}
+          onParentIdChange={(val) => setParentId(val === "none_standalone" ? "" : val)}
         />
 
         {/* Targets Card */}
@@ -270,34 +234,46 @@ export default function KPIForm({
               )}
             </CardTitle>
 
-            {/* Remaining Allocation Display */}
-            {remainingAllocation && (
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-blue-900">
-                      Parent Target:
-                    </span>
-                    <span className="text-blue-700">
-                      {roundTarget(remainingAllocation.available)}{" "}
-                      {kpi ? getDetailedUnitLabel(kpi) : "units"}
-                    </span>
+            {/* Level Weight Allocation Tracker */}
+            {(() => {
+              const levelAlloc = getLevelAllocation();
+              const currentWeight = Number(formData.weight || 0);
+              const totalIfSaved = levelAlloc.used + currentWeight;
+              const isOver = totalIfSaved > 100.01;
+
+              return (
+                <div className={`mt-2 p-3 rounded-lg border flex flex-col gap-2 ${isOver ? "bg-red-50 border-red-200" : "bg-purple-50 border-purple-200"}`}>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex flex-col">
+                      <span className={`font-semibold ${isOver ? "text-red-900" : "text-purple-900"}`}>
+                        Level Strategic Budget ({objective?.type})
+                      </span>
+                      <span className="text-[10px] text-gray-500 uppercase">Tracked across all objectives in this category</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className={`font-bold ${isOver ? "text-red-600 animate-bounce" : "text-purple-600"}`}>
+                        {totalIfSaved.toFixed(1)}% / 100%
+                      </span>
+                      {isOver && <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter cursor-help" title="Redistribute weight from other KPIs at this level">Strategic Limit Exceeded</span>}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-blue-600">
-                      Used by Siblings: {roundTarget(remainingAllocation.used)}
-                    </span>
-                    <span className="text-blue-600">
-                      ({Math.round((remainingAllocation.used / remainingAllocation.available) * 100)}%)
+                  <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${isOver ? "bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" : "bg-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.5)]"}`}
+                      style={{ width: `${Math.min(totalIfSaved, 105)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-medium">
+                    <span className="text-gray-500">Used by others: {levelAlloc.used.toFixed(1)}%</span>
+                    <span className={isOver ? "text-red-500" : "text-purple-500"}>
+                      {isOver ? "Redistribution needed" : `Available budget: ${(100 - levelAlloc.used).toFixed(1)}%`}
                     </span>
                   </div>
                 </div>
-                <div className="mt-1 text-xs text-blue-600">
-                  Available for this KPI: {roundTarget(remainingAllocation.remaining)}{" "}
-                  {kpi ? getDetailedUnitLabel(kpi) : "units"}
-                </div>
-              </div>
-            )}
+              );
+            })()}
+
+
 
             {/* Process Documentation */}
             <div className="bg-blue-50 p-4 rounded-lg mb-4">
@@ -335,7 +311,7 @@ export default function KPIForm({
           </CardHeader>
 
           <CardContent>
-            {isQuarterlyMode ? (
+            {isQuarterlyMode && parentId ? (
               <QuarterlyBreakdown
                 yearlyQuarters={yearlyQuarters}
                 kpi={kpi}
@@ -344,6 +320,8 @@ export default function KPIForm({
                 remainingAllocation={remainingAllocation}
                 strategicTargetsById={strategicTargetsById}
                 onYearlyQuartersChange={setYearlyQuarters}
+                weightType={formData.weightType}
+                getRemainingAllocation={getRemainingAllocation}
                 onReloadTargets={() => {
                   if (kpi?.targets && kpi.targets.length > 0) {
                     const tgs = kpi.targets.map((t) => ({
@@ -355,100 +333,101 @@ export default function KPIForm({
                 }}
               />
             ) : (
-              <div className="space-y-4">
-                {strategicPeriodState?.annualTimeline && (
-                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
-                      <span>🔄</span>
-                      <span>
-                        Synced with objective details page:{" "}
-                        <strong>{strategicPeriodState.annualTimeline}</strong>
-                      </span>
-                    </div>
+              <div className="space-y-6">
+                {/* Yearly Targets section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-gray-900">Define Annual Goals</h4>
+                    {!parentId && isQuarterlyMode && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        Independent KPI
+                      </Badge>
+                    )}
                   </div>
-                )}
 
-                {targets.map((target, index) => (
-                  <div
-                    key={index}
-                    className="flex items-end gap-4 p-4 border rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <Label htmlFor={`timeline-${index}`}>Timeline</Label>
-                      <Select
-                        value={target.timeline}
-                        onValueChange={(val) =>
-                          handleTargetChange(index, "timeline", val)
-                        }
-                        disabled={!canEditTargets}
-                      >
-                        <SelectTrigger id={`timeline-${index}`}>
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {objective?.strategicPeriod &&
-                            buildYearRanges(objective.strategicPeriod).map(
-                              (yr) => (
-                                <SelectItem key={yr} value={yr}>
-                                  {yr}
-                                </SelectItem>
-                              )
-                            )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex-1">
-                      <Label htmlFor={`target-${index}`}>Target Value</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          id={`target-${index}`}
-                          type="number"
-                          step="0.01"
-                          value={target.target}
-                          onChange={(e) =>
-                            handleTargetChange(index, "target", e.target.value)
-                          }
-                          placeholder="Enter target value"
-                          disabled={!canEditTargets}
-                        />
+                  {targets.map((target, index) => (
+                    <div
+                      key={index}
+                      className="flex items-end gap-4 p-4 border rounded-lg bg-white"
+                    >
+                      <div className="flex-1">
+                        <Label htmlFor={`timeline-${index}`}>Year</Label>
                         <Select
-                          value={formData.weightType}
-                          onValueChange={(value: KpiWeightType) =>
-                            handleInputChange("weightType", value)
+                          value={target.timeline}
+                          onValueChange={(val) =>
+                            handleTargetChange(index, "timeline", val)
                           }
                           disabled={!canEditTargets}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select unit" />
+                          <SelectTrigger id={`timeline-${index}`}>
+                            <SelectValue placeholder="Select year" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="NUMBER">Number</SelectItem>
-                            <SelectItem value="PERCENT">Percent</SelectItem>
+                            {objective?.strategicPeriod &&
+                              buildYearRanges(objective.strategicPeriod).map(
+                                (yr) => (
+                                  <SelectItem key={yr} value={yr}>
+                                    {yr}
+                                  </SelectItem>
+                                )
+                              )}
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="flex-1">
+                        <Label htmlFor={`target-${index}`}>Annual Target Value</Label>
+                        <div className="grid grid-cols-1 gap-2">
+                          <Input
+                            id={`target-${index}`}
+                            type="number"
+                            step="0.01"
+                            value={target.target}
+                            onChange={(e) =>
+                              handleTargetChange(index, "target", e.target.value)
+                            }
+                            placeholder="Enter annual target"
+                            disabled={!canEditTargets}
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeTarget(index)}
+                        disabled={targets.length === 1 || !canEditTargets}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeTarget(index)}
-                      disabled={targets.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                  ))}
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addTarget}
-                  className="w-full"
-                  disabled={!canEditTargets}
-                >
-                  <Plus className="w-4 h-4 mr-2" /> Add Target
-                </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addTarget}
+                    className="w-full border-dashed"
+                    disabled={!canEditTargets}
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Another Year
+                  </Button>
+                </div>
+
+                {isQuarterlyMode && !parentId && (
+                  <div className="border-t pt-6">
+                    <QuarterlyBreakdown
+                      yearlyQuarters={yearlyQuarters}
+                      kpi={kpi}
+                      canEditTargets={canEditTargets}
+                      isEditing={isEditing}
+                      remainingAllocation={null}
+                      strategicTargetsById={strategicTargetsById}
+                      onYearlyQuartersChange={setYearlyQuarters}
+                      weightType={formData.weightType}
+                      getRemainingAllocation={getRemainingAllocation}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -474,12 +453,11 @@ export default function KPIForm({
                 ? "Updating..."
                 : "Creating..."
               : isEditing
-              ? "Update KPI"
-              : "Create KPI"}
+                ? "Update KPI"
+                : "Create KPI"}
           </Button>
         </div>
       </form>
     </div>
   );
 }
-

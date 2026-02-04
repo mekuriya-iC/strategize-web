@@ -10,8 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
-import { useStrategicPeriods } from "@/hooks/useStrategicPeriods";
+import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
+import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { ObjectiveType } from "@/types/graphql";
 import { toast } from "sonner";
@@ -23,7 +23,7 @@ export default function ObjectiveForm() {
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
   const user = useAuthStore((state) => state.user);
-  
+
   // For backwards compatibility
   const selected = selectedPeriod ? { period: selectedPeriod } : null;
 

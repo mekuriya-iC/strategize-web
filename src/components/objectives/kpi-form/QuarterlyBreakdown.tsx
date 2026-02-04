@@ -1,11 +1,10 @@
-"use client";
-
+  "use client";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Kpi } from "@/types/graphql";
-import type { YearlyQuarters, AllocationInfo } from "@/hooks/useKPIFormState";
+import type { YearlyQuarters, AllocationInfo } from "@/hooks/objectives/useKPIFormState";
 import { roundTarget, validateQuarterlyBreakdown } from "./validation";
 
 interface QuarterlyBreakdownProps {
@@ -19,6 +18,9 @@ interface QuarterlyBreakdownProps {
     value: React.SetStateAction<Record<string, YearlyQuarters>>
   ) => void;
   onReloadTargets?: () => void;
+  getRemainingAllocation?: (year: string) => AllocationInfo | null;
+  weightType?: string;
+  mode?: "create" | "edit";
 }
 
 export function QuarterlyBreakdown({
@@ -30,16 +32,16 @@ export function QuarterlyBreakdown({
   strategicTargetsById,
   onYearlyQuartersChange,
   onReloadTargets,
+  getRemainingAllocation,
+  weightType,
+  mode = "create",
 }: QuarterlyBreakdownProps) {
   if (Object.keys(yearlyQuarters).length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <p>No yearly targets found from parent KPI.</p>
+      <div className="text-center py-8 text-gray-500 border rounded-lg border-dashed">
+        <p>No quarterly breakdown initialized.</p>
         <p className="text-sm mt-1">
-          Your parent needs to set yearly targets first.
-        </p>
-        <p className="text-sm mt-1">
-          If this is a rejected KPI, please check if targets were saved.
+          Please ensure an annual target is set for the strategic period.
         </p>
         {isEditing && onReloadTargets && (
           <div className="mt-4">
@@ -57,19 +59,26 @@ export function QuarterlyBreakdown({
       <div className="bg-blue-50 p-4 rounded-lg">
         <h4 className="font-medium text-blue-900 mb-2">Quarterly Breakdown</h4>
         <p className="text-sm text-blue-700">
-          Break down your assigned targets into quarterly values. The sum of
-          quarters must not exceed your assigned target limit. You&apos;ll see
-          real-time validation to ensure you stay within limits.
+          Break down your assigned targets into quarterly values. For NUMBER KPIs
+          the quarterly sum must match the assigned target. For PERCENT KPIs the
+          quarterly average must match the assigned target.
         </p>
       </div>
 
       {Object.entries(yearlyQuarters).map(([year, quarters]) => {
+        const yearAllocation = getRemainingAllocation ? getRemainingAllocation(year) : remainingAllocation;
+
+        const isPercent = kpi?.unitType
+          ? kpi.unitType === "PERCENT"
+          : weightType === "PERCENT";
+
         const validation = validateQuarterlyBreakdown(
           year,
           yearlyQuarters,
           kpi,
-          remainingAllocation,
-          strategicTargetsById
+          yearAllocation,
+          strategicTargetsById,
+          weightType
         );
 
         return (
@@ -77,35 +86,16 @@ export function QuarterlyBreakdown({
             <div className="flex items-center justify-between mb-4">
               <h5 className="font-medium text-gray-900">{year}</h5>
               <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600">
-                {(() => {
-                  if (
-                    remainingAllocation &&
-                    remainingAllocation.remaining <
-                      (validation.assignedTarget ?? 0)
-                  ) {
-                    return (
-                      <>
-                        Available Allocation:{" "}
-                        <span className="font-medium">
-                          {roundTarget(remainingAllocation.remaining)}{" "}
-                          {validation.unitLabel}
-                        </span>
-                      </>
-                    );
-                  } else if (validation.assignedTarget !== null) {
-                    return (
-                      <>
-                        Assigned Target:{" "}
-                        <span className="font-medium">
-                          {roundTarget(validation.assignedTarget)}{" "}
-                          {validation.unitLabel}
-                        </span>
-                      </>
-                    );
-                  }
-                  return null;
-                })()}
+                <div className="text-sm text-gray-600">
+                  {validation.assignedTarget !== null && (
+                    <>
+                      Target Value:{" "}
+                      <span className="font-medium">
+                        {roundTarget(validation.assignedTarget)}{" "}
+                        {validation.unitLabel}
+                      </span>
+                    </>
+                  )}
                 </div>
                 {/* Auto Distribute Button */}
                 {canEditTargets && validation.assignedTarget !== null && validation.assignedTarget > 0 && (
@@ -114,21 +104,34 @@ export function QuarterlyBreakdown({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const targetToDistribute = remainingAllocation && remainingAllocation.remaining < validation.assignedTarget!
-                        ? remainingAllocation.remaining
+                      const isPercent = kpi?.unitType
+                        ? kpi.unitType === "PERCENT"
+                        : weightType === "PERCENT";
+
+                      const targetToDistribute = isPercent
+                        ? validation.assignedTarget!
                         : validation.assignedTarget!;
-                      const quarterlyValue = Math.round((targetToDistribute / 4) * 100) / 100;
-                      // Distribute evenly, put any remainder in Q4 to ensure exact match
-                      const q1q2q3Total = quarterlyValue * 3;
-                      const q4Value = Math.round((targetToDistribute - q1q2q3Total) * 100) / 100;
-                      
+
+                      let q1, q2, q3, q4;
+                      if (isPercent) {
+                        const v = (Math.round(targetToDistribute * 100) / 100).toString();
+                        q1 = q2 = q3 = q4 = v;
+                      } else {
+                        const quarterlyValue = Math.round((targetToDistribute / 4) * 100) / 100;
+                        const q1q2q3Total = quarterlyValue * 3;
+                        const q4Value = Math.round((targetToDistribute - q1q2q3Total) * 100) / 100;
+                        q1 = q2 = q3 = quarterlyValue.toString();
+                        q4 = q4Value.toString();
+                      }
+
                       onYearlyQuartersChange((prev) => ({
                         ...prev,
                         [year]: {
-                          q1: quarterlyValue.toString(),
-                          q2: quarterlyValue.toString(),
-                          q3: quarterlyValue.toString(),
-                          q4: q4Value.toString(),
+                          ...prev[year],
+                          q1,
+                          q2,
+                          q3,
+                          q4,
                         },
                       }));
                     }}
@@ -143,22 +146,20 @@ export function QuarterlyBreakdown({
             {/* Validation Status */}
             {validation.assignedTarget !== null && (
               <div
-                className={`mb-4 p-3 rounded-lg ${
-                  validation.isValid
-                    ? validation.message.includes("Perfect")
-                      ? "bg-green-50 border border-green-200"
-                      : "bg-yellow-50 border border-yellow-200"
-                    : "bg-red-50 border border-red-200"
-                }`}
+                className={`mb-4 p-3 rounded-lg ${validation.isValid
+                  ? validation.message.includes("Perfect")
+                    ? "bg-green-50 border border-green-200"
+                    : "bg-yellow-50 border border-yellow-200"
+                  : "bg-red-50 border border-red-200"
+                  }`}
               >
                 <div
-                  className={`flex items-center gap-2 text-sm ${
-                    validation.isValid
-                      ? validation.message.includes("Perfect")
-                        ? "text-green-700"
-                        : "text-yellow-700"
-                      : "text-red-700"
-                  }`}
+                  className={`flex items-center gap-2 text-sm ${validation.isValid
+                    ? validation.message.includes("Perfect")
+                      ? "text-green-700"
+                      : "text-yellow-700"
+                    : "text-red-700"
+                    }`}
                 >
                   <span>
                     {validation.isValid
@@ -171,16 +172,15 @@ export function QuarterlyBreakdown({
                 </div>
                 {!validation.isValid && (
                   <p className="text-xs mt-1 text-red-600">
-                    Please adjust quarterly values to not exceed the assigned
-                    target.
+                    Please adjust quarterly values to match the assigned target.
                   </p>
                 )}
                 <div className="text-xs mt-1 text-gray-600">
-                  Current quarterly sum: {roundTarget(validation.currentSum)}{" "}
+                  Current planning {isPercent ? "average" : "total"}: {roundTarget(validation.currentSum)}{" "}
                   {validation.unitLabel}
                   {validation.remainingAllocation !== undefined && (
                     <span className="ml-2 text-blue-600">
-                      (Available: {roundTarget(validation.remainingAllocation)}{" "}
+                      (Available Limit: {roundTarget(validation.remainingAllocation)}{" "}
                       {validation.unitLabel})
                     </span>
                   )}

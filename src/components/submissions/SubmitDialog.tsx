@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/dialog";
 // import { useKPIMutations } from "@/hooks/useKPIMutations";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
-import { useKPI } from "@/hooks/useKPIs";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { useKPI } from "@/hooks/objectives/useKPIs";
 import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
 import type {
@@ -97,8 +97,8 @@ export default function SubmitDialog({
         return;
       }
 
-      if (kpiData.status !== "NOT_SUBMITTED") {
-        console.error("❌ KPI is not in NOT_SUBMITTED state:", {
+      if (kpiData.status !== "NOT_SUBMITTED" && kpiData.status !== "REJECTED") {
+        console.error("❌ KPI is not in a submittable state:", {
           kpiId: kpiData.kpiId,
           status: kpiData.status,
         });
@@ -124,8 +124,8 @@ export default function SubmitDialog({
       objectiveType === "PERSONNEL"
         ? "PERSONNEL"
         : objectiveType === "DEPARTMENT"
-        ? "DEPARTMENT"
-        : "DIVISION"; // CORPORATE, DIVISION -> DIVISION level
+          ? "DEPARTMENT"
+          : "DIVISION"; // CORPORATE, DIVISION -> DIVISION level
 
     // Set submission type based on item type
     const submissionType: SubmissionType =
@@ -210,8 +210,7 @@ export default function SubmitDialog({
       // No need for additional status update here
 
       toast.success(
-        `${
-          itemType === "objective" ? "Objective" : "KPI"
+        `${itemType === "objective" ? "Objective" : "KPI"
         } submitted successfully!`
       );
       setOpen(false);

@@ -31,7 +31,7 @@ import {
 import { DivisionTableSkeleton } from "@/components/skeleton";
 import DeleteDivisionDialog from "./DeleteDivisionDialog";
 import EditDivisionDialog from "./EditDivisionDialog";
-import { useDivisionMutations } from "@/hooks/useDivisionMutations";
+import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
 import { toast } from "sonner";
 
 // Division interface matching the design
@@ -191,12 +191,12 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
           <TableRow className="bg-muted/60 hover:bg-muted/60">
             {/* Only show checkbox column for admins */}
             {!readOnly && (
-            <TableHead className="px-4 py-3 w-12">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={(checked) => handleSelectAll(!!checked)}
-              />
-            </TableHead>
+              <TableHead className="px-4 py-3 w-12">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                />
+              </TableHead>
             )}
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
               DIVISION NAME
@@ -232,30 +232,29 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
             divisionsToShow.map((division, idx) => (
               <TableRow
                 key={division.id}
-                className={`border-b border-gray-100 ${
-                  selectedIds.has(division.id)
+                className={`border-b border-gray-100 ${selectedIds.has(division.id)
                     ? "bg-blue-50"
                     : idx % 2 === 1
-                    ? "bg-white"
-                    : "bg-[#ECECFF]"
-                } hover:bg-gray-50 transition-colors cursor-pointer`}
+                      ? "bg-white"
+                      : "bg-[#ECECFF]"
+                  } hover:bg-gray-50 transition-colors cursor-pointer`}
                 onClick={() =>
                   router.push(`/dashboard/divisions/${division.id}`)
                 }
               >
                 {/* Only show checkbox for admins */}
                 {!readOnly && (
-                <TableCell
-                  className="px-4 py-4 w-12"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={selectedIds.has(division.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectOne(division.id, !!checked)
-                    }
-                  />
-                </TableCell>
+                  <TableCell
+                    className="px-4 py-4 w-12"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(division.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectOne(division.id, !!checked)
+                      }
+                    />
+                  </TableCell>
                 )}
                 <TableCell className="px-6 py-4 font-medium text-gray-900">
                   {division.divisionName}
@@ -289,60 +288,60 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
                     </Button>
                     {/* Only show edit/delete actions for admins */}
                     {!readOnly && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-orange-50"
-                          onClick={onAddDepartment}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Department
-                        </DropdownMenuItem>
-                        <EditDivisionDialog
-                          division={{
-                            id: division.id,
-                            divisionName: division.divisionName,
-                            managedBy: division.managedBy,
-                          }}
-                          managers={managers}
-                          allDepartments={allDepartments}
-                          currentDepartmentIds={allDepartments
-                            .filter((d) => d.divisionId === String(division.id))
-                            .map((d) => d.departmentId)}
-                          onEditSuccess={onEditSuccess}
-                        >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            className="flex items-center gap-2"
-                            onSelect={(e) => {
-                              e.preventDefault();
-                            }}
+                            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-orange-50"
+                            onClick={onAddDepartment}
                           >
-                            <Edit className="h-4 w-4" />
-                            Edit
+                            <Plus className="h-4 w-4" />
+                            Add Department
                           </DropdownMenuItem>
-                        </EditDivisionDialog>
-                        <DeleteDivisionDialog
-                          divisionName={division.divisionName}
-                          divisionId={division.id}
-                          onDeleteSuccess={onDeleteSuccess}
-                        >
-                          <DropdownMenuItem
-                            className="text-red-600 flex items-center gap-2"
-                            onSelect={(e) => {
-                              e.preventDefault();
+                          <EditDivisionDialog
+                            division={{
+                              id: division.id,
+                              divisionName: division.divisionName,
+                              managedBy: division.managedBy,
                             }}
+                            managers={managers}
+                            allDepartments={allDepartments}
+                            currentDepartmentIds={allDepartments
+                              .filter((d) => d.divisionId === String(division.id))
+                              .map((d) => d.departmentId)}
+                            onEditSuccess={onEditSuccess}
                           >
-                            <Trash2 className="h-4 w-4" color="red" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DeleteDivisionDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            <DropdownMenuItem
+                              className="flex items-center gap-2"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          </EditDivisionDialog>
+                          <DeleteDivisionDialog
+                            divisionName={division.divisionName}
+                            divisionId={division.id}
+                            onDeleteSuccess={onDeleteSuccess}
+                          >
+                            <DropdownMenuItem
+                              className="text-red-600 flex items-center gap-2"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" color="red" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DeleteDivisionDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </TableCell>

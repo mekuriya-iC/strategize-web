@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 // import { useKPIMutations } from "@/hooks/useKPIMutations";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
 import type {
@@ -26,12 +26,14 @@ import type {
 } from "@/types/graphql";
 
 interface ObjectiveWithKPIsSubmitDialogProps {
-  children: React.ReactNode; // The trigger element (button)
+  children?: React.ReactNode;
   objectiveId: string;
   objectiveName: string;
-  objectiveType: ObjectiveType; // DIVISION, DEPARTMENT, PERSONNEL
-  associatedKPIs: Kpi[]; // KPIs belonging to this objective
+  objectiveType: ObjectiveType;
+  associatedKPIs: Kpi[];
   onSubmitSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function ObjectiveWithKPIsSubmitDialog({
@@ -41,8 +43,12 @@ export default function ObjectiveWithKPIsSubmitDialog({
   objectiveType,
   associatedKPIs,
   onSubmitSuccess,
+  open: externalOpen,
+  onOpenChange: setExternalOpen,
 }: ObjectiveWithKPIsSubmitDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen || setInternalOpen;
   const [reason, setReason] = useState("");
   const [selectedKPIs, setSelectedKPIs] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +61,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
   useEffect(() => {
     if (open) {
       const submittableKPIs = associatedKPIs
-        .filter((kpi) => kpi.status === "NOT_SUBMITTED")
+        .filter((kpi) => kpi.status === "NOT_SUBMITTED" || kpi.status === "REJECTED")
         .map((kpi) => kpi.kpiId);
       setSelectedKPIs(submittableKPIs);
     }
@@ -71,7 +77,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
 
   const handleSelectAllKPIs = () => {
     const submittableKPIs = associatedKPIs
-      .filter((kpi) => kpi.status === "NOT_SUBMITTED")
+      .filter((kpi) => kpi.status === "NOT_SUBMITTED" || kpi.status === "REJECTED")
       .map((kpi) => kpi.kpiId);
     setSelectedKPIs(submittableKPIs);
   };
@@ -116,7 +122,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
       return;
     }
 
-    // Validate selected KPI IDs
+    // Validate selected KPI IDs and Quarterly Split
     for (const kpiId of selectedKPIs) {
       if (!uuidRegex.test(kpiId)) {
         console.error("❌ Invalid KPI ID format:", kpiId);
@@ -125,12 +131,24 @@ export default function ObjectiveWithKPIsSubmitDialog({
       }
 
       // Check if KPI still exists in our list
-      const kpiExists = associatedKPIs.some((kpi) => kpi.kpiId === kpiId);
-      if (!kpiExists) {
+      const kpi = associatedKPIs.find((k) => k.kpiId === kpiId);
+      if (!kpi) {
         console.error("❌ KPI not found in associated KPIs:", kpiId);
         toast.error(
           "Selected KPI no longer exists. Please refresh and try again."
         );
+        return;
+      }
+
+      // VALIDATION: Quarterly Split Check
+      const targetTimelines = kpi.targets?.map(t => t.timeline.toUpperCase()) || [];
+      const hasQuarters = targetTimelines.some(tl => tl.includes("-Q1")) &&
+        targetTimelines.some(tl => tl.includes("-Q2")) &&
+        targetTimelines.some(tl => tl.includes("-Q3")) &&
+        targetTimelines.some(tl => tl.includes("-Q4"));
+
+      if (!hasQuarters) {
+        toast.error(`KPI "${kpi.name}" must have targets planned for all 4 quarters (Q1-Q4) before submission.`);
         return;
       }
     }
@@ -142,8 +160,8 @@ export default function ObjectiveWithKPIsSubmitDialog({
       objectiveType === "PERSONNEL"
         ? "PERSONNEL"
         : objectiveType === "DEPARTMENT"
-        ? "DEPARTMENT"
-        : "DIVISION"; // DIVISION -> DIVISION level
+          ? "DEPARTMENT"
+          : "DIVISION"; // DIVISION -> DIVISION level
 
     try {
       console.log("🚀 Objective + KPIs submission data:", {
@@ -264,8 +282,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
       // No need for additional status updates here
 
       toast.success(
-        `Objective and ${
-          successfulSubmissions.filter((s) => s.type === "kpi").length
+        `Objective and ${successfulSubmissions.filter((s) => s.type === "kpi").length
         } KPI(s) submitted successfully!`
       );
       setOpen(false);
@@ -300,9 +317,9 @@ export default function ObjectiveWithKPIsSubmitDialog({
     setReason(""); // Reset form on cancel
   };
 
-  // Get submittable KPIs (those with NOT_SUBMITTED status)
+  // Get submittable KPIs (those with NOT_SUBMITTED or REJECTED status)
   const submittableKPIs = associatedKPIs.filter(
-    (kpi) => kpi.status === "NOT_SUBMITTED"
+    (kpi) => kpi.status === "NOT_SUBMITTED" || kpi.status === "REJECTED"
   );
 
   return (

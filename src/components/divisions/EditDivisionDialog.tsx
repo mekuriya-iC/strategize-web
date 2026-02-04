@@ -17,8 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useQuery } from "@apollo/client";
-import { useDivisionMutations } from "@/hooks/useDivisionMutations";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { GET_DIVISION_BASIC } from "@/lib/graphql/queries/divisions";
 import type { GetDivisionResponse, DivisionQueryVariables } from "@/types/graphql";
 
@@ -217,24 +217,24 @@ const EditDivisionDialog: React.FC<EditDivisionDialogProps> = ({
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={
-                    divisionLoading 
-                      ? "Loading..." 
-                      : managers.length === 0 
+                    divisionLoading
+                      ? "Loading..."
+                      : managers.length === 0
                         ? divisionData?.division?.manager?.fullName || "No directors available"
                         : "Select Director"
                   } />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Show current manager from division data if not in managers list */}
-                  {divisionData?.division?.manager && 
-                   !managers.find(m => m.id === divisionData.division?.manager?.employeeId) && (
-                    <SelectItem
-                      key={divisionData.division.manager.employeeId}
-                      value={divisionData.division.manager.employeeId}
-                    >
-                      {divisionData.division.manager.fullName} (Current)
-                    </SelectItem>
-                  )}
+                  {divisionData?.division?.manager &&
+                    !managers.find(m => m.id === divisionData.division?.manager?.employeeId) && (
+                      <SelectItem
+                        key={divisionData.division.manager.employeeId}
+                        value={divisionData.division.manager.employeeId}
+                      >
+                        {divisionData.division.manager.fullName} (Current)
+                      </SelectItem>
+                    )}
                   {managers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
                       {manager.name}
@@ -301,10 +301,10 @@ const EditDivisionDialog: React.FC<EditDivisionDialogProps> = ({
                     {availableDepartments.filter(
                       (d) => !selectedDepartmentIds.includes(d.departmentId)
                     ).length === 0 && (
-                      <div className="p-2 text-sm text-gray-500">
-                        No more departments available
-                      </div>
-                    )}
+                        <div className="p-2 text-sm text-gray-500">
+                          No more departments available
+                        </div>
+                      )}
                   </SelectContent>
                 </Select>
               </div>

@@ -26,7 +26,7 @@ const transformDepartmentToTableData = (
   return {
     id: department.departmentId,
     departmentName: department.name,
-    createdBy: "System", // GraphQL doesn't provide createdBy info
+    createdBy: department.manager?.fullName || "System",
     createdOn: new Date(department.createdAt).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",

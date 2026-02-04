@@ -81,6 +81,13 @@ export const GET_ALL_SUBMISSIONS_NO_TYPE = gql`
           status
           assigneeId
           assigneeType
+          parent {
+            objectiveId
+            name
+            type
+            assigneeId
+            assigneeType
+          }
         }
         kpi {
           kpiId
@@ -96,6 +103,13 @@ export const GET_ALL_SUBMISSIONS_NO_TYPE = gql`
             type
             assigneeId
             assigneeType
+            parent {
+              objectiveId
+              name
+              type
+              assigneeId
+              assigneeType
+            }
           }
         }
         createdAt
@@ -133,6 +147,13 @@ export const GET_PENDING_SUBMISSIONS = gql`
           status
           assigneeId
           assigneeType
+          parent {
+            objectiveId
+            name
+            type
+            assigneeId
+            assigneeType
+          }
           kpis {
             kpiId
             name
@@ -141,6 +162,13 @@ export const GET_PENDING_SUBMISSIONS = gql`
             baseline
             assigneeId
             assigneeType
+            parent {
+              objectiveId
+              name
+              type
+              assigneeId
+              assigneeType
+            }
           }
         }
         kpi {
@@ -157,6 +185,13 @@ export const GET_PENDING_SUBMISSIONS = gql`
             type
             assigneeId
             assigneeType
+            parent {
+              objectiveId
+              name
+              type
+              assigneeId
+              assigneeType
+            }
           }
         }
         createdAt
@@ -201,6 +236,13 @@ export const GET_KPI_SUBMISSIONS = gql`
             type
             assigneeId
             assigneeType
+            parent {
+              objectiveId
+              name
+              type
+              assigneeId
+              assigneeType
+            }
           }
         }
         createdAt
@@ -241,6 +283,13 @@ export const GET_SUBMISSIONS_BY_STATUS = gql`
           status
           assigneeId
           assigneeType
+          parent {
+            objectiveId
+            name
+            type
+            assigneeId
+            assigneeType
+          }
         }
         kpi {
           kpiId
@@ -256,6 +305,13 @@ export const GET_SUBMISSIONS_BY_STATUS = gql`
             type
             assigneeId
             assigneeType
+            parent {
+              objectiveId
+              name
+              type
+              assigneeId
+              assigneeType
+            }
           }
         }
         createdAt

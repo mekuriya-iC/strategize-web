@@ -2,7 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ["storage.googleapis.com", "strategize-api.frontiertech.org"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "strategize-api.frontiertech.org",
+      },
+    ],
   },
   async rewrites() {
     return [

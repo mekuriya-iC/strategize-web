@@ -7,7 +7,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useDivisionMutations } from "@/hooks/useDivisionMutations";
+import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
 
 interface DeleteDivisionDialogProps {
   children: React.ReactNode;

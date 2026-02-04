@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { toast } from "sonner";
 
 type MessageType = "expired" | "logout" | "info" | null;
@@ -67,7 +67,7 @@ export default function LoginForm() {
       // Determine the type of error and show appropriate message
       const error = result?.error;
       const isNetworkError = result?.isNetworkError;
-      
+
       // Check for network errors
       if (isNetworkError || error?.networkError) {
         toast.error("Network error. Please check your internet connection and try again.");
@@ -81,7 +81,7 @@ export default function LoginForm() {
         toast.error("Login failed. Please check your credentials and try again.");
       } else {
         // Fallback for other errors
-      toast.error("Login failed. Please check your credentials and try again.");
+        toast.error("Login failed. Please check your credentials and try again.");
       }
     }
   };
@@ -100,11 +100,10 @@ export default function LoginForm() {
       {/* Auth Message */}
       {message.type && (
         <div
-          className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
-            message.type === "logout"
+          className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${message.type === "logout"
               ? "bg-green-50 border border-green-200"
               : "bg-amber-50 border border-amber-200"
-          }`}
+            }`}
         >
           {message.type === "logout" ? (
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -112,9 +111,8 @@ export default function LoginForm() {
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           )}
           <p
-            className={`text-sm ${
-              message.type === "logout" ? "text-green-800" : "text-amber-800"
-            }`}
+            className={`text-sm ${message.type === "logout" ? "text-green-800" : "text-amber-800"
+              }`}
           >
             {message.text}
           </p>

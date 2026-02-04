@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { useRouter } from "next/navigation";
-import { useStrategicPeriodMutations } from "@/hooks/useStrategicPeriodMutations";
+import { useStrategicPeriodMutations } from "@/hooks/objectives/useStrategicPeriodMutations";
 import { toast } from "sonner";
 import { useStrategicPeriodStore } from "@/stores";
 
@@ -74,7 +74,12 @@ export default function AddNewStrategyForm() {
             selected={date}
             onSelect={setDate}
             className="w-full rounded-md border"
-            disabled={(date) => date < new Date()}
+            disabled={(date) => {
+              const minDate = new Date(2000, 0, 1); // January 1, 2000
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); // Reset time part for accurate date comparison
+              return date < minDate || date > today;
+            }}
           />
         </div>
       </div>

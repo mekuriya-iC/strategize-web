@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import AddObjectiveButton from "./AddObjectiveButton";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 interface ObjectiveFilterBarProps {
   searchTerm: string;
@@ -31,6 +32,8 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
   showAddButton = true,
 }) => {
   const hasActiveFilters = searchTerm || statusFilter !== "all";
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   return (
     <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -79,7 +82,7 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
       </div>
 
       {/* Add Objective Button */}
-      {showAddButton && <AddObjectiveButton />}
+      {showAddButton && isAdmin && <AddObjectiveButton />}
     </div>
   );
 };

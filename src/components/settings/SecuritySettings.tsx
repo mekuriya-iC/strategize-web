@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuthStore } from "@/stores";
-import { useEmployeeMutations } from "@/hooks/useEmployeeMutations";
+import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -148,22 +148,20 @@ export default function SecuritySettings() {
                   {[1, 2, 3, 4, 5].map((level) => (
                     <div
                       key={level}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        level <= passwordStrength.strength
+                      className={`h-1 flex-1 rounded-full transition-colors ${level <= passwordStrength.strength
                           ? passwordStrength.color
                           : "bg-gray-200"
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>
                 <p
-                  className={`text-xs ${
-                    passwordStrength.strength <= 2
+                  className={`text-xs ${passwordStrength.strength <= 2
                       ? "text-red-600"
                       : passwordStrength.strength <= 3
-                      ? "text-yellow-600"
-                      : "text-green-600"
-                  }`}
+                        ? "text-yellow-600"
+                        : "text-green-600"
+                    }`}
                 >
                   {passwordStrength.label}
                 </p>

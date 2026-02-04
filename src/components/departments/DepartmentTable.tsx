@@ -31,7 +31,7 @@ import {
 import { DepartmentTableSkeleton } from "@/components/skeleton";
 import DeleteDepartmentDialog from "./DeleteDepartmentDialog";
 import EditDepartmentDialog from "./EditDepartmentDialog";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { toast } from "sonner";
 
 // Department interface matching the design
@@ -199,12 +199,12 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
           <TableRow className="bg-muted/60 hover:bg-muted/60">
             {/* Only show checkbox column for admins */}
             {!readOnly && (
-            <TableHead className="px-4 py-3 w-12">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={(checked) => handleSelectAll(!!checked)}
-              />
-            </TableHead>
+              <TableHead className="px-4 py-3 w-12">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                />
+              </TableHead>
             )}
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
               DEPARTMENT NAME
@@ -240,28 +240,27 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
             departmentsToShow.map((dept, idx) => (
               <TableRow
                 key={dept.id}
-                className={`border-b border-gray-100 ${
-                  selectedIds.has(dept.id)
-                    ? "bg-blue-50"
-                    : idx % 2 === 1
+                className={`border-b border-gray-100 ${selectedIds.has(dept.id)
+                  ? "bg-blue-50"
+                  : idx % 2 === 1
                     ? "bg-white"
                     : "bg-[#ECECFF]"
-                } hover:bg-gray-50 transition-colors cursor-pointer`}
+                  } hover:bg-gray-50 transition-colors cursor-pointer`}
                 onClick={() => router.push(`/dashboard/departments/${dept.id}`)}
               >
                 {/* Only show checkbox for admins */}
                 {!readOnly && (
-                <TableCell
-                  className="px-4 py-4 w-12"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={selectedIds.has(dept.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectOne(dept.id, !!checked)
-                    }
-                  />
-                </TableCell>
+                  <TableCell
+                    className="px-4 py-4 w-12"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(dept.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectOne(dept.id, !!checked)
+                      }
+                    />
+                  </TableCell>
                 )}
                 <TableCell className="px-6 py-4 font-medium text-gray-900">
                   {dept.departmentName}
@@ -298,59 +297,59 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
                     </Button>
                     {/* Only show edit/delete actions for admins */}
                     {!readOnly && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-orange-50"
-                          onClick={onAddDepartment}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Department
-                        </DropdownMenuItem>
-                        <EditDepartmentDialog
-                          department={{
-                            id: dept.id,
-                            departmentName: dept.departmentName,
-                            managedBy: dept.managedBy,
-                            division: dept.division,
-                            members: dept.members,
-                          }}
-                          managers={managers || []}
-                          divisions={divisions || []}
-                          allMembers={allMembers || []}
-                          onEditSuccess={onEditSuccess}
-                        >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                            }}
+                            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-orange-50"
+                            onClick={onAddDepartment}
                           >
-                            <Edit className="h-4 w-4" />
-                            Edit
+                            <Plus className="h-4 w-4" />
+                            Add Department
                           </DropdownMenuItem>
-                        </EditDepartmentDialog>
-                        <DeleteDepartmentDialog
-                          departmentName={dept.departmentName}
-                          departmentId={dept.id}
-                          onDeleteSuccess={onDeleteSuccess}
-                        >
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onSelect={(e) => {
-                              e.preventDefault();
+                          <EditDepartmentDialog
+                            department={{
+                              id: dept.id,
+                              departmentName: dept.departmentName,
+                              managedBy: dept.managedBy,
+                              division: dept.division,
+                              members: dept.members,
                             }}
+                            managers={managers || []}
+                            divisions={divisions || []}
+                            allMembers={allMembers || []}
+                            onEditSuccess={onEditSuccess}
                           >
-                            <Trash2 className="h-4 w-4" color="red" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DeleteDepartmentDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          </EditDepartmentDialog>
+                          <DeleteDepartmentDialog
+                            departmentName={dept.departmentName}
+                            departmentId={dept.id}
+                            onDeleteSuccess={onDeleteSuccess}
+                          >
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" color="red" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DeleteDepartmentDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </TableCell>

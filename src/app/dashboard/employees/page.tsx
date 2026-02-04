@@ -11,10 +11,11 @@ import EmployeePagination from "@/components/employees/EmployeePagination";
 import AddDepartmentDialog from "@/components/departments/AddDepartmentDialog";
 import { Plus } from "lucide-react";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
-import { usePermissions } from "@/hooks/usePermissions";
+import { GET_DIVISIONS, GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
+import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { AccessDenied } from "@/components/auth/RequirePermission";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { useRouter } from "next/navigation";
 import {
   PaginatedDivisions,
@@ -41,8 +42,12 @@ const EmployeesPage = () => {
   const [departmentMembers, setDepartmentMembers] = useState<string[]>([]);
 
   // Use new RBAC system
-  const { employees: employeePermissions, isLoading: permissionsLoading } = usePermissions();
+  const { employees: employeePermissions, isLoading: permissionsLoading, guards, scope } = usePermissions();
 
+  const isManagement = guards.isDirector || guards.isManager;
+  const isAdmin = guards.isAdmin || guards.isSuperAdmin;
+
+  // Global query - Skip for non-admins as the backend restricts it to ADMIN/SUPER_ADMIN
   const { data, loading, error } = useQuery(GET_EMPLOYEES, {
     variables: {
       page: currentPage,
@@ -50,7 +55,20 @@ const EmployeesPage = () => {
       search: searchTerm || undefined,
     },
     errorPolicy: "all",
-    skip: !employeePermissions.canView(), // Don't fetch if no permission
+    skip: !isAdmin || !employeePermissions.canView(),
+  });
+
+  // Scoped queries for Directors/Managers
+  const { data: scopedDivisionData, loading: divisionLoading } = useQuery(GET_DIVISION_SAFE, {
+    variables: { divisionId: scope?.managedDivisionIds[0] },
+    skip: !guards.isDirector || !scope?.managedDivisionIds?.[0],
+    fetchPolicy: "cache-and-network",
+  });
+
+  const { data: scopedDepartmentData, loading: departmentLoading } = useQuery(GET_DEPARTMENT_SAFE, {
+    variables: { departmentId: scope?.managedDepartmentIds[0] },
+    skip: !guards.isManager || !scope?.managedDepartmentIds?.[0],
+    fetchPolicy: "cache-and-network",
   });
 
   // Fetch divisions for department creation
@@ -58,6 +76,7 @@ const EmployeesPage = () => {
     GET_DIVISIONS,
     {
       variables: { page: 1, limit: 100 },
+      skip: !isAdmin,
     }
   );
 
@@ -65,22 +84,57 @@ const EmployeesPage = () => {
   const { createDepartment, loading: departmentMutationLoading } =
     useDepartmentMutations();
 
-  const employees = data?.employees?.items || [];
-  const meta = data?.employees?.meta;
-  const totalPages = meta?.totalPages || 1;
-  const totalItems = meta?.totalItems || 0;
+  // Determine source of employees
+  const rawEmployees = React.useMemo(() => {
+    // Admin/SuperAdmin - Global list from direct query
+    if (isAdmin) {
+      return data?.employees?.items || [];
+    }
 
-  // Apply client-side filtering for status and sorting (search is handled server-side)
-  const filteredEmployees = employees
-    .filter(
-      (employee: {
-        fullName?: string;
-        email?: string;
-        phoneNumber?: string;
-        role?: string;
-        status?: string;
-      }) => {
-        // Status filter (client-side since it's not in the GraphQL schema)
+    // Directors - Aggregate from all departments in their managed division
+    if (guards.isDirector) {
+      const departments = scopedDivisionData?.division?.departments || [];
+      const allDivisionEmployees: any[] = [];
+      const seenIds = new Set();
+
+      departments.forEach((dept: any) => {
+        dept.employees?.forEach((emp: any) => {
+          if (!seenIds.has(emp.employeeId)) {
+            seenIds.add(emp.employeeId);
+            allDivisionEmployees.push(emp);
+          }
+        });
+      });
+      return allDivisionEmployees;
+    }
+
+    // Managers - Use employees from their managed department
+    if (guards.isManager) {
+      return scopedDepartmentData?.department?.employees || [];
+    }
+
+    return [];
+  }, [isAdmin, guards, data, scopedDivisionData, scopedDepartmentData]);
+
+  const meta = data?.employees?.meta;
+  const totalPages = isAdmin ? (meta?.totalPages || 1) : 1;
+  const totalItems = isAdmin ? (meta?.totalItems || 0) : rawEmployees.length;
+
+  // Apply client-side filtering for status, search (for scoped data), and sorting
+  const filteredEmployees = React.useMemo(() => {
+    let items = [...rawEmployees];
+
+    // Local search for non-admins (since scoped query doesn't support search natively in this shape)
+    if (!isAdmin && searchTerm) {
+      items = items.filter((emp: any) =>
+        emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return items
+      .filter((employee: any) => {
+        // Status filter
         const matchesStatus =
           filterStatus === "all" ||
           (filterStatus === "active" && employee.status === "ACTIVE") ||
@@ -88,39 +142,14 @@ const EmployeesPage = () => {
             (employee.status === "INACTIVE" || employee.status === "DISABLED"));
 
         return matchesStatus;
-      }
-    )
-    .sort(
-      (
-        a: {
-          fullName?: string;
-          email?: string;
-          phoneNumber?: string;
-          role?: string;
-          status?: string;
-        },
-        b: {
-          fullName?: string;
-          email?: string;
-          phoneNumber?: string;
-          role?: string;
-          status?: string;
-        }
-      ) => {
+      })
+      .sort((a: any, b: any) => {
         if (sortOrder === "none") return 0;
-
         const nameA = a.fullName?.toLowerCase() || "";
         const nameB = b.fullName?.toLowerCase() || "";
-
-        if (sortOrder === "asc") {
-          return nameA.localeCompare(nameB);
-        } else if (sortOrder === "desc") {
-          return nameB.localeCompare(nameA);
-        }
-
-        return 0;
-      }
-    );
+        return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      });
+  }, [rawEmployees, isAdmin, searchTerm, filterStatus, sortOrder]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -178,15 +207,14 @@ const EmployeesPage = () => {
 
   // Get managers (employees with MANAGER role only)
   const managers =
-    employees?.filter(
+    rawEmployees?.filter(
       (emp: { role?: string }) => emp.role === EmployeeRole.MANAGER
     ) || [];
 
-  // Permission checks using new RBAC
-  const canAddEmployee = employeePermissions.canCreate();
+  const isLoading = isAdmin ? loading : (divisionLoading || departmentLoading);
 
-  // Show loading while checking permissions
-  if (permissionsLoading) {
+  // Show loading while checking permissions or fetching scoped data
+  if (permissionsLoading || (isManagement && isLoading)) {
     return (
       <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
         <div className="animate-pulse">
@@ -207,7 +235,7 @@ const EmployeesPage = () => {
     return (
       <AccessDenied
         title="Access Denied"
-        message="You do not have permission to view employees. This area is restricted to administrators only."
+        message="You do not have permission to view employees."
         action={
           <Button
             variant="outline"
@@ -220,23 +248,25 @@ const EmployeesPage = () => {
     );
   }
 
+  const canAddEmployee = employeePermissions.canCreate();
+
   return (
     <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
       {/* Header and Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-        <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
-          Employees
-        </h1>
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+            Employees
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Manage your organization&apos;s employees
+            {isAdmin ? "Manage organization-wide employees" : guards.isDirector ? "Manage employees in your division" : "Manage employees in your department"}
           </p>
         </div>
       </div>
 
       {/* Only show filter bar and actions when there's data or loading */}
       {/* Always show search and filter controls, except when there are truly no employees */}
-      {!(employees.length === 0 && !searchTerm && !loading && !error) && (
+      {!(filteredEmployees.length === 0 && !searchTerm && !loading && !error) && (
         <>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <EmployeeFilterBar
@@ -288,7 +318,7 @@ const EmployeesPage = () => {
           {(searchTerm || filterStatus !== "all" || sortOrder !== "none") && (
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>
-                Showing {filteredEmployees.length} of {employees.length}{" "}
+                Showing {filteredEmployees.length} of {rawEmployees.length}{" "}
                 employees
                 {searchTerm && (
                   <span className="ml-1">
@@ -312,7 +342,7 @@ const EmployeesPage = () => {
       )}
 
       {/* Empty State or Table */}
-      {!loading && !error && employees.length === 0 && !searchTerm ? (
+      {!loading && !error && rawEmployees.length === 0 && !searchTerm ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
           <Image
             src="/images/dashboard/objective-empty.png"
@@ -322,18 +352,32 @@ const EmployeesPage = () => {
             className="mb-12"
             priority
           />
-          <h2 className="text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-4 max-w-xl">
-            It seems you don&apos;t have added any employees yet
-          </h2>
-          <p className="text-[#BABABA] dark:text-gray-400 mb-8 md:mb-12 text-lg max-w-sm">
-            Start building your team by adding employees.
-          </p>
-          {canAddEmployee && (
-            <AddEmployeeDialog>
-              <Button className="px-6 py-3 text-base bg-[#3838EC] hover:bg-[#3838EC]/90 text-white rounded-md font-medium transition-colors cursor-pointer">
-                <Plus className="w-4 h-4 mr-1" /> Add Employee
-              </Button>
-            </AddEmployeeDialog>
+          {rawEmployees.length === 0 && !loading && !isAdmin && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold text-amber-600 dark:text-amber-400 mb-4 max-w-xl">
+                No Employees Found
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md text-lg">
+                You might not have any employees assigned to your {guards.isDirector ? "division" : "department"} yet.
+              </p>
+            </div>
+          )}
+          {isAdmin && (
+            <>
+              <h2 className="text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-4 max-w-xl">
+                It seems you don&apos;t have added any employees yet
+              </h2>
+              <p className="text-[#BABABA] dark:text-gray-400 mb-8 md:mb-12 text-lg max-w-sm">
+                Start building your team by adding employees.
+              </p>
+              {canAddEmployee && (
+                <AddEmployeeDialog>
+                  <Button className="px-6 py-3 text-base bg-[#3838EC] hover:bg-[#3838EC]/90 text-white rounded-md font-medium transition-colors cursor-pointer">
+                    <Plus className="w-4 h-4 mr-1" /> Add Employee
+                  </Button>
+                </AddEmployeeDialog>
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -384,7 +428,7 @@ const EmployeesPage = () => {
           divisionId: d.divisionId,
           name: d.name,
         }))}
-        allMembers={employees.filter(
+        allMembers={rawEmployees.filter(
           (emp: { role?: string }) => emp.role === EmployeeRole.NORMAL
         )}
         onSubmit={handleSubmitDepartment}

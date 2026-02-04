@@ -10,9 +10,9 @@ import {
   Users,
   Filter,
 } from "lucide-react";
-import { useAnalytics } from "@/hooks/useAnalytics";
-import { useAuthStore, useOrgUnitStore } from "@/stores";
-import { useUserDepartments } from "@/hooks/useUserDepartments";
+import { useAnalytics } from "@/hooks/objectives/useAnalytics";
+import { useAuthStore, useOrgUnitStore, useStrategicPeriodStore } from "@/stores";
+import { useUserDepartments } from "@/hooks/org-structure/useUserDepartments";
 import { useDepartmentSelection } from "@/context/DepartmentSelectionContext";
 
 interface AnalyticsData {
@@ -32,20 +32,23 @@ export default function AnalyticsSummary() {
   const { departmentNames } = useUserDepartments();
   const { selected: selectedDepartment } = useDepartmentSelection();
 
+  const { annualTimeline } = useStrategicPeriodStore();
+
   // Normalize selected unit shape for analytics hook
   // Directors and Managers both need filtered analytics based on their selected unit
   const roleSelectedUnit =
     (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
       ? {
-          id: selectedUnit.id,
-          type: selectedUnit.type,
-        }
+        id: selectedUnit.id,
+        type: selectedUnit.type,
+      }
       : null;
 
   // Use the analytics hook with selected unit context and user role
   const analytics = useAnalytics({
     selectedUnit: roleSelectedUnit,
     userRole: user?.role,
+    annualTimeline,
   });
 
   // Build analytics data based on context
@@ -73,9 +76,35 @@ export default function AnalyticsSummary() {
       },
     ];
 
-    // For directors, managers and employees, show only objectives and KPIs (they don't have access to other data)
-    if (user?.role === "DIRECTOR" || user?.role === "MANAGER" || user?.role === "NORMAL") {
-      return baseData; // Only show Objectives and KPIs for these roles
+    // For directors, show Departments in their division
+    if (user?.role === "DIRECTOR") {
+      baseData.push({
+        title: "Departments",
+        value: analytics.departmentsCount,
+        change: analytics.departmentsGrowth,
+        isPositive: true,
+        icon: <Building2 size={20} />,
+        href: "/dashboard/departments",
+        loading: analytics.departmentsLoading,
+      });
+    }
+
+    // For managers and directors, show Employees
+    if (user?.role === "MANAGER" || user?.role === "DIRECTOR") {
+      baseData.push({
+        title: "Employees",
+        value: analytics.employeesCount,
+        change: analytics.employeesGrowth,
+        isPositive: true,
+        icon: <Users size={20} />,
+        href: "/dashboard/employees",
+        loading: analytics.employeesLoading,
+      });
+    }
+
+    const roleIsHigher = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+    if (!roleIsHigher) {
+      return baseData;
     }
 
     // Default view (corporate level)
@@ -201,12 +230,12 @@ export default function AnalyticsSummary() {
               </p>
               {(selectedDepartment?.department ||
                 departmentNames.length > 0) && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Department:{" "}
-                  {selectedDepartment?.department?.name ||
-                    departmentNames.join(", ")}
-                </p>
-              )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Department:{" "}
+                    {selectedDepartment?.department?.name ||
+                      departmentNames.join(", ")}
+                  </p>
+                )}
             </div>
           )}
         </div>

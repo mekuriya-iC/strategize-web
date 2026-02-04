@@ -91,7 +91,7 @@ export const getAssignmentMethodDescription = (kpi: Kpi): string => {
   if (kpiType === "SUMMABLE") {
     return "Split the parent target among assignees (sum must equal parent target)";
   } else {
-    return "Assign the full target to each assignee (same target for all)";
+    return "The average of all assignee targets must equal the parent target";
   }
 };
 

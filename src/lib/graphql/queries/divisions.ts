@@ -13,10 +13,6 @@ export const GET_DIVISIONS = gql`
           email
           role
         }
-        departments {
-          departmentId
-          name
-        }
         createdAt
         updatedAt
       }
@@ -45,21 +41,12 @@ export const GET_DIVISION = gql`
         phoneNumber
         picture
       }
-      departments {
-        departmentId
-        name
-        manager {
-          employeeId
-          fullName
-          email
+        departments {
+          departmentId
+          name
+          createdAt
+          updatedAt
         }
-        employees {
-          employeeId
-          fullName
-        }
-        createdAt
-        updatedAt
-      }
       createdAt
       updatedAt
     }
@@ -79,6 +66,34 @@ export const GET_DIVISION_BASIC = gql`
         role
         phoneNumber
         picture
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+// Safe query for division data without problematic manager fields in departments
+export const GET_DIVISION_SAFE = gql`
+  query GetDivisionSafe($divisionId: ID!) {
+    division(divisionId: $divisionId) {
+      divisionId
+      name
+      departments {
+        departmentId
+        name
+        createdAt
+        updatedAt
+        employees {
+          employeeId
+          fullName
+          email
+          role
+          status
+          phoneNumber
+          picture
+          title
+          startDate
+        }
       }
       createdAt
       updatedAt

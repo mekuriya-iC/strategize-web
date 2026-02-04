@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useSubmissions } from "@/hooks/useSubmissions";
+import { useSubmissions } from "@/hooks/submissions/useSubmissions";
 import SubmissionStatusBadge from "./SubmissionStatusBadge";
 import { format } from "date-fns";
 import { Clock, User } from "lucide-react";

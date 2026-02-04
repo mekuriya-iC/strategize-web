@@ -65,6 +65,17 @@ export const useSubmissionQueries = ({
     skip: !shouldFetch,
   });
 
+  // Query for PERSONNEL type objectives
+  const {
+    data: personnelObjData,
+    loading: personnelObjLoading,
+    refetch: personnelObjRefetch,
+  } = useQuery(GET_PENDING_SUBMISSIONS, {
+    variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+    fetchPolicy: "cache-and-network",
+    skip: !shouldFetch,
+  });
+
   // Query for KPI submissions - CORPORATE
   const {
     data: corporateKpiData,
@@ -98,11 +109,23 @@ export const useSubmissionQueries = ({
     skip: !shouldFetch,
   });
 
+  // Query for KPI submissions - PERSONNEL
+  const {
+    data: personnelKpiData,
+    loading: personnelKpiLoading,
+    refetch: personnelKpiRefetch,
+  } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+    fetchPolicy: "cache-and-network",
+    skip: !shouldFetch,
+  });
+
   // Combine all objective submissions
   const objectiveSubmissions: MinimalSubmission[] = [
     ...((corporateObjData?.submissions?.items as MinimalSubmission[]) || []),
     ...((divisionObjData?.submissions?.items as MinimalSubmission[]) || []),
     ...((departmentObjData?.submissions?.items as MinimalSubmission[]) || []),
+    ...((personnelObjData?.submissions?.items as MinimalSubmission[]) || []),
   ];
 
   // Combine all KPI submissions
@@ -110,6 +133,7 @@ export const useSubmissionQueries = ({
     ...((corporateKpiData?.submissions?.items as MinimalSubmission[]) || []),
     ...((divisionKpiData?.submissions?.items as MinimalSubmission[]) || []),
     ...((departmentKpiData?.submissions?.items as MinimalSubmission[]) || []),
+    ...((personnelKpiData?.submissions?.items as MinimalSubmission[]) || []),
   ];
 
   // Combine and deduplicate
@@ -122,18 +146,23 @@ export const useSubmissionQueries = ({
     corporateObjLoading ||
     divisionObjLoading ||
     departmentObjLoading ||
+    personnelObjLoading ||
     corporateKpiLoading ||
     divisionKpiLoading ||
-    departmentKpiLoading;
+    departmentKpiLoading ||
+    personnelKpiLoading;
 
   const refetch = () => {
     corporateObjRefetch();
     divisionObjRefetch();
     departmentObjRefetch();
+    personnelObjRefetch();
     corporateKpiRefetch();
     divisionKpiRefetch();
     departmentKpiRefetch();
+    personnelKpiRefetch();
   };
+
 
   return {
     submissions: allSubmissions,

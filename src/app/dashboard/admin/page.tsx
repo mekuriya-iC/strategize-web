@@ -6,7 +6,7 @@ import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { AdminAnalyticsCards, AdminTable } from "@/components/admin";
 import { Employee } from "@/types/graphql";
 import { useRouter } from "next/navigation";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { AccessDenied } from "@/components/auth/RequirePermission";
 import {
   DropdownMenu,

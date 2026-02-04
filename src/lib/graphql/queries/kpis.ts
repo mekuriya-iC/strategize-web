@@ -24,6 +24,14 @@ export const GET_KPIS = gql`
           name
           type
           status
+          assigneeId
+          assigneeType
+          kpis {
+            kpiId
+            name
+            weight
+            status
+          }
         }
         createdAt
         updatedAt
@@ -62,7 +70,15 @@ export const GET_KPI = gql`
         name
         type
         status
-      }
+        assigneeId
+        assigneeType
+          kpis {
+            kpiId
+            name
+            weight
+            status
+          }
+        }
       createdAt
       updatedAt
     }

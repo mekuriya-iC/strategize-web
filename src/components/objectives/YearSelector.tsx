@@ -19,6 +19,12 @@ function buildYearRanges(period: StrategicPeriod): string[] {
   const startYear = new Date(period.startDate).getFullYear();
   const endYear = new Date(period.endDate).getFullYear();
   const years: string[] = [];
+
+  // Handle single year periods (e.g., 2025-01-01 to 2025-12-31)
+  if (startYear === endYear) {
+    return [startYear.toString()];
+  }
+
   for (let y = startYear; y < endYear; y += 1) {
     const next = (y + 1).toString().slice(-2);
     years.push(`${y}/${next}`);

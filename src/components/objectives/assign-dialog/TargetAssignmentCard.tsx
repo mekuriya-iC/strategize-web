@@ -22,33 +22,89 @@ interface Assignment {
   kpis: string[];
 }
 
-interface TargetAssignmentCardProps {
-  selectedKPIs: string[];
-  kpis: Kpi[];
-  assignments: Assignment[];
-  bulkAssignmentValues: Record<string, number>;
-  onBulkAssignmentValueChange: (kpiId: string, value: number) => void;
-  onBulkAssignment: (kpiId: string, value: number) => void;
-  getTargetAssignment: (kpiId: string, assigneeId: string) => number | null;
-  getTotalAssignedTarget: (kpiId: string) => number;
-  getYearlyTotalFromTargets: (targets: Array<{ timeline: string; target: number }>) => number;
-  updateTargetAssignment: (kpiId: string, assigneeId: string, value: number, kpi: Kpi) => void;
-  getAssigneeDetails: (assigneeId: string, type: "DIVISION" | "DEPARTMENT" | "PERSONNEL") => Division | Department | Employee | null | undefined;
-}
+import { useAssignmentContext } from "@/context/AssignmentContext";
+import { useAssignmentData } from "@/hooks/objectives/useAssignmentData";
 
-export function TargetAssignmentCard({
-  selectedKPIs,
-  kpis,
-  assignments,
-  bulkAssignmentValues,
-  onBulkAssignmentValueChange,
-  onBulkAssignment,
-  getTargetAssignment,
-  getTotalAssignedTarget,
-  getYearlyTotalFromTargets,
-  updateTargetAssignment,
-  getAssigneeDetails,
-}: TargetAssignmentCardProps) {
+export function TargetAssignmentCard() {
+  const {
+    availableKPIs: kpis,
+    selectedKPIs,
+    assignments,
+    bulkAssignmentValues,
+    setBulkAssignmentValue,
+    targets, // We use this to lookup current values
+    setTarget, // Replaces updateTargetAssignment
+  } = useAssignmentContext();
+
+  const { items } = useAssignmentData();
+
+  // Helper to get assignee details from the items list
+  const getAssigneeDetails = (assigneeId: string) => {
+    // items is typed broadly, we just need to find by ID
+    // We assume items contains the relevant listing for the current view, 
+    // BUT wait: assignments might contain items NOT in the current "items" view (if search changed)
+    // The previous implementation fetched details via a prop function that looked up in the full lists.
+    // In our new architecture, `useAssignmentData` returns the current search results.
+    // However, `assignments` stores the assigneeName directly! We should use that.
+    return null; // Not needed if we use assigneeName from assignment
+  };
+
+  // Helper: Get yearly total from targets
+  const getYearlyTotalFromTargets = (targets: Array<{ timeline: string; target: number }>): number => {
+    if (!targets || targets.length === 0) return 0;
+    const targetsByYear = new Map<string, number>();
+    targets.forEach((target) => {
+      const year = target.timeline.split("-")[0];
+      const currentTotal = targetsByYear.get(year) || 0;
+      targetsByYear.set(year, currentTotal + target.target);
+    });
+    const yearlyTotals = Array.from(targetsByYear.values());
+    const total = yearlyTotals.reduce((sum, total) => sum + total, 0);
+    return Math.round(total * 100) / 100;
+  };
+
+  // Helper: Get total assigned target for a KPI
+  const getTotalAssignedTarget = (kpiId: string) => {
+    let total = 0;
+    assignments.forEach((assignment) => {
+      const val = targets[kpiId]?.[assignment.assigneeId] || 0;
+      total += val;
+    });
+    return roundValue(total);
+  };
+
+  // Helper: Get average assigned target for a KPI
+  const getAverageAssignedTarget = (kpiId: string) => {
+    if (assignments.length === 0) return 0;
+    const total = getTotalAssignedTarget(kpiId);
+    return roundValue(total / assignments.length);
+  };
+
+  // Helper: Get current assignment value
+  const getTargetAssignment = (kpiId: string, assigneeId: string) => {
+    return targets[kpiId]?.[assigneeId] || 0;
+  };
+
+  const handleBulkAssignment = (kpiId: string, value: number) => {
+    assignments.forEach((assignment) => {
+      setTarget(kpiId, assignment.assigneeId, value);
+    });
+  };
+
+  const handleAutoSplit = (kpiId: string, parentTarget: number) => {
+    if (assignments.length === 0) return;
+    const splitValue = roundValue(parentTarget / assignments.length);
+    assignments.forEach((assignment, index) => {
+      if (index === assignments.length - 1) {
+        // Last one gets the remainder to ensure exact sum matching
+        const valueForLast = roundValue(parentTarget - (splitValue * (assignments.length - 1)));
+        setTarget(kpiId, assignment.assigneeId, valueForLast);
+      } else {
+        setTarget(kpiId, assignment.assigneeId, splitValue);
+      }
+    });
+  };
+
   if (selectedKPIs.length === 0 || assignments.length === 0) {
     return null;
   }
@@ -85,46 +141,65 @@ export function TargetAssignmentCard({
                     Parent Target: {parentTarget} {unitLabel}
                   </p>
                   {kpiType === "SUMMABLE" && (
-                    <p
-                      className={`text-sm ${
-                        totalAssigned === parentTarget
+                    <div className="flex flex-col items-end gap-1">
+                      <p
+                        className={`text-sm ${totalAssigned === parentTarget
                           ? "text-green-600"
                           : "text-red-600"
-                      }`}
-                    >
-                      Total Assigned: {totalAssigned} {unitLabel}
-                    </p>
-                  )}
-                  {kpiType === "PERCENTAGE" && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder={parentTarget.toString()}
-                        value={bulkAssignmentValues[kpiId] || ""}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
-                          onBulkAssignmentValueChange(kpiId, value);
-                        }}
-                        className="w-20 text-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            const value = bulkAssignmentValues[kpiId] || parentTarget;
-                            onBulkAssignment(kpiId, value);
-                          }
-                        }}
-                      />
+                          }`}
+                      >
+                        Total Assigned: {totalAssigned} {unitLabel}
+                      </p>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          const value = bulkAssignmentValues[kpiId] || parentTarget;
-                          onBulkAssignment(kpiId, value);
-                        }}
-                        className="text-xs"
+                        onClick={() => handleAutoSplit(kpiId, parentTarget)}
+                        className="text-xs mt-1"
                       >
-                        Bulk Assign
+                        Auto Split
                       </Button>
+                    </div>
+                  )}
+                  {kpiType === "PERCENTAGE" && (
+                    <div className="flex flex-col items-end gap-1">
+                      <p
+                        className={`text-sm ${getAverageAssignedTarget(kpiId) === parentTarget
+                          ? "text-green-600"
+                          : "text-red-600"
+                          }`}
+                      >
+                        Average Assigned: {getAverageAssignedTarget(kpiId)} {unitLabel}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder={parentTarget.toString()}
+                          value={bulkAssignmentValues[kpiId] || ""}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            setBulkAssignmentValue(kpiId, value);
+                          }}
+                          className="w-20 text-sm h-8"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const value = bulkAssignmentValues[kpiId] || parentTarget;
+                              handleBulkAssignment(kpiId, value);
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const value = bulkAssignmentValues[kpiId] || parentTarget;
+                            handleBulkAssignment(kpiId, value);
+                          }}
+                          className="h-8 text-xs"
+                        >
+                          Bulk Assign
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -132,14 +207,7 @@ export function TargetAssignmentCard({
 
               <div className="grid gap-3">
                 {assignments.map((assignment) => {
-                  const assignee = getAssigneeDetails(
-                    assignment.assigneeId,
-                    assignment.assigneeType
-                  );
-                  const assigneeName =
-                    assignment.assigneeType === "PERSONNEL"
-                      ? (assignee as Employee)?.fullName || ""
-                      : (assignee as Division | Department)?.name || "";
+                  const assigneeName = assignment.assigneeName;
 
                   const currentTarget =
                     getTargetAssignment(kpiId, assignment.assigneeId) || 0;
@@ -159,14 +227,13 @@ export function TargetAssignmentCard({
                           value={currentTarget === 0 ? "" : currentTarget.toString()}
                           onChange={(e) => {
                             const newTarget = parseFloat(e.target.value) || 0;
-                            updateTargetAssignment(
+                            setTarget(
                               kpiId,
                               assignment.assigneeId,
-                              newTarget,
-                              kpi
+                              newTarget
                             );
                           }}
-                          className="w-24"
+                          className="w-24 h-9"
                           placeholder="0"
                         />
                         <span className="text-sm text-gray-600">{unitLabel}</span>
@@ -178,11 +245,10 @@ export function TargetAssignmentCard({
 
               {kpiType === "SUMMABLE" && (
                 <div
-                  className={`flex items-center gap-2 p-2 rounded ${
-                    totalAssigned === parentTarget
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`flex items-center gap-2 p-2 rounded ${totalAssigned === parentTarget
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {totalAssigned === parentTarget ? (
                     <CheckCircle className="w-4 h-4" />
@@ -191,8 +257,28 @@ export function TargetAssignmentCard({
                   )}
                   <span className="text-sm">
                     {totalAssigned === parentTarget
-                      ? "Target allocation is valid"
-                      : `Target allocation must equal ${parentTarget} ${unitLabel}`}
+                      ? "Target allocation matches parent goal"
+                      : `Total assigned (${totalAssigned}) must be exactly ${parentTarget} ${unitLabel}`}
+                  </span>
+                </div>
+              )}
+
+              {kpiType === "PERCENTAGE" && (
+                <div
+                  className={`flex items-center gap-2 p-2 rounded ${getAverageAssignedTarget(kpiId) === parentTarget
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
+                >
+                  {getAverageAssignedTarget(kpiId) === parentTarget ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">
+                    {getAverageAssignedTarget(kpiId) === parentTarget
+                      ? "Average target matches parent goal"
+                      : `Average assigned (${getAverageAssignedTarget(kpiId)}) must follow parent goal ${parentTarget} ${unitLabel}`}
                   </span>
                 </div>
               )}

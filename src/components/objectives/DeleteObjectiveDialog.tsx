@@ -10,13 +10,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
+import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
 
 interface DeleteObjectiveDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   objectiveName?: string;
   objectiveId?: string;
   onDeleteSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const DeleteObjectiveDialog: React.FC<DeleteObjectiveDialogProps> = ({
@@ -24,8 +26,12 @@ const DeleteObjectiveDialog: React.FC<DeleteObjectiveDialogProps> = ({
   objectiveName = "this objective",
   objectiveId,
   onDeleteSuccess,
+  open: externalOpen,
+  onOpenChange: setExternalOpen,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen || setInternalOpen;
   const { removeObjective, loading } = useObjectiveMutations();
 
   const handleDelete = async () => {

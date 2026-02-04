@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores";
-import { useEmployeeMutations } from "@/hooks/useEmployeeMutations";
+import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ export default function ProfileSettings() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const { updateEmployee, updateLoading } = useEmployeeMutations();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || "",

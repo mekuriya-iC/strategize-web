@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@apollo/client";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import type { PaginatedDepartments, Department } from "@/types/graphql";
 import { Building2, AlertCircle, Info } from "lucide-react";
 import { toast } from "sonner";

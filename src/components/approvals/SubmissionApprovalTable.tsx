@@ -10,6 +10,8 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
+  Target,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,7 +30,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApproveSubmissionDialog from "./ApproveSubmissionDialog";
 import RejectSubmissionDialog from "./RejectSubmissionDialog";
-// import ApproveObjectiveWithKPIsDialog from "./ApproveObjectiveWithKPIsDialog";
+import ApproveObjectiveWithKPIsDialog from "./ApproveObjectiveWithKPIsDialog";
+import DivisionLevelApprovalDialog from "./DivisionLevelApprovalDialog";
 import { Kpi } from "@/types/graphql";
 import { useAuthStore } from "@/stores";
 
@@ -96,7 +99,7 @@ interface SubmissionApprovalTableProps {
   submissions: GroupedSubmission[];
   selected: string[];
   onSelect: (submissionId: string) => void;
-  onApproveSubmission: (submissionId: string, reason: string) => Promise<void>;
+  onApproveSubmission: (submissionId: string, reason: string, selectedKPIs?: string[]) => Promise<void>;
   onRejectSubmission: (submissionId: string, reason: string) => Promise<void>;
   loading?: boolean;
   error?: string;
@@ -154,6 +157,10 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
     } else if (activeTab === "department") {
       return submissions.filter(
         (submission) => submission.level === "DEPARTMENT"
+      );
+    } else if (activeTab === "personnel") {
+      return submissions.filter(
+        (submission) => submission.level === "PERSONNEL"
       );
     }
 
@@ -389,22 +396,26 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   };
 
   // Calculate if all objective submissions are selected
+  const selectableSubmissions = objectiveSubmissions.filter(
+    (obj) => obj.level !== "DIVISION" || obj.status !== "PENDING"
+  );
+
   const allSelected =
-    objectiveSubmissions.length > 0 &&
-    objectiveSubmissions.every((obj) => selected.includes(obj.submissionId));
+    selectableSubmissions.length > 0 &&
+    selectableSubmissions.every((obj) => selected.includes(obj.submissionId));
 
   // Custom onSelectAll handler for filtered submissions
   const handleSelectAll = () => {
     if (allSelected) {
-      // Deselect all filtered submissions
-      objectiveSubmissions.forEach((obj) => {
+      // Deselect all selectable submissions
+      selectableSubmissions.forEach((obj) => {
         if (selected.includes(obj.submissionId)) {
           onSelect(obj.submissionId);
         }
       });
     } else {
-      // Select all filtered submissions
-      objectiveSubmissions.forEach((obj) => {
+      // Select all selectable submissions
+      selectableSubmissions.forEach((obj) => {
         if (!selected.includes(obj.submissionId)) {
           onSelect(obj.submissionId);
         }
@@ -450,10 +461,13 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
         {isCorporateLevel && (
           <div className="p-4 border-b border-gray-200">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="division">Division Objectives</TabsTrigger>
                 <TabsTrigger value="department">
                   Department Objectives
+                </TabsTrigger>
+                <TabsTrigger value="personnel">
+                  Personnel Objectives
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -488,14 +502,21 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                   Department:{" "}
                   {submissions.filter((s) => s.level === "DEPARTMENT").length}
                 </span>
+                <span>
+                  Personnel:{" "}
+                  {submissions.filter((s) => s.level === "PERSONNEL").length}
+                </span>
               </div>
             </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="division">Division Objectives</TabsTrigger>
               <TabsTrigger value="department">
                 Department Objectives
+              </TabsTrigger>
+              <TabsTrigger value="personnel">
+                Personnel Objectives
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -590,23 +611,28 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
             return (
               <React.Fragment key={obj.submissionId}>
                 <TableRow
-                  className={`border-b border-gray-100 ${
-                    selected.includes(obj.submissionId)
-                      ? "bg-blue-50"
-                      : idx % 2 === 1
+                  className={`border-b border-gray-100 ${selected.includes(obj.submissionId)
+                    ? "bg-blue-50"
+                    : idx % 2 === 1
                       ? "bg-white"
                       : "bg-[#ECECFF]"
-                  } hover:bg-gray-50 transition-colors`}
+                    } hover:bg-gray-50 transition-colors`}
                 >
                   <TableCell
                     className="px-6 py-4 w-12"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Checkbox
-                      checked={selected.includes(obj.submissionId)}
-                      onCheckedChange={() => onSelect(obj.submissionId)}
-                      className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                    />
+                    {obj.level === "DIVISION" && obj.status === "PENDING" ? (
+                      <div className="flex items-center justify-center" title="Manual Strategic Review Required">
+                        <ShieldCheck className="h-4 w-4 text-blue-500/50" />
+                      </div>
+                    ) : (
+                      <Checkbox
+                        checked={selected.includes(obj.submissionId)}
+                        onCheckedChange={() => onSelect(obj.submissionId)}
+                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                      />
+                    )}
                   </TableCell>
                   {(() => {
                     const columnHeaders = getObjectiveColumnHeaders(
@@ -637,8 +663,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                               {obj.objective?.type === "DEPARTMENT"
                                 ? "Division"
                                 : obj.objective?.type === "PERSONNEL"
-                                ? "Department"
-                                : "Corporate"}
+                                  ? "Department"
+                                  : "Corporate"}
                             </div>
                           )}
                         </TableCell>
@@ -651,8 +677,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                               {childName
                                 ? childName
                                 : hasParent
-                                ? "N/A"
-                                : strategicName}
+                                  ? "N/A"
+                                  : strategicName}
                             </div>
                           </TableCell>
                         )}
@@ -696,108 +722,264 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                         </Badge>
                       </div>
                     ) : (
-                    <Badge
-                      className={`${
-                        statusMap[obj.status as keyof typeof statusMap]
+                      <Badge
+                        className={`${statusMap[obj.status as keyof typeof statusMap]
                           ?.color || "bg-gray-100 text-gray-600"
-                      } rounded-full px-3 py-1 text-xs font-medium border-0`}
-                    >
-                      {statusMap[obj.status as keyof typeof statusMap]?.label ||
-                        obj.status}
-                    </Badge>
+                          } rounded-full px-3 py-1 text-xs font-medium border-0`}
+                      >
+                        {obj.level === "DIVISION" && obj.status === "PENDING"
+                          ? "Pending Strategic Review"
+                          : statusMap[obj.status as keyof typeof statusMap]?.label ||
+                          obj.status}
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-gray-100"
+                    {obj.level === "DIVISION" ? (
+                      <div className="flex items-center gap-2">
+                        <DivisionLevelApprovalDialog
+                          submission={{
+                            submissionId: obj.submissionId,
+                            objective: obj.objective,
+                            level: obj.level,
+                            submittedBy: obj.submittedBy,
+                          }}
+                          associatedKPIs={effectiveKpiSubmissions.map((k) => ({
+                            kpiId: k.kpi?.kpiId || "",
+                            name: k.kpi?.name || "Unknown KPI",
+                            status: k.status,
+                            weight: k.kpi?.weight,
+                            baseline: k.kpi?.baseline,
+                            submissionId: k.submissionId,
+                          }))}
+                          onApprove={async (id, reason, selectedKPIs) => {
+                            await onApproveSubmission(id, reason, selectedKPIs);
+                          }}
+                          onReject={async (id, reason) => {
+                            await onRejectSubmission(id, reason);
+                          }}
                         >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {/* Virtual submissions (KPI-only) - show KPI approval/rejection options */}
-                        {obj.submissionId.startsWith("virtual-") ? (
-                          <>
-                            <DropdownMenuItem asChild>
-                              <ApproveSubmissionDialog
-                                submission={{
-                                  submissionId: obj.submissionId,
-                                  type: "OBJECTIVE",
-                                  level: obj.level,
-                                  status: "PENDING", // KPIs are pending
-                                  reason: obj.reason || "",
-                                  submittedBy: {
-                                    employeeId: obj.submittedBy.employeeId || "",
-                                    fullName: obj.submittedBy.fullName,
-                                  },
-                                  objective: obj.objective
-                                    ? {
-                                        objectiveId: obj.objective.objectiveId,
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 h-8 shadow-sm"
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Review & Approve
+                          </Button>
+                        </DivisionLevelApprovalDialog>
+
+                        <RejectSubmissionDialog
+                          submission={{
+                            submissionId: obj.submissionId,
+                            type: "OBJECTIVE",
+                            level: obj.level,
+                            status: obj.status,
+                            reason: obj.reason || "",
+                            submittedBy: {
+                              employeeId: obj.submittedBy.employeeId || "",
+                              fullName: obj.submittedBy.fullName,
+                            },
+                            objective: obj.objective
+                              ? {
+                                objectiveId: obj.objective.objectiveId,
+                                name: obj.objective.name || "",
+                                type: obj.objective.type || "",
+                                status: obj.objective.status || obj.status,
+                              }
+                              : undefined,
+                            createdAt: new Date().toISOString(),
+                          }}
+                          onReject={onRejectSubmission}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50 h-8 font-medium"
+                          >
+                            <XCircle className="h-3.5 w-3.5 mr-1" />
+                            Reject
+                          </Button>
+                        </RejectSubmissionDialog>
+                      </div>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {/* Virtual submissions (KPI-only) - show KPI approval/rejection options */}
+                          {obj.submissionId.startsWith("virtual-") ? (
+                            <>
+                              <DropdownMenuItem asChild>
+                                <ApproveSubmissionDialog
+                                  submission={{
+                                    submissionId: obj.submissionId,
+                                    type: "OBJECTIVE",
+                                    level: obj.level,
+                                    status: "PENDING", // KPIs are pending
+                                    reason: obj.reason || "",
+                                    submittedBy: {
+                                      employeeId:
+                                        obj.submittedBy.employeeId || "",
+                                      fullName: obj.submittedBy.fullName,
+                                    },
+                                    objective: obj.objective
+                                      ? {
+                                        objectiveId:
+                                          obj.objective.objectiveId,
                                         name: obj.objective.name || "",
                                         type: obj.objective.type || "",
                                         status: "APPROVED",
                                       }
-                                    : undefined,
-                                  createdAt: new Date().toISOString(),
-                                }}
-                                onApprove={onApproveSubmission}
-                              >
-                                <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center">
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve All KPIs ({kpiCount})
-                                </div>
-                              </ApproveSubmissionDialog>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <RejectSubmissionDialog
-                                submission={{
-                                  submissionId: obj.submissionId,
-                                  type: "OBJECTIVE",
-                                  level: obj.level,
-                                  status: "PENDING",
-                                  reason: obj.reason || "",
-                                  submittedBy: {
-                                    employeeId: obj.submittedBy.employeeId || "",
-                                    fullName: obj.submittedBy.fullName,
-                                  },
-                                  objective: obj.objective
-                                    ? {
-                                        objectiveId: obj.objective.objectiveId,
+                                      : undefined,
+                                    createdAt: new Date().toISOString(),
+                                  }}
+                                  onApprove={onApproveSubmission}
+                                >
+                                  <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center">
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Approve All KPIs ({kpiCount})
+                                  </div>
+                                </ApproveSubmissionDialog>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <RejectSubmissionDialog
+                                  submission={{
+                                    submissionId: obj.submissionId,
+                                    type: "OBJECTIVE",
+                                    level: obj.level,
+                                    status: "PENDING",
+                                    reason: obj.reason || "",
+                                    submittedBy: {
+                                      employeeId:
+                                        obj.submittedBy.employeeId || "",
+                                      fullName: obj.submittedBy.fullName,
+                                    },
+                                    objective: obj.objective
+                                      ? {
+                                        objectiveId:
+                                          obj.objective.objectiveId,
                                         name: obj.objective.name || "",
                                         type: obj.objective.type || "",
                                         status: "APPROVED",
                                       }
-                                    : undefined,
-                                  createdAt: new Date().toISOString(),
-                                }}
-                                onReject={onRejectSubmission}
-                              >
-                                <div className="text-red-600 hover:bg-red-50 cursor-pointer flex items-center">
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Reject All KPIs ({kpiCount})
-                                </div>
-                              </RejectSubmissionDialog>
-                            </DropdownMenuItem>
-                          </>
-                        ) : kpiCount > 0 ? (
-                          <>
-                            {/* TODO: Re-enable bulk objective + KPI approval when backend supports it */}
-                            {/* <DropdownMenuItem asChild>
-                              <ApproveObjectiveWithKPIsDialog
-                                submission={obj}
-                                associatedKPIs={nestedKPIs}
-                                onApprove={onApproveSubmission}
-                              >
-                                <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center">
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve Objective + KPIs
-                                </div>
-                              </ApproveObjectiveWithKPIsDialog>
-                            </DropdownMenuItem> */}
+                                      : undefined,
+                                    createdAt: new Date().toISOString(),
+                                  }}
+                                  onReject={onRejectSubmission}
+                                >
+                                  <div className="text-red-600 hover:bg-red-50 cursor-pointer flex items-center">
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Reject All KPIs ({kpiCount})
+                                  </div>
+                                </RejectSubmissionDialog>
+                              </DropdownMenuItem>
+                            </>
+                          ) : kpiCount > 0 ? (
+                            <>
+                              <DropdownMenuItem asChild>
+                                <ApproveObjectiveWithKPIsDialog
+                                  submission={{
+                                    submissionId: obj.submissionId,
+                                    objective: obj.objective,
+                                    level: obj.level,
+                                  }}
+                                  associatedKPIs={effectiveKpiSubmissions.map(
+                                    (k) => ({
+                                      kpiId: k.kpi?.kpiId || "",
+                                      name: k.kpi?.name || "Unknown KPI",
+                                      status: k.status,
+                                      weight: k.kpi?.weight,
+                                      baseline: k.kpi?.baseline,
+                                      submissionId: k.submissionId,
+                                    })
+                                  )}
+                                  onApprove={async (id, reason) => {
+                                    await onApproveSubmission(id, reason);
+                                  }}
+                                >
+                                  <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center w-full px-2 py-1.5 text-sm">
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Approve Objective + KPIs
+                                  </div>
+                                </ApproveObjectiveWithKPIsDialog>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                {(() => {
+                                  const allKPIsApproved =
+                                    effectiveKpiSubmissions.every(
+                                      (k) => k.status === "APPROVED"
+                                    );
+                                  const hasKPIs =
+                                    effectiveKpiSubmissions.length > 0;
+                                  const canApproveObjective =
+                                    !hasKPIs || allKPIsApproved;
+
+                                  return (
+                                    <DropdownMenuItem
+                                      asChild
+                                      disabled={!canApproveObjective}
+                                    >
+                                      <div className="w-full">
+                                        <ApproveSubmissionDialog
+                                          submission={{
+                                            submissionId: obj.submissionId,
+                                            type: "OBJECTIVE",
+                                            level: obj.level,
+                                            status: obj.status,
+                                            reason: obj.reason || "",
+                                            submittedBy: {
+                                              employeeId:
+                                                obj.submittedBy.employeeId ||
+                                                "",
+                                              fullName:
+                                                obj.submittedBy.fullName,
+                                            },
+                                            objective: obj.objective
+                                              ? {
+                                                objectiveId:
+                                                  obj.objective.objectiveId,
+                                                name:
+                                                  obj.objective.name || "",
+                                                type:
+                                                  obj.objective.type || "",
+                                                status:
+                                                  obj.objective.status ||
+                                                  obj.status,
+                                              }
+                                              : undefined,
+                                            createdAt: new Date().toISOString(),
+                                          }}
+                                          onApprove={onApproveSubmission}
+                                        >
+                                          <div
+                                            className={`flex items-center w-full px-2 py-1.5 text-sm ${canApproveObjective
+                                              ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                                              : "text-gray-400 cursor-not-allowed grayscale"
+                                              }`}
+                                          >
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            <span>Approve Objective</span>
+                                            {!canApproveObjective && (
+                                              <span className="ml-auto text-[10px] bg-amber-100 text-amber-700 px-1 rounded">
+                                                Wait for KPIs
+                                              </span>
+                                            )}
+                                          </div>
+                                        </ApproveSubmissionDialog>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  );
+                                })()}
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
                             <DropdownMenuItem asChild>
                               <ApproveSubmissionDialog
                                 submission={{
@@ -813,12 +995,12 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                   },
                                   objective: obj.objective
                                     ? {
-                                        objectiveId: obj.objective.objectiveId,
-                                        name: obj.objective.name || "",
-                                        type: obj.objective.type || "",
-                                        status:
-                                          obj.objective.status || obj.status,
-                                      }
+                                      objectiveId: obj.objective.objectiveId,
+                                      name: obj.objective.name || "",
+                                      type: obj.objective.type || "",
+                                      status:
+                                        obj.objective.status || obj.status,
+                                    }
                                     : undefined,
                                   createdAt: new Date().toISOString(),
                                 }}
@@ -830,10 +1012,9 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                 </div>
                               </ApproveSubmissionDialog>
                             </DropdownMenuItem>
-                          </>
-                        ) : (
+                          )}
                           <DropdownMenuItem asChild>
-                            <ApproveSubmissionDialog
+                            <RejectSubmissionDialog
                               submission={{
                                 submissionId: obj.submissionId,
                                 type: "OBJECTIVE",
@@ -846,56 +1027,26 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                 },
                                 objective: obj.objective
                                   ? {
-                                      objectiveId: obj.objective.objectiveId,
-                                      name: obj.objective.name || "",
-                                      type: obj.objective.type || "",
-                                      status:
-                                        obj.objective.status || obj.status,
-                                    }
-                                  : undefined,
-                                createdAt: new Date().toISOString(),
-                              }}
-                              onApprove={onApproveSubmission}
-                            >
-                              <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center">
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Approve Objective
-                              </div>
-                            </ApproveSubmissionDialog>
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem asChild>
-                          <RejectSubmissionDialog
-                            submission={{
-                              submissionId: obj.submissionId,
-                              type: "OBJECTIVE",
-                              level: obj.level,
-                              status: obj.status,
-                              reason: obj.reason || "",
-                              submittedBy: {
-                                employeeId: obj.submittedBy.employeeId || "",
-                                fullName: obj.submittedBy.fullName,
-                              },
-                              objective: obj.objective
-                                ? {
                                     objectiveId: obj.objective.objectiveId,
                                     name: obj.objective.name || "",
                                     type: obj.objective.type || "",
-                                    status: obj.objective.status || obj.status,
+                                    status:
+                                      obj.objective.status || obj.status,
                                   }
-                                : undefined,
-                              createdAt: new Date().toISOString(),
-                            }}
-                            onReject={onRejectSubmission}
-                          >
-                            <div className="text-red-600 hover:bg-red-50 cursor-pointer flex items-center">
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Reject Objective
-                            </div>
-                          </RejectSubmissionDialog>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                                  : undefined,
+                                createdAt: new Date().toISOString(),
+                              }}
+                              onReject={onRejectSubmission}
+                            >
+                              <div className="text-red-600 hover:bg-red-50 cursor-pointer flex items-center">
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Reject Objective
+                              </div>
+                            </RejectSubmissionDialog>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                   <TableCell className="px-6 py-4 w-12">
                     {kpiCount > 0 && (
@@ -977,11 +1128,10 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                   {effectiveKpiSubmissions.map(
                                     (kpiSubmission, kpiIdx) => {
                                       // Create a truly unique key by combining multiple identifiers
-                                      const uniqueKey = `${obj.submissionId}-${
-                                        kpiSubmission.submissionId ||
+                                      const uniqueKey = `${obj.submissionId}-${kpiSubmission.submissionId ||
                                         kpiSubmission.kpi?.kpiId ||
                                         "unknown"
-                                      }-${kpiIdx}`;
+                                        }-${kpiIdx}`;
 
                                       return (
                                         <TableRow
@@ -1000,10 +1150,10 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                             );
                                             const parent = child?.parent
                                               ? allObjectives.find(
-                                                  (o) =>
-                                                    o.objectiveId ===
-                                                    child.parent?.objectiveId
-                                                )
+                                                (o) =>
+                                                  o.objectiveId ===
+                                                  child.parent?.objectiveId
+                                              )
                                               : undefined;
 
                                             // For corporate objectives, show KPI name in first column
@@ -1067,13 +1217,13 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                       <div className="text-xs text-gray-500 mt-1">
                                                         From:{" "}
                                                         {obj.objective?.type ===
-                                                        "DEPARTMENT"
+                                                          "DEPARTMENT"
                                                           ? "Division"
                                                           : obj.objective
-                                                              ?.type ===
+                                                            ?.type ===
                                                             "PERSONNEL"
-                                                          ? "Department"
-                                                          : "Corporate"}
+                                                            ? "Department"
+                                                            : "Corporate"}
                                                       </div>
                                                     )}
                                                   </div>
@@ -1179,16 +1329,16 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                 years.length > 0
                                                   ? years
                                                   : Object.keys(byYear).sort(
-                                                      (a, b) =>
-                                                        parseInt(
-                                                          a.split("/")?.[0] ||
-                                                            "0"
-                                                        ) -
-                                                        parseInt(
-                                                          b.split("/")?.[0] ||
-                                                            "0"
-                                                        )
-                                                    );
+                                                    (a, b) =>
+                                                      parseInt(
+                                                        a.split("/")?.[0] ||
+                                                        "0"
+                                                      ) -
+                                                      parseInt(
+                                                        b.split("/")?.[0] ||
+                                                        "0"
+                                                      )
+                                                  );
                                               return (
                                                 <div
                                                   className="inline-grid gap-x-8"
@@ -1209,7 +1359,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                           }
                                                         >
                                                       )[y] || {};
-                                                    // Removed unused corporate variable
+                                                    const corporate = byYear[y];
                                                     return (
                                                       <div
                                                         key={`col-${y}`}
@@ -1219,36 +1369,16 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                         <span className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
                                                           {y}
                                                         </span>
-                                                        {/* Dynamic target label - COMMENTED OUT */}
-                                                        {/* {corporate !==
-                                                        undefined && (
-                                                        <div className="text-[11px] text-gray-500 mb-2">
-                                                          {(() => {
-                                                            const label =
-                                                              getTargetLabelByActiveTab(
-                                                                activeTab
-                                                              );
-                                                            console.log(
-                                                              "🔍 Target Label Debug:",
-                                                              {
-                                                                activeTab:
-                                                                  activeTab,
-                                                                objectiveType:
-                                                                  obj.objective
-                                                                    ?.type,
-                                                                label: label,
-                                                                corporate:
-                                                                  corporate,
-                                                              }
-                                                            );
-                                                            return label;
-                                                          })()}
-                                                          :{" "}
-                                                          <span className="font-medium text-purple-600">
-                                                            {corporate}
-                                                          </span>
-                                                        </div>
-                                                      )} */}
+                                                        {corporate !==
+                                                          undefined && (
+                                                            <div className="text-[11px] text-gray-500 mb-2">
+                                                              {obj.objective?.type === "DIVISION" ? "Corporate Target" : "Strategic Target"}
+                                                              :{" "}
+                                                              <span className="font-medium text-purple-600">
+                                                                {corporate}
+                                                              </span>
+                                                            </div>
+                                                          )}
                                                         {/* Quarters */}
                                                         <div className="flex flex-wrap gap-1">
                                                           {[
@@ -1340,12 +1470,11 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                           </TableCell>
                                           <TableCell className="px-4 py-3">
                                             <Badge
-                                              className={`${
-                                                statusMap[
-                                                  kpiSubmission.status as keyof typeof statusMap
-                                                ]?.color ||
+                                              className={`${statusMap[
+                                                kpiSubmission.status as keyof typeof statusMap
+                                              ]?.color ||
                                                 "bg-gray-100 text-gray-600"
-                                              } rounded-full px-2 py-1 text-xs font-medium border-0`}
+                                                } rounded-full px-2 py-1 text-xs font-medium border-0`}
                                             >
                                               {statusMap[
                                                 kpiSubmission.status as keyof typeof statusMap
@@ -1354,17 +1483,16 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                           </TableCell>
                                           <TableCell className="px-4 py-3">
                                             {kpiSubmission.reason?.trim() ? (
-                                              <div 
+                                              <div
                                                 className="max-w-[200px] cursor-help"
                                                 title={kpiSubmission.reason.trim()}
                                               >
                                                 <span
-                                                  className={`text-sm block truncate ${
-                                                    kpiSubmission.status ===
+                                                  className={`text-sm block truncate ${kpiSubmission.status ===
                                                     "REJECTED"
-                                                      ? "text-red-600"
-                                                      : "text-green-600"
-                                                  }`}
+                                                    ? "text-red-600"
+                                                    : "text-green-600"
+                                                    }`}
                                                 >
                                                   {kpiSubmission.reason.trim()}
                                                 </span>
@@ -1378,7 +1506,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                           <TableCell className="px-4 py-3">
                                             {kpiSubmission.status ===
                                               "APPROVED" ||
-                                            kpiSubmission.status ===
+                                              kpiSubmission.status ===
                                               "REJECTED" ? (
                                               <div className="flex items-center gap-2">
                                                 <Button
@@ -1389,7 +1517,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                 >
                                                   <CheckCircle className="h-3 w-3 mr-1" />
                                                   {kpiSubmission.status ===
-                                                  "APPROVED"
+                                                    "APPROVED"
                                                     ? "Approved"
                                                     : "Approve"}
                                                 </Button>
@@ -1401,7 +1529,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                 >
                                                   <XCircle className="h-3 w-3 mr-1" />
                                                   {kpiSubmission.status ===
-                                                  "REJECTED"
+                                                    "REJECTED"
                                                     ? "Rejected"
                                                     : "Reject"}
                                                 </Button>
@@ -1442,9 +1570,9 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                     level: obj.level,
                                                     status:
                                                       kpiSubmission.status as
-                                                        | "PENDING"
-                                                        | "APPROVED"
-                                                        | "REJECTED",
+                                                      | "PENDING"
+                                                      | "APPROVED"
+                                                      | "REJECTED",
                                                     reason:
                                                       kpiSubmission.reason ||
                                                       "",
@@ -1467,19 +1595,19 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                     },
                                                     objective: obj.objective
                                                       ? {
-                                                          objectiveId:
-                                                            obj.objective
-                                                              .objectiveId,
-                                                          name:
-                                                            obj.objective
-                                                              .name || "",
-                                                          type:
-                                                            obj.objective
-                                                              .type || "",
-                                                          status:
-                                                            obj.objective
-                                                              .status || "",
-                                                        }
+                                                        objectiveId:
+                                                          obj.objective
+                                                            .objectiveId,
+                                                        name:
+                                                          obj.objective
+                                                            .name || "",
+                                                        type:
+                                                          obj.objective
+                                                            .type || "",
+                                                        status:
+                                                          obj.objective
+                                                            .status || "",
+                                                      }
                                                       : undefined,
                                                     createdAt:
                                                       new Date().toISOString(),
@@ -1505,9 +1633,9 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                     level: obj.level,
                                                     status:
                                                       kpiSubmission.status as
-                                                        | "PENDING"
-                                                        | "APPROVED"
-                                                        | "REJECTED",
+                                                      | "PENDING"
+                                                      | "APPROVED"
+                                                      | "REJECTED",
                                                     reason:
                                                       kpiSubmission.reason ||
                                                       "",
@@ -1530,19 +1658,19 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                     },
                                                     objective: obj.objective
                                                       ? {
-                                                          objectiveId:
-                                                            obj.objective
-                                                              .objectiveId,
-                                                          name:
-                                                            obj.objective
-                                                              .name || "",
-                                                          type:
-                                                            obj.objective
-                                                              .type || "",
-                                                          status:
-                                                            obj.objective
-                                                              .status || "",
-                                                        }
+                                                        objectiveId:
+                                                          obj.objective
+                                                            .objectiveId,
+                                                        name:
+                                                          obj.objective
+                                                            .name || "",
+                                                        type:
+                                                          obj.objective
+                                                            .type || "",
+                                                        status:
+                                                          obj.objective
+                                                            .status || "",
+                                                      }
                                                       : undefined,
                                                     createdAt:
                                                       new Date().toISOString(),

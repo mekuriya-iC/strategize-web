@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Eye, EyeOff } from "lucide-react";
-import { useEmployeeMutations } from "@/hooks/useEmployeeMutations";
+import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { EmployeeRole, EmployeeStatus } from "@/types/graphql";
 import { toast } from "sonner";
 

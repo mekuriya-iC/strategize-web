@@ -23,7 +23,7 @@ import {
   TableHead,
   TableHeader,
 } from "@/components/ui/table";
-import { Objective } from "../objectives/ObjectiveTable";
+import { Objective } from "@/components/features/objectives/ObjectiveTable";
 import { Kpi } from "@/types/graphql";
 
 interface ApprovalTableProps {
@@ -38,6 +38,7 @@ interface ApprovalTableProps {
   onRejectObjective: (objective: Objective) => void;
   onApproveKPI: (kpi: Kpi) => void;
   onRejectKPI: (kpi: Kpi) => void;
+  onEditKPI?: (kpi: Kpi) => void;
   loading?: boolean;
   error?: string;
 }
@@ -61,6 +62,7 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
   onRejectObjective,
   onApproveKPI,
   onRejectKPI,
+  onEditKPI,
   loading = false,
   error,
 }) => {
@@ -147,16 +149,16 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
         <TableBody>
           {objectives.map((obj, idx) => {
             const objectiveKPIs = getKPIsForObjective(obj.objectiveId);
+            const areAllKPIsApproved = objectiveKPIs.length > 0 && objectiveKPIs.every(kpi => kpi.status === "APPROVED");
             return (
               <React.Fragment key={obj.objectiveId}>
                 <TableRow
-                  className={`border-b border-gray-100 ${
-                    selected.includes(obj.objectiveId)
-                      ? "bg-blue-50"
-                      : idx % 2 === 1
+                  className={`border-b border-gray-100 ${selected.includes(obj.objectiveId)
+                    ? "bg-blue-50"
+                    : idx % 2 === 1
                       ? "bg-white"
                       : "bg-[#ECECFF]"
-                  } hover:bg-gray-50 transition-colors`}
+                    } hover:bg-gray-50 transition-colors`}
                 >
                   <TableCell
                     className="px-6 py-4 w-12"
@@ -198,43 +200,69 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <Badge
-                      className={`${
-                        statusMap[obj.status as keyof typeof statusMap]
-                          ?.color || "bg-gray-100 text-gray-600"
-                      } rounded-full px-3 py-1 text-xs font-medium border-0`}
+                      className={`${statusMap[obj.status as keyof typeof statusMap]
+                        ?.color || "bg-gray-100 text-gray-600"
+                        } rounded-full px-3 py-1 text-xs font-medium border-0`}
                     >
                       {statusMap[obj.status as keyof typeof statusMap]?.label ||
                         obj.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-gray-100"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => onApproveObjective(obj)}
-                          className="text-green-600 hover:bg-green-50 cursor-pointer"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Accept Objective
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onRejectObjective(obj)}
-                          className="text-red-600 hover:bg-red-50 cursor-pointer"
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Reject Objective
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2">
+                      {obj.status === "PENDING" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onApproveObjective(obj)}
+                            className={`flex items-center gap-1 h-8 px-3 text-green-700 border-green-200 bg-green-50 hover:bg-green-100 ${areAllKPIsApproved ? "ring-2 ring-green-500 ring-offset-1 animate-pulse" : ""}`}
+                            title={areAllKPIsApproved ? "All KPIs approved - ready to accept objective" : "Accept objective"}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="hidden lg:inline">Approve</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onRejectObjective(obj)}
+                            className="flex items-center gap-1 h-8 px-3 text-red-700 border-red-200 bg-red-50 hover:bg-red-100"
+                            title="Reject objective"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            <span className="hidden lg:inline">Reject</span>
+                          </Button>
+                        </>
+                      )}
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => onApproveObjective(obj)}
+                            className="text-green-600 focus:text-green-700 cursor-pointer"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Force Approve
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onRejectObjective(obj)}
+                            className="text-red-600 focus:text-red-700 cursor-pointer"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Reject with Reason
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                   <TableCell className="px-6 py-4 w-12">
                     <button
@@ -310,12 +338,11 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                                     </TableCell>
                                     <TableCell className="px-4 py-3">
                                       <Badge
-                                        className={`${
-                                          statusMap[
-                                            kpi.status as keyof typeof statusMap
-                                          ]?.color ||
+                                        className={`${statusMap[
+                                          kpi.status as keyof typeof statusMap
+                                        ]?.color ||
                                           "bg-gray-100 text-gray-600"
-                                        } rounded-full px-2 py-1 text-xs font-medium border-0`}
+                                          } rounded-full px-2 py-1 text-xs font-medium border-0`}
                                       >
                                         {statusMap[
                                           kpi.status as keyof typeof statusMap
@@ -323,33 +350,66 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                                       </Badge>
                                     </TableCell>
                                     <TableCell className="px-4 py-3">
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 hover:bg-gray-100"
-                                          >
-                                            <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem
-                                            onClick={() => onApproveKPI(kpi)}
-                                            className="text-green-600 hover:bg-green-50 cursor-pointer"
-                                          >
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                            Accept KPI
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={() => onRejectKPI(kpi)}
-                                            className="text-red-600 hover:bg-red-50 cursor-pointer"
-                                          >
-                                            <XCircle className="h-4 w-4 mr-2" />
-                                            Reject KPI
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
+                                      <div className="flex items-center gap-2">
+                                        {kpi.status === "PENDING" && (
+                                          <>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => onApproveKPI(kpi)}
+                                              className="flex items-center gap-1 h-7 px-2 text-green-700 border-green-200 bg-green-50 hover:bg-green-100 text-[10px]"
+                                            >
+                                              <CheckCircle className="h-3 w-3" />
+                                              Approve
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => onRejectKPI(kpi)}
+                                              className="flex items-center gap-1 h-7 px-2 text-red-700 border-red-200 bg-red-50 hover:bg-red-100 text-[10px]"
+                                            >
+                                              <XCircle className="h-3 w-3" />
+                                              Reject
+                                            </Button>
+                                          </>
+                                        )}
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 w-7 p-0 hover:bg-gray-100"
+                                            >
+                                              <MoreVertical className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="w-40">
+                                            {onEditKPI && (
+                                              <DropdownMenuItem
+                                                onClick={() => onEditKPI(kpi)}
+                                                className="text-blue-600 cursor-pointer"
+                                              >
+                                                <MoreVertical className="h-4 w-4 mr-2" />
+                                                Adjust Targets
+                                              </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuItem
+                                              onClick={() => onApproveKPI(kpi)}
+                                              className="text-green-600 cursor-pointer"
+                                            >
+                                              <CheckCircle className="h-4 w-4 mr-2" />
+                                              Quick Approve
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                              onClick={() => onRejectKPI(kpi)}
+                                              className="text-red-600 cursor-pointer"
+                                            >
+                                              <XCircle className="h-4 w-4 mr-2" />
+                                              Quick Reject
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
                                     </TableCell>
                                   </TableRow>
                                 ))}

@@ -3,7 +3,7 @@ import Logo from "@/components/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUIStore } from "@/stores";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import StrategySelector from "./StrategySelector";
 import Image from "next/image";
 import type { Permission } from "@/lib/rbac/permissions";
@@ -158,11 +158,10 @@ export default function Sidebar() {
     <>
       {/* Mobile overlay */}
       <div
-        className={`fixed inset-0 bg-black/40 z-50 transition-opacity md:hidden ${
-          open
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-black/40 z-50 transition-opacity md:hidden ${open
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+          }`}
         onClick={closeSidebar}
         aria-hidden="true"
       />
@@ -187,11 +186,10 @@ export default function Sidebar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] ${
-                  isLinkActive(link.href)
-                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
-                    : "text-gray-700"
-                }`}
+                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] ${isLinkActive(link.href)
+                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
+                  : "text-gray-700"
+                  }`}
                 onClick={closeSidebar}
               >
                 {link.icon}
@@ -221,9 +219,8 @@ export default function Sidebar() {
         {/* Top section: Logo and nav */}
         <div className="flex-1 overflow-y-auto">
           <div
-            className={`mb-10 transition-all duration-300 ${
-              open ? "pl-2" : "pl-0"
-            }`}
+            className={`mb-10 transition-all duration-300 ${open ? "pl-2" : "pl-0"
+              }`}
           >
             {open ? (
               <Logo width={140} height={32} />
@@ -241,19 +238,17 @@ export default function Sidebar() {
                 className={`
                   flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA]
                   ${open ? "gap-3 px-3 py-2" : "gap-0 px-2 py-2 justify-center"}
-                  ${
-                    isLinkActive(link.href)
-                      ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
-                      : "text-gray-700"
+                  ${isLinkActive(link.href)
+                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
+                    : "text-gray-700"
                   }
                 `}
                 title={!open ? link.label : undefined}
               >
                 <div className="flex-shrink-0">{link.icon}</div>
                 <span
-                  className={`transition-all duration-300 ${
-                    open ? "opacity-100 block" : "opacity-0 hidden"
-                  }`}
+                  className={`transition-all duration-300 ${open ? "opacity-100 block" : "opacity-0 hidden"
+                    }`}
                 >
                   {link.label}
                 </span>
@@ -263,9 +258,8 @@ export default function Sidebar() {
         </div>
         {/* Bottom section: Strategy selector and powered by */}
         <div
-          className={`flex flex-col gap-4 mt-6 transition-all duration-300 ${
-            open ? "" : "items-center"
-          }`}
+          className={`flex flex-col gap-4 mt-6 transition-all duration-300 ${open ? "" : "items-center"
+            }`}
         >
           {open && (
             <div>
@@ -273,9 +267,8 @@ export default function Sidebar() {
             </div>
           )}
           <div
-            className={`text-xs text-[#BDBDBD] text-center mt-2 transition-all duration-300 ${
-              open ? "" : "hidden"
-            }`}
+            className={`text-xs text-[#BDBDBD] text-center mt-2 transition-all duration-300 ${open ? "" : "hidden"
+              }`}
           >
             Powered by{" "}
             <span className="font-semibold text-[#3F3F46]">

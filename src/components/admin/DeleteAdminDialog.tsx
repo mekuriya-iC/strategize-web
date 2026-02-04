@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useEmployeeMutations } from "@/hooks/useEmployeeMutations";
+import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { toast } from "sonner";
 
 interface DeleteAdminDialogProps {

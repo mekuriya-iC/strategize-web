@@ -21,7 +21,7 @@ import {
   groupSubmissionsByObjective,
   paginateSubmissions,
   calculatePaginationMeta,
-} from "./submissions";
+} from "@/hooks/submissions"
 
 interface UseSubmissionApprovalsResult {
   submissions: GroupedSubmission[];
@@ -43,7 +43,7 @@ export const useSubmissionApprovals = ({
   // Determine if we should make queries
   const shouldMakeQueries = Boolean(
     user &&
-      (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || selectedUnit)
+    (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || selectedUnit)
   );
 
   // Fetch all submissions using modular query hook

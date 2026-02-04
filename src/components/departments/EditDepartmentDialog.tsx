@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useQuery } from "@apollo/client";
-import { useDepartmentMutations } from "@/hooks/useDepartmentMutations";
+import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { GET_DEPARTMENT } from "@/lib/graphql/queries/departments";
 import {
   GetDepartmentResponse,
@@ -194,24 +194,24 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={
-                      departmentLoading 
-                        ? "Loading..." 
-                        : managers.length === 0 
+                      departmentLoading
+                        ? "Loading..."
+                        : managers.length === 0
                           ? departmentData?.department?.manager?.fullName || "No managers available"
                           : "Select Manager"
                     } />
                   </SelectTrigger>
                   <SelectContent>
                     {/* Show current manager from department data if not in managers list */}
-                    {departmentData?.department?.manager && 
-                     !managers.find(m => m.employeeId === departmentData.department?.manager?.employeeId) && (
-                      <SelectItem
-                        key={departmentData.department.manager.employeeId}
-                        value={departmentData.department.manager.employeeId}
-                      >
-                        {departmentData.department.manager.fullName} (Current)
-                      </SelectItem>
-                    )}
+                    {departmentData?.department?.manager &&
+                      !managers.find(m => m.employeeId === departmentData.department?.manager?.employeeId) && (
+                        <SelectItem
+                          key={departmentData.department.manager.employeeId}
+                          value={departmentData.department.manager.employeeId}
+                        >
+                          {departmentData.department.manager.fullName} (Current)
+                        </SelectItem>
+                      )}
                     {managers.map((manager) => (
                       <SelectItem
                         key={manager.employeeId}
@@ -355,8 +355,8 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                 {loading.update
                   ? "Updating..."
                   : departmentLoading
-                  ? "Loading..."
-                  : "Update Department"}
+                    ? "Loading..."
+                    : "Update Department"}
               </Button>
             </div>
           </form>

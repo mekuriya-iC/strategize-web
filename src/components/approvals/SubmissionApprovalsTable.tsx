@@ -6,12 +6,12 @@ import React from "react";
 // import ApprovalFilterBar from "./ApprovalFilterBar";
 import SubmissionApprovalTable from "./SubmissionApprovalTable";
 import type { GroupedSubmission } from "./SubmissionApprovalTable";
-import ObjectivePagination from "../objectives/ObjectivePagination";
-import { useSubmissionApprovals } from "@/hooks/useSubmissionApprovals";
-import { useSubmissionApprovalMutations } from "@/hooks/useSubmissionApprovalMutations";
+import DataTablePagination from "@/components/shared/DataTablePagination";
+import { useSubmissionApprovals } from "@/hooks/submissions/useSubmissionApprovals";
+import { useSubmissionApprovalMutations } from "@/hooks/submissions/useSubmissionApprovalMutations";
 import { useAuthStore, useOrgUnitStore } from "@/stores";
-import { useObjectives } from "@/hooks/useObjectives";
-import { useKPIs } from "@/hooks/useKPIs";
+import { useObjectives } from "@/hooks/objectives/useObjectives";
+import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { toast } from "sonner";
 import { CheckCircle, XCircle } from "lucide-react";
 import type { Kpi } from "@/types/graphql";
@@ -45,7 +45,7 @@ export default function SubmissionApprovalsTable() {
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all"); // Default to all submissions for approval table
+  const [statusFilter, setStatusFilter] = useState("pending"); // Default to pending (submitted) submissions
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
@@ -200,8 +200,8 @@ export default function SubmissionApprovalsTable() {
         );
         if (!submission) return Promise.resolve();
 
-        return handleApproveSubmissionWithItemUpdate(
-          submission,
+        return handleApproveSubmission(
+          submission.submissionId,
           "Bulk approved"
         );
       });
@@ -242,7 +242,8 @@ export default function SubmissionApprovalsTable() {
 
   const handleApproveSubmission = async (
     submissionId: string,
-    reason: string
+    reason: string,
+    selectedKPIs?: string[]
   ) => {
     try {
       // Handle virtual objective submissions (KPI-only groupings)
@@ -251,10 +252,10 @@ export default function SubmissionApprovalsTable() {
         const virtualSubmission = submissions.find(
           (sub) => sub.submissionId === submissionId
         ) as GroupedSubmission | undefined;
-        
+
         if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
           console.log(`📦 Approving ${virtualSubmission.associatedKpiSubmissions.length} KPI submissions from virtual objective...`);
-          
+
           const kpiApprovalPromises = virtualSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
             .map((kpiSub) => {
@@ -266,7 +267,7 @@ export default function SubmissionApprovalsTable() {
               };
               return handleApproveSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
             });
-          
+
           await Promise.all(kpiApprovalPromises);
           toast.success(`${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) approved successfully`);
           await refetch();
@@ -335,12 +336,32 @@ export default function SubmissionApprovalsTable() {
         const objectiveSubmission = submissions.find(
           (sub) => sub.submissionId === submissionId
         ) as GroupedSubmission | undefined;
-        
+
         if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
-          console.log(`📦 Also approving ${objectiveSubmission.associatedKpiSubmissions.length} associated KPI submissions...`);
-          
           const kpiApprovalPromises = objectiveSubmission.associatedKpiSubmissions
-            .filter((kpiSub) => kpiSub.status === "PENDING")
+            .filter((kpiSub) => {
+              const isPending = kpiSub.status === "PENDING";
+              if (!isPending) return false;
+
+              // DIVISION level: Strictly only approve if in the selected list
+              if (submission.level === "DIVISION") {
+                if (selectedKPIs && selectedKPIs.length > 0) {
+                  return selectedKPIs.includes(kpiSub.kpi?.kpiId || "");
+                }
+                // If it's division level and NO list is provided (e.g. bulk approve), 
+                // we DO NOT auto-approve KPIs. They must be reviewed individually.
+                return false;
+              }
+
+              // Other levels (Department, Personnel): 
+              // If selective KPIs provided, check against the list
+              if (selectedKPIs && selectedKPIs.length > 0) {
+                return selectedKPIs.includes(kpiSub.kpi?.kpiId || "");
+              }
+
+              // Default for non-division: approve all pending if no list provided
+              return true;
+            })
             .map((kpiSub) => {
               const kpiMinimalSubmission = {
                 submissionId: kpiSub.submissionId,
@@ -350,7 +371,7 @@ export default function SubmissionApprovalsTable() {
               };
               return handleApproveSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
             });
-          
+
           await Promise.all(kpiApprovalPromises);
           console.log(`✅ All associated KPI submissions approved`);
         }
@@ -377,10 +398,10 @@ export default function SubmissionApprovalsTable() {
         const virtualSubmission = submissions.find(
           (sub) => sub.submissionId === submissionId
         ) as GroupedSubmission | undefined;
-        
+
         if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
           console.log(`📦 Rejecting ${virtualSubmission.associatedKpiSubmissions.length} KPI submissions from virtual objective...`);
-          
+
           const kpiRejectPromises = virtualSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
             .map((kpiSub) => {
@@ -392,7 +413,7 @@ export default function SubmissionApprovalsTable() {
               };
               return handleRejectSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
             });
-          
+
           await Promise.all(kpiRejectPromises);
           toast.success(`${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) rejected`);
           await refetch();
@@ -461,10 +482,10 @@ export default function SubmissionApprovalsTable() {
         const objectiveSubmission = submissions.find(
           (sub) => sub.submissionId === submissionId
         ) as GroupedSubmission | undefined;
-        
+
         if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
           console.log(`📦 Also rejecting ${objectiveSubmission.associatedKpiSubmissions.length} associated KPI submissions...`);
-          
+
           const kpiRejectPromises = objectiveSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
             .map((kpiSub) => {
@@ -476,7 +497,7 @@ export default function SubmissionApprovalsTable() {
               };
               return handleRejectSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
             });
-          
+
           await Promise.all(kpiRejectPromises);
           console.log(`❌ All associated KPI submissions rejected`);
         }
@@ -546,10 +567,8 @@ export default function SubmissionApprovalsTable() {
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="pending">Pending (Submitted)</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
 
@@ -642,12 +661,14 @@ export default function SubmissionApprovalsTable() {
 
       {/* Pagination */}
       {meta && meta.totalPages > 1 && (
-        <ObjectivePagination
+        <DataTablePagination
           currentPage={currentPage}
           totalPages={meta.totalPages}
           totalItems={meta.totalItems}
           itemsPerPage={itemsPerPage}
           onPageChange={handlePageChange}
+          loading={loading}
+          itemName="submissions"
         />
       )}
     </div>

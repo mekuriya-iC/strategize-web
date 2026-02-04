@@ -4,16 +4,18 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Users, Send } from "lucide-react";
-import { useObjective } from "@/hooks/useObjectives";
-import { useKPIs } from "@/hooks/useKPIs";
+import { useObjective } from "@/hooks/objectives/useObjectives";
+import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { useQuery } from "@apollo/client";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_KPI_SUBMISSIONS } from "@/lib/graphql/queries/submissions";
-import KPIList from "@/components/objectives/KPIList";
+import KPIList from "@/components/features/objectives/KPIList";
 import YearSelector from "@/components/objectives/YearSelector";
-import KPIForm from "@/components/objectives/KPIForm";
+// import KPIForm from "@/components/objectives/KPIForm"; // Removed KPIForm
+import CreateKPIForm from "@/components/objectives/CreateKPIForm";
+import UpdateKPIForm from "@/components/objectives/UpdateKPIForm";
 import BulkSubmitDialog from "@/components/submissions/BulkSubmitDialog";
 import ObjectiveWithKPIsSubmitDialog from "@/components/submissions/ObjectiveWithKPIsSubmitDialog";
 import AssignObjectiveDialog from "@/components/objectives/AssignObjectiveDialog";
@@ -23,7 +25,6 @@ export default function ObjectiveDetailPage() {
   const params = useParams();
   const router = useRouter();
   const objectiveId = params.id as string;
-
   const [showAddKPI, setShowAddKPI] = useState(false);
   const [editingKPI, setEditingKPI] = useState<string | null>(null);
   const [selectedKPIs, setSelectedKPIs] = useState<string[]>([]);
@@ -45,12 +46,12 @@ export default function ObjectiveDetailPage() {
     error: kpisError,
     refetch,
   } = useKPIs({
-    // Fetch a large page so client-side filtering by objectiveId doesn't miss items
+    // Fetch a large page so client-side filtering by objectiveId doesn't miss items=
     page: 1,
     limit: 1000,
   });
 
-  // Fetch divisions and departments to resolve assignee names
+  // Fetch divisions and departments to resolve assignee name
   const { data: divisionsData } = useQuery(GET_DIVISIONS, {
     variables: { page: 1, limit: 100 },
   });
@@ -131,6 +132,38 @@ export default function ObjectiveDetailPage() {
   const objectiveKPIs = kpis.filter(
     (kpi) => kpi.objective?.objectiveId === objectiveId
   );
+
+  // Calculate relevant KPIs for weight validation (across all objectives of the same context)
+  // Must be at top level to avoid Hook Rules violation
+  const relevantKPIsForWeight = useMemo(() => {
+    if (!objective || !allObjectives.length) return objectiveKPIs;
+
+    return kpis.filter((k) => {
+      if (k.status === "REJECTED") return false;
+
+      const kObjId = k.objective?.objectiveId;
+      if (!kObjId) return false;
+
+      // Find full objective details to check context
+      const kObj = (allObjectives as any[]).find(o => o.objectiveId === kObjId);
+      if (!kObj) return false;
+
+      // Check if types match
+      if (kObj.type !== objective.type) return false;
+
+      // Check Strategic Period match
+      const kPeriodId = kObj.strategicPeriod?.strategicPeriodId;
+      const currentPeriodId = objective.strategicPeriod?.strategicPeriodId;
+      if (kPeriodId && currentPeriodId && kPeriodId !== currentPeriodId) return false;
+
+      // Check Assignee (Scope) match
+      if (objective.type !== "CORPORATE") {
+        if (kObj.assigneeId !== objective.assigneeId) return false;
+      }
+
+      return true;
+    });
+  }, [kpis, allObjectives, objective, objectiveKPIs]);
 
   // Function to check if objective has been assigned (has children)
   const hasBeenAssigned = () => {
@@ -285,86 +318,24 @@ export default function ObjectiveDetailPage() {
   };
 
   if (showAddKPI) {
+    if (editingKPI) {
+      return (
+        <UpdateKPIForm
+          kpiId={editingKPI}
+          onSuccess={handleKPISuccess}
+          onCancel={() => setShowAddKPI(false)}
+          existingKPIs={relevantKPIsForWeight}
+        />
+      );
+    }
+
     return (
-      <KPIForm
+      <CreateKPIForm
         objectiveId={objectiveId}
-        kpiId={editingKPI}
+        objective={objective}
         onSuccess={handleKPISuccess}
         onCancel={() => setShowAddKPI(false)}
-        objective={objective}
-        strategicTargetsById={(function () {
-          try {
-            const parentId = objective.parent?.objectiveId;
-            console.log("🔍 strategicTargetsById calculation for KPIForm:", {
-              objectiveType: objective.type,
-              parentId,
-              objectiveKPIsCount: objectiveKPIs.length,
-              kpisCount: kpis.length,
-            });
-
-            if (!parentId) return {};
-
-            // Build parent KPI list with targets using global kpis list
-            const parentKPIs = kpis.filter(
-              (k) => k.objective?.objectiveId === parentId
-            );
-
-            console.log("📊 Parent KPIs found for KPIForm:", {
-              parentId,
-              parentKPIsCount: parentKPIs.length,
-              parentKPIs: parentKPIs.map((k) => ({
-                kpiId: k.kpiId,
-                name: k.name,
-                targetsCount: k.targets?.length || 0,
-              })),
-            });
-
-            const map: Record<string, Record<string, number>> = {};
-
-            // Use index-based matching like the approval table
-            objectiveKPIs.forEach((childKpi, idx) => {
-              const parentKpi = parentKPIs[idx];
-
-              console.log("🔗 Processing child KPI for KPIForm:", {
-                childKpiName: childKpi.name,
-                childKpiId: childKpi.kpiId,
-                index: idx,
-                parentKpiName: parentKpi?.name,
-                parentKpiId: parentKpi?.kpiId,
-              });
-
-              if (!parentKpi?.targets) return;
-
-              const byYear: Record<string, number> = {};
-
-              // Process targets like the approval table
-              (parentKpi.targets || []).forEach((t) => {
-                const tl = t.timeline as string;
-                if (tl.includes("-Q")) {
-                  const year = tl.split("-")[0];
-                  byYear[year] = (byYear[year] || 0) + Number(t.target || 0);
-                } else {
-                  byYear[tl] = Number(t.target || 0);
-                }
-              });
-
-              map[childKpi.kpiId] = byYear;
-              console.log("💾 Set map for child KPI in KPIForm:", {
-                childKpiId: childKpi.kpiId,
-                byYear,
-              });
-            });
-
-            console.log("📋 Final strategicTargetsById map for KPIForm:", map);
-            return map;
-          } catch (error) {
-            console.error(
-              "❌ Error in strategicTargetsById for KPIForm:",
-              error
-            );
-            return {} as Record<string, Record<string, number>>;
-          }
-        })()}
+        existingKPIs={relevantKPIsForWeight}
       />
     );
   }
@@ -448,9 +419,9 @@ export default function ObjectiveDetailPage() {
                   if (
                     hasKPIs &&
                     (objective.type === "CORPORATE" ||
-                    (objective.type === "DIVISION" &&
-                      objective.status === "APPROVED") ||
-                    (objective.type === "DEPARTMENT" &&
+                      (objective.type === "DIVISION" &&
+                        objective.status === "APPROVED") ||
+                      (objective.type === "DEPARTMENT" &&
                         objective.status === "APPROVED"))
                   ) {
                     setShowAssignDialog(true);
@@ -465,8 +436,8 @@ export default function ObjectiveDetailPage() {
                 }
                 className={
                   (objective.kpis?.length ?? 0) > 0 &&
-                  (objective.type === "CORPORATE" ||
-                    objective.status === "APPROVED")
+                    (objective.type === "CORPORATE" ||
+                      objective.status === "APPROVED")
                     ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }
@@ -475,8 +446,8 @@ export default function ObjectiveDetailPage() {
                 {objective.type === "CORPORATE"
                   ? "Assign to Division/Department"
                   : objective.type === "DIVISION"
-                  ? "Assign to Department"
-                  : "Assign to Personnel"}
+                    ? "Assign to Department"
+                    : "Assign to Personnel"}
                 {(objective.kpis?.length ?? 0) === 0 ? (
                   <span className="ml-2 text-xs">(Add KPI first)</span>
                 ) : (
@@ -484,7 +455,7 @@ export default function ObjectiveDetailPage() {
                   objective.status !== "APPROVED" && (
                     <span className="ml-2 text-xs">(Requires Approval)</span>
                   )
-                  )}
+                )}
               </Button>
             )}
         </div>
@@ -497,8 +468,8 @@ export default function ObjectiveDetailPage() {
                 {objective.type === "CORPORATE"
                   ? "Assignments:"
                   : objective.type === "DIVISION"
-                  ? "Assigned to Departments:"
-                  : "Assigned to Employees:"}
+                    ? "Assigned to Departments:"
+                    : "Assigned to Employees:"}
               </h3>
               <div className="space-y-2">
                 {getChildObjectives().map((childObjective, index) => {
@@ -632,10 +603,11 @@ export default function ObjectiveDetailPage() {
           <h2 className="text-lg font-semibold">Key Performance Indicators</h2>
           <Button
             onClick={handleAddKPI}
-            className="bg-[#3838EC] hover:bg-[#2e2ed6]"
+            disabled={objective.status === "APPROVED" && objective.type !== "CORPORATE"}
+            className={objective.status === "APPROVED" && objective.type !== "CORPORATE" ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#3838EC] hover:bg-[#2e2ed6]"}
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add KPI
+            {objective.status === "APPROVED" && objective.type !== "CORPORATE" ? "Adding Disabled (Approved)" : "Add KPI"}
           </Button>
         </div>
 
@@ -717,39 +689,50 @@ export default function ObjectiveDetailPage() {
 
                 const map: Record<string, Record<string, number>> = {};
 
-                // Use index-based matching like the approval table
-                objectiveKPIs.forEach((childKpi, idx) => {
-                  const parentKpi = parentKPIs[idx];
+                // Use parent.kpiId matching for accurate target cascading
+                objectiveKPIs.forEach((childKpi) => {
+                  const parentKpiId = childKpi.parent?.kpiId;
+                  const parentKpi = parentKpiId ? parentKPIs.find(pk => pk.kpiId === parentKpiId) : null;
 
-                  console.log("🔗 Processing child KPI:", {
+                  console.log("🔗 Matching child KPI:", {
                     childKpiName: childKpi.name,
                     childKpiId: childKpi.kpiId,
-                    index: idx,
+                    parentKpiId,
                     parentKpiName: parentKpi?.name,
-                    parentKpiId: parentKpi?.kpiId,
                   });
 
-                  if (!parentKpi?.targets) return;
+                  if (!parentKpi?.targets) {
+                    // Fallback to index-based if no direct parent ID is found (legacy or special case)
+                    // But usually, parent.kpiId should be there
+                    map[childKpi.kpiId] = {};
+                    return;
+                  }
 
                   const byYear: Record<string, number> = {};
+                  const quarterCounts: Record<string, number> = {};
 
                   // Process targets like the approval table
                   (parentKpi.targets || []).forEach((t) => {
                     const tl = t.timeline as string;
                     if (tl.includes("-Q")) {
                       const year = tl.split("-")[0];
-                      byYear[year] =
-                        (byYear[year] || 0) + Number(t.target || 0);
+                      byYear[year] = (byYear[year] || 0) + Number(t.target || 0);
+                      quarterCounts[year] = (quarterCounts[year] || 0) + 1;
                     } else {
                       byYear[tl] = Number(t.target || 0);
                     }
                   });
 
+                  // If percentage, average the quarterly sums
+                  if (parentKpi.unitType === "PERCENT") {
+                    Object.keys(byYear).forEach((year) => {
+                      if (quarterCounts[year] > 0) {
+                        byYear[year] = byYear[year] / quarterCounts[year];
+                      }
+                    });
+                  }
+
                   map[childKpi.kpiId] = byYear;
-                  console.log("💾 Set map for child KPI:", {
-                    childKpiId: childKpi.kpiId,
-                    byYear,
-                  });
                 });
 
                 console.log("📋 Final strategicTargetsById map:", map);
@@ -835,13 +818,9 @@ export default function ObjectiveDetailPage() {
               type: objective.type,
               parent: objective.parent
                 ? {
-                    type:
-                      allObjectives.find(
-                        (obj: { objectiveId: string; type?: string }) =>
-                          obj.objectiveId === objective.parent?.objectiveId
-                      )?.type || "UNKNOWN",
-                    name: objective.parent.name,
-                  }
+                  objectiveId: objective.parent.objectiveId,
+                  name: objective.parent.name,
+                }
                 : null,
             }}
           />

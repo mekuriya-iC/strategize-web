@@ -59,12 +59,12 @@ export function buildUserScope(
 
   const role = user.role;
   const level = getScopeLevel(role);
-  
+
   // Get IDs of managed units
   const managedDivisionIds = managedDivisions
     .filter(d => d.manager?.employeeId === user.employeeId)
     .map(d => d.divisionId);
-    
+
   const managedDepartmentIds = managedDepartments
     .filter(d => d.manager?.employeeId === user.employeeId)
     .map(d => d.departmentId);
@@ -80,7 +80,7 @@ export function buildUserScope(
       divisionIds = [];
       departmentIds = [];
       break;
-      
+
     case 'DIVISION':
       // Can access managed divisions and their departments
       divisionIds = managedDivisionIds;
@@ -91,7 +91,7 @@ export function buildUserScope(
       // Also include directly managed departments (if any)
       departmentIds = [...new Set([...departmentIds, ...managedDepartmentIds])];
       break;
-      
+
     case 'DEPARTMENT':
       // Can only access managed departments
       divisionIds = [];
@@ -101,7 +101,7 @@ export function buildUserScope(
         departmentIds = [...new Set([...departmentIds, ...user.departments.map(d => d.departmentId)])];
       }
       break;
-      
+
     case 'SELF':
     default:
       // Can only access own data
@@ -128,17 +128,17 @@ export function canAccessDivision(
   divisionId: string
 ): boolean {
   if (!scope) return false;
-  
+
   // System/Corporate level can access all
   if (scope.level === 'SYSTEM' || scope.level === 'CORPORATE') {
     return true;
   }
-  
+
   // Division level can access their managed divisions
   if (scope.level === 'DIVISION') {
     return scope.managedDivisionIds.includes(divisionId);
   }
-  
+
   // Department and below cannot access divisions directly
   return false;
 }
@@ -152,12 +152,12 @@ export function canAccessDepartment(
   departmentDivisionId?: string | null
 ): boolean {
   if (!scope) return false;
-  
+
   // System/Corporate level can access all
   if (scope.level === 'SYSTEM' || scope.level === 'CORPORATE') {
     return true;
   }
-  
+
   // Division level can access departments in their division
   if (scope.level === 'DIVISION') {
     // If department has a division, check if user manages that division
@@ -167,12 +167,12 @@ export function canAccessDepartment(
     // Also check if department is in user's accessible list
     return scope.departmentIds.includes(departmentId);
   }
-  
+
   // Department/Coordinator level can access their departments
   if (scope.level === 'DEPARTMENT') {
     return scope.departmentIds.includes(departmentId);
   }
-  
+
   // Self level - only if user belongs to that department
   return scope.departmentIds.includes(departmentId);
 }
@@ -187,27 +187,27 @@ export function canAccessEmployee(
   employeeDivisionId?: string | null
 ): boolean {
   if (!scope) return false;
-  
+
   // Can always access self
   if (scope.employeeId === employeeId) {
     return true;
   }
-  
+
   // System/Corporate level can access all
   if (scope.level === 'SYSTEM' || scope.level === 'CORPORATE') {
     return true;
   }
-  
+
   // Division level can access employees in their division
   if (scope.level === 'DIVISION' && employeeDivisionId) {
     return scope.managedDivisionIds.includes(employeeDivisionId);
   }
-  
+
   // Department level can access employees in their department
   if ((scope.level === 'DEPARTMENT' || scope.level === 'DIVISION') && employeeDepartmentId) {
     return scope.departmentIds.includes(employeeDepartmentId);
   }
-  
+
   return false;
 }
 
@@ -243,10 +243,10 @@ export function resolveApprovalAuthority(
   switch (submissionLevel) {
     case 'CORPORATE':
       return { requiredRole: 'ADMIN', scope: 'CORPORATE' };
-      
+
     case 'DIVISION':
       return { requiredRole: 'ADMIN', scope: 'CORPORATE' };
-      
+
     case 'DEPARTMENT':
       if (departmentDivisionId) {
         // Department under a division → Director can approve
@@ -255,11 +255,11 @@ export function resolveApprovalAuthority(
         // Department reports directly to corporate → Admin approves
         return { requiredRole: 'ADMIN', scope: 'CORPORATE' };
       }
-      
+
     case 'PERSONNEL':
       // Manager of the department approves
       return { requiredRole: 'MANAGER', scope: 'DEPARTMENT' };
-      
+
     default:
       return { requiredRole: 'ADMIN', scope: 'CORPORATE' };
   }
@@ -277,10 +277,10 @@ export function canApproveSubmission(
   departmentReportsToCorpDirectly: boolean
 ): boolean {
   if (!userRole || !userScope) return false;
-  
+
   // Super admin can approve anything
   if (isSuperAdmin(userRole)) return true;
-  
+
   // Admin can approve corporate, division, and direct-to-corp department submissions
   if (userRole === 'ADMIN') {
     if (submissionLevel === 'CORPORATE' || submissionLevel === 'DIVISION') {
@@ -292,7 +292,7 @@ export function canApproveSubmission(
     // Admin can also approve any department submission
     return true;
   }
-  
+
   // Director can approve department submissions in their division
   if (userRole === 'DIRECTOR') {
     if (submissionLevel === 'DEPARTMENT' && submissionDivisionId) {
@@ -304,7 +304,7 @@ export function canApproveSubmission(
     }
     return false;
   }
-  
+
   // Manager can approve personnel submissions in their department
   if (userRole === 'MANAGER') {
     if (submissionLevel === 'PERSONNEL' && submissionDepartmentId) {
@@ -312,7 +312,7 @@ export function canApproveSubmission(
     }
     return false;
   }
-  
+
   // Coordinator cannot approve (they just coordinate)
   return false;
 }

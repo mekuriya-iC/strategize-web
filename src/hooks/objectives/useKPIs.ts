@@ -39,7 +39,8 @@ export const useKPI = (variables: KpiQueryVariables) => {
     // Skip query if kpiId is empty or undefined
     skip: !variables.kpiId,
   });
-
+  console.log('data fetch of kpi:', variables);
+ console.log('KPI:', data?.kpi);
   return {
     kpi: data?.kpi,
     loading,

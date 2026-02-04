@@ -7,7 +7,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { useUserDepartments } from "@/hooks/useUserDepartments";
+import { useUserDepartments } from "@/hooks/org-structure/useUserDepartments";
 import { useAuthStore } from "@/stores";
 
 // Simplified department type that matches what's returned from user query

@@ -4,17 +4,23 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import ApprovalFilterBar from "./ApprovalFilterBar";
 import ApprovalTable from "./ApprovalTable";
-import { Objective } from "../objectives/ObjectiveTable";
-import ObjectivePagination from "../objectives/ObjectivePagination";
-import { useObjectives } from "@/hooks/useObjectives";
-import { useObjectiveMutations } from "@/hooks/useObjectiveMutations";
-import { useKPIs } from "@/hooks/useKPIs";
-import { useKPIMutations } from "@/hooks/useKPIMutations";
-// import { useRouter } from "next/navigation";
+import { Objective } from "@/components/features/objectives/ObjectiveTable";
+import DataTablePagination from "@/components/shared/DataTablePagination";
+import { useObjectives } from "@/hooks/objectives/useObjectives";
+import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
+import { useKPIs } from "@/hooks/objectives/useKPIs";
+import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
+import { useSubmissionMutations } from "@/hooks/submissions/useSubmissionMutations";
 import { toast } from "sonner";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Search, Edit } from "lucide-react";
 import RejectObjectiveDialog from "./RejectObjectiveDialog";
-import { Kpi } from "@/types/graphql";
+import { Kpi, GetDepartmentsResponse } from "@/types/graphql";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { useQuery } from "@apollo/client";
+import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import { GET_PENDING_SUBMISSIONS, GET_KPI_SUBMISSIONS } from "@/lib/graphql/queries/submissions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import UpdateKPIForm from "../objectives/UpdateKPIForm"; // Updated import
 
 interface ApprovalsTableProps {
   activeTab: string;
@@ -32,6 +38,8 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedObjectiveForReject, setSelectedObjectiveForReject] =
     useState<Objective | null>(null);
+  const [editKPIOpen, setEditKPIOpen] = useState(false);
+  const [selectedKPIForEdit, setSelectedKPIForEdit] = useState<Kpi | null>(null);
 
   const itemsPerPage = 10;
 
@@ -47,9 +55,48 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
     // Fetch all KPIs to associate with objectives
   });
 
+  const { data: deptsData } = useQuery<GetDepartmentsResponse>(GET_DEPARTMENTS, {
+    variables: { page: 1, limit: 1000 },
+  });
+
+  const { objectives: objectivePerms } = usePermissions();
+
+  // Fetch submissions to map reasons and IDs
+  const { data: subData1 } = useQuery(GET_PENDING_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DIVISION" } });
+  const { data: subData2 } = useQuery(GET_PENDING_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DEPARTMENT" } });
+  const { data: subData3 } = useQuery(GET_PENDING_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "PERSONNEL" } });
+
+  const { data: kpiSubData1 } = useQuery(GET_KPI_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DIVISION" } });
+  const { data: kpiSubData2 } = useQuery(GET_KPI_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DEPARTMENT" } });
+  const { data: kpiSubData3 } = useQuery(GET_KPI_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "PERSONNEL" } });
+
+  const allPendingSubmissions = useMemo(() => {
+    const subs = [
+      ...(subData1?.submissions?.items || []),
+      ...(subData2?.submissions?.items || []),
+      ...(subData3?.submissions?.items || []),
+      ...(kpiSubData1?.submissions?.items || []),
+      ...(kpiSubData2?.submissions?.items || []),
+      ...(kpiSubData3?.submissions?.items || []),
+    ];
+    return subs;
+  }, [subData1, subData2, subData3, kpiSubData1, kpiSubData2, kpiSubData3]);
+
+  // Map of departmentId -> divisionId
+  const departmentToDivision = useMemo(() => {
+    const map: Record<string, string> = {};
+    deptsData?.departments?.items?.forEach((dept) => {
+      if (dept.departmentId && dept.division?.divisionId) {
+        map[dept.departmentId] = dept.division.divisionId;
+      }
+    });
+    return map;
+  }, [deptsData]);
+
   // Mutations - Using same hooks as objectives for consistent behavior
   const { updateObjective, loading: mutationLoading } = useObjectiveMutations();
   const { updateKpi, loading: kpiMutationLoading } = useKPIMutations();
+  const { updateSubmission } = useSubmissionMutations();
 
   // Filter objectives based on status and tab for approval workflow
   const filteredObjectives = useMemo(() => {
@@ -71,10 +118,31 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
     } else if (activeTab === "personnel") {
       filtered = filtered.filter((obj) => obj.type === "PERSONNEL");
     }
-    // "all" shows all types
 
-    return filtered;
-  }, [objectives, statusFilter, activeTab]);
+    // Filter by permission (hierarchy)
+    return filtered.filter((obj) => {
+      const divisionId =
+        obj.type === "DEPARTMENT" && obj.assigneeId
+          ? departmentToDivision[obj.assigneeId]
+          : obj.type === "PERSONNEL" && obj.parent?.objectiveId
+            ? (function () {
+              // For personnel, find its department's division
+              // This is a bit complex, but usually personnel objectives
+              // are approved by the Dept Manager.
+              return null; // Personnel approval is handled by departmentId in guards.ts
+            })()
+            : null;
+
+      const departmentId =
+        obj.type === "PERSONNEL" && obj.assigneeId ? obj.assigneeId : null;
+
+      return objectivePerms.canApprove(
+        obj.type,
+        divisionId,
+        departmentId
+      );
+    });
+  }, [objectives, statusFilter, activeTab, objectivePerms, departmentToDivision]);
 
   const handleSelect = (id: string) => {
     setSelected((prev) =>
@@ -188,18 +256,29 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
         console.log("Selected KPIs rejected:", selectedKPIs);
       }
 
-      // TODO: When rejection reason API is available, save the reason
+      // Update submission reason if reason is provided
       if (reason.trim()) {
-        console.log("Rejection reason:", reason);
-        // Future: Save rejection reason to backend
+        const itemSubmission = allPendingSubmissions.find(s =>
+          (objective.objectiveId && s.objective?.objectiveId === objective.objectiveId) ||
+          (objective.objectiveId && s.kpi?.objective?.objectiveId === objective.objectiveId)
+        );
+
+        if (itemSubmission) {
+          await updateSubmission({
+            input: {
+              submissionId: itemSubmission.submissionId,
+              status: "REJECTED",
+              reason: reason.trim()
+            }
+          });
+        }
       }
 
       const rejectedCount = selectedKPIs.length;
       const message =
         rejectedCount > 0
-          ? `Objective "${objective.name}" and ${rejectedCount} KPI${
-              rejectedCount > 1 ? "s" : ""
-            } rejected successfully`
+          ? `Objective "${objective.name}" and ${rejectedCount} KPI${rejectedCount > 1 ? "s" : ""
+          } rejected successfully`
           : `Objective "${objective.name}" rejected successfully`;
 
       toast.success(message);
@@ -235,6 +314,17 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
       console.error("Error rejecting KPI:", error);
       toast.error("Failed to reject KPI");
     }
+  };
+
+  const handleEditKPI = (kpi: Kpi) => {
+    setSelectedKPIForEdit(kpi);
+    setEditKPIOpen(true);
+  };
+
+  const handleKPISuccess = () => {
+    setEditKPIOpen(false);
+    setSelectedKPIForEdit(null);
+    refetch();
   };
 
   const handleSearchChange = (value: string) => {
@@ -321,18 +411,21 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
         onRejectObjective={handleRejectObjective}
         onApproveKPI={handleApproveKPI}
         onRejectKPI={handleRejectKPI}
+        onEditKPI={handleEditKPI}
         loading={loading || kpisLoading || kpiMutationLoading}
         error={error?.message}
       />
 
       {/* Pagination */}
       {meta && meta.totalPages > 1 && (
-        <ObjectivePagination
+        <DataTablePagination
           currentPage={currentPage}
           totalPages={meta.totalPages}
           totalItems={meta.totalItems}
           itemsPerPage={itemsPerPage}
           onPageChange={handlePageChange}
+          loading={loading || kpisLoading}
+          itemName="objectives"
         />
       )}
 
@@ -344,6 +437,22 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
         kpis={kpis}
         onReject={handleConfirmReject}
       />
+
+      {/* Adjust KPI Dialog */}
+      <Dialog open={editKPIOpen} onOpenChange={setEditKPIOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Adjust KPI Targets</DialogTitle>
+          </DialogHeader>
+          {selectedKPIForEdit && (
+            <UpdateKPIForm
+              kpiId={selectedKPIForEdit.kpiId}
+              onSuccess={handleKPISuccess}
+              onCancel={() => setEditKPIOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

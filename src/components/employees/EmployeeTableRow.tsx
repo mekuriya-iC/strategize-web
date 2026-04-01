@@ -1,0 +1,74 @@
+"use client";
+import React from "react";
+import { TableRow, TableCell } from "@/components/ui/table";
+import EmployeeAvatar from "./EmployeeAvatar";
+import EmployeeStatusBadge from "./EmployeeStatusBadge";
+import EmployeeRoleBadge from "./EmployeeRoleBadge";
+import EmployeeActionsMenu from "./EmployeeActionsMenu";
+import { Employee as GraphQLEmployee } from "@/types/graphql";
+
+interface Employee {
+  id: number;
+  fullName: string;
+  profilePic: string;
+  email: string;
+  title: string;
+  department: string;
+  phone: string;
+  employedOn: string;
+  status: string;
+  employeeId?: string;
+}
+
+const EmployeeTableRow = ({
+  employee,
+  odd,
+  originalEmployee,
+}: {
+  employee: Employee;
+  odd: boolean;
+  originalEmployee?: GraphQLEmployee;
+}) => {
+  return (
+    <TableRow className={odd ? "bg-white" : "bg-[#ECECFF] "}>
+      <TableCell className="font-medium px-6 py-4 text-[#11181C]">
+        {employee.fullName}
+      </TableCell>
+      <TableCell className="px-6 py- text-[#11181C]">
+        <EmployeeAvatar
+          src={employee.profilePic}
+          alt={employee.fullName}
+          downloadUrl={employee.profilePic}
+        />
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        {employee.email}
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        {employee.title}
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        <EmployeeRoleBadge role={employee.department} />
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        {employee.phone}
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        {employee.employedOn}
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        <EmployeeStatusBadge status={employee.status} />
+      </TableCell>
+      <TableCell className="px-6 py-4 text-[#11181C]">
+        <EmployeeActionsMenu
+          onView={() => {}}
+          employeeName={employee.fullName}
+          employeeId={employee.employeeId}
+          originalEmployee={originalEmployee}
+        />
+      </TableCell>
+    </TableRow>
+  );
+};
+
+export default EmployeeTableRow;

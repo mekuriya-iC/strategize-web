@@ -1,0 +1,142 @@
+import {
+  ApolloClient,
+  InMemoryCache,
+  createHttpLink,
+  from,
+} from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
+import { onError } from "@apollo/client/link/error";
+import {
+  getAccessToken,
+  isTokenExpired,
+  handleSessionExpired,
+  refreshAccessToken,
+} from "@/lib/auth-utils";
+import { apolloLogger } from "@/lib/logger";
+
+const httpLink = createHttpLink({
+  uri: "/api/graphql", // Use proxy to avoid CORS issues
+});
+
+// Auth link - adds token to every request
+const authLink = setContext(async (_, { headers }) => {
+  let token = getAccessToken();
+
+  // Check if token is expired before making request
+  if (token && isTokenExpired(token)) {
+    apolloLogger.warn("Token expired, attempting refresh...");
+
+    // Try to refresh the token
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      token = newToken;
+    } else {
+      // Refresh failed, will let the request fail and error link will handle it
+      apolloLogger.warn("Token refresh failed, proceeding with expired token");
+    }
+  }
+
+  return {
+    headers: {
+      ...headers,
+      authorization: token ? `Bearer ${token}` : "",
+    },
+  };
+});
+
+// Error link - handles GraphQL and network errors
+const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+  if (graphQLErrors) {
+    for (const err of graphQLErrors) {
+      // Check for "not found" errors - these are expected when data is deleted
+      // Log as debug instead of error to reduce noise
+      const isNotFoundError = err.message.toLowerCase().includes("not found");
+      
+      if (isNotFoundError) {
+        apolloLogger.debug(
+          `[GraphQL]: ${err.message} (Path: ${err.path?.join(".")})`,
+          { operation: operation.operationName }
+        );
+        continue; // Skip further processing for not-found errors
+      }
+
+      apolloLogger.error(
+        `[GraphQL error]: Message: ${err.message}, Path: ${err.path?.join(".")}`,
+        { operation: operation.operationName }
+      );
+
+      // Check for authentication errors
+      if (
+        err.extensions?.code === "UNAUTHENTICATED" ||
+        err.message.toLowerCase().includes("unauthorized") ||
+        err.message.toLowerCase().includes("not authenticated") ||
+        err.message.toLowerCase().includes("jwt expired")
+      ) {
+        apolloLogger.warn("Authentication error detected, redirecting to login");
+        handleSessionExpired("Your session has expired. Please log in again.");
+        return;
+      }
+    }
+  }
+
+  if (networkError) {
+    apolloLogger.error(`[Network error]: ${networkError.message}`);
+
+    // Check for 401 Unauthorized
+    if ("statusCode" in networkError && networkError.statusCode === 401) {
+      apolloLogger.warn("401 Unauthorized, redirecting to login");
+      handleSessionExpired("Your session has expired. Please log in again.");
+      return;
+    }
+
+    // Check for network connectivity issues
+    if (networkError.message === "Failed to fetch") {
+      apolloLogger.error("Network connectivity issue - server may be down");
+    }
+  }
+});
+
+const apolloClient = new ApolloClient({
+  link: from([errorLink, authLink, httpLink]),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Query: {
+        fields: {
+          // Merge paginated results properly
+          objectives: {
+            keyArgs: ["search", "assigneeId"],
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+          kpis: {
+            keyArgs: ["search"],
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+          submissions: {
+            keyArgs: ["type", "status"],
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
+    },
+  }),
+  defaultOptions: {
+    watchQuery: {
+      errorPolicy: "all",
+      fetchPolicy: "cache-and-network",
+    },
+    query: {
+      errorPolicy: "all",
+    },
+    mutate: {
+      errorPolicy: "all",
+    },
+  },
+});
+
+export default apolloClient;

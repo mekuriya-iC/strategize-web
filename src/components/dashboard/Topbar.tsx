@@ -29,6 +29,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
+import NotificationDropdown from "./NotificationDropdown";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
@@ -97,9 +98,7 @@ export default function Topbar() {
       {/* Right: Icons, language, user */}
       <div className="flex items-center gap-3">
         {/* Notification bell */}
-        <button className="p-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-          <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-        </button>
+        <NotificationDropdown />
 
         {/* Theme toggle button */}
         <button

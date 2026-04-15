@@ -35,9 +35,9 @@ const DepartmentTableSkeleton: React.FC<DepartmentTableSkeletonProps> = ({
           {Array.from({ length: rows }).map((_, idx) => (
             <TableRow
               key={idx}
-              className={`border-b border-gray-100 ${
-                idx % 2 === 1 ? "bg-gray-50" : "bg-white"
-              } hover:bg-gray-50`}
+              className={`border-b border-gray-100 dark:border-gray-800 ${
+                idx % 2 === 1 ? "bg-gray-50 dark:bg-transparent" : "bg-white dark:bg-[#1e1e3f]/40"
+              } hover:bg-gray-50 dark:hover:bg-gray-800/50`}
             >
               {/* Department Name */}
               <TableCell className="px-6 py-4">

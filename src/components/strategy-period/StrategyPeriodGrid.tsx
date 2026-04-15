@@ -104,7 +104,7 @@ export default function StrategyPeriodGrid() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-gray-200 animate-pulse rounded-xl h-64"
+              className="bg-gray-200 dark:bg-gray-800 animate-pulse rounded-xl h-64"
             ></div>
           ))}
         </div>
@@ -117,7 +117,7 @@ export default function StrategyPeriodGrid() {
       <div className="w-full flex flex-col items-center">
         <div className="text-red-500 text-center">
           <p className="text-lg font-medium">Error loading strategic periods</p>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
             {error.message || "Failed to load strategic periods"}
           </p>
         </div>
@@ -129,10 +129,10 @@ export default function StrategyPeriodGrid() {
     return (
       <div className="w-full flex flex-col items-center">
         <div className="text-center">
-          <p className="text-lg font-medium text-gray-600">
+          <p className="text-lg font-medium text-gray-600 dark:text-gray-400">
             No strategic periods found
           </p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
             Create your first strategic period to get started
           </p>
         </div>

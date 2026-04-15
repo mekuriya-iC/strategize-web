@@ -320,7 +320,7 @@ const DivisionsPage = () => {
     <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
       {/* Header and Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+        <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
           Divisions
         </h1>
       </div>
@@ -355,7 +355,7 @@ const DivisionsPage = () => {
 
             {/* Results Summary */}
             {(searchTerm || filterType !== "all") && (
-              <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>
                   Showing {transformedDivisions.length} of {totalItems} divisions
                   {searchTerm && (
@@ -376,7 +376,7 @@ const DivisionsPage = () => {
         canAccessEmployees ? (
           <EmptyState onAddDivision={handleAddDivision} />
         ) : (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             No divisions found.
           </div>
         )

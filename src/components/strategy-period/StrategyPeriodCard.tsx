@@ -30,7 +30,7 @@ export default function StrategyPeriodCard({
   return (
     <>
       <Card
-        className={`bg-white border border-[#E2E8F0] rounded-xl shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col items-center p-8 transition-all gap-2 hover:shadow-lg cursor-pointer relative ${
+        className={`bg-white dark:bg-[#18181b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col items-center p-8 transition-all gap-2 hover:shadow-lg cursor-pointer relative ${
           selected ? "ring-2 ring-[#3838EC]" : ""
         }`}
         onClick={onClick}
@@ -39,7 +39,7 @@ export default function StrategyPeriodCard({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 hover:bg-red-50"
+            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteDialog(true);
@@ -50,9 +50,9 @@ export default function StrategyPeriodCard({
         )}
         <div className="mb-5 text-5xl">{icon}</div>
         <div className="font-semibold text-lg text-primary">{title}</div>
-        <div className="text-sm text-[#09090B] mb-4">{date}</div>
+        <div className="text-sm text-[#09090B] dark:text-gray-300 mb-4">{date}</div>
         {period && (
-          <div className="text-xs text-gray-500 mb-4 text-center">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-4 text-center">
             Duration: {period.length} {period.length === 1 ? "year" : "years"}
             <br />
             Created: {new Date(period.createdAt).toLocaleDateString()}

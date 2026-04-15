@@ -60,7 +60,7 @@ export default function DashboardLayout({
       <UIInitializer />
 
       <DepartmentSelectionProvider>
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <div className="flex h-screen bg-gray-50 dark:bg-[#09090b] overflow-hidden">
           {/* Sidebar with its own error boundary */}
           <SectionErrorBoundary sectionName="sidebar">
             <Sidebar />

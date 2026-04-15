@@ -125,13 +125,13 @@ const DivisionDetailsTable: React.FC<DivisionDetailsTableProps> = ({
         {departmentsToShow.map((dept, idx) => (
           <TableRow
             key={dept.id}
-            className={`border-b border-gray-100 ${idx % 2 === 1 ? "bg-white" : "bg-[#ECECFF]"
-              } hover:bg-gray-50 transition-colors`}
+            className={`border-b border-gray-100 dark:border-gray-800 ${idx % 2 === 1 ? "bg-white dark:bg-transparent" : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
+              } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors`}
           >
-            <TableCell className="px-6 py-4 font-medium text-gray-900">
+            <TableCell className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
               {dept.departmentName}
             </TableCell>
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
               {dept.createdBy}
             </TableCell>
             <TableCell className="px-6 py-4 text-gray-600">

@@ -81,24 +81,24 @@ class ErrorBoundary extends Component<Props, State> {
       // Default fallback UI
       return (
         <div className="min-h-[400px] flex items-center justify-center p-8">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="max-w-md w-full bg-white dark:bg-[#18181b] rounded-lg shadow-lg p-8 text-center">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
             </div>
 
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Something went wrong
             </h2>
 
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               We encountered an unexpected error. This has been logged and we
               will look into it.
             </p>
 
             {process.env.NODE_ENV === "development" && this.state.error && (
-              <div className="mb-6 p-4 bg-gray-100 rounded-lg text-left overflow-auto max-h-40">
+              <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-left overflow-auto max-h-40">
                 <p className="text-sm font-mono text-red-600">
                   {this.state.error.message}
                 </p>

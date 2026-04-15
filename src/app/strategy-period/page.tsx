@@ -23,12 +23,12 @@ export default function StrategyPeriodPage() {
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   return (
-    <div className="min-h-screen bg-white p-4 flex flex-col items-center">
+    <div className="min-h-screen bg-white dark:bg-[#09090b] p-4 flex flex-col items-center">
       <div className="w-full flex items-center mb-24">
         <Logo />
       </div>
       <div className="w-full max-w-6xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-bold text-center mb-12 text-[#11181C]">
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-12 text-[#11181C] dark:text-gray-100">
           Choose Strategy Period
         </h1>
         <StrategyPeriodGrid />

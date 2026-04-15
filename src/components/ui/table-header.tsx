@@ -28,7 +28,7 @@ interface ReusableTableHeaderProps {
 const ReusableTableHeader: React.FC<ReusableTableHeaderProps> = ({
   headers,
   className = "border-none",
-  headerClassName = "text-[#9E9E9E] text-[14px] px-6 py-3",
+  headerClassName = "text-[#9E9E9E] dark:text-gray-400 text-[14px] px-6 py-3",
   sortConfig,
   onSort,
 }) => {
@@ -51,7 +51,7 @@ const ReusableTableHeader: React.FC<ReusableTableHeaderProps> = ({
           <TableHead
             key={header.key}
             className={`${headerClassName} ${header.sortable !== false && onSort
-                ? "cursor-pointer hover:text-[#11181C] transition-colors select-none"
+                ? "cursor-pointer hover:text-[#11181C] dark:hover:text-gray-100 transition-colors select-none"
                 : ""
               }`}
             onClick={() => {

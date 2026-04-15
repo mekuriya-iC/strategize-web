@@ -59,10 +59,10 @@ export default function Topbar() {
   };
 
   return (
-    <header className="sticky w-full flex items-center justify-between py-4 px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#212123] dark:border-[#212123]">
+    <header className="sticky w-full flex items-center justify-between py-4 px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
       {/* Left: Breadcrumbs and filter */}
       <div className="flex items-center gap-4">
-        <nav className="flex items-center text-sm text-gray-500">
+        <nav className="flex items-center text-sm text-gray-500 dark:text-gray-400">
           {/* Sidebar toggle - visible on all screens */}
           <button
             className="mr-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3838EC]"
@@ -161,7 +161,7 @@ export default function Topbar() {
                   <span className="font-medium">
                     {user?.fullName || "User"}
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     {user?.email || ""}
                   </span>
                 </div>

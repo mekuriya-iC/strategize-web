@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="min-h-screen flex flex-col md:flex-row relative p-4">
+    <div className="min-h-screen flex flex-col md:flex-row relative p-4 dark:bg-[#09090b]">
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">

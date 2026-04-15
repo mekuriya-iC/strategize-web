@@ -103,9 +103,9 @@ export default function SecuritySettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Security Notice */}
-          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-800">
+            <div className="text-sm text-amber-800 dark:text-amber-300">
               <p className="font-medium">Important</p>
               <p>
                 After changing your password, you will need to use the new
@@ -132,7 +132,7 @@ export default function SecuritySettings() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 {showNewPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -150,7 +150,7 @@ export default function SecuritySettings() {
                       key={level}
                       className={`h-1 flex-1 rounded-full transition-colors ${level <= passwordStrength.strength
                           ? passwordStrength.color
-                          : "bg-gray-200"
+                          : "bg-gray-200 dark:bg-gray-700"
                         }`}
                     />
                   ))}
@@ -168,7 +168,7 @@ export default function SecuritySettings() {
               </div>
             )}
             {/* Password Requirements */}
-            <div className="text-xs text-gray-500 space-y-1 mt-2">
+            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-2">
               <p className="font-medium">Password requirements:</p>
               <ul className="list-disc list-inside space-y-0.5 ml-1">
                 <li
@@ -236,7 +236,7 @@ export default function SecuritySettings() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 {showConfirmPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -291,30 +291,30 @@ export default function SecuritySettings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-full">
+                <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-full">
                   <Shield className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-green-900">
+                  <p className="font-medium text-green-900 dark:text-green-300">
                     Account Protected
                   </p>
-                  <p className="text-sm text-green-700">
+                  <p className="text-sm text-green-700 dark:text-green-400">
                     Your account is secured with a password
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-full">
-                  <Clock className="h-5 w-5 text-gray-600" />
+                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
+                  <Clock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Password Security</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Password Security</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     We recommend changing your password every 90 days
                   </p>
                 </div>

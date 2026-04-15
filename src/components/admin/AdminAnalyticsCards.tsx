@@ -50,7 +50,7 @@ function StatCard({ title, value, icon, trend, color }: StatCardProps) {
             <div className={`p-2 rounded-lg ${classes.iconBg}`}>
               <span className={classes.iconColor}>{icon}</span>
             </div>
-            <span className="text-sm font-medium text-gray-600">{title}</span>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-100">{title}</span>
           </div>
           <p className={`text-4xl font-bold ${classes.valueColor}`}>{value}</p>
           {trend !== undefined && (

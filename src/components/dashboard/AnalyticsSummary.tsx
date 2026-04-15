@@ -161,7 +161,7 @@ export default function AnalyticsSummary() {
     return (
       <section className="mb-10">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46]">
+          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100">
             Analytics
           </h2>
           <Button
@@ -172,7 +172,7 @@ export default function AnalyticsSummary() {
             <Filter className="w-4 h-4" /> Filter
           </Button>
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-6">
           <p className="text-red-600">
             Error loading analytics: {analytics.error}
           </p>
@@ -207,16 +207,16 @@ export default function AnalyticsSummary() {
     <section className="mb-10">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46]">
+          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100">
             {getAnalyticsTitle()}
           </h2>
           {user?.role === "DIRECTOR" && selectedUnit && (
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Showing data for selected division
             </p>
           )}
           {user?.role === "MANAGER" && selectedUnit && (
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Showing data for selected{" "}
               {selectedUnit.type === "division"
                 ? "division"
@@ -225,12 +225,12 @@ export default function AnalyticsSummary() {
           )}
           {user?.role === "NORMAL" && (
             <div className="mt-1">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Showing data for your personal objectives and KPIs
               </p>
               {(selectedDepartment?.department ||
                 departmentNames.length > 0) && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Department:{" "}
                     {selectedDepartment?.department?.name ||
                       departmentNames.join(", ")}
@@ -282,7 +282,7 @@ export default function AnalyticsSummary() {
       </div>
 
       {/* Growth indicator note */}
-      <div className="mt-4 text-xs text-gray-500">
+      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
         * Percentage changes are based on items created in the last 7 days
       </div>
     </section>

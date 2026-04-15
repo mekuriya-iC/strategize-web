@@ -95,8 +95,8 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
         <TableRow
             ref={setNodeRef}
             style={style}
-            className={`border-b border-gray-100 ${selected ? "bg-blue-50" : idx % 2 === 1 ? "bg-white" : "bg-[#ECECFF]"
-                } hover:bg-gray-50 transition-colors cursor-pointer ${isDragging ? "ring-2 ring-blue-400" : ""}`}
+            className={`border-b border-gray-100 dark:border-gray-800 ${selected ? "bg-blue-50 dark:bg-blue-950/30" : idx % 2 === 1 ? "bg-white dark:bg-transparent" : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
+                } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${isDragging ? "ring-2 ring-blue-400" : ""}`}
             onClick={() => onObjectiveClick(objective)}
         >
             {enableSorting && (
@@ -104,7 +104,7 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                     <button
                         {...attributes}
                         {...listeners}
-                        className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 rounded touch-none"
+                        className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded touch-none"
                     >
                         <GripVertical className="h-4 w-4 text-gray-400" />
                     </button>
@@ -119,19 +119,19 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                 />
             </TableCell>
 
-            <TableCell className="px-6 py-4 font-bold text-gray-900 max-w-sm">
+            <TableCell className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100 max-w-sm">
                 <div className="flex flex-col">
                     <div className="truncate" title={getFirstColumnContent()}>
                         {getFirstColumnContent()}
                     </div>
                     {getFromText() && (
-                        <div className="text-xs text-gray-500 mt-1">{getFromText()}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{getFromText()}</div>
                     )}
                 </div>
             </TableCell>
 
             {showLevelSpecificColumn && (
-                <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
+                <TableCell className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100 max-w-sm">
                     {objective.type === "PERSONNEL" ? (
                         <div className="flex flex-col">
                             <span className="font-bold text-blue-600">
@@ -153,7 +153,7 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                 </TableCell>
             )}
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{objectiveKPIs.length} KPI{objectiveKPIs.length !== 1 ? "s" : ""}</span>
@@ -170,7 +170,7 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                 </div>
             </TableCell>
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <Badge
                     className={`${objective.type === "CORPORATE"
                             ? "bg-purple-100 text-purple-600"
@@ -185,7 +185,7 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                 </Badge>
             </TableCell>
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <div className="flex flex-col gap-1">
                     {objective.strategicPeriod ? (
                         <span className="text-sm font-medium">
@@ -197,7 +197,7 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                 </div>
             </TableCell>
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 {new Date(objective.createdAt).toLocaleDateString()}
             </TableCell>
 
@@ -226,7 +226,7 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
 
                     <button
                         onClick={() => onExpand(objective.objectiveId)}
-                        className="p-1 hover:bg-gray-200 rounded-full transition-colors ml-2"
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors ml-2"
                     >
                         {expanded ? (
                             <ChevronUp className="h-5 w-5 text-blue-600" />

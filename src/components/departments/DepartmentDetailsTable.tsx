@@ -82,7 +82,7 @@ const DepartmentDetailsTable: React.FC<DepartmentDetailsTableProps> = ({
   if (!departmentData) {
     return (
       <div className="p-8 text-center">
-        <p className="text-gray-600">No department data available</p>
+        <p className="text-gray-600 dark:text-gray-400">No department data available</p>
       </div>
     );
   }
@@ -91,23 +91,23 @@ const DepartmentDetailsTable: React.FC<DepartmentDetailsTableProps> = ({
     <Table className="border-none">
       <ReusableTableHeader headers={headers} />
       <TableBody>
-        <TableRow className="border-b border-gray-100 bg-[#ECECFF] hover:bg-gray-50 transition-colors">
-          <TableCell className="px-6 py-4 font-medium text-gray-900">
+        <TableRow className="border-b border-gray-100 dark:border-gray-800 bg-[#ECECFF] dark:bg-[#1e1e3f]/40 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+          <TableCell className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
             {departmentData.departmentName}
           </TableCell>
-          <TableCell className="px-6 py-4 text-gray-600">
+          <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
             {departmentData.createdBy}
           </TableCell>
-          <TableCell className="px-6 py-4 text-gray-600">
+          <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
             {departmentData.createdOn}
           </TableCell>
-          <TableCell className="px-6 py-4 text-gray-600">
+          <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
             {departmentData.managedBy}
           </TableCell>
-          <TableCell className="px-6 py-4 text-gray-600">
+          <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
             {departmentData.division}
           </TableCell>
-          <TableCell className="px-6 py-4 text-gray-600 max-w-[300px]">
+          <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400 max-w-[300px]">
             <div className="truncate" title={departmentData.members}>
               {departmentData.members}
             </div>

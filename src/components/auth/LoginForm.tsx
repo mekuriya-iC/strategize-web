@@ -89,10 +89,10 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="">
       <div>
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center font-sans text-[#11181C]">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center font-sans text-[#11181C] dark:text-white">
           Welcome Back
         </h1>
-        <p className="mb-8 text-center text-[#ABABAB] font-sans">
+        <p className="mb-8 text-center text-[#636161] dark:text-gray-400 font-sans">
           Please enter your email and password to continue
         </p>
       </div>
@@ -101,8 +101,8 @@ export default function LoginForm() {
       {message.type && (
         <div
           className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${message.type === "logout"
-              ? "bg-green-50 border border-green-200"
-              : "bg-amber-50 border border-amber-200"
+              ? "bg-green border border-green-200"
+              : "bg-amber border border-amber-200"
             }`}
         >
           {message.type === "logout" ? (
@@ -122,7 +122,7 @@ export default function LoginForm() {
       {/* Email */}
       <div className="space-y-2 mb-12">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-black dark:text-gray-400">
             <Mail size={18} />
           </span>
           <Input
@@ -133,7 +133,7 @@ export default function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="pl-10"
+            className="pl-10 py-6 border-gray-300 dark:border-gray-700 text-black dark:text-white focus-visible:ring-primary/20 focus-visible:border-primary"
           />
         </div>
       </div>
@@ -141,7 +141,7 @@ export default function LoginForm() {
       {/* Password */}
       <div className="space-y-2 mb-4">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-black dark:text-gray-400">
             <Lock size={18} />
           </span>
           <Input
@@ -152,12 +152,12 @@ export default function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="pl-10 pr-10"
+            className="pl-10 pr-10 py-6 border-gray-300 dark:border-gray-700 text-black dark:text-white focus-visible:ring-primary/20 focus-visible:border-primary"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-black dark:text-gray-400 hover:text-black dark:hover:text-white"
             tabIndex={-1}
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -175,7 +175,7 @@ export default function LoginForm() {
           />
           <Label
             htmlFor="remember"
-            className="text-sm font-sans text-[#242424]"
+            className="text-sm font-sans text-[#242424] dark:text-gray-300"
           >
             Remember me
           </Label>

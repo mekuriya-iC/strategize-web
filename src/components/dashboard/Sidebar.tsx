@@ -169,7 +169,7 @@ export default function Sidebar() {
       {/* Mobile sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-[#18181b] border-r border-[#E2E8F0]
+          fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800
           flex flex-col justify-between py-6 px-4
           transition-transform duration-300
           ${open ? "translate-x-0" : "-translate-x-full"}
@@ -186,9 +186,9 @@ export default function Sidebar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] ${isLinkActive(link.href)
-                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
-                  : "text-gray-700"
+                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800 ${isLinkActive(link.href)
+                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white"
+                  : "text-gray-700 dark:text-gray-300"
                   }`}
                 onClick={closeSidebar}
               >
@@ -211,7 +211,7 @@ export default function Sidebar() {
       {/* Desktop sidebar - responsive to toggle state */}
       <aside
         className={`
-          hidden md:flex md:flex-col md:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] py-6
+          hidden md:flex md:flex-col md:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800 py-6
           transition-all duration-300 ease-in-out
           ${open ? "md:w-64 px-4" : "md:w-16 px-2"}
         `}
@@ -236,11 +236,11 @@ export default function Sidebar() {
                 key={link.href}
                 href={link.href}
                 className={`
-                  flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA]
+                  flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800
                   ${open ? "gap-3 px-3 py-2" : "gap-0 px-2 py-2 justify-center"}
                   ${isLinkActive(link.href)
-                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
-                    : "text-gray-700"
+                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white"
+                    : "text-gray-700 dark:text-gray-300"
                   }
                 `}
                 title={!open ? link.label : undefined}
@@ -271,7 +271,7 @@ export default function Sidebar() {
               }`}
           >
             Powered by{" "}
-            <span className="font-semibold text-[#3F3F46]">
+            <span className="font-semibold text-[#3F3F46] dark:text-gray-400">
               iCapital Africa
             </span>
           </div>

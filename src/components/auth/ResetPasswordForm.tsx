@@ -57,17 +57,17 @@ export default function ResetPasswordForm() {
       {/* Back button */}
       <Link
         href="/auth/forgot-password"
-        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 transition-colors"
+        className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8 transition-colors"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Reset Password
       </Link>
 
       <div className="mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center font-sans text-[#11181C]">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center font-sans text-[#11181C] dark:text-[#E5E7EB]">
           Reset Password
         </h1>
-        <p className="text-center text-[#ABABAB] font-sans">
+        <p className="text-center text-[#ABABAB] dark:text-gray-400 font-sans">
           Please enter a new password to reset your access to your account.
         </p>
       </div>
@@ -86,7 +86,7 @@ export default function ResetPasswordForm() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
-            className="pl-10 pr-10"
+            className="pl-10 pr-10 py-6 border-gray-300 dark:border-gray-700 text-black dark:text-white focus-visible:ring-primary/20 focus-visible:border-primary"
           />
           <button
             type="button"
@@ -113,7 +113,7 @@ export default function ResetPasswordForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="pl-10 pr-10"
+            className="pl-10 pr-10 py-6 border-gray-300 dark:border-gray-700 text-black dark:text-white focus-visible:ring-primary/20 focus-visible:border-primary"
           />
           <button
             type="button"

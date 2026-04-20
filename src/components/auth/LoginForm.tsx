@@ -61,7 +61,8 @@ export default function LoginForm() {
       if (redirectUrl && redirectUrl.startsWith("/")) {
         router.push(redirectUrl);
       } else {
-        router.push("/strategy-period");
+        // First time login - show organization template selection
+        router.push("/organization-template");
       }
     } else {
       // Determine the type of error and show appropriate message

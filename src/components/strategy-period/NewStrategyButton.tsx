@@ -7,7 +7,7 @@ export default function NewStrategyButton() {
   return (
     <Button
       variant="outline"
-      className="flex items-center gap-2 px-12 py-2  border border-primary text-primary cursor-pointer"
+      className="flex items-center gap-2 px-8 md:px-12 py-2.5 border border-primary text-primary hover:bg-primary/5 transition-colors rounded-lg font-medium"
       onClick={() => router.push("/strategy-period/new")}
       size="lg"
     >

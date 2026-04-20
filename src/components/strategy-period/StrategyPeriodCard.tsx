@@ -30,8 +30,8 @@ export default function StrategyPeriodCard({
   return (
     <>
       <Card
-        className={`bg-white dark:bg-[#18181b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col items-center p-8 transition-all gap-2 hover:shadow-lg cursor-pointer relative ${
-          selected ? "ring-2 ring-[#3838EC]" : ""
+        className={`bg-white dark:bg-[#18181b] border-0 rounded-2xl shadow-sm hover:shadow-md flex flex-col items-center p-6 md:p-8 transition-all duration-200 cursor-pointer relative group ${
+          selected ? "ring-2 ring-primary" : ""
         }`}
         onClick={onClick}
       >
@@ -39,7 +39,7 @@ export default function StrategyPeriodCard({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteDialog(true);
@@ -48,22 +48,29 @@ export default function StrategyPeriodCard({
             <X className="h-4 w-4" />
           </Button>
         )}
-        <div className="mb-5 text-5xl">{icon}</div>
-        <div className="font-semibold text-lg text-primary">{title}</div>
-        <div className="text-sm text-[#09090B] dark:text-gray-300 mb-4">{date}</div>
-        {period && (
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-4 text-center">
-            Duration: {period.length} {period.length === 1 ? "year" : "years"}
-            <br />
-            Created: {new Date(period.createdAt).toLocaleDateString()}
-          </div>
-        )}
+        
+        {/* Icon */}
+        <div className="mb-6 md:mb-8 flex items-center justify-center">
+          {icon}
+        </div>
+        
+        {/* Title */}
+        <h3 className="font-semibold text-base md:text-lg text-primary mb-2">
+          {title}
+        </h3>
+        
+        {/* Date Range */}
+        <p className="text-xs md:text-sm text-[#64748B] dark:text-gray-400 mb-6 text-center">
+          {date}
+        </p>
+        
+        {/* Choose Button */}
         <Button
           onClick={(e) => {
             e.stopPropagation();
             onClick?.();
           }}
-          className="w-full bg-primary cursor-pointer text-white hover:bg-primary/90"
+          className="w-full bg-primary hover:bg-primary/90 text-white font-medium rounded-lg py-2.5 transition-colors"
         >
           Choose
         </Button>

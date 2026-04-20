@@ -61,8 +61,16 @@ export default function LoginForm() {
       if (redirectUrl && redirectUrl.startsWith("/")) {
         router.push(redirectUrl);
       } else {
-        // First time login - show organization template selection
-        router.push("/organization-template");
+        // Role-based routing after login
+        const userRole = result.user?.role;
+        
+        // Only ADMIN and SUPER_ADMIN see organization structure flow
+        if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+          router.push("/organization-template");
+        } else {
+          // All other roles (NORMAL, COORDINATOR, MANAGER, DIRECTOR) go to strategy period selection
+          router.push("/strategy-period");
+        }
       }
     } else {
       // Determine the type of error and show appropriate message

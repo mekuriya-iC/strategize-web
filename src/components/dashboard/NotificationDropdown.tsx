@@ -64,53 +64,53 @@ export default function NotificationDropdown() {
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
-        className="w-[420px] p-0 overflow-hidden rounded-2xl shadow-xl border border-[#E2E8F0] dark:border-gray-800 bg-white dark:bg-[#18181b]"
+        className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] p-0 overflow-hidden rounded-2xl shadow-xl border border-[#E2E8F0] dark:border-gray-800 bg-white dark:bg-[#18181b]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6">
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Notifications</h3>
+        <div className="flex items-center justify-between p-4 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">Notifications</h3>
           <button 
             onClick={markAllAsRead}
-            className="text-sm text-[#3838EC] dark:text-[#5b5bf7] hover:opacity-80 font-medium transition-opacity"
+            className="text-xs sm:text-sm text-[#3838EC] dark:text-[#5b5bf7] hover:opacity-80 font-medium transition-opacity whitespace-nowrap"
           >
             Mark All as Read
           </button>
         </div>
 
         {/* List */}
-        <div className="flex flex-col max-h-[480px] overflow-y-auto custom-scrollbar pb-2">
+        <div className="flex flex-col max-h-[60vh] sm:max-h-[480px] overflow-y-auto custom-scrollbar pb-2">
           {notifications.map((notification) => (
             <div 
               key={notification.id}
-              className={`flex items-start gap-4 p-6 ${
+              className={`flex items-start gap-3 sm:gap-4 p-4 sm:p-6 ${
                 notification.unread 
                   ? "bg-[#F4F6FF] dark:bg-[#3838EC]/5 border-b border-[#E2E8F0] dark:border-gray-800" 
                   : "bg-white dark:bg-[#18181b] border-b border-[#E2E8F0] dark:border-gray-800"
               } last:border-0`}
             >
-              <div className="mt-0.5">
-                <Bell className="w-5 h-5 text-slate-700 dark:text-gray-300 stroke-[1.5]" />
+              <div className="mt-0.5 flex-shrink-0">
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-gray-300 stroke-[1.5]" />
               </div>
               
-              <div className="flex-1 space-y-2">
-                <p className="text-[15px] text-slate-600 dark:text-gray-300 leading-relaxed font-medium">
+              <div className="flex-1 space-y-1.5 sm:space-y-2 min-w-0">
+                <p className="text-sm sm:text-[15px] text-slate-600 dark:text-gray-300 leading-relaxed font-medium">
                   {notification.text}
-                  <span className="text-slate-900 dark:text-white font-semibold">“{notification.title}”</span>
+                  <span className="text-slate-900 dark:text-white font-semibold break-words">"{notification.title}"</span>
                   {notification.statusText}
                 </p>
-                <p className="text-[13px] text-slate-400 dark:text-gray-500 font-medium tracking-wide">
+                <p className="text-xs sm:text-[13px] text-slate-400 dark:text-gray-500 font-medium tracking-wide">
                   {notification.time}
                 </p>
               </div>
 
               <div className="ml-2 flex-shrink-0 flex items-center justify-center h-full pt-1">
                 {notification.actionType === "button" ? (
-                  <button className="px-5 py-1.5 text-xs font-semibold text-[#3838EC] dark:text-[#5b5bf7] bg-white dark:bg-transparent border border-[#A6A6F5] dark:border-[#3838EC]/50 rounded-[4px] hover:bg-[#F4F6FF] dark:hover:bg-[#3838EC]/10 transition-colors">
+                  <button className="px-3 sm:px-5 py-1.5 text-xs font-semibold text-[#3838EC] dark:text-[#5b5bf7] bg-white dark:bg-transparent border border-[#A6A6F5] dark:border-[#3838EC]/50 rounded-[4px] hover:bg-[#F4F6FF] dark:hover:bg-[#3838EC]/10 transition-colors whitespace-nowrap">
                     View
                   </button>
                 ) : (
                   <button className="p-1 pt-1.5 text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
-                    <MoreVertical className="w-5 h-5" />
+                    <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 )}
               </div>

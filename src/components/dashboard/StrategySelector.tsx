@@ -11,6 +11,9 @@ import { StrategicPeriod } from "@/types/graphql";
 import { useEffect, useState } from "react";
 import React from "react";
 import { useStrategicPeriodStore } from "@/stores";
+import NewStrategyPeriodModal from "./NewStrategyPeriodModal";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 interface StrategySelectorProps {
   value?: string;
@@ -39,6 +42,7 @@ export default function StrategySelector({
     null
   );
   const [selectedValue, setSelectedValue] = useState<string>("");
+  const [showNewStrategyModal, setShowNewStrategyModal] = useState(false);
 
   useEffect(() => {
     if (storeSelectedPeriod) {
@@ -48,6 +52,11 @@ export default function StrategySelector({
   }, [storeSelectedPeriod]);
 
   const handlePeriodChange = (value: string) => {
+    if (value === "new-strategy") {
+      setShowNewStrategyModal(true);
+      return;
+    }
+
     const period = strategicPeriods.find((p) => p.strategicPeriodId === value);
     if (!period) return;
 
@@ -57,6 +66,24 @@ export default function StrategySelector({
     storeSetPeriod(period);
 
     onChange?.(value);
+  };
+
+  const handleAddNewStrategy = (startDate: Date, timeline: string) => {
+    // Calculate end date based on timeline
+    const endDate = new Date(startDate);
+    endDate.setFullYear(endDate.getFullYear() + parseInt(timeline));
+
+    console.log("New strategy period:", {
+      startDate,
+      endDate,
+      timeline: `${timeline} Years`,
+    });
+
+    toast.success(`New strategy period created: ${startDate.getFullYear()}/${endDate.getFullYear().toString().slice(-2)}`);
+    
+    // TODO: Call API to create new strategic period
+    // For now, just close the modal
+    setShowNewStrategyModal(false);
   };
 
   if (loading) {
@@ -70,28 +97,42 @@ export default function StrategySelector({
   }
 
   return (
-    <Select
-      value={selectedValue || selectedPeriod?.strategicPeriodId || value}
-      onValueChange={handlePeriodChange}
-      defaultValue={
-        selectedValue ||
-        selectedPeriod?.strategicPeriodId ||
-        strategicPeriods[0]?.strategicPeriodId
-      }
-    >
-      <SelectTrigger className={`w-full ${className}`}>
-        <SelectValue placeholder="Select strategy period" />
-      </SelectTrigger>
-      <SelectContent>
-        {strategicPeriods.map((period) => (
-          <SelectItem
-            key={period.strategicPeriodId}
-            value={period.strategicPeriodId}
-          >
-            {formatPeriodLabel(period)}
+    <>
+      <Select
+        value={selectedValue || selectedPeriod?.strategicPeriodId || value}
+        onValueChange={handlePeriodChange}
+        defaultValue={
+          selectedValue ||
+          selectedPeriod?.strategicPeriodId ||
+          strategicPeriods[0]?.strategicPeriodId
+        }
+      >
+        <SelectTrigger className={`w-full ${className}`}>
+          <SelectValue placeholder="Select strategy period" />
+        </SelectTrigger>
+        <SelectContent>
+          {strategicPeriods.map((period) => (
+            <SelectItem
+              key={period.strategicPeriodId}
+              value={period.strategicPeriodId}
+            >
+              {formatPeriodLabel(period)}
+            </SelectItem>
+          ))}
+          <SelectItem value="new-strategy" className="text-primary font-medium">
+            <div className="flex items-center gap-2">
+              <Plus size={16} />
+              New Strategy
+            </div>
           </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+        </SelectContent>
+      </Select>
+
+      <NewStrategyPeriodModal
+        isOpen={showNewStrategyModal}
+        onClose={() => setShowNewStrategyModal(false)}
+        onAdd={handleAddNewStrategy}
+      />
+    </>
   );
 }

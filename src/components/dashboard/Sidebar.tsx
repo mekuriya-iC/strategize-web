@@ -191,9 +191,9 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile/Tablet overlay */}
       <div
-        className={`fixed inset-0 bg-black/40 z-50 transition-opacity md:hidden ${open
+        className={`fixed inset-0 bg-black/40 z-50 transition-opacity lg:hidden ${open
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none"
           }`}
@@ -201,17 +201,17 @@ export default function Sidebar() {
         aria-hidden="true"
       />
 
-      {/* Mobile sidebar */}
+      {/* Mobile/Tablet sidebar */}
       <aside
         className={`
           fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800
           flex flex-col justify-between py-6 px-4
           transition-transform duration-300
           ${open ? "translate-x-0" : "-translate-x-full"}
-          md:hidden
+          lg:hidden
         `}
       >
-        {/* Mobile sidebar content */}
+        {/* Mobile/Tablet sidebar content */}
         <div className="overflow-y-auto">
           <div className="mb-10 pl-2">
             <Logo width={140} height={32} />
@@ -246,9 +246,9 @@ export default function Sidebar() {
       {/* Desktop sidebar - responsive to toggle state */}
       <aside
         className={`
-          hidden md:flex md:flex-col md:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800 py-6
+          hidden lg:flex lg:flex-col lg:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800 py-6
           transition-all duration-300 ease-in-out
-          ${open ? "md:w-64 px-4" : "md:w-16 px-2"}
+          ${open ? "lg:w-64 px-4" : "lg:w-16 px-2"}
         `}
       >
         {/* Top section: Logo and nav */}

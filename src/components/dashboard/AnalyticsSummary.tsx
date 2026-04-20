@@ -31,11 +31,9 @@ export default function AnalyticsSummary() {
   const user = useAuthStore((state) => state.user);
   const { departmentNames } = useUserDepartments();
   const { selected: selectedDepartment } = useDepartmentSelection();
-
   const { annualTimeline } = useStrategicPeriodStore();
 
   // Normalize selected unit shape for analytics hook
-  // Directors and Managers both need filtered analytics based on their selected unit
   const roleSelectedUnit =
     (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
       ? {
@@ -44,22 +42,19 @@ export default function AnalyticsSummary() {
       }
       : null;
 
-  // Use the analytics hook with selected unit context and user role
   const analytics = useAnalytics({
     selectedUnit: roleSelectedUnit,
     userRole: user?.role,
     annualTimeline,
   });
 
-  // Build analytics data based on context
   const getAnalyticsData = (): AnalyticsData[] => {
     const baseData = [
       {
         title: "Objectives",
         value: analytics.objectivesCount,
         change: analytics.objectivesGrowth,
-        isPositive:
-          parseFloat(analytics.objectivesGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        isPositive: parseFloat(analytics.objectivesGrowth.replace(/[^0-9.-]/g, "")) > 0,
         icon: <Target size={20} />,
         href: "/dashboard/objectives",
         loading: analytics.objectivesLoading,
@@ -68,15 +63,13 @@ export default function AnalyticsSummary() {
         title: "KPIs",
         value: analytics.kpisCount,
         change: analytics.kpisGrowth,
-        isPositive:
-          parseFloat(analytics.kpisGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        isPositive: parseFloat(analytics.kpisGrowth.replace(/[^0-9.-]/g, "")) > 0,
         icon: <BarChart2 size={20} />,
-        href: "/dashboard/objectives", // KPIs managed within objectives detail
+        href: "/dashboard/objectives",
         loading: analytics.kpisLoading,
       },
     ];
 
-    // For directors, show Departments in their division
     if (user?.role === "DIRECTOR") {
       baseData.push({
         title: "Departments",
@@ -89,7 +82,6 @@ export default function AnalyticsSummary() {
       });
     }
 
-    // For managers and directors, show Employees
     if (user?.role === "MANAGER" || user?.role === "DIRECTOR") {
       baseData.push({
         title: "Employees",
@@ -103,30 +95,25 @@ export default function AnalyticsSummary() {
     }
 
     const roleIsHigher = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
-    if (!roleIsHigher) {
-      return baseData;
-    }
+    if (!roleIsHigher) return baseData;
 
-    // Default view (corporate level)
     return [
       ...baseData,
       {
         title: "Initiatives",
         value: analytics.initiativesCount,
         change: analytics.initiativesGrowth,
-        isPositive:
-          parseFloat(analytics.initiativesGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        isPositive: parseFloat(analytics.initiativesGrowth.replace(/[^0-9.-]/g, "")) > 0,
         icon: <Flag size={20} />,
         href: undefined,
         disabled: true,
-        loading: false, // TODO: Update when initiatives query is available
+        loading: false,
       },
       {
         title: "Divisions",
         value: analytics.divisionsCount,
         change: analytics.divisionsGrowth,
-        isPositive:
-          parseFloat(analytics.divisionsGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        isPositive: parseFloat(analytics.divisionsGrowth.replace(/[^0-9.-]/g, "")) > 0,
         icon: <Building2 size={20} />,
         href: "/dashboard/divisions",
         loading: analytics.divisionsLoading,
@@ -135,8 +122,7 @@ export default function AnalyticsSummary() {
         title: "Departments",
         value: analytics.departmentsCount,
         change: analytics.departmentsGrowth,
-        isPositive:
-          parseFloat(analytics.departmentsGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        isPositive: parseFloat(analytics.departmentsGrowth.replace(/[^0-9.-]/g, "")) > 0,
         icon: <Building2 size={20} />,
         href: "/dashboard/departments",
         loading: analytics.departmentsLoading,
@@ -145,8 +131,7 @@ export default function AnalyticsSummary() {
         title: "Employees",
         value: analytics.employeesCount,
         change: analytics.employeesGrowth,
-        isPositive:
-          parseFloat(analytics.employeesGrowth.replace(/[^0-9.-]/g, "")) > 0,
+        isPositive: parseFloat(analytics.employeesGrowth.replace(/[^0-9.-]/g, "")) > 0,
         icon: <Users size={20} />,
         href: "/dashboard/employees",
         loading: analytics.employeesLoading,
@@ -156,32 +141,20 @@ export default function AnalyticsSummary() {
 
   const analyticsData = getAnalyticsData();
 
-  // Show error state if there's an error
   if (analytics.error) {
     return (
       <section className="mb-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl md:text-3xl font-semibold text-[#3F3F46] dark:text-gray-100">
             Analytics
           </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
+          <Button variant="outline" size="sm" className="flex items-center gap-2 self-start">
             <Filter className="w-4 h-4" /> Filter
           </Button>
         </div>
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-6">
-          <p className="text-red-600">
-            Error loading analytics: {analytics.error}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.reload()}
-            className="mt-2"
-          >
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-6">
+          <p className="text-red-600 dark:text-red-400">Error loading analytics: {analytics.error}</p>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
             Retry
           </Button>
         </div>
@@ -189,101 +162,64 @@ export default function AnalyticsSummary() {
     );
   }
 
-  // Get context-aware title
   const getAnalyticsTitle = (): string => {
-    if (user?.role === "DIRECTOR" && selectedUnit) {
-      return "Division Analytics";
-    } else if (user?.role === "MANAGER" && selectedUnit) {
-      return selectedUnit.type === "division"
-        ? "Division Analytics"
-        : "Department Analytics";
-    } else if (user?.role === "NORMAL") {
-      return "My Analytics";
+    if (user?.role === "DIRECTOR" && selectedUnit) return "Division Analytics";
+    if (user?.role === "MANAGER" && selectedUnit) {
+      return selectedUnit.type === "division" ? "Division Analytics" : "Department Analytics";
     }
+    if (user?.role === "NORMAL") return "My Analytics";
     return "Analytics";
   };
 
   return (
-    <section className="mb-10">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100">
+    <section className="mb-6 md:mb-10">
+      {/* Header section: Stacks on mobile, side-by-side on tablet (sm) */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#11181C] dark:text-gray-100">
             {getAnalyticsTitle()}
           </h2>
-          {user?.role === "DIRECTOR" && selectedUnit && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Showing data for selected division
-            </p>
-          )}
-          {user?.role === "MANAGER" && selectedUnit && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Showing data for selected{" "}
-              {selectedUnit.type === "division"
-                ? "division"
-                : "department"}
-            </p>
-          )}
-          {user?.role === "NORMAL" && (
-            <div className="mt-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Showing data for your personal objectives and KPIs
-              </p>
-              {(selectedDepartment?.department ||
-                departmentNames.length > 0) && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Department:{" "}
-                    {selectedDepartment?.department?.name ||
-                      departmentNames.join(", ")}
+          
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {user?.role === "DIRECTOR" && selectedUnit && (
+              <p>Showing data for selected division</p>
+            )}
+            {user?.role === "MANAGER" && selectedUnit && (
+              <p>Showing data for selected {selectedUnit.type}</p>
+            )}
+            {user?.role === "NORMAL" && (
+              <>
+                <p>Personal performance overview</p>
+                {(selectedDepartment?.department || departmentNames.length > 0) && (
+                  <p className="text-xs mt-0.5">
+                    Dept: {selectedDepartment?.department?.name || departmentNames.join(", ")}
                   </p>
                 )}
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
+
+        <Button variant="outline" size="sm" className="flex items-center gap-2 w-full sm:w-auto justify-center">
           <Filter className="w-4 h-4" /> Filter
         </Button>
       </div>
 
-      {/* Additional Statistics */}
-      {/* {!analytics.loading && (
-        <div className="mb-4 text-sm text-gray-600">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span className="font-medium">Active Divisions:</span>{" "}
-              {analytics.activeDivisionsCount} of {analytics.divisionsCount}
-            </div>
-            <div>
-              <span className="font-medium">Departments with Managers:</span>{" "}
-              {analytics.departmentsWithManagersCount} of{" "}
-              {analytics.departmentsCount}
-            </div>
-            <div>
-              <span className="font-medium">Active Employees:</span>{" "}
-              {analytics.activeEmployeesCount} of {analytics.employeesCount}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 items-start">
-            <div>
-              <span className="font-medium">Managers:</span>{" "}
-              {analytics.managerCount}
-            </div>
-            <div>
-              <span className="font-medium">Admins:</span>{" "}
-              {analytics.adminCount}
-            </div>
-          </div>
-        </div>
-      )} */}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      {/* 
+        Responsive Grid:
+        - Mobile: 1 Column
+        - Tablet (Portrait/Small): 2 Columns (sm:grid-cols-2)
+        - Laptop/Large Tablet: 3 Columns (lg:grid-cols-3)
+        - Large Desktop: 4 Columns (xl:grid-cols-4)
+      */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {analyticsData.map((item) => (
           <AnalyticsCard key={item.title} {...item} />
         ))}
       </div>
 
-      {/* Growth indicator note */}
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        * Percentage changes are based on items created in the last 7 days
+      <div className="mt-6 text-[11px] md:text-xs text-gray-400 dark:text-gray-500 italic">
+        * Growth indicators represent activity within the last 7 days.
       </div>
     </section>
   );

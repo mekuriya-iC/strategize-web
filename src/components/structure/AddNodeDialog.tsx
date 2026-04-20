@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -19,13 +20,11 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
     setMounted(true);
   }, []);
 
-  // Reset form when dialog closes
   useEffect(() => {
     if (!isOpen) {
       setName("");
       setSubtitle("");
     } else {
-      // Focus input after a small delay
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -33,15 +32,10 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
   }, [isOpen]);
 
   const handleSubmit = () => {
-    console.log("Form submitted with:", { name, subtitle });
     if (name.trim()) {
-      console.log("Calling onAdd with:", name.trim(), subtitle.trim());
       onAdd(name.trim(), subtitle.trim());
-      // Reset form
       setName("");
       setSubtitle("");
-    } else {
-      console.log("Name is empty, not submitting");
     }
   };
 
@@ -65,11 +59,8 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50" 
-        onClick={handleClose}
-      />
-      
+      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+
       {/* Modal */}
       <div className="relative bg-white dark:bg-[#18181b] rounded-lg shadow-lg w-full max-w-md mx-4 p-6 z-10">
         {/* Close Button */}
@@ -90,8 +81,8 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
         {/* Form */}
         <div className="space-y-4" onKeyDown={handleKeyDown}>
           <div className="space-y-2">
-            <label 
-              htmlFor="nodeName" 
+            <label
+              htmlFor="nodeName"
               className="text-sm font-medium text-[#11181C] dark:text-gray-100 block"
             >
               Node Name
@@ -106,10 +97,10 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#09090b] text-[#11181C] dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
-          
+
           <div className="space-y-2">
-            <label 
-              htmlFor="nodeSubtitle" 
+            <label
+              htmlFor="nodeSubtitle"
               className="text-sm font-medium text-[#11181C] dark:text-gray-100 block"
             >
               Subtitle (Optional)

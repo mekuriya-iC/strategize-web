@@ -172,4 +172,9 @@
   .dark .custom-scrollbar {
     scrollbar-color: #555 #2a2a2a;
   }
+
+  /* Sidebar icon dark mode filter */
+  .dark .sidebar-icon-filter {
+    filter: brightness(0) invert(1);
+  }
 }

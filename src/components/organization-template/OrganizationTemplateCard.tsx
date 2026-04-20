@@ -19,12 +19,12 @@ export default function OrganizationTemplateCard({
   selected = false,
 }: OrganizationTemplateCardProps) {
   return (
-    <Card
-      className={`bg-white dark:bg-[#18181b] border-0 rounded-2xl shadow-sm hover:shadow-md flex flex-col items-center p-6 md:p-8 transition-all duration-200 cursor-pointer relative ${
-        selected ? "ring-2 ring-primary" : ""
-      }`}
-      onClick={onClick}
-    >
+    <div onClick={onClick} className="cursor-pointer">
+      <Card
+        className={`bg-white dark:bg-[#18181b] border-0 rounded-2xl shadow-sm hover:shadow-md flex flex-col items-center p-6 md:p-8 transition-all duration-200 relative ${
+          selected ? "ring-2 ring-primary" : ""
+        }`}
+      >
       {/* Icon */}
       <div className="mb-6 md:mb-8 flex items-center justify-center text-[#11181C] dark:text-gray-100">
         {icon}
@@ -51,5 +51,6 @@ export default function OrganizationTemplateCard({
         Choose
       </Button>
     </Card>
+    </div>
   );
 }

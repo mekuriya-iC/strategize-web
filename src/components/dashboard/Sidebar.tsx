@@ -26,7 +26,35 @@ const navLinks: NavLink[] = [
         alt="dashboard"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
+    ),
+  },
+  {
+    label: "Structure",
+    href: "/dashboard/structure",
+    permission: "nav:dashboard",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M3 6C3 4.89543 3.89543 4 5 4H15C16.1046 4 17 4.89543 17 6V14C17 15.1046 16.1046 16 15 16H5C3.89543 16 3 15.1046 3 14V6Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M6 8H14M6 11H11"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
     ),
   },
   {
@@ -39,6 +67,7 @@ const navLinks: NavLink[] = [
         alt="objective"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -52,6 +81,7 @@ const navLinks: NavLink[] = [
         alt="division"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -65,6 +95,7 @@ const navLinks: NavLink[] = [
         alt="department"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -78,6 +109,7 @@ const navLinks: NavLink[] = [
         alt="employee"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -91,7 +123,7 @@ const navLinks: NavLink[] = [
         alt="report"
         width={20}
         height={20}
-        className=""
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -105,6 +137,7 @@ const navLinks: NavLink[] = [
         alt="approval"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -118,6 +151,7 @@ const navLinks: NavLink[] = [
         alt="admin"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -131,6 +165,7 @@ const navLinks: NavLink[] = [
         alt="settings"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },

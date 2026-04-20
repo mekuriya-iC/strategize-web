@@ -44,6 +44,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
   const handleAddNode = (name: string, subtitle: string) => {
     if (!selectedParentId) {
       console.error("No parent selected");
+      toast.error("No parent node selected");
       return;
     }
 
@@ -78,11 +79,15 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
     const updatedStructure = addNodeToTree(orgStructure);
     console.log("Updated structure:", updatedStructure);
     setOrgStructure(updatedStructure);
-    toast.success("Node added successfully!");
     
-    // Close dialog and reset state
+    // Close dialog and reset state FIRST
     setShowAddDialog(false);
     setSelectedParentId(null);
+    
+    // Show success toast after closing
+    setTimeout(() => {
+      toast.success("Node added successfully!");
+    }, 100);
   };
 
   const handleDeleteNode = (nodeId: string) => {

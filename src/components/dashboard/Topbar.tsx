@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import OrgUnitSelector from "./OrgUnitSelector";
 import StrategySelector from "./StrategySelector";
+import StrategicPeriodSelector from "./StrategicPeriodSelector";
 import DepartmentSelector from "../departments/DepartmentSelector";
 import { useTheme } from "next-themes";
 import { useUIStore, useAuthStore } from "@/stores";
@@ -89,8 +90,8 @@ export default function Topbar() {
           <span className="font-medium text-gray-700 dark:text-gray-100">
             {getPageName(pathname)}
           </span>
-          {/* Strategy selector */}
-          <StrategySelector className="w-40 ml-4" />
+          {/* Strategic Period Selector - New prominent position */}
+          <StrategicPeriodSelector className="w-44 ml-4" />
           <OrgUnitSelector />
           <DepartmentSelector className="ml-4" />
         </nav>

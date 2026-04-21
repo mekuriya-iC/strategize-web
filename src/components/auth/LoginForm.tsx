@@ -68,8 +68,9 @@ export default function LoginForm() {
         if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
           router.push("/organization-template");
         } else {
-          // All other roles (NORMAL, COORDINATOR, MANAGER, DIRECTOR) go to strategy period selection
-          router.push("/strategy-period");
+          // All other roles (NORMAL, COORDINATOR, MANAGER, DIRECTOR) go directly to dashboard
+          // The dashboard will auto-select the current strategic period
+          router.push("/dashboard");
         }
       }
     } else {

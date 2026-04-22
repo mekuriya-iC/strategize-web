@@ -127,6 +127,16 @@ export const PERMISSIONS = {
   'admin:view_audit_logs': 'View audit logs',
   'admin:system_settings': 'Access system settings',
 
+  // ==================== CHECK-IN/OUT ====================
+  'checkins:read_own': 'View own check-ins',
+  'checkins:read_department': 'View department check-ins',
+  'checkins:read_all': 'View all check-ins',
+  'checkins:create': 'Create check-ins',
+  'checkins:update_own': 'Update own check-ins',
+  'checkins:update_all': 'Update any check-in',
+  'checkins:delete_own': 'Delete own check-ins',
+  'checkins:delete_all': 'Delete any check-in',
+
   // ==================== NAVIGATION ====================
   'nav:dashboard': 'Access dashboard',
   'nav:objectives': 'Access objectives page',
@@ -138,6 +148,7 @@ export const PERMISSIONS = {
   'nav:admin': 'Access admin panel',
   'nav:settings': 'Access settings page',
   'nav:strategy_period': 'Access strategy period page',
+  'nav:checkin': 'Access check-in/out page',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

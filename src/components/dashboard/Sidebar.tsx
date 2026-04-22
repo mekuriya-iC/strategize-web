@@ -114,6 +114,34 @@ const navLinks: NavLink[] = [
     ),
   },
   {
+    label: "Check-In/Out",
+    href: "/dashboard/checkin",
+    permission: "nav:checkin",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M10 6V10L13 13"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     label: "Reports",
     href: "/dashboard/reports",
     permission: "nav:reports",
@@ -169,6 +197,7 @@ const navLinks: NavLink[] = [
       />
     ),
   },
+  
 ];
 
 export default function Sidebar() {

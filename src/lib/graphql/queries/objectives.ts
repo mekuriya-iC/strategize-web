@@ -108,3 +108,32 @@ export const GET_OBJECTIVE = gql`
     }
   }
 `;
+
+export const GET_MY_OBJECTIVES = gql`
+  query GetMyObjectives {
+    myObjectives {
+      objectiveId
+      name
+      type
+      status
+      order
+      strategicPeriod {
+        strategicPeriodId
+        startDate
+        endDate
+        length
+      }
+      assigneeId
+      assignerId
+      assigneeType
+      kpis {
+        kpiId
+        name
+        status
+        targetStatus
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;

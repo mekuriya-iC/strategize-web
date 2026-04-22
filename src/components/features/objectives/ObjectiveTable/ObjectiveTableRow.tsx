@@ -220,7 +220,6 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                         onView={onViewObjective || (() => { })}
                         onEditSuccess={onEditSuccess}
                         onDelete={onDeleteObjective}
-                        onAssignSuccess={onAssignSuccess}
                         onAddKPISuccess={onEditSuccess}
                     />
 

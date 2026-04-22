@@ -23,14 +23,6 @@ export default function OrgUnitSelector() {
   const { user, isLoading: userLoading } = useAuthStore();
   const { selectedUnit, setSelectedUnit } = useOrgUnitStore();
 
-  // Debug logging - remove in production
-  // console.log("OrgUnitSelector Debug:", {
-  //   user: user,
-  //   userRole: user?.role,
-  //   userEmployeeId: user?.employeeId,
-  //   userLoading,
-  // });
-
   // Directors and Managers need to fetch their managed units
   const needsOrgUnitSelection = user?.role === "MANAGER" || user?.role === "DIRECTOR";
   
@@ -75,16 +67,6 @@ export default function OrgUnitSelector() {
       })),
     ];
   }, [divisionsData, departmentsData, user?.employeeId, user?.role]);
-
-  // Debug logging for data - remove in production
-  // console.log("OrgUnitSelector Data Debug:", {
-  //   divisionsData: divisionsData?.divisions?.items,
-  //   departmentsData: departmentsData?.departments?.items,
-  //   managedDivisions,
-  //   managedDepartments,
-  //   orgUnits,
-  //   currentUserEmployeeId: user?.employeeId,
-  // });
 
   // Default selection: prefer first Division, otherwise first Department
   // This hook MUST always run, regardless of early returns

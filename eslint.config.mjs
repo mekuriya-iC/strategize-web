@@ -28,6 +28,16 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    rules: {
+      // Prevent console.log in production code
+      // Allow console.warn and console.error for important messages
+      "no-console": ["error", { allow: ["warn", "error"] }],
+      
+      // Prevent commented-out code (will warn, not error)
+      "no-warning-comments": ["warn", { terms: ["todo", "fixme", "xxx", "hack"], location: "start" }],
+    },
+  },
 ];
 
 export default eslintConfig;

@@ -11,16 +11,6 @@ export const useObjectiveAssignment = () => {
     onCompleted: (data) => {
       const assignedObjective = data?.assignObjective;
 
-
-      // ######################################################
-      console.log("[useObjectiveAssignment] onCompleted", {
-        assignedObjectiveId: assignedObjective?.objectiveId,
-        assignedObjectiveName: assignedObjective?.name,
-        parentObjectiveId: assignedObjective?.parent?.objectiveId,
-        parentObjectiveName: assignedObjective?.parent?.name,
-        kpiCount: assignedObjective?.kpis?.length ?? 0,
-      });
-
       toast.success("Objective assigned successfully!", {
         description: `"${assignedObjective?.parent?.name ?? assignedObjective?.name ?? "Objective"}" has been assigned with ${assignedObjective?.kpis?.length ?? 0} KPIs.`,
       });
@@ -37,17 +27,8 @@ export const useObjectiveAssignment = () => {
     input: AssignObjectiveMutationVariables["input"]
   ) => {
     try {
-      console.log("[useObjectiveAssignment] assignObjective called", { input });
       const result = await assignObjectiveMutation({ variables: { input } });
       const assigned = result.data?.assignObjective;
-
-      console.log("[useObjectiveAssignment] assignObjective result", {
-        assignedObjectiveId: assigned?.objectiveId,
-        assignedObjectiveName: assigned?.name,
-        parentObjectiveId: assigned?.parent?.objectiveId,
-        parentObjectiveName: assigned?.parent?.name,
-        kpiCount: assigned?.kpis?.length ?? 0,
-      });
 
       return assigned;
     } catch (error) {

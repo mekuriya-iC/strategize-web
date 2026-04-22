@@ -105,10 +105,10 @@ export function AssignmentProvider({
     }, [kpis]);
 
     const addAssignment = useCallback((newAssignment: Assignment) => {
-        console.log("[AssignmentContext] addAssignment called", newAssignment);
+        // Assignment added to context
         setAssignments((prev) => {
             const updated = [...prev, newAssignment];
-            console.log("[AssignmentContext] assignments updated", updated);
+            // Assignments updated in context
             return updated;
         });
     }, []);

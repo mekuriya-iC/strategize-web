@@ -271,7 +271,6 @@ export default function StructureBuilder({ templateId }: StructureBuilderProps) 
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => console.log("Undo")}
             >
               <Undo2 size={16} />
             </Button>
@@ -279,7 +278,6 @@ export default function StructureBuilder({ templateId }: StructureBuilderProps) 
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => console.log("Redo")}
             >
               <Redo2 size={16} />
             </Button>

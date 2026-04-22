@@ -223,10 +223,6 @@ const DivisionsPage = () => {
 
       // If departments were selected and division was created successfully, assign them
       if (createdDivision && selectedDepartments.length > 0) {
-        console.log(
-          `Assigning ${selectedDepartments.length} departments to division ${createdDivision.divisionId}`
-        );
-
         // Find the department IDs for the selected department names
         const departmentIds =
           departmentsData?.departments.items
@@ -245,9 +241,6 @@ const DivisionsPage = () => {
 
         // Wait for all department updates to complete
         await Promise.all(updatePromises);
-        console.log(
-          `Successfully assigned ${departmentIds.length} departments to division`
-        );
       }
 
       // Reset form

@@ -48,7 +48,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
       return;
     }
 
-    console.log("Adding node:", { name, subtitle, parentId: selectedParentId });
+    // Adding node with parentId: ${selectedParentId}
 
     const colors = ["#8B5CF6", "#EC4899", "#F43F5E"];
     const newNode: OrgNodeData = {
@@ -64,7 +64,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
     // Add node to structure
     const addNodeToTree = (node: OrgNodeData): OrgNodeData => {
       if (node.id === selectedParentId) {
-        console.log("Found parent, adding child");
+        // Found parent, adding child
         return {
           ...node,
           children: [...node.children, newNode],
@@ -77,7 +77,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
     };
 
     const updatedStructure = addNodeToTree(orgStructure);
-    console.log("Updated structure:", updatedStructure);
+    // Structure updated successfully
     setOrgStructure(updatedStructure);
     
     // Close dialog and reset state FIRST
@@ -124,7 +124,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
           level={node.level}
           onAddChild={() => handleAddChild(node.id)}
           onEdit={() => {
-            console.log("Edit", node.id);
+            // Edit functionality for node ${node.id}
           }}
           onDelete={node.level > 0 ? () => handleDeleteNode(node.id) : undefined}
         />
@@ -173,7 +173,9 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => console.log("Undo")}
+              onClick={() => {
+                // Undo functionality
+              }}
             >
               <Undo2 size={16} />
             </Button>
@@ -181,7 +183,9 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => console.log("Redo")}
+              onClick={() => {
+                // Redo functionality
+              }}
             >
               <Redo2 size={16} />
             </Button>
@@ -237,12 +241,10 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
       <AddNodeDialog
         isOpen={showAddDialog}
         onClose={() => {
-          console.log("Dialog closed");
           setShowAddDialog(false);
           setSelectedParentId(null);
         }}
         onAdd={(name, subtitle) => {
-          console.log("onAdd called with:", { name, subtitle });
           handleAddNode(name, subtitle);
         }}
       />

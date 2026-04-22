@@ -33,15 +33,11 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
   }, [isOpen]);
 
   const handleSubmit = () => {
-    console.log("Form submitted with:", { name, subtitle });
     if (name.trim()) {
-      console.log("Calling onAdd with:", name.trim(), subtitle.trim());
       onAdd(name.trim(), subtitle.trim());
       // Reset form
       setName("");
       setSubtitle("");
-    } else {
-      console.log("Name is empty, not submitting");
     }
   };
 

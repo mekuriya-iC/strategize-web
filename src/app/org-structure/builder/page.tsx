@@ -67,7 +67,7 @@ export default function OrgStructureBuilderPage() {
             {/* User Info - Hidden on mobile and tablets, visible on Large screens */}
             <div className="hidden lg:flex flex-col">
               <span className="text-sm font-medium text-[#11181C] dark:text-gray-100 leading-none">
-                {user?.firstName} {user?.lastName}
+                {user?.fullName}
               </span>
               <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                 {user?.role}

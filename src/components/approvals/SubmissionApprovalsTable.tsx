@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import React from "react";
-// import ApprovalFilterBar from "./ApprovalFilterBar";
 import SubmissionApprovalTable from "./SubmissionApprovalTable";
 import type { GroupedSubmission } from "./SubmissionApprovalTable";
 import DataTablePagination from "@/components/shared/DataTablePagination";
@@ -254,7 +253,6 @@ export default function SubmissionApprovalsTable() {
         ) as GroupedSubmission | undefined;
 
         if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
-          console.log(`📦 Approving ${virtualSubmission.associatedKpiSubmissions.length} KPI submissions from virtual objective...`);
 
           const kpiApprovalPromises = virtualSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
@@ -373,7 +371,6 @@ export default function SubmissionApprovalsTable() {
             });
 
           await Promise.all(kpiApprovalPromises);
-          console.log(`✅ All associated KPI submissions approved`);
         }
       }
 
@@ -400,7 +397,6 @@ export default function SubmissionApprovalsTable() {
         ) as GroupedSubmission | undefined;
 
         if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
-          console.log(`📦 Rejecting ${virtualSubmission.associatedKpiSubmissions.length} KPI submissions from virtual objective...`);
 
           const kpiRejectPromises = virtualSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
@@ -484,7 +480,6 @@ export default function SubmissionApprovalsTable() {
         ) as GroupedSubmission | undefined;
 
         if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
-          console.log(`📦 Also rejecting ${objectiveSubmission.associatedKpiSubmissions.length} associated KPI submissions...`);
 
           const kpiRejectPromises = objectiveSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
@@ -499,7 +494,6 @@ export default function SubmissionApprovalsTable() {
             });
 
           await Promise.all(kpiRejectPromises);
-          console.log(`❌ All associated KPI submissions rejected`);
         }
       }
 

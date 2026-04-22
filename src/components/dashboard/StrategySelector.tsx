@@ -68,16 +68,10 @@ export default function StrategySelector({
     onChange?.(value);
   };
 
-  const handleAddNewStrategy = (startDate: Date, timeline: string) => {
-    // Calculate end date based on timeline
+  const handleAddNewStrategy = (startDate: Date, timelineYears: number) => {
+    // Calculate end date based on timeline years
     const endDate = new Date(startDate);
-    endDate.setFullYear(endDate.getFullYear() + parseInt(timeline));
-
-    console.log("New strategy period:", {
-      startDate,
-      endDate,
-      timeline: `${timeline} Years`,
-    });
+    endDate.setFullYear(startDate.getFullYear() + timelineYears);
 
     toast.success(`New strategy period created: ${startDate.getFullYear()}/${endDate.getFullYear().toString().slice(-2)}`);
     

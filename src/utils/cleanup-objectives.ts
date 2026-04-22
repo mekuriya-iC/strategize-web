@@ -45,16 +45,14 @@ const GET_ALL_KPIS = gql`
 export async function cleanupObjectivesAndKPIs(
   apolloClient: ApolloClient<unknown>
 ) {
-  console.log("🧹 Starting cleanup of all submissions, KPIs and objectives...");
+  // Starting cleanup of all submissions, KPIs and objectives...
 
   try {
     // Step 1: Skip submissions deletion for now (may require admin/backend cleanup)
-    console.log(
-      "📋 Skipping submissions deletion (will handle foreign key constraints gracefully)..."
-    );
+    // Skipping submissions deletion (will handle foreign key constraints gracefully)...
 
     // Step 2: Delete all KPIs first (they depend on objectives)
-    console.log("📋 Fetching all KPIs...");
+    // Fetching all KPIs...
     const kpisResult = await apolloClient.query({
       query: GET_ALL_KPIS,
       variables: { limit: 1000 },
@@ -62,7 +60,7 @@ export async function cleanupObjectivesAndKPIs(
     });
 
     const kpis = kpisResult.data.kpis.items;
-    console.log(`Found ${kpis.length} KPIs to delete`);
+    // Found ${kpis.length} KPIs to delete
 
     for (const kpi of kpis) {
       try {
@@ -70,14 +68,14 @@ export async function cleanupObjectivesAndKPIs(
           mutation: REMOVE_KPI,
           variables: { id: kpi.kpiId },
         });
-        console.log(`✅ Deleted KPI: ${kpi.name}`);
+        // Deleted KPI: ${kpi.name}
       } catch (error) {
         console.error(`❌ Failed to delete KPI ${kpi.name}:`, error);
       }
     }
 
     // Step 3: Delete all objectives (some may fail due to foreign key constraints)
-    console.log("🎯 Fetching all objectives...");
+    // Fetching all objectives...
     const objectivesResult = await apolloClient.query({
       query: GET_ALL_OBJECTIVES,
       variables: { limit: 1000 },
@@ -85,7 +83,7 @@ export async function cleanupObjectivesAndKPIs(
     });
 
     const objectives = objectivesResult.data.objectives.items;
-    console.log(`Found ${objectives.length} objectives to delete`);
+    // Found ${objectives.length} objectives to delete
 
     for (const objective of objectives) {
       try {
@@ -93,9 +91,7 @@ export async function cleanupObjectivesAndKPIs(
           mutation: REMOVE_OBJECTIVE,
           variables: { id: objective.objectiveId },
         });
-        console.log(
-          `✅ Deleted Objective: ${objective.name} (${objective.type})`
-        );
+        // Deleted objective: ${objective.name} (${objective.type})
       } catch (error) {
         console.error(
           `❌ Failed to delete objective ${objective.name}:`,
@@ -105,7 +101,7 @@ export async function cleanupObjectivesAndKPIs(
       }
     }
 
-    console.log("🎉 Cleanup completed successfully!");
+    // Cleanup completed successfully!
     return true;
   } catch (error) {
     console.error("💥 Cleanup failed:", error);

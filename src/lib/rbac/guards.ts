@@ -72,6 +72,7 @@ export function canAccessRoute(
     '/dashboard/admin': 'nav:admin',
     '/dashboard/settings': 'nav:settings',
     '/dashboard/checkin': 'nav:checkin',
+    '/dashboard/logbook': 'nav:logbook',
     '/strategy-period': 'nav:strategy_period',
   };
 

@@ -142,6 +142,33 @@ const navLinks: NavLink[] = [
     ),
   },
   {
+    label: "Logbook",
+    href: "/dashboard/logbook",
+    permission: "nav:logbook",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M7 6H13M7 10H13M7 14H10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
     label: "Reports",
     href: "/dashboard/reports",
     permission: "nav:reports",

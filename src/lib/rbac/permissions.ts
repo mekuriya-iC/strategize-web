@@ -137,6 +137,15 @@ export const PERMISSIONS = {
   'checkins:delete_own': 'Delete own check-ins',
   'checkins:delete_all': 'Delete any check-in',
 
+  // ==================== LOGBOOK ====================
+  'logbook:read_own': 'View own logbook',
+  'logbook:read_department': 'View department logbook',
+  'logbook:read_all': 'View all logbooks',
+  'logbook:submit': 'Submit logbook for approval',
+  'logbook:approve': 'Approve logbook submissions',
+  'logbook:delete_own': 'Delete own logbook entries',
+  'logbook:delete_all': 'Delete any logbook entry',
+
   // ==================== NAVIGATION ====================
   'nav:dashboard': 'Access dashboard',
   'nav:objectives': 'Access objectives page',
@@ -149,6 +158,7 @@ export const PERMISSIONS = {
   'nav:settings': 'Access settings page',
   'nav:strategy_period': 'Access strategy period page',
   'nav:checkin': 'Access check-in/out page',
+  'nav:logbook': 'Access logbook page',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

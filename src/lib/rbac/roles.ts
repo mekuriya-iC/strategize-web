@@ -81,12 +81,18 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
     'checkins:update_own',
     'checkins:delete_own',
 
+    // Logbook
+    'logbook:read_own',
+    'logbook:submit',
+    'logbook:delete_own',
+
     // Navigation
     'nav:dashboard',
     'nav:objectives',
     'nav:reports',
     'nav:settings',
     'nav:checkin',
+    'nav:logbook',
   ],
 
   // ==================== COORDINATOR ====================

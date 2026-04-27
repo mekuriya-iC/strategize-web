@@ -4,7 +4,7 @@ import AddNewStrategyForm from "@/components/strategy-period/AddNewStrategyForm"
 
 export default function AddNewStrategyPage() {
   return (
-    <div className="min-h-screen bg-white p-4 flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-[#09090b] p-4 flex flex-col">
       {/* Logo at the top left */}
       <div className="w-full flex items-center mb-2">
         <Logo />

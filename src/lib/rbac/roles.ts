@@ -75,11 +75,24 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
     // Strategic periods (read only)
     'strategic_periods:read',
 
+    // Check-ins
+    'checkins:read_own',
+    'checkins:create',
+    'checkins:update_own',
+    'checkins:delete_own',
+
+    // Logbook
+    'logbook:read_own',
+    'logbook:submit',
+    'logbook:delete_own',
+
     // Navigation
     'nav:dashboard',
     'nav:objectives',
     'nav:reports',
     'nav:settings',
+    'nav:checkin',
+    'nav:logbook',
   ],
 
   // ==================== COORDINATOR ====================
@@ -108,6 +121,9 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
 
     // Departments - own only
     'departments:read_own',
+
+    // Check-ins - department view
+    'checkins:read_department',
 
     // Navigation
     'nav:approvals', // Can view but limited approval
@@ -241,6 +257,11 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
     // Admin panel
     'admin:access_panel',
     'admin:view_audit_logs',
+
+    // Check-ins - all
+    'checkins:read_all',
+    'checkins:update_all',
+    'checkins:delete_all',
 
     // Navigation
     'nav:employees',

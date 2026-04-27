@@ -12,7 +12,6 @@ const AddDepartmentPage = () => {
         <h1 className="text-2xl font-bold mb-6">Add Department</h1>
         <AddDepartmentForm
           onSubmit={(data) => {
-            console.log("Submitted department:", data);
           }}
           onCancel={() => router.back()}
         />

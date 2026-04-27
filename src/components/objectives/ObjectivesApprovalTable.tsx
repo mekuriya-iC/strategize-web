@@ -200,9 +200,9 @@ export default function ObjectivesApprovalTable() {
 
     const allSubmissions = submissionsData?.submissions?.items || [];
 
-    console.log("🔍 Building rejection reasons from submissions:", {
-      totalSubmissions: allSubmissions.length,
-      submissions: allSubmissions.map(
+    // Building rejection reasons from submissions
+    // Total submissions: ${allSubmissions.length}
+    const submissionMappings = allSubmissions.map(
         (sub: {
           submissionId: string;
           type: "OBJECTIVE" | "KPI";
@@ -218,8 +218,7 @@ export default function ObjectivesApprovalTable() {
           kpiId: sub.kpi?.kpiId,
           objectiveId: sub.objective?.objectiveId,
         })
-      ),
-    });
+      );
 
     allSubmissions.forEach(
       (submission: {
@@ -231,50 +230,29 @@ export default function ObjectivesApprovalTable() {
       }) => {
         if (submission.status !== "REJECTED" || !submission.reason) return;
 
-        // console.log("🔍 Processing rejected submission:", {
-        //   submissionId: submission.submissionId,
-        //   type: submission.type,
-        //   status: submission.status,
-        //   reason: submission.reason,
-        //   kpiId: submission.kpi?.kpiId,
-        //   objectiveId: submission.objective?.objectiveId,
-        // });
-
         if (submission.type === "KPI" && submission.kpi?.kpiId) {
           // Direct KPI submission rejection
           kpiReasons[submission.kpi.kpiId] = submission.reason as string;
-          console.log("✅ Mapped KPI rejection reason:", {
-            kpiId: submission.kpi.kpiId,
-            reason: submission.reason,
-          });
+          // Mapped KPI rejection reason for ${submission.kpi.kpiId}
         } else if (submission.type === "OBJECTIVE") {
           const objId = (submission.objective?.objectiveId || "") as string;
           // Store reason for the objective itself
           objectiveReasons[objId] = submission.reason as string;
-          console.log("✅ Mapped objective rejection reason:", {
-            objectiveId: objId,
-            reason: submission.reason,
-          });
+          // Mapped objective rejection reason for ${objId}
           // Also map the same reason to any rejected KPIs under that objective
           kpis
             .filter((k) => k.objective?.objectiveId === objId)
             .forEach((k) => {
               if (k.status === "REJECTED") {
                 kpiReasons[k.kpiId] = submission.reason as string;
-                console.log("✅ Mapped objective KPI rejection reason:", {
-                  kpiId: k.kpiId,
-                  reason: submission.reason,
-                });
+                // Mapped objective KPI rejection reason for ${k.kpiId}
               }
             });
         }
       }
     );
 
-    console.log("📋 Final rejection reasons maps:", {
-      objectiveRejectionReasons: objectiveReasons,
-      kpiRejectionReasons: kpiReasons,
-    });
+    // Final rejection reasons maps built
 
     return {
       objectiveRejectionReasons: objectiveReasons,
@@ -299,7 +277,7 @@ export default function ObjectivesApprovalTable() {
 
   // Filter objectives based on status and user role
   const filteredObjectives = useMemo(() => {
-    console.log("[ObjectivesApprovalTable] Starting filtering...");
+    // Starting objectives filtering
     let filtered = objectives;
 
     // First, handle role-based scope filtering with strict hierarchical alignment

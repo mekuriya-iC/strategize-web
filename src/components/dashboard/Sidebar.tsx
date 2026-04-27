@@ -26,7 +26,35 @@ const navLinks: NavLink[] = [
         alt="dashboard"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
+    ),
+  },
+  {
+    label: "Structure",
+    href: "/dashboard/structure",
+    permission: "nav:dashboard",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M3 6C3 4.89543 3.89543 4 5 4H15C16.1046 4 17 4.89543 17 6V14C17 15.1046 16.1046 16 15 16H5C3.89543 16 3 15.1046 3 14V6Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M6 8H14M6 11H11"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
     ),
   },
   {
@@ -39,6 +67,7 @@ const navLinks: NavLink[] = [
         alt="objective"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -52,6 +81,7 @@ const navLinks: NavLink[] = [
         alt="division"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -65,6 +95,7 @@ const navLinks: NavLink[] = [
         alt="department"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -78,7 +109,63 @@ const navLinks: NavLink[] = [
         alt="employee"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
+    ),
+  },
+  {
+    label: "Check-In/Out",
+    href: "/dashboard/checkin",
+    permission: "nav:checkin",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M10 6V10L13 13"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: "Logbook",
+    href: "/dashboard/logbook",
+    permission: "nav:logbook",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M7 6H13M7 10H13M7 14H10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
     ),
   },
   {
@@ -91,7 +178,7 @@ const navLinks: NavLink[] = [
         alt="report"
         width={20}
         height={20}
-        className=""
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -105,6 +192,7 @@ const navLinks: NavLink[] = [
         alt="approval"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -118,6 +206,7 @@ const navLinks: NavLink[] = [
         alt="admin"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
@@ -131,9 +220,11 @@ const navLinks: NavLink[] = [
         alt="settings"
         width={20}
         height={20}
+        className="sidebar-icon-filter"
       />
     ),
   },
+  
 ];
 
 export default function Sidebar() {
@@ -156,9 +247,9 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile/Tablet overlay */}
       <div
-        className={`fixed inset-0 bg-black/40 z-50 transition-opacity md:hidden ${open
+        className={`fixed inset-0 bg-black/40 z-50 transition-opacity lg:hidden ${open
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none"
           }`}
@@ -166,17 +257,17 @@ export default function Sidebar() {
         aria-hidden="true"
       />
 
-      {/* Mobile sidebar */}
+      {/* Mobile/Tablet sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-[#18181b] border-r border-[#E2E8F0]
+          fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800
           flex flex-col justify-between py-6 px-4
           transition-transform duration-300
           ${open ? "translate-x-0" : "-translate-x-full"}
-          md:hidden
+          lg:hidden
         `}
       >
-        {/* Mobile sidebar content */}
+        {/* Mobile/Tablet sidebar content */}
         <div className="overflow-y-auto">
           <div className="mb-10 pl-2">
             <Logo width={140} height={32} />
@@ -186,9 +277,9 @@ export default function Sidebar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] ${isLinkActive(link.href)
-                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
-                  : "text-gray-700"
+                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800 ${isLinkActive(link.href)
+                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white"
+                  : "text-gray-700 dark:text-gray-300"
                   }`}
                 onClick={closeSidebar}
               >
@@ -211,9 +302,9 @@ export default function Sidebar() {
       {/* Desktop sidebar - responsive to toggle state */}
       <aside
         className={`
-          hidden md:flex md:flex-col md:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] py-6
+          hidden lg:flex lg:flex-col lg:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800 py-6
           transition-all duration-300 ease-in-out
-          ${open ? "md:w-64 px-4" : "md:w-16 px-2"}
+          ${open ? "lg:w-64 px-4" : "lg:w-16 px-2"}
         `}
       >
         {/* Top section: Logo and nav */}
@@ -236,11 +327,11 @@ export default function Sidebar() {
                 key={link.href}
                 href={link.href}
                 className={`
-                  flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA]
+                  flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800
                   ${open ? "gap-3 px-3 py-2" : "gap-0 px-2 py-2 justify-center"}
                   ${isLinkActive(link.href)
-                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123]"
-                    : "text-gray-700"
+                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white"
+                    : "text-gray-700 dark:text-gray-300"
                   }
                 `}
                 title={!open ? link.label : undefined}
@@ -271,7 +362,7 @@ export default function Sidebar() {
               }`}
           >
             Powered by{" "}
-            <span className="font-semibold text-[#3F3F46]">
+            <span className="font-semibold text-[#3F3F46] dark:text-gray-400">
               iCapital Africa
             </span>
           </div>

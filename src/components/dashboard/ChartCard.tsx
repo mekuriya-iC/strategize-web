@@ -43,7 +43,7 @@ export default function ChartCard({
   legend,
 }: ChartCardProps) {
   return (
-    <Card className="p-3 rounded-xl border border-[#E2E8F0] shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-3 min-w-[180px] min-h-[160px] bg-white dark:bg-[#18181b]">
+    <Card className="p-3 rounded-xl border border-[#E2E8F0] dark:border-gray-800 shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-3 min-w-[180px] min-h-[160px] bg-white dark:bg-[#18181b]">
       <div className="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">
         {title}
       </div>

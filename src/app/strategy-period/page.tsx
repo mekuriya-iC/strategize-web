@@ -23,21 +23,30 @@ export default function StrategyPeriodPage() {
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   return (
-    <div className="min-h-screen bg-white p-4 flex flex-col items-center">
-      <div className="w-full flex items-center mb-24">
-        <Logo />
+    <>
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#09090b] flex flex-col">
+      {/* Header with Logo */}
+      <div className="w-full px-6 py-6 md:px-12 md:py-8">
+        <Logo width={120} height={30} />
       </div>
-      <div className="w-full max-w-6xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-bold text-center mb-12 text-[#11181C]">
-          Choose Strategy Period
-        </h1>
-        <StrategyPeriodGrid />
-        {isAdmin && (
-          <div className="flex justify-center mt-24">
-            <NewStrategyButton />
-          </div>
-        )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-start px-4 py-8 md:py-12">
+        <div className="w-full max-w-6xl mx-auto">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center mb-12 md:mb-16 text-[#11181C] dark:text-gray-100">
+            Choose Strategy
+          </h1>
+          
+          <StrategyPeriodGrid />
+          
+          {isAdmin && (
+            <div className="flex justify-center mt-12 md:mt-16">
+              <NewStrategyButton />
+            </div>
+          )}
+        </div>
       </div>
     </div>
+    </>
   );
 }

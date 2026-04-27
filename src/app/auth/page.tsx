@@ -18,14 +18,14 @@ function LoginFormFallback() {
 
 export default function AuthPage() {
   return (
-    <div className="min-h-screen flex flex-col md:flex-row relative p-4">
+    <div className="min-h-screen flex flex-col md:flex-row relative p-4 dark:bg-[#09090b]">
       {/* Logo - Top Left */}
       <div className="absolute top-4 left-8 z-10">
         <Logo />
       </div>
 
       {/* Left: Login Section */}
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 bg-white">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 bg-white dark:bg-[#09090b]">
         {/* Spacer for logo on small screens */}
         <div className="h-20 md:hidden" />
         {/* Login Form */}

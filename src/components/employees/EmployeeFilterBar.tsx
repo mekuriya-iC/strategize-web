@@ -94,7 +94,7 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
   return (
     <div className="flex flex-col md:flex-row rounded-lg gap-2 w-full">
       {/* Search Input Container */}
-      <div className="flex border items-center gap-2 rounded-md w-full md:w-[35%] bg-white">
+      <div className="flex border dark:border-gray-700 items-center gap-2 rounded-md w-full md:w-[35%] bg-white dark:bg-gray-900">
         <Search className="h-4 w-4 text-gray-400 ml-3" />
 
         {/* Search Input */}
@@ -129,7 +129,7 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
           onValueChange={handleFilterChange}
           disabled={disabled}
         >
-          <SelectTrigger className="bg-white focus:ring-0 focus:ring-offset-0 shadow-none rounded-md border min-w-[120px]">
+          <SelectTrigger className="bg-white dark:bg-gray-900 focus:ring-0 focus:ring-offset-0 shadow-none rounded-md border dark:border-gray-700 min-w-[120px]">
             <Filter className="h-4 w-4 text-gray-400 mr-2" />
             <SelectValue placeholder="All" />
           </SelectTrigger>
@@ -146,7 +146,7 @@ const EmployeeFilterBar: React.FC<EmployeeFilterBarProps> = ({
           onValueChange={handleSortChange}
           disabled={disabled}
         >
-          <SelectTrigger className="bg-white focus:ring-0 focus:ring-offset-0 shadow-none rounded-md border min-w-[120px]">
+          <SelectTrigger className="bg-white dark:bg-gray-900 focus:ring-0 focus:ring-offset-0 shadow-none rounded-md border dark:border-gray-700 min-w-[120px]">
             <ArrowUpDown className="h-4 w-4 text-gray-400 mr-2" />
             <SelectValue placeholder="Sort" />
           </SelectTrigger>

@@ -74,11 +74,8 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
             if (!assignerId) throw new Error("Could not identify current user ID");
 
             // Process assignments sequentially to ensure strict isolation
-            console.log("[useAssignmentActions] Starting submission. Total assignments:", assignments.length);
-            console.log("[useAssignmentActions] Assignments List:", JSON.stringify(assignments, null, 2));
 
             for (const assignment of assignments) {
-                console.log(`[useAssignmentActions] --- Processing assignment for ${assignment.assigneeName} (ID: ${assignment.assigneeId}) ---`);
 
                 // 1. Check if child objective exists for this assignee from this parent
                 // Strict Check: Fetch only objectives for this specific assigneeId
@@ -92,13 +89,11 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                     (obj: any) => obj.parent?.objectiveId === sourceObjective.objectiveId
                 );
 
-                console.log(`[useAssignmentActions] Existing objective check for ${assignment.assigneeName}:`, existingObjective ? `Found (ID: ${existingObjective.objectiveId})` : "Not Found");
 
                 let targetObjectiveId = existingObjective?.objectiveId;
 
                 // 2. If not exists, create it
                 if (!existingObjective) {
-                    console.log(`[useAssignmentActions] Creating new objective for ${assignment.assigneeName} with KPIs:`, assignment.kpis);
 
                     // Explicitly pass ONLY the KPIs selected for THIS assignment
                     const created = await assignObjective({
@@ -109,7 +104,6 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                         kpis: assignment.kpis,
                     });
 
-                    console.log(`[useAssignmentActions] Created objective result:`, created);
 
                     if (created?.objectiveId) {
                         targetObjectiveId = created.objectiveId;
@@ -125,10 +119,8 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                                 name: placeholderName,
                             }
                         });
-                        console.log(`[useAssignmentActions] Updated objective name/type for ID: ${created.objectiveId}`);
                     }
                 } else {
-                    console.log(`[useAssignmentActions] Skipping creation, updating existing objective ${existingObjective.objectiveId}`);
                 }
 
                 // 3. Handle KPIs logic (Add missing KPIs if we found existing objective)
@@ -139,7 +131,6 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                         const sourceKpi = availableKPIs.find(k => k.kpiId === kpiId);
                         // Strict check: Ensure we only adding the KPI if it's in the current assignment's list
                         if (sourceKpi && !existingKpiNames.has(sourceKpi.name)) {
-                            console.log(`[useAssignmentActions] Adding new child KPI "${sourceKpi.name}" to objective ${targetObjectiveId}`);
                             await createKpi({
                                 name: sourceKpi.name,
                                 baseline: sourceKpi.baseline || 0,
@@ -172,7 +163,6 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                         const targetValue = targets[sourceKpiId]?.[assignment.assigneeId];
 
                         if (targetValue === undefined || targetValue === null) {
-                            console.log(`[useAssignmentActions] SKIPPING target update: No target value for KPI ${sourceKpiId} on Assignee ${assignment.assigneeId}`);
                             continue;
                         }
 
@@ -183,7 +173,6 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                         );
 
                         if (childKpi) {
-                            console.log(`[useAssignmentActions] UPDATING target for Assignee: ${assignment.assigneeName}, KPI: ${childKpi.name}, Value: ${targetValue}`);
                             await updateKpiTargets(childKpi.kpiId, [{
                                 timeline,
                                 target: targetValue

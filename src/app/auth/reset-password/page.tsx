@@ -6,13 +6,13 @@ import Image from "next/image";
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex flex-col md:flex-row relative p-4">
+    <div className="min-h-screen flex flex-col md:flex-row relative p-4 dark:bg-[#09090b]">
       {/* Logo - Top Left */}
       <div className="absolute top-4 left-8 z-10">
         <Logo />
       </div>
       {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8 bg-white dark:bg-[#09090b]">
         <div className="w-full max-w-md">
           <ResetPasswordForm />
         </div>

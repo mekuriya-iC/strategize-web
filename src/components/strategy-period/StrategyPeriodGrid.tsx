@@ -99,12 +99,12 @@ export default function StrategyPeriodGrid() {
 
   if (loading) {
     return (
-      <div className="w-full flex flex-col items-center">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 w-full max-w-4xl mx-auto">
+      <div className="w-full flex justify-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full max-w-5xl">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-gray-200 animate-pulse rounded-xl h-64"
+              className="bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl h-72"
             ></div>
           ))}
         </div>
@@ -114,10 +114,10 @@ export default function StrategyPeriodGrid() {
 
   if (error) {
     return (
-      <div className="w-full flex flex-col items-center">
+      <div className="w-full flex justify-center">
         <div className="text-red-500 text-center">
           <p className="text-lg font-medium">Error loading strategic periods</p>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
             {error.message || "Failed to load strategic periods"}
           </p>
         </div>
@@ -127,12 +127,12 @@ export default function StrategyPeriodGrid() {
 
   if (strategicPeriods.length === 0) {
     return (
-      <div className="w-full flex flex-col items-center">
+      <div className="w-full flex justify-center">
         <div className="text-center">
-          <p className="text-lg font-medium text-gray-600">
+          <p className="text-lg font-medium text-gray-600 dark:text-gray-400">
             No strategic periods found
           </p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
             Create your first strategic period to get started
           </p>
         </div>
@@ -141,8 +141,8 @@ export default function StrategyPeriodGrid() {
   }
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 w-full max-w-4xl mx-auto">
+    <div className="w-full flex justify-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full max-w-5xl">
         {strategicPeriods.map((period) => (
           <StrategyPeriodCard
             key={period.strategicPeriodId}

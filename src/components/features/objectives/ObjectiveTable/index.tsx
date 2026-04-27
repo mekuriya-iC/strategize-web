@@ -103,16 +103,16 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
 
     if (loading) {
         return (
-            <div className="rounded-lg border bg-white p-12 text-center">
+            <div className="rounded-lg border bg-white dark:bg-[#18181b] p-12 text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-                <p className="mt-4 text-gray-500 font-medium">Loading objectives...</p>
+                <p className="mt-4 text-gray-500 dark:text-gray-400 font-medium">Loading objectives...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="rounded-lg border bg-red-50 p-12 text-center">
+            <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-12 text-center">
                 <p className="text-red-600 font-medium">Error loading objectives: {error}</p>
             </div>
         );
@@ -120,7 +120,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
 
     if (objectives.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed bg-gray-50/50 p-12 text-center">
+            <div className="rounded-lg border border-dashed bg-gray-50/50 dark:bg-gray-800/30 p-12 text-center">
                 <p className="text-gray-500 font-medium">No objectives found.</p>
                 <p className="text-sm text-gray-400 mt-1">Change your filters or add a new objective.</p>
             </div>
@@ -151,14 +151,14 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
                         <React.Fragment key={groupId}>
                             {groupBy !== "none" && (
                                 <TableRow
-                                    className="bg-gray-50/80 hover:bg-gray-100/80 cursor-pointer transition-colors border-l-4 border-l-blue-500"
+                                    className="bg-gray-50/80 dark:bg-gray-800/50 hover:bg-gray-100/80 dark:hover:bg-gray-700/50 cursor-pointer transition-colors border-l-4 border-l-blue-500"
                                     onClick={() => toggleGroup(groupId)}
                                 >
                                     <TableCell colSpan={totalColumnCount} className="px-6 py-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 {expandedGroups[groupId] === false ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                                <span className="font-bold text-gray-700 text-sm">
+                                                <span className="font-bold text-gray-700 dark:text-gray-300 text-sm">
                                                     {groupBy.toUpperCase()}: {groupName} ({groupObjectives.length})
                                                 </span>
                                             </div>
@@ -208,7 +208,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
     );
 
     return (
-        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-lg border bg-white dark:bg-[#18181b] shadow-sm overflow-hidden">
             {enableSorting ? (
                 <DndContext
                     sensors={sensors}
@@ -220,10 +220,10 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
                     </SortableContext>
                     <DragOverlay>
                         {activeObjective ? (
-                            <div className="bg-white shadow-xl rounded-lg border-2 border-blue-400 p-4 opacity-95 flex items-center gap-3">
+                            <div className="bg-white dark:bg-[#18181b] shadow-xl rounded-lg border-2 border-blue-400 p-4 opacity-95 flex items-center gap-3">
                                 <GripVertical className="h-5 w-5 text-blue-500" />
                                 <div>
-                                    <p className="font-bold text-gray-900">{activeObjective.name || "Unnamed Objective"}</p>
+                                    <p className="font-bold text-gray-900 dark:text-gray-100">{activeObjective.name || "Unnamed Objective"}</p>
                                     <p className="text-xs text-gray-500 uppercase font-medium">{activeObjective.type} OBJECTIVE</p>
                                 </div>
                             </div>

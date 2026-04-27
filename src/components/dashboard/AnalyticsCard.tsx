@@ -25,7 +25,7 @@ export default function AnalyticsCard({
 }: AnalyticsCardProps) {
   if (loading) {
     return (
-      <Card className="p-5 rounded-xl border border-[#E2E8F0] shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-2 min-w-[180px] min-h-[110px] bg-white dark:bg-[#18181b]">
+      <Card className="p-5 rounded-xl border border-[#E2E8F0] dark:border-gray-800 shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-2 min-w-[180px] min-h-[110px] bg-white dark:bg-[#18181b]">
         {/* Loading skeleton */}
         <div className="animate-pulse">
           {/* Top row skeleton */}
@@ -45,7 +45,7 @@ export default function AnalyticsCard({
 
   const content = (
     <Card
-      className={`p-5 rounded-xl border border-[#E2E8F0] shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-2 min-w-[180px] min-h-[110px] bg-white dark:bg-[#18181b] ${
+      className={`p-5 rounded-xl border border-[#E2E8F0] dark:border-gray-800 shadow-[0_3.6px_90px_4.5px_rgba(0,0,0,0.07)] flex flex-col gap-2 min-w-[180px] min-h-[110px] bg-white dark:bg-[#18181b] ${
         disabled
           ? "opacity-60 cursor-not-allowed"
           : "hover:shadow-md transition"
@@ -66,8 +66,8 @@ export default function AnalyticsCard({
         <span
           className={`text-xs px-2 py-0.5 rounded-full font-medium ${
             isPositive
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
+              ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400"
+              : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400"
           }`}
         >
           {change}

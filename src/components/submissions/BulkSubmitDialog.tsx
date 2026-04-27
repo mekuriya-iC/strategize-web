@@ -95,62 +95,19 @@ export default function BulkSubmitDialog({
       return;
     }
 
-    console.log("🔍 Bulk submission validation:", {
-      itemCount: items.length,
-      itemType,
-      isAuthenticated,
-      user: user
-        ? { employeeId: user.employeeId, fullName: user.fullName }
-        : null,
-      items: items.map((item) => ({
-        itemId: item.itemId,
-        itemName: item.itemName,
-        objectiveType: item.objectiveType,
-        itemType: item.itemType,
-      })),
-    });
-
     // Additional validation for KPIs
     if (itemType === "kpis") {
-      console.log("🔍 Validating KPI items before submission...");
       for (const item of items) {
-        console.log(
-          `  - KPI ${item.itemId}: ${item.itemName} (${item.objectiveType})`
-        );
+        // KPI ${item.itemId}: ${item.itemName} (${item.objectiveType})
       }
 
       // Check if first KPI exists in database
       if (firstKPIId) {
-        console.log("🔍 First KPI database check:", {
-          kpiId: firstKPIId,
-          loading: kpiLoading,
-          exists: !!firstKPI,
-          kpiData: firstKPI
-            ? {
-              kpiId: firstKPI.kpiId,
-              name: firstKPI.name,
-              status: firstKPI.status,
-              hasObjective: !!firstKPI.objective,
-              objectiveId: firstKPI.objective?.objectiveId,
-            }
-            : null,
-        });
+        // KPI validation: ${firstKPIId}, loading: ${kpiLoading}, exists: ${!!firstKPI}
 
         // Check if objective exists in database
         if (objectiveId) {
-          console.log("🔍 Objective database check:", {
-            objectiveId,
-            loading: objectiveLoading,
-            exists: !!objectiveData,
-            objectiveData: objectiveData
-              ? {
-                objectiveId: objectiveData.objectiveId,
-                name: objectiveData.name,
-                type: objectiveData.type,
-                status: objectiveData.status,
-              }
-              : null,
-          });
+          // Objective validation: ${objectiveId}, loading: ${objectiveLoading}, exists: ${!!objectiveData}
         }
       }
     }
@@ -171,25 +128,12 @@ export default function BulkSubmitDialog({
       const submissionType: SubmissionType =
         item.itemType === "objective" ? "OBJECTIVE" : "KPI";
 
-      console.log(`🔍 Mapping for ${item.itemName}:`, {
-        objectiveType: item.objectiveType,
-        mappedLevel: submissionLevel,
-        itemType: item.itemType,
-        mappedType: submissionType,
-      });
+      // Submission mapping: ${item.objectiveType} -> ${submissionLevel}, ${item.itemType} -> ${submissionType}
 
       // For KPI submissions, use the KPI ID (as per API documentation)
       const finalItemId = item.itemId;
 
-      console.log(`🔍 Final itemId for ${item.itemName}:`, {
-        originalItemId: item.itemId,
-        finalItemId,
-        itemType: item.itemType,
-        hasObjective: !!firstKPI?.objective,
-        objectiveId: firstKPI?.objective?.objectiveId,
-        submissionType,
-        submissionLevel,
-      });
+      // Final itemId for submission: ${finalItemId} (${item.itemType})
 
       return {
         type: submissionType,
@@ -200,18 +144,7 @@ export default function BulkSubmitDialog({
     });
 
     try {
-      console.log("🚀 Bulk submission data:", submissionInputs);
-      console.log("🔍 Submission mapping details:", {
-        itemType,
-        objectiveType: items[0]?.objectiveType,
-        mappedLevel: submissionInputs[0]?.level,
-        mappedType: submissionInputs[0]?.type,
-        userContext: {
-          isAuthenticated,
-          userId: user?.employeeId,
-          userName: user?.fullName,
-        },
-      });
+      // Bulk submission starting for ${itemType}: ${items[0]?.objectiveType}
 
       const successfulSubmissions: Array<{
         type: "objective" | "kpi";
@@ -250,7 +183,6 @@ export default function BulkSubmitDialog({
             id: item.itemId,
             result: result,
           });
-          console.log(`✅ ${item.itemType} submission successful:`, result);
         } catch (error) {
           failedSubmissions.push({
             type: item.itemType,
@@ -263,7 +195,6 @@ export default function BulkSubmitDialog({
 
       // Report results
       if (successfulSubmissions.length > 0) {
-        console.log("✅ Some submissions successful:", successfulSubmissions);
         if (failedSubmissions.length > 0) {
           console.warn("⚠️ Some submissions failed:", failedSubmissions);
           toast.warning(
@@ -274,12 +205,7 @@ export default function BulkSubmitDialog({
         throw new Error("All submissions failed");
       }
 
-      console.log("✅ Smart bulk submissions completed:", {
-        successfulCount: successfulSubmissions.length,
-        failedCount: failedSubmissions.length,
-        successfulSubmissions,
-        failedSubmissions,
-      });
+      // Bulk submission results: ${successfulSubmissions.length} successful, ${failedSubmissions.length} failed
 
       // Update KPI status to PENDING after successful submission
       for (const submission of successfulSubmissions) {
@@ -289,7 +215,6 @@ export default function BulkSubmitDialog({
               kpiId: submission.id,
               status: "PENDING",
             });
-            console.log(`✅ Updated KPI ${submission.id} status to PENDING`);
           } catch (updateError) {
             console.error("❌ Error updating KPI status:", updateError);
             // Don't fail the submission if status update fails

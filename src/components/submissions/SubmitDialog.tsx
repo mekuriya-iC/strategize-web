@@ -108,13 +108,7 @@ export default function SubmitDialog({
         return;
       }
 
-      console.log("✅ KPI validation passed:", {
-        kpiId: kpiData.kpiId,
-        kpiName: kpiData.name,
-        status: kpiData.status,
-        hasObjective: !!kpiData.objective,
-        objectiveId: kpiData.objective?.objectiveId,
-      });
+      // KPI validation passed for ${kpiData.kpiId}: ${kpiData.name}
     }
 
     setIsSubmitting(true);
@@ -134,13 +128,7 @@ export default function SubmitDialog({
     // For KPI submissions, use the KPI ID (as per API documentation)
     const finalItemId = itemId;
 
-    console.log("🔍 Final itemId for submission:", {
-      originalItemId: itemId,
-      finalItemId,
-      itemType,
-      hasObjective: !!kpiData?.objective,
-      objectiveId: kpiData?.objective?.objectiveId,
-    });
+    // Final itemId for submission: ${finalItemId} (${itemType})
 
     const submissionData = {
       type: submissionType,
@@ -150,40 +138,10 @@ export default function SubmitDialog({
     };
 
     try {
-      console.log("🚀 Submission data being sent:", submissionData);
-      console.log("🎯 KPI Submission Type Verification:", {
-        itemType,
-        submissionType,
-        isKpiSubmission: submissionType === "KPI",
-        submissionData,
-      });
-      console.log("🔍 CREATION DEBUG - Final submission details:", {
-        itemType,
-        submissionType,
-        isKpiSubmission: submissionType === "KPI",
-        submissionData: {
-          type: submissionData.type,
-          level: submissionData.level,
-          itemId: submissionData.itemId,
-          reason: submissionData.reason,
-        },
-        expectedType: itemType === "kpi" ? "KPI" : "OBJECTIVE",
-        actualType: submissionData.type,
-        typesMatch:
-          (itemType === "kpi" ? "KPI" : "OBJECTIVE") === submissionData.type,
-      });
-      console.log("🎯 Item details:", {
-        itemId,
-        itemName,
-        objectiveType,
-        itemType,
-      });
-      console.log("👤 User context:", {
-        isAuthenticated,
-        user: user
-          ? { employeeId: user.employeeId, fullName: user.fullName }
-          : null,
-      });
+      // Submission data being sent: ${submissionType} for ${itemType}
+      // KPI Submission Type Verification: expected ${itemType === "kpi" ? "KPI" : "OBJECTIVE"}, actual ${submissionData.type}
+      // Item details: ${itemId} - ${itemName} (${objectiveType})
+      // User context: ${user ? user.fullName : 'Not authenticated'}
 
       const result = await handleSmartSubmission({
         submissionType: submissionType,
@@ -194,17 +152,7 @@ export default function SubmitDialog({
           client as unknown as import("@/utils/smartSubmission").ApolloClient,
       });
 
-      console.log("✅ Submission successful:", result);
-      console.log("🔍 BACKEND RESPONSE DEBUG - What backend returned:", {
-        submissionId: result?.data?.submissionId,
-        type: result?.data?.type,
-        level: result?.data?.level,
-        status: result?.data?.status,
-        reason: result?.data?.reason,
-        expectedType: submissionData.type,
-        typesMatch: result?.data?.type === submissionData.type,
-        fullResponse: result,
-      });
+      // Submission successful: ${result?.data?.submissionId} (${result?.data?.type})
 
       // Note: handleSmartSubmission already updates the KPI status to PENDING
       // No need for additional status update here

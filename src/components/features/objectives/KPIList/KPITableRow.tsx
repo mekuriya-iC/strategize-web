@@ -71,8 +71,8 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
 
     return (
         <TableRow
-            className={`border-b border-gray-100 ${selected ? "bg-blue-50" : idx % 2 === 1 ? "bg-white" : "bg-[#ECECFF]"
-                } hover:bg-gray-50 transition-colors cursor-pointer`}
+            className={`border-b border-gray-100 dark:border-gray-800 ${selected ? "bg-blue-50 dark:bg-blue-950/30" : idx % 2 === 1 ? "bg-white dark:bg-transparent" : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
+                } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer`}
             onClick={() => onEdit(kpi.kpiId)}
         >
             {showBulkActions && (
@@ -87,12 +87,12 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
 
             {showLevelSpecificColumn ? (
                 <>
-                    <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
+                    <TableCell className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100 max-w-sm">
                         <div className="truncate" title={getFirstColumnContent(kpi)}>
                             {getFirstColumnContent(kpi)}
                         </div>
                         {getFromText(kpi) && (
-                            <div className="text-xs text-gray-500 mt-1">{getFromText(kpi)}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{getFromText(kpi)}</div>
                         )}
                     </TableCell>
                     <TableCell className="px-6 py-4 font-medium text-gray-900 max-w-sm">
@@ -113,7 +113,7 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
                 </TableCell>
             )}
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2">
                     <span>{kpi.baseline}</span>
                     <Badge variant="outline" className="text-xs">
@@ -122,9 +122,9 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
                 </div>
             </TableCell>
 
-            <TableCell className="px-6 py-4 text-gray-600">{kpi.weight}</TableCell>
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">{kpi.weight}</TableCell>
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <KPITargetsCell
                     kpi={kpi}
                     childQuartersByParentId={childQuartersByParentId}
@@ -134,7 +134,7 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
                 />
             </TableCell>
 
-            <TableCell className="px-6 py-4 text-gray-600">
+            <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <div className="flex flex-col gap-1">
                     <Badge
                         className={`${statusColors[kpi.status] || "bg-gray-100 text-gray-600"

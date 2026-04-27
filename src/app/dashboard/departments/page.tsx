@@ -265,11 +265,11 @@ const DepartmentsPage = () => {
     return (
       <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
         <div className="animate-pulse">
-          <div className="h-10 w-48 bg-gray-200 rounded mb-6" />
-          <div className="h-12 w-full bg-gray-200 rounded mb-4" />
+          <div className="h-10 w-48 bg-gray-200 dark:bg-gray-800 rounded mb-6" />
+          <div className="h-12 w-full bg-gray-200 dark:bg-gray-800 rounded mb-4" />
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded" />
+              <div key={i} className="h-16 bg-gray-200 dark:bg-gray-800 rounded" />
             ))}
           </div>
         </div>
@@ -282,10 +282,10 @@ const DepartmentsPage = () => {
       {/* Header and Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
             Departments
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {isAdmin ? "Manage organization-wide departments" : guards.isDirector ? "Manage departments in your division" : "Manage your department"}
           </p>
         </div>
@@ -319,7 +319,7 @@ const DepartmentsPage = () => {
 
           {/* Results Summary */}
           {(searchTerm || filterStatus !== "all") && (
-            <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>
                 Showing {departments.length} of {totalItems} departments
                 {searchTerm && (
@@ -340,7 +340,7 @@ const DepartmentsPage = () => {
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <p className="text-red-600">
             Error loading departments: {error.message}
           </p>
@@ -360,7 +360,7 @@ const DepartmentsPage = () => {
         canAccessEmployees ? (
           <EmptyState onAddDepartment={handleAddDepartment} />
         ) : (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             No departments found.
           </div>
         )

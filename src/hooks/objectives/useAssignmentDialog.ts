@@ -576,7 +576,6 @@ export function useAssignmentDialog({
         const apiAssigneeType = assigneeType;
 
         // First, create the child objective via assignment
-        console.log("🚀 Creating child objective via assignment...");
         const createdObjective = await assignObjective({
           objectiveId: objective.objectiveId,
           assigneeId: assignment.assigneeId,
@@ -585,14 +584,12 @@ export function useAssignmentDialog({
           kpis: assignment.kpis,
         });
 
-        console.log("📦 Created objective result:", createdObjective);
 
         // Then, update the child objective with correct type and placeholder name
         if (createdObjective?.objectiveId) {
           const correctType = getAssigneeObjectiveType();
           const placeholderName = generatePlaceholderName();
 
-          console.log("🔧 Updating child objective with:", {
             objectiveId: createdObjective.objectiveId,
             targetType: correctType,
             targetName: placeholderName,
@@ -609,7 +606,6 @@ export function useAssignmentDialog({
               },
             });
 
-            console.log("✅ Update result:", updateResult);
 
             toast.success("Child objective configured", {
               description: `Type: ${correctType}, Name: "${placeholderName.substring(

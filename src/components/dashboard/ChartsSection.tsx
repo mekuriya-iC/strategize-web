@@ -43,7 +43,7 @@ const barData = {
 export default function ChartsSection() {
   return (
     <section className="mb-10">
-      <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] mb-6">Charts</h2>
+      <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-6">Charts</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <ChartCard title="KPIs Over Time" chartType="bar" data={barData} />
         <ChartCard

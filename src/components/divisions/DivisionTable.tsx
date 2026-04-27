@@ -161,8 +161,8 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
     <>
       {/* Selection Action Bar - only show for admins */}
       {!readOnly && someSelected && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-          <span className="text-sm text-blue-800 font-medium">
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-blue-800 dark:text-blue-300 font-medium">
             {selectedIds.size} division{selectedIds.size !== 1 ? "s" : ""}{" "}
             selected
           </span>
@@ -198,7 +198,7 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
                 />
               </TableHead>
             )}
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               DIVISION NAME
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
@@ -223,7 +223,7 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
             <TableRow>
               <TableCell
                 colSpan={7}
-                className="text-center py-12 text-gray-500"
+                className="text-center py-12 text-gray-500 dark:text-gray-400"
               >
                 No divisions found
               </TableCell>
@@ -232,12 +232,12 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
             divisionsToShow.map((division, idx) => (
               <TableRow
                 key={division.id}
-                className={`border-b border-gray-100 ${selectedIds.has(division.id)
-                    ? "bg-blue-50"
+                className={`border-b border-gray-100 dark:border-gray-800 ${selectedIds.has(division.id)
+                    ? "bg-blue-50 dark:bg-blue-950/30"
                     : idx % 2 === 1
-                      ? "bg-white"
-                      : "bg-[#ECECFF]"
-                  } hover:bg-gray-50 transition-colors cursor-pointer`}
+                      ? "bg-white dark:bg-transparent"
+                      : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
+                  } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer`}
                 onClick={() =>
                   router.push(`/dashboard/divisions/${division.id}`)
                 }
@@ -256,10 +256,10 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
                     />
                   </TableCell>
                 )}
-                <TableCell className="px-6 py-4 font-medium text-gray-900">
+                <TableCell className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                   {division.divisionName}
                 </TableCell>
-                <TableCell className="px-6 py-4 text-gray-600">
+                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                   {division.createdBy}
                 </TableCell>
                 <TableCell className="px-6 py-4 text-gray-600">

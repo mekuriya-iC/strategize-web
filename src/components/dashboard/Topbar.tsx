@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import OrgUnitSelector from "./OrgUnitSelector";
 import StrategySelector from "./StrategySelector";
+import StrategicPeriodSelector from "./StrategicPeriodSelector";
 import DepartmentSelector from "../departments/DepartmentSelector";
 import { useTheme } from "next-themes";
 import { useUIStore, useAuthStore } from "@/stores";
@@ -29,6 +30,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
+import NotificationDropdown from "./NotificationDropdown";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
@@ -59,10 +61,10 @@ export default function Topbar() {
   };
 
   return (
-    <header className="sticky w-full flex items-center justify-between py-4 px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#212123] dark:border-[#212123]">
+    <header className="sticky w-full flex items-center justify-between py-4 px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
       {/* Left: Breadcrumbs and filter */}
       <div className="flex items-center gap-4">
-        <nav className="flex items-center text-sm text-gray-500">
+        <nav className="flex items-center text-sm text-gray-500 dark:text-gray-400">
           {/* Sidebar toggle - visible on all screens */}
           <button
             className="mr-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3838EC]"
@@ -88,8 +90,8 @@ export default function Topbar() {
           <span className="font-medium text-gray-700 dark:text-gray-100">
             {getPageName(pathname)}
           </span>
-          {/* Strategy selector */}
-          <StrategySelector className="w-40 ml-4" />
+          {/* Strategic Period Selector - New prominent position */}
+          <StrategicPeriodSelector className="w-44 ml-4" />
           <OrgUnitSelector />
           <DepartmentSelector className="ml-4" />
         </nav>
@@ -97,9 +99,7 @@ export default function Topbar() {
       {/* Right: Icons, language, user */}
       <div className="flex items-center gap-3">
         {/* Notification bell */}
-        <button className="p-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-          <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-        </button>
+        <NotificationDropdown />
 
         {/* Theme toggle button */}
         <button
@@ -161,7 +161,7 @@ export default function Topbar() {
                   <span className="font-medium">
                     {user?.fullName || "User"}
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     {user?.email || ""}
                   </span>
                 </div>

@@ -28,8 +28,8 @@ const DivisionTableSkeleton: React.FC<DivisionTableSkeletonProps> = ({
         {Array.from({ length: rows }).map((_, idx) => (
           <TableRow
             key={idx}
-            className={`border-b border-gray-100 ${
-              idx % 2 === 1 ? "bg-white" : "bg-[#ECECFF]"
+            className={`border-b border-gray-100 dark:border-gray-800 ${
+              idx % 2 === 1 ? "bg-white dark:bg-transparent" : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
             }`}
           >
             <TableCell className="px-6 py-4">

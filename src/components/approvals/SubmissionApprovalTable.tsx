@@ -170,47 +170,10 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   // All submissions are objective submissions with nested KPIs
   const objectiveSubmissions = filteredSubmissions;
 
-  // Debug logging
-  console.log("SubmissionApprovalTable Debug:", {
-    totalSubmissions: submissions.length,
-    filteredSubmissions: filteredSubmissions.length,
-    objectiveSubmissions: objectiveSubmissions.length,
-    objectiveSubmissionsData: objectiveSubmissions.map((obj) => ({
-      submissionId: obj.submissionId,
-      status: obj.status,
-      reason: obj.reason,
-      objectiveId: obj.objective?.objectiveId,
-      objectiveName: obj.objective?.name,
-      objectiveType: obj.objective?.type,
-      kpisCount: obj.objective?.kpis?.length || 0,
-      kpiSubmissionsCount: obj.associatedKpiSubmissions?.length || 0,
-      kpiSubmissions: obj.associatedKpiSubmissions?.map((k) => ({
-        submissionId: k.submissionId,
-        status: k.status,
-        reason: k.reason,
-        kpiId: k.kpi?.kpiId,
-      })),
-    })),
-    activeTab,
-    isCorporateLevel,
-    // Add more detailed debugging
-    objectiveIds: objectiveSubmissions.map((obj) => obj.objective?.objectiveId),
-  });
-
   // Helper function to get KPI submissions for a specific objective
   const getKPISubmissionsForObjective = (submission: GroupedSubmission) => {
     // Use the new associatedKpiSubmissions from the grouped data
     const kpiSubmissions = submission.associatedKpiSubmissions || [];
-
-    console.log(
-      `KPI submissions for objective ${submission.objective?.objectiveId}:`,
-      {
-        objectiveId: submission.objective?.objectiveId,
-        foundKPISubmissions: kpiSubmissions.length,
-        kpiSubmissionData: kpiSubmissions,
-        submission: submission,
-      }
-    );
 
     return kpiSubmissions;
   };
@@ -579,14 +542,9 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
           {objectiveSubmissions.map((obj, idx) => {
             const kpiSubmissions = getKPISubmissionsForObjective(obj);
 
-            // Debug: Log what we're getting
-            console.log(
-              `🔍 DEBUG for objective ${obj.objective?.objectiveId}:`,
-              {
-                realKpiSubmissions: kpiSubmissions.length,
-                realKpiIds: kpiSubmissions.map((k) => k.kpi?.kpiId),
-              }
-            );
+            // Debug: Log what we're getting for objective ${obj.objective?.objectiveId}
+            // Real KPI submissions: ${kpiSubmissions.length}
+            // Real KPI IDs: ${kpiSubmissions.map((k) => k.kpi?.kpiId).join(', ')}
 
             // Use only real KPI submissions - no more pseudo KPIs
             const effectiveKpiSubmissions = kpiSubmissions;
@@ -594,17 +552,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
             const kpiCount = effectiveKpiSubmissions.length;
 
             // Debug: Log the final KPI count
-            console.log(
-              `🎯 FINAL KPI COUNT for objective ${obj.objective?.objectiveId}:`,
-              {
-                kpiCount,
-                effectiveKpiSubmissions: effectiveKpiSubmissions.map((k) => ({
-                  submissionId: k.submissionId,
-                  kpiId: k.kpi?.kpiId,
-                  isPseudo: (k as { isPseudo?: boolean }).isPseudo,
-                })),
-              }
-            );
+            // Final KPI count for objective ${obj.objective?.objectiveId}: ${kpiCount}
+            // Effective KPI submissions: ${effectiveKpiSubmissions.length}
             const { strategicName, childName, hasParent } =
               resolveObjectiveNames(obj);
 
@@ -1538,7 +1487,6 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                               <div className="flex items-center gap-2">
                                                 {(() => {
                                                   // Debug: Log what we're passing to approval/rejection dialogs
-                                                  // console.log(
                                                   //   `🎯 APPROVAL/REJECTION DEBUG for KPI ${kpiSubmission.kpi?.kpiId}:`,
                                                   //   {
                                                   //     kpiSubmissionId:

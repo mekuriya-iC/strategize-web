@@ -108,11 +108,11 @@ export default function NotificationSettings() {
       <CardContent>
         {/* Channel Headers */}
         <div className="flex items-center justify-end gap-8 mb-4 pr-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
             <Mail className="h-4 w-4" />
             Email
           </div>
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
             <Smartphone className="h-4 w-4" />
             Push
           </div>
@@ -123,18 +123,18 @@ export default function NotificationSettings() {
           {settings.map((setting, index) => (
             <div
               key={setting.id}
-              className={`flex items-center justify-between p-4 rounded-lg hover:bg-gray-50 transition-colors ${
-                index % 2 === 0 ? "bg-gray-50/50" : ""
+              className={`flex items-center justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                index % 2 === 0 ? "bg-gray-50/50 dark:bg-gray-800/30" : ""
               }`}
             >
               <div className="flex-1 pr-4">
                 <Label
                   htmlFor={`${setting.id}-email`}
-                  className="text-sm font-medium text-gray-900 cursor-pointer"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer"
                 >
                   {setting.label}
                 </Label>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   {setting.description}
                 </p>
               </div>
@@ -163,7 +163,7 @@ export default function NotificationSettings() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200">
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex gap-2">
             <Button
               variant="outline"

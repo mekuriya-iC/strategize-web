@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start -p 4410",
     "lint": "eslint .",
-    "test": "vitest"
+    "test": "vitest",
+    "schema:fetch": "node scripts/fetch-schema.js",
+    "schema:generate": "graphql-codegen",
+    "schema:clean": "node scripts/clean-graphql.js",
+    "schema:generate-fragments": "node scripts/generate-graphql-fragments.js",
+    "schema:generate-structure": "node scripts/generate-graphql-structure.js"
   },
   "dependencies": {
     "@apollo/client": "^3.13.8",
@@ -55,6 +60,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@graphql-codegen/cli": "^5.0.7",
+    "@graphql-codegen/introspection": "^5.0.2",
     "@graphql-codegen/typescript": "^4.1.6",
     "@graphql-codegen/typescript-operations": "^4.6.1",
     "@graphql-codegen/typescript-react-apollo": "^4.3.3",
@@ -69,6 +75,7 @@
     "@vitejs/plugin-react": "^5.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
+    "graphql-request": "^6.1.0",
     "jsdom": "^27.3.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.4",

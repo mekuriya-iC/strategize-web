@@ -1,0 +1,8 @@
+schema: schema.graphql
+documents: "src/**/*.ts"
+extensions:
+  endpoints:
+    development:
+      url: ${GRAPHQL_SCHEMA_URL:-http://localhost:3000/graphql}
+    production:
+      url: ${NEXT_PUBLIC_API}

@@ -1,0 +1,2435 @@
+scalar DateTime
+
+enum ActivityEventType {
+  ACTIVITY_CREATED
+  ACTIVITY_DELETED
+  ACTIVITY_STATUS_CHANGED
+  ACTIVITY_UPDATED
+  APPROVAL_GRANTED
+  APPROVAL_REJECTED_ACTION
+  APPROVAL_SUBMITTED
+  CHECKIN_AUTO_REJECTED
+  CHECKIN_SESSION_OPENED
+  CHECKIN_SESSION_REVIEWED
+  CHECKIN_SUBMITTED
+  CHECKIN_TASK_ADDED
+  CHECKIN_TASK_APPROVED
+  CHECKIN_TASK_REJECTED
+  CHECKIN_TASK_UPDATED
+  CHECKOUT_SUBMITTED
+  COMPETENCY_ASSIGNED_POSITION
+  COMPETENCY_CREATED
+  COMPETENCY_INDICATOR_ADDED
+  COMPETENCY_UPDATED
+  CUSTOM_ROLE_CREATED
+  CUSTOM_ROLE_DELETED
+  CUSTOM_ROLE_UPDATED
+  DEPARTMENT_CREATED
+  DEPARTMENT_UPDATED
+  DIVISION_CREATED
+  DIVISION_UPDATED
+  EMAIL_VERIFIED
+  EVALUATION_ASSIGNED
+  EVALUATION_CYCLE_CLOSED
+  EVALUATION_CYCLE_CREATED
+  EVALUATION_CYCLE_OPENED
+  EVALUATION_STARTED
+  EVALUATION_SUBMITTED
+  EVALUATION_WEIGHT_CONFIGURED
+  FILE_DELETED
+  FILE_UPLOADED
+  INITIATIVE_COMPLETED
+  INITIATIVE_CREATED
+  INITIATIVE_DELETED
+  INITIATIVE_UPDATED
+  KPI_ASSIGNED_DEPARTMENT
+  KPI_ASSIGNED_DIVISION
+  KPI_ASSIGNED_EMPLOYEE
+  KPI_CREATED
+  KPI_DELETED
+  KPI_UPDATED
+  KPI_UPDATE_APPROVED
+  KPI_UPDATE_REJECTED
+  KPI_UPDATE_SUBMITTED
+  KPI_WEIGHT_CHANGED
+  LOGBOOK_ENTRY_APPROVED
+  LOGBOOK_ENTRY_CREATED
+  LOGBOOK_ENTRY_DELETED
+  LOGBOOK_ENTRY_REJECTED
+  LOGBOOK_ENTRY_SUBMITTED
+  LOGBOOK_ENTRY_UPDATED
+  NOTIFICATION_CONFIG_UPDATED
+  OBJECTIVE_ADJUSTED
+  OBJECTIVE_APPROVED
+  OBJECTIVE_CASCADED
+  OBJECTIVE_CREATED
+  OBJECTIVE_DELETED
+  OBJECTIVE_REJECTED
+  OBJECTIVE_SUBMITTED
+  OBJECTIVE_UPDATED
+  ORGANIZATION_CREATED
+  ORGANIZATION_UPDATED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_RESET_REQUESTED
+  PERFORMANCE_SCORE_COMPUTED
+  PERFORMANCE_WEIGHT_CONFIGURED
+  PERIOD_ARCHIVED
+  PERIOD_CLOSED
+  PERIOD_CREATED
+  PERIOD_OPENED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  PILLAR_CREATED
+  PILLAR_UPDATED
+  POSITION_CREATED
+  POSITION_UPDATED
+  REPORT_EXPORTED
+  REPORT_GENERATED
+  ROLE_ASSIGNED_TO_USER
+  SHARED_KPI_PARTICIPANT_ADDED
+  SHARED_KPI_PARTICIPANT_REMOVED
+  STRATEGIC_PLAN_APPROVED
+  STRATEGIC_PLAN_ARCHIVED
+  STRATEGIC_PLAN_CREATED
+  STRATEGIC_PLAN_UPDATED
+  SYSTEM_CONFIG_UPDATED
+  TEAM_CREATED
+  TEAM_UPDATED
+  USER_ASSIGNED_TO_DEPT
+  USER_CREATED
+  USER_DEACTIVATED
+  USER_LOGIN
+  USER_LOGIN_FAILED
+  USER_LOGOUT
+  USER_REACTIVATED
+  USER_ROLE_CHANGED
+  USER_UPDATED
+}
+
+enum ApprovalAction {
+  APPROVED
+  PENDING
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum AssigneeType {
+  DEPARTMENT
+  DIVISION
+  PERSONNEL
+}
+
+enum AuditAction {
+  APPROVE
+  CASCADE_ASSIGN
+  CREATE
+  DELETE
+  KPI_UPDATE
+  LOGBOOK_SIGN
+  LOGIN
+  LOGOUT
+  REJECT
+  ROLE_CHANGE
+  UPDATE
+}
+
+enum CascadeStatus {
+  ADJUSTED
+  APPROVED
+  PENDING_ADJUSTMENT
+  REJECTED
+  SUBMITTED_FOR_APPROVAL
+}
+
+enum CheckinoutStatus {
+  APPROVED
+  OPEN
+  REJECTED
+  REVIEWED
+  SUBMITTED
+}
+
+enum EmployeeRole {
+  ADMIN
+  COORDINATOR
+  DIRECTOR
+  MANAGER
+  NORMAL
+  SUPER_ADMIN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  DELETED
+  DISABLED
+}
+
+enum EvaluationCycleStatus {
+  ACTIVE
+  ARCHIVED
+  CLOSED
+  UPCOMING
+}
+
+enum EvaluationRelationType {
+  PEER
+  SELF
+  SUBORDINATE
+  SUPERVISOR
+}
+
+enum EvaluationStatus {
+  COMPLETED
+  IN_PROGRESS
+  NOT_STARTED
+  SUBMITTED
+}
+
+enum InitiativeStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+  DRAFT
+  ON_HOLD
+}
+
+enum KpiFrequency {
+  ANNUAL
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  WEEKLY
+}
+
+enum KpiMeasurementUnit {
+  BOOLEAN
+  CURRENCY
+  CUSTOM
+  NUMBER
+  PERCENTAGE
+  RATING
+}
+
+enum KpiProgressStatus {
+  AT_RISK
+  COMPLETED
+  NOT_STARTED
+  OFF_TRACK
+  ON_TRACK
+}
+
+enum KpiStatus {
+  APPROVED
+  NOT_SUBMITTED
+  PENDING
+  REJECTED
+}
+
+enum KpiTargetStatus {
+  APPROVED
+  NOT_SUBMITTED
+  PENDING
+  REJECTED
+}
+
+enum KpiType {
+  INDIVIDUAL
+  SHARED
+}
+
+enum KpiUnitType {
+  NUMBER
+  PERCENT
+}
+
+enum LogbookEntryStatus {
+  APPROVED
+  DRAFT
+  REJECTED
+  SUBMITTED
+}
+
+enum NotificationStatus {
+  DISMISSED
+  READ
+  UNREAD
+}
+
+enum NotificationType {
+  APPROVAL_REQUEST
+  APPROVAL_RESULT
+  ASSIGNMENT
+  CHECKIN_REMINDER
+  CHECKOUT_REMINDER
+  DEADLINE_REMINDER
+  EVALUATION_REMINDER
+  KPI_UPDATE
+  OVERDUE_ALERT
+  SYSTEM_ALERT
+}
+
+enum ObjectiveLevel {
+  CORPORATE
+  DEPARTMENT
+  DIVISION
+  INDIVIDUAL
+  TEAM
+}
+
+enum ObjectiveStatus {
+  ACTIVE
+  APPROVED
+  CANCELLED
+  COMPLETED
+  DRAFT
+  NOT_SUBMITTED
+  ON_HOLD
+  PENDING
+  REJECTED
+}
+
+enum ObjectiveType {
+  CORPORATE
+  DEPARTMENT
+  DIVISION
+  PERSONNEL
+}
+
+enum PermissionAction {
+  APPROVE
+  ASSIGN
+  CASCADE
+  CONFIGURE
+  CREATE
+  DELETE
+  EVALUATE
+  EXPORT
+  MONITOR
+  READ
+  REJECT
+  UPDATE
+}
+
+enum PermissionScope {
+  DEPARTMENT
+  DIVISION
+  ORGANIZATION
+  OWN
+  PLATFORM
+  TEAM
+}
+
+enum StrategicPeriodStatus {
+  ACTIVE
+  ARCHIVED
+  CLOSED
+  UPCOMING
+}
+
+enum StrategicPeriodType {
+  ANNUAL
+  CUSTOM
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  WEEKLY
+}
+
+enum SubmissionLevel {
+  DEPARTMENT
+  DIVISION
+  PERSONNEL
+}
+
+enum SubmissionStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+enum SubmissionType {
+  KPI
+  OBJECTIVE
+}
+
+enum SystemModule {
+  APPROVAL_WORKFLOWS
+  AUDIT_LOGS
+  CASCADING
+  CHECKIN_CHECKOUT
+  COMPETENCY_LIBRARY
+  EVALUATION
+  FILE_ATTACHMENTS
+  KPI_MANAGEMENT
+  LOGBOOK
+  NOTIFICATIONS
+  ORGANIZATION_STRUCTURE
+  PERFORMANCE_AGGREGATE
+  REPORTS_DASHBOARD
+  SHARED_KPIS
+  STRATEGIC_PERIODS
+  STRATEGIC_PLANNING
+  SYSTEM_CONFIGURATION
+  USER_MANAGEMENT
+}
+
+enum TaskLinkType {
+  INITIATIVE_FULFILLED
+  INITIATIVE_UNMET
+  KPI_FULFILLED
+  KPI_UNMATE
+  SELF_DEVELOPMENT
+  UNLINKED
+}
+
+enum TaskStatus {
+  CANCELLED
+  DONE
+  NOT_DONE
+  POSTPONED
+}
+
+input AssignObjectiveInput {
+  assigneeId: ID
+  assigneeType: AssigneeType!
+  assignerId: ID
+  kpis: [ID!]!
+  objectiveId: ID!
+}
+
+input CreateActivityInput {
+  assignedToUserId: ID
+  description: String
+  dueDate: String
+  initiativeId: ID!
+  milestone: Boolean
+  notes: String
+  organizationId: ID!
+  startDate: String
+  status: TaskStatus
+  title: String!
+}
+
+input CreateActivityLogInput {
+  actionDetail: String
+  actionSummary: String!
+  browser: String
+  entityId: ID
+  entityLabel: String
+  entityType: String
+  eventType: ActivityEventType!
+  failureReason: String
+  httpStatusCode: Int
+  ipAddress: String!
+  isSuccessful: Boolean
+  module: SystemModule!
+  organizationId: ID
+  userAgent: String!
+  userEmail: String
+  userId: ID
+}
+
+input CreateAggregatePerformanceResultInput {
+  aggregateScore: Float!
+  competencyScore: Float
+  individualKpiScore: Float
+  organizationId: ID!
+  sharedKpiScore: Float
+  strategicPeriodId: ID!
+  userId: ID!
+  weightConfigId: ID!
+}
+
+input CreateApprovalWorkflowInput {
+  entityId: ID!
+  entityType: String!
+  organizationId: ID!
+  submittedById: ID
+}
+
+input CreateAssessmentResponseInput {
+  assessmentId: ID!
+  comment: String
+  indicatorId: ID!
+  rating: Int!
+}
+
+input CreateAuditLogInput {
+  action: AuditAction!
+  entityId: ID
+  entityType: String
+  ipAddress: String
+  organizationId: ID
+  userAgent: String
+  userId: ID
+}
+
+input CreateCheckinoutSessionInput {
+  employeeUserId: ID!
+  organizationId: ID!
+  strategicPeriodId: ID!
+  supervisorUserId: ID!
+  weekEndDate: String!
+  weekStartDate: String!
+}
+
+input CreateCheckinoutTaskInput {
+  achievedDescription: String
+  challenges: String
+  evidenceUrl: String
+  linkedInitiativeId: ID
+  linkedKpiId: ID
+  linkedObjectiveId: ID
+  nextSteps: String
+  plannedDescription: String
+  relatedToEmployeeId: ID
+  requiresApproval: Boolean
+  sessionId: ID!
+  taskEndDate: DateTime!
+  taskLinkType: TaskLinkType!
+  taskStartDate: DateTime!
+  taskStatus: TaskStatus
+  taskTitle: String!
+}
+
+input CreateCompetencyAssessmentInput {
+  evaluateeUserId: ID!
+  evaluationCycleId: ID!
+  evaluatorUserId: ID!
+  relationType: EvaluationRelationType!
+}
+
+input CreateCompetencyIndicatorInput {
+  competencyId: ID!
+  description: String!
+  ratingScaleMax: Int
+  ratingScaleMin: Int
+}
+
+input CreateCompetencyInput {
+  coreCompetencyId: ID!
+  description: String
+  name: String!
+  organizationId: ID!
+}
+
+input CreateCompetencyPositionAssignmentInput {
+  competencyId: ID!
+  isMandatory: Boolean
+  positionId: ID!
+}
+
+input CreateCoreCompetencyInput {
+  description: String
+  name: String!
+  organizationId: ID!
+}
+
+input CreateDepartmentInput {
+  description: String
+  divisionId: ID
+  headUserId: ID
+  isActive: Boolean
+  name: String!
+  organizationId: ID!
+}
+
+input CreateDivisionInput {
+  description: String
+  headUserId: ID
+  isActive: Boolean
+  name: String!
+  organizationId: ID!
+  parentDivisionId: ID
+}
+
+input CreateEmployeeInput {
+  email: String!
+  fullName: String!
+  password: String!
+  phoneNumber: String!
+  picture: String!
+  role: EmployeeRole!
+  startDate: String!
+  status: EmployeeStatus!
+  title: String!
+}
+
+input CreateEvaluationCycleInput {
+  description: String
+  endDate: String!
+  name: String!
+  organizationId: ID!
+  startDate: String!
+  strategicPeriodId: ID
+}
+
+input CreateEvaluationWeightConfigInput {
+  evaluationCycleId: ID!
+  relationType: EvaluationRelationType!
+  weightPercent: Float!
+}
+
+input CreateFileAttachmentInput {
+  fileName: String!
+  fileSizeBytes: Int
+  fileType: String
+  isPublic: Boolean
+  organizationId: ID!
+  relatedEntityId: ID
+  relatedEntityType: String
+  storageKey: String!
+  storageUrl: String!
+  uploadedByUserId: ID
+}
+
+input CreateInitiativeInput {
+  description: String
+  dueDate: String
+  organizationId: ID!
+  ownerUserId: ID
+  startDate: String
+  status: InitiativeStatus
+  strategicObjectiveId: ID!
+  title: String!
+}
+
+input CreateKpiAssignmentDepartmentInput {
+  assignedById: ID
+  departmentId: ID!
+  kpiId: ID!
+  strategicPeriodId: ID!
+  targetValue: Float
+  weight: Float
+}
+
+input CreateKpiAssignmentDivisionInput {
+  assignedById: ID
+  divisionId: ID!
+  kpiId: ID!
+  strategicPeriodId: ID!
+  targetValue: Float
+  weight: Float
+}
+
+input CreateKpiAssignmentEmployeeInput {
+  assignedById: ID
+  kpiId: ID!
+  strategicPeriodId: ID!
+  targetValue: Float
+  userId: ID!
+  weight: Float
+}
+
+input CreateKpiInput {
+  assigneeId: ID
+  assigneeType: AssigneeType
+  assignerId: ID
+  baseline: Float
+  baselineValue: Float
+  customUnitLabel: String
+  description: String
+  frequency: KpiFrequency!
+  initiativeId: ID
+  kpiType: KpiType
+  measurementUnit: KpiMeasurementUnit!
+  name: String!
+  organizationId: ID!
+  parentId: ID
+  strategicObjectiveId: ID
+  targetValue: Float!
+  targets: [KpiTargetInput!]
+  unitType: KpiUnitType
+  weight: Float
+}
+
+input CreateKpiUpdateInput {
+  achievedValue: Float!
+  evidenceUrl: String
+  kpiId: ID!
+  notes: String
+  progressPercentage: Float!
+  progressStatus: KpiProgressStatus!
+  reportingDate: String!
+  strategicPeriodId: ID!
+}
+
+input CreateLogbookEntryInput {
+  activityDescription: String!
+  checkinoutTaskId: ID
+  decisionsMade: String
+  entryDate: String!
+  evidenceDescription: String
+  evidenceUrl: String
+  kpiAchievedValue: Float
+  kpiCompletionPercent: Float
+  kpiTargetValue: Float
+  lessonsLearned: String
+  linkedInitiativeId: ID
+  linkedKpiId: ID
+  linkedObjectiveId: ID
+  organizationId: ID!
+  risksIssues: String
+  strategicPeriodId: ID!
+}
+
+input CreateNotificationInput {
+  message: String!
+  notificationType: NotificationType!
+  organizationId: ID!
+  recipientUserId: ID!
+  relatedEntityId: ID
+  relatedEntityType: String
+  senderUserId: ID
+  title: String!
+}
+
+input CreateObjectiveInput {
+  assigneeId: ID
+  assigneeType: AssigneeType
+  assignerId: ID
+  description: String
+  dueDate: String
+  level: ObjectiveLevel!
+  organizationId: ID!
+  ownerDepartmentId: ID
+  ownerDivisionId: ID
+  ownerTeamId: ID
+  ownerUserId: ID
+  parentId: ID
+  strategicPeriodId: ID!
+  strategicPillarId: ID
+  strategicPlanId: ID!
+  title: String!
+  type: ObjectiveType
+  weight: Float
+}
+
+input CreateOrganizationInput {
+  address: String
+  city: String
+  country: String
+  email: String
+  industry: String
+  logoUrl: String
+  name: String!
+  phone: String
+  shortName: String
+  subscriptionActive: Boolean
+  subscriptionExpiresAt: DateTime
+  website: String
+}
+
+input CreatePerformanceWeightConfigInput {
+  competencyWeight: Float!
+  individualKpiWeight: Float!
+  organizationId: ID!
+  sharedKpiWeight: Float!
+  strategicPeriodId: ID!
+}
+
+input CreatePermissionDefinitionInput {
+  action: PermissionAction!
+  code: String!
+  description: String
+  isSystemDefault: Boolean
+  label: String!
+  module: SystemModule!
+  scope: PermissionScope!
+}
+
+input CreatePositionInput {
+  description: String
+  grade: String
+  organizationId: ID!
+  title: String!
+}
+
+input CreateRoleAuditLogInput {
+  actionDescription: String!
+  actionType: String!
+  affectedPermissionId: ID
+  affectedRoleId: ID
+  affectedUserId: ID
+  ipAddress: String
+  organizationId: ID
+  performedByUserId: ID
+  userAgent: String
+}
+
+input CreateRoleInput {
+  code: String!
+  description: String
+  isCustom: Boolean
+  isSystemRole: Boolean
+  name: String!
+  organizationId: ID
+  parentRoleId: ID
+}
+
+input CreateRolePermissionInput {
+  grantedById: ID
+  permissionId: ID!
+  roleId: ID!
+}
+
+input CreateSharedKpiParticipantInput {
+  assignedById: ID
+  contributionWeight: Float
+  kpiId: ID!
+  participantUserId: ID!
+  strategicPeriodId: ID!
+}
+
+input CreateStrategicPeriodInput {
+  endDate: String!
+  name: String!
+  organizationId: ID!
+  periodType: StrategicPeriodType!
+  startDate: String!
+  strategicPlanId: ID!
+}
+
+input CreateStrategicPillarInput {
+  description: String
+  name: String!
+  strategicPlanId: ID!
+}
+
+input CreateStrategicPlanInput {
+  description: String
+  endDate: String!
+  organizationId: ID!
+  startDate: String!
+  title: String!
+  version: String
+}
+
+input CreateSubmissionInput {
+  itemId: String!
+  level: SubmissionLevel!
+  reason: String
+  type: SubmissionType!
+}
+
+input CreateSystemConfigurationInput {
+  checkinDayOfWeek: Int
+  checkoutDayOfWeek: Int
+  defaultRatingScaleMax: Int
+  defaultRatingScaleMin: Int
+  enableEmailNotifications: Boolean
+  enableLogbookAttachments: Boolean
+  enableSharedKpis: Boolean
+  fiscalYearStartMonth: Int
+  organizationId: ID!
+  timezone: String
+}
+
+input CreateTeamInput {
+  departmentId: ID
+  description: String
+  name: String!
+  organizationId: ID!
+  teamLeadUserId: ID
+}
+
+input CreateUserPermissionOverrideInput {
+  expiresAt: DateTime
+  isGranted: Boolean!
+  organizationId: ID!
+  permissionId: ID!
+  reason: String
+  userId: ID!
+}
+
+input CreateUserRoleAssignmentInput {
+  assignedById: ID
+  expiresAt: DateTime
+  isPrimary: Boolean
+  organizationId: ID!
+  roleId: ID!
+  userId: ID!
+}
+
+input CreateUserSessionInput {
+  expiresAt: DateTime!
+  ipAddress: String
+  tokenHash: String!
+  userAgent: String
+  userId: ID!
+}
+
+input KpiTargetInput {
+  target: Float!
+  timeline: String!
+}
+
+input LoginEmployeeInput {
+  email: String!
+  password: String!
+}
+
+input UpdateActivityInput {
+  activityId: ID!
+  assignedToUserId: ID
+  description: String
+  dueDate: String
+  initiativeId: ID
+  milestone: Boolean
+  notes: String
+  organizationId: ID
+  startDate: String
+  status: TaskStatus
+  title: String
+}
+
+input UpdateAggregatePerformanceResultInput {
+  aggregatePerformanceResultId: ID!
+  aggregateScore: Float
+  competencyScore: Float
+  individualKpiScore: Float
+  organizationId: ID
+  sharedKpiScore: Float
+  strategicPeriodId: ID
+  userId: ID
+  weightConfigId: ID
+}
+
+input UpdateApprovalWorkflowInput {
+  action: ApprovalAction
+  approvalWorkflowId: ID!
+  comments: String
+  reviewedAt: DateTime
+  reviewedById: ID
+}
+
+input UpdateAssessmentResponseInput {
+  assessmentResponseId: ID!
+  comment: String
+  rating: Int
+}
+
+input UpdateCheckinoutSessionInput {
+  checkinSubmittedAt: DateTime
+  checkinoutSessionId: ID!
+  checkoutSubmittedAt: DateTime
+  employeeUserId: ID
+  organizationId: ID
+  overallRating: Float
+  overallStatus: CheckinoutStatus
+  strategicPeriodId: ID
+  supervisorComment: String
+  supervisorReviewAt: DateTime
+  supervisorUserId: ID
+  weekEndDate: String
+  weekStartDate: String
+}
+
+input UpdateCheckinoutTaskInput {
+  achievedDescription: String
+  challenges: String
+  checkinoutTaskId: ID!
+  evidenceUrl: String
+  linkedInitiativeId: ID
+  linkedKpiId: ID
+  linkedObjectiveId: ID
+  nextSteps: String
+  plannedDescription: String
+  relatedToEmployeeId: ID
+  requiresApproval: Boolean
+  sessionId: ID
+  taskEndDate: DateTime
+  taskLinkType: TaskLinkType
+  taskStartDate: DateTime
+  taskStatus: TaskStatus
+  taskTitle: String
+}
+
+input UpdateCompetencyAssessmentInput {
+  competencyAssessmentId: ID!
+  overallComment: String
+  status: EvaluationStatus
+  submittedAt: DateTime
+}
+
+input UpdateCompetencyIndicatorInput {
+  competencyId: ID
+  competencyIndicatorId: ID!
+  description: String
+  ratingScaleMax: Int
+  ratingScaleMin: Int
+}
+
+input UpdateCompetencyInput {
+  competencyId: ID!
+  coreCompetencyId: ID
+  description: String
+  isActive: Boolean
+  name: String
+  organizationId: ID
+}
+
+input UpdateCompetencyPositionAssignmentInput {
+  competencyPositionAssignmentId: ID!
+  isMandatory: Boolean
+}
+
+input UpdateCoreCompetencyInput {
+  coreCompetencyId: ID!
+  description: String
+  isActive: Boolean
+  name: String
+  organizationId: ID
+}
+
+input UpdateDepartmentInput {
+  departmentId: ID!
+  description: String
+  divisionId: ID
+  headUserId: ID
+  isActive: Boolean
+  name: String
+  organizationId: ID
+}
+
+input UpdateDivisionInput {
+  description: String
+  divisionId: ID!
+  headUserId: ID
+  isActive: Boolean
+  name: String
+  organizationId: ID
+  parentDivisionId: ID
+}
+
+input UpdateEmployeeInput {
+  email: String
+  employeeId: ID!
+  fullName: String
+  password: String
+  phoneNumber: String
+  picture: String
+  role: EmployeeRole
+  startDate: String
+  status: EmployeeStatus
+  title: String
+}
+
+input UpdateEvaluationCycleInput {
+  description: String
+  endDate: String
+  evaluationCycleId: ID!
+  name: String
+  organizationId: ID
+  startDate: String
+  status: EvaluationCycleStatus
+  strategicPeriodId: ID
+}
+
+input UpdateEvaluationWeightConfigInput {
+  evaluationCycleId: ID
+  evaluationWeightConfigId: ID!
+  relationType: EvaluationRelationType
+  weightPercent: Float
+}
+
+input UpdateFileAttachmentInput {
+  fileAttachmentId: ID!
+  isPublic: Boolean
+  relatedEntityId: ID
+  relatedEntityType: String
+}
+
+input UpdateInitiativeInput {
+  completionPercentage: Float
+  description: String
+  dueDate: String
+  initiativeId: ID!
+  organizationId: ID
+  ownerUserId: ID
+  startDate: String
+  status: InitiativeStatus
+  strategicObjectiveId: ID
+  title: String
+}
+
+input UpdateKpiAssignmentDepartmentInput {
+  assignedById: ID
+  departmentId: ID
+  kpiAssignmentDepartmentId: ID!
+  kpiId: ID
+  strategicPeriodId: ID
+  targetValue: Float
+  weight: Float
+}
+
+input UpdateKpiAssignmentDivisionInput {
+  assignedById: ID
+  divisionId: ID
+  kpiAssignmentDivisionId: ID!
+  kpiId: ID
+  strategicPeriodId: ID
+  targetValue: Float
+  weight: Float
+}
+
+input UpdateKpiAssignmentEmployeeInput {
+  assignedById: ID
+  kpiAssignmentEmployeeId: ID!
+  kpiId: ID
+  strategicPeriodId: ID
+  targetValue: Float
+  userId: ID
+  weight: Float
+}
+
+input UpdateKpiInput {
+  assigneeId: ID
+  assigneeType: AssigneeType
+  assignerId: ID
+  baseline: Float
+  baselineValue: Float
+  customUnitLabel: String
+  description: String
+  frequency: KpiFrequency
+  initiativeId: ID
+  kpiId: ID!
+  kpiType: KpiType
+  measurementUnit: KpiMeasurementUnit
+  name: String
+  order: Int
+  organizationId: ID
+  parentId: ID
+  status: KpiStatus
+  strategicObjectiveId: ID
+  targetStatus: KpiTargetStatus
+  targetValue: Float
+  targets: [KpiTargetInput!]
+  unitType: KpiUnitType
+  weight: Float
+}
+
+input UpdateKpiUpdateInput {
+  achievedValue: Float
+  approvedAt: DateTime
+  approvedById: ID
+  evidenceUrl: String
+  kpiId: ID
+  kpiUpdateId: ID!
+  notes: String
+  progressPercentage: Float
+  progressStatus: KpiProgressStatus
+  reportingDate: String
+  strategicPeriodId: ID
+}
+
+input UpdateLogbookEntryInput {
+  activityDescription: String
+  approvedAt: DateTime
+  checkinoutTaskId: ID
+  decisionsMade: String
+  entryDate: String
+  entryStatus: LogbookEntryStatus
+  evidenceDescription: String
+  evidenceUrl: String
+  kpiAchievedValue: Float
+  kpiCompletionPercent: Float
+  kpiTargetValue: Float
+  lessonsLearned: String
+  linkedInitiativeId: ID
+  linkedKpiId: ID
+  linkedObjectiveId: ID
+  logbookEntryId: ID!
+  organizationId: ID
+  rejectionReason: String
+  risksIssues: String
+  strategicPeriodId: ID
+  submittedAt: DateTime
+}
+
+input UpdateNotificationInput {
+  notificationId: ID!
+  readAt: DateTime
+  status: NotificationStatus
+}
+
+input UpdateObjectiveInput {
+  approvedAt: DateTime
+  approvedById: ID
+  assigneeId: ID
+  assigneeType: AssigneeType
+  assignerId: ID
+  cascadeStatus: CascadeStatus
+  description: String
+  dueDate: String
+  level: ObjectiveLevel
+  objectiveId: ID!
+  order: Float
+  ownerDepartmentId: ID
+  ownerDivisionId: ID
+  ownerTeamId: ID
+  ownerUserId: ID
+  status: ObjectiveStatus
+  title: String
+  weight: Float
+}
+
+input UpdateOrganizationInput {
+  address: String
+  city: String
+  country: String
+  email: String
+  industry: String
+  logoUrl: String
+  name: String
+  organizationId: ID!
+  phone: String
+  shortName: String
+  subscriptionActive: Boolean
+  subscriptionExpiresAt: DateTime
+  website: String
+}
+
+input UpdatePerformanceWeightConfigInput {
+  competencyWeight: Float
+  individualKpiWeight: Float
+  organizationId: ID
+  performanceWeightConfigId: ID!
+  sharedKpiWeight: Float
+  strategicPeriodId: ID
+}
+
+input UpdatePermissionDefinitionInput {
+  action: PermissionAction
+  code: String
+  description: String
+  isSystemDefault: Boolean
+  label: String
+  module: SystemModule
+  permissionDefinitionId: ID!
+  scope: PermissionScope
+}
+
+input UpdatePositionInput {
+  description: String
+  grade: String
+  organizationId: ID
+  positionId: ID!
+  title: String
+}
+
+input UpdateRoleInput {
+  code: String
+  description: String
+  isCustom: Boolean
+  isSystemRole: Boolean
+  name: String
+  organizationId: ID
+  parentRoleId: ID
+  roleId: ID!
+}
+
+input UpdateRolePermissionInput {
+  isActive: Boolean
+  rolePermissionId: ID!
+}
+
+input UpdateSharedKpiParticipantInput {
+  assignedById: ID
+  contributionWeight: Float
+  kpiId: ID
+  participantUserId: ID
+  sharedKpiParticipantId: ID!
+  strategicPeriodId: ID
+}
+
+input UpdateStrategicPeriodInput {
+  closedAt: DateTime
+  endDate: String
+  name: String
+  openedAt: DateTime
+  periodType: StrategicPeriodType
+  startDate: String
+  status: StrategicPeriodStatus
+  strategicPeriodId: ID!
+}
+
+input UpdateStrategicPillarInput {
+  description: String
+  name: String
+  strategicPillarId: ID!
+  strategicPlanId: ID
+}
+
+input UpdateStrategicPlanInput {
+  approvedAt: DateTime
+  approvedById: ID
+  archivedAt: DateTime
+  description: String
+  endDate: String
+  isActive: Boolean
+  organizationId: ID
+  startDate: String
+  strategicPlanId: ID!
+  title: String
+  version: String
+}
+
+input UpdateSubmissionInput {
+  itemId: String
+  level: SubmissionLevel
+  reason: String
+  status: SubmissionStatus!
+  submissionId: ID!
+  type: SubmissionType
+}
+
+input UpdateSystemConfigurationInput {
+  checkinDayOfWeek: Int
+  checkoutDayOfWeek: Int
+  defaultRatingScaleMax: Int
+  defaultRatingScaleMin: Int
+  enableEmailNotifications: Boolean
+  enableLogbookAttachments: Boolean
+  enableSharedKpis: Boolean
+  fiscalYearStartMonth: Int
+  systemConfigurationId: ID!
+  timezone: String
+}
+
+input UpdateTeamInput {
+  departmentId: ID
+  description: String
+  isActive: Boolean
+  name: String
+  organizationId: ID
+  teamId: ID!
+  teamLeadUserId: ID
+}
+
+input UpdateUserPermissionOverrideInput {
+  expiresAt: DateTime
+  isActive: Boolean
+  isGranted: Boolean
+  reason: String
+  userPermissionOverrideId: ID!
+}
+
+input UpdateUserRoleAssignmentInput {
+  expiresAt: DateTime
+  isActive: Boolean
+  revocationReason: String
+  revokedAt: DateTime
+  revokedById: ID
+  userRoleAssignmentId: ID!
+}
+
+type Activity {
+  activityId: ID!
+  assignedTo: Employee
+  createdAt: DateTime!
+  createdBy: Employee!
+  description: String
+  dueDate: String
+  initiative: Initiative!
+  isDeleted: Boolean!
+  milestone: Boolean!
+  notes: String
+  startDate: String
+  status: TaskStatus!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type ActivityLog {
+  actionDetail: String
+  actionSummary: String!
+  activityLogId: ID!
+  browser: String
+  createdAt: DateTime!
+  entityId: ID
+  entityLabel: String
+  entityType: String
+  eventType: ActivityEventType!
+  failureReason: String
+  httpStatusCode: Int
+  ipAddress: String!
+  isSuccessful: Boolean!
+  module: SystemModule!
+  userAgent: String!
+  userEmail: String
+}
+
+type AggregatePerformanceResult {
+  aggregatePerformanceResultId: ID!
+  aggregateScore: Float!
+  competencyScore: Float
+  computedAt: DateTime!
+  createdAt: DateTime!
+  individualKpiScore: Float
+  sharedKpiScore: Float
+  strategicPeriod: StrategicPeriod!
+  updatedAt: DateTime!
+  user: Employee!
+  weightConfig: PerformanceWeightConfig!
+}
+
+type ApprovalWorkflow {
+  action: ApprovalAction!
+  approvalWorkflowId: ID!
+  comments: String
+  createdAt: DateTime!
+  entityId: ID!
+  entityType: String!
+  reviewedAt: DateTime
+  reviewedBy: Employee
+  submittedAt: DateTime!
+  submittedBy: Employee!
+  updatedAt: DateTime!
+}
+
+type AssessmentResponse {
+  assessment: CompetencyAssessment!
+  assessmentResponseId: ID!
+  comment: String
+  createdAt: DateTime!
+  indicator: CompetencyIndicator!
+  rating: Int!
+  updatedAt: DateTime!
+}
+
+type AuditLog {
+  action: AuditAction!
+  auditLogId: ID!
+  createdAt: DateTime!
+  entityId: ID
+  entityType: String
+  ipAddress: String
+  userAgent: String
+}
+
+type AuthPayload {
+  accessToken: String!
+  employee: Employee!
+}
+
+type CheckinoutSession {
+  checkinSubmittedAt: DateTime
+  checkinoutSessionId: ID!
+  checkoutSubmittedAt: DateTime
+  createdAt: DateTime!
+  employee: Employee!
+  overallRating: Float
+  overallStatus: CheckinoutStatus!
+  strategicPeriod: StrategicPeriod!
+  supervisor: Employee!
+  supervisorComment: String
+  supervisorReviewAt: DateTime
+  updatedAt: DateTime!
+  weekEndDate: String!
+  weekStartDate: String!
+}
+
+type CheckinoutTask {
+  achievedDescription: String
+  approvedAt: DateTime
+  approvedBy: Employee
+  autoRejectedAt: DateTime
+  challenges: String
+  checkinoutTaskId: ID!
+  createdAt: DateTime!
+  evidenceUrl: String
+  nextSteps: String
+  plannedDescription: String
+  relatedTo: Employee
+  requiresApproval: Boolean!
+  session: CheckinoutSession!
+  taskEndDate: DateTime!
+  taskLinkType: TaskLinkType!
+  taskStartDate: DateTime!
+  taskStatus: TaskStatus!
+  taskTitle: String!
+  updatedAt: DateTime!
+}
+
+type Competency {
+  competencyId: ID!
+  coreCompetency: CoreCompetency!
+  createdAt: DateTime!
+  description: String
+  isActive: Boolean!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type CompetencyAssessment {
+  competencyAssessmentId: ID!
+  createdAt: DateTime!
+  evaluatee: Employee!
+  evaluationCycle: EvaluationCycle!
+  evaluator: Employee!
+  overallComment: String
+  relationType: EvaluationRelationType!
+  status: EvaluationStatus!
+  submittedAt: DateTime
+  updatedAt: DateTime!
+}
+
+type CompetencyIndicator {
+  competency: Competency!
+  competencyIndicatorId: ID!
+  createdAt: DateTime!
+  description: String!
+  ratingScaleMax: Int!
+  ratingScaleMin: Int!
+  updatedAt: DateTime!
+}
+
+type CompetencyPositionAssignment {
+  competency: Competency!
+  competencyPositionAssignmentId: ID!
+  createdAt: DateTime!
+  createdBy: Employee!
+  isMandatory: Boolean!
+  position: Position!
+}
+
+type CoreCompetency {
+  coreCompetencyId: ID!
+  createdAt: DateTime!
+  createdBy: Employee!
+  description: String
+  isActive: Boolean!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type Department {
+  createdAt: DateTime!
+  departmentId: ID!
+  description: String
+  division: Division
+  employees: [Employee!]!
+  head: Employee
+  isActive: Boolean!
+  isDeleted: Boolean!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type Division {
+  createdAt: DateTime!
+  departments: [Department!]!
+  description: String
+  divisionId: ID!
+  head: Employee
+  isActive: Boolean!
+  isDeleted: Boolean!
+  name: String!
+  parentDivision: Division
+  updatedAt: DateTime!
+}
+
+type Employee {
+  createdAt: DateTime!
+  departments: [Department!]!
+  email: String!
+  employeeId: ID!
+  fullName: String!
+  phoneNumber: String!
+  picture: String!
+  role: EmployeeRole!
+  startDate: String!
+  status: EmployeeStatus!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type EvaluationCycle {
+  createdAt: DateTime!
+  createdBy: Employee!
+  description: String
+  endDate: String!
+  evaluationCycleId: ID!
+  name: String!
+  startDate: String!
+  status: EvaluationCycleStatus!
+  strategicPeriod: StrategicPeriod
+  updatedAt: DateTime!
+}
+
+type EvaluationWeightConfig {
+  createdAt: DateTime!
+  createdBy: Employee!
+  evaluationCycle: EvaluationCycle!
+  evaluationWeightConfigId: ID!
+  relationType: EvaluationRelationType!
+  weightPercent: Float!
+}
+
+type FileAttachment {
+  createdAt: DateTime!
+  fileAttachmentId: ID!
+  fileName: String!
+  fileSizeBytes: Int
+  fileType: String
+  isPublic: Boolean!
+  relatedEntityId: ID
+  relatedEntityType: String
+  storageKey: String!
+  storageUrl: String!
+  uploadedBy: Employee!
+}
+
+type Initiative {
+  completionPercentage: Float!
+  createdAt: DateTime!
+  createdBy: Employee!
+  description: String
+  dueDate: String
+  initiativeId: ID!
+  isDeleted: Boolean!
+  owner: Employee
+  startDate: String
+  status: InitiativeStatus!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type Kpi {
+  assigneeId: String
+  assigneeType: AssigneeType
+  assignerId: String
+  baseline: Float
+  baselineValue: Float
+  createdAt: DateTime!
+  createdBy: Employee!
+  customUnitLabel: String
+  description: String
+  frequency: KpiFrequency!
+  isActive: Boolean!
+  isDeleted: Boolean!
+  kpiId: ID!
+  kpiType: KpiType!
+  measurementUnit: KpiMeasurementUnit!
+  name: String!
+  objective: Objective
+  order: Float!
+  parent: Kpi
+  status: KpiStatus
+  targetStatus: KpiTargetStatus
+  targetValue: Float!
+  targets: [KpiTarget!]
+  unitType: KpiUnitType
+  updatedAt: DateTime!
+  weight: Float
+}
+
+type KpiAssignmentDepartment {
+  assignedBy: Employee
+  createdAt: DateTime!
+  department: Department!
+  kpi: Kpi!
+  kpiAssignmentDepartmentId: ID!
+  strategicPeriod: StrategicPeriod!
+  targetValue: Float
+  updatedAt: DateTime!
+  weight: Float
+}
+
+type KpiAssignmentDivision {
+  assignedBy: Employee
+  createdAt: DateTime!
+  division: Division!
+  kpi: Kpi!
+  kpiAssignmentDivisionId: ID!
+  strategicPeriod: StrategicPeriod!
+  targetValue: Float
+  updatedAt: DateTime!
+  weight: Float
+}
+
+type KpiAssignmentEmployee {
+  assignedBy: Employee
+  createdAt: DateTime!
+  employee: Employee!
+  kpi: Kpi!
+  kpiAssignmentEmployeeId: ID!
+  strategicPeriod: StrategicPeriod!
+  targetValue: Float
+  updatedAt: DateTime!
+  weight: Float
+}
+
+type KpiTarget {
+  target: Float!
+  timeline: String!
+}
+
+type KpiUpdate {
+  achievedValue: Float!
+  approvedAt: DateTime
+  approvedBy: Employee
+  createdAt: DateTime!
+  evidenceUrl: String
+  kpi: Kpi!
+  kpiUpdateId: ID!
+  notes: String
+  progressPercentage: Float!
+  progressStatus: KpiProgressStatus!
+  reportedBy: Employee!
+  reportingDate: String!
+  strategicPeriod: StrategicPeriod!
+  updatedAt: DateTime!
+}
+
+type LogbookEntry {
+  activityDescription: String!
+  approvedAt: DateTime
+  approvedBy: Employee
+  createdAt: DateTime!
+  decisionsMade: String
+  entryDate: String!
+  entryStatus: LogbookEntryStatus!
+  evidenceDescription: String
+  evidenceUrl: String
+  isDeleted: Boolean!
+  kpiAchievedValue: Float
+  kpiCompletionPercent: Float
+  kpiTargetValue: Float
+  lessonsLearned: String
+  logbookEntryId: ID!
+  owner: Employee!
+  rejectionReason: String
+  risksIssues: String
+  strategicPeriod: StrategicPeriod!
+  submittedAt: DateTime
+  updatedAt: DateTime!
+}
+
+type Notification {
+  createdAt: DateTime!
+  message: String!
+  notificationId: ID!
+  notificationType: NotificationType!
+  readAt: DateTime
+  recipient: Employee!
+  relatedEntityId: ID
+  relatedEntityType: String
+  sender: Employee
+  status: NotificationStatus!
+  title: String!
+}
+
+type Objective {
+  approvedAt: DateTime
+  approvedBy: Employee
+  assigneeId: String
+  assigneeType: AssigneeType
+  assignerId: String
+  cascadeStatus: CascadeStatus!
+  createdAt: DateTime!
+  createdBy: Employee!
+  description: String
+  dueDate: String
+  isDeleted: Boolean!
+  kpis: [Kpi!]
+  level: ObjectiveLevel!
+  objectiveId: ID!
+  order: Float!
+  ownerUser: Employee
+  parent: Objective
+  status: ObjectiveStatus!
+  strategicPeriod: StrategicPeriod!
+  title: String!
+  type: ObjectiveType
+  updatedAt: DateTime!
+  weight: Float
+}
+
+type Organization {
+  address: String
+  city: String
+  country: String!
+  createdAt: DateTime!
+  email: String
+  industry: String
+  isDeleted: Boolean!
+  logoUrl: String
+  name: String!
+  organizationId: ID!
+  phone: String
+  shortName: String
+  subscriptionActive: Boolean!
+  subscriptionExpiresAt: DateTime
+  updatedAt: DateTime!
+  website: String
+}
+
+type PaginatedActivities {
+  items: [Activity!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedActivityLogs {
+  items: [ActivityLog!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedAggregatePerformanceResults {
+  items: [AggregatePerformanceResult!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedApprovalWorkflows {
+  items: [ApprovalWorkflow!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedAssessmentResponses {
+  items: [AssessmentResponse!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedAuditLogs {
+  items: [AuditLog!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCheckinoutSessions {
+  items: [CheckinoutSession!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCheckinoutTasks {
+  items: [CheckinoutTask!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCompetencies {
+  items: [Competency!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCompetencyAssessments {
+  items: [CompetencyAssessment!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCompetencyIndicators {
+  items: [CompetencyIndicator!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCompetencyPositionAssignments {
+  items: [CompetencyPositionAssignment!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedCoreCompetencies {
+  items: [CoreCompetency!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedDepartments {
+  items: [Department!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedDivisions {
+  items: [Division!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedEmployees {
+  items: [Employee!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedEvaluationCycles {
+  items: [EvaluationCycle!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedEvaluationWeightConfigs {
+  items: [EvaluationWeightConfig!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedFileAttachments {
+  items: [FileAttachment!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedInitiatives {
+  items: [Initiative!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedKpiAssignmentDepartments {
+  items: [KpiAssignmentDepartment!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedKpiAssignmentDivisions {
+  items: [KpiAssignmentDivision!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedKpiAssignmentEmployees {
+  items: [KpiAssignmentEmployee!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedKpiUpdates {
+  items: [KpiUpdate!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedKpis {
+  items: [Kpi!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedLogbookEntries {
+  items: [LogbookEntry!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedNotifications {
+  items: [Notification!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedObjectives {
+  items: [Objective!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedOrganizations {
+  items: [Organization!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedPerformanceWeightConfigs {
+  items: [PerformanceWeightConfig!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedPermissionDefinitions {
+  items: [PermissionDefinition!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedPositions {
+  items: [Position!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedRoleAuditLogs {
+  items: [RoleAuditLog!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedRolePermissions {
+  items: [RolePermission!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedRoles {
+  items: [Role!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedSharedKpiParticipants {
+  items: [SharedKpiParticipant!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedStrategicPeriods {
+  items: [StrategicPeriod!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedStrategicPillars {
+  items: [StrategicPillar!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedStrategicPlans {
+  items: [StrategicPlan!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedSubmissions {
+  items: [Submission!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedSystemConfigurations {
+  items: [SystemConfiguration!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedTeams {
+  items: [Team!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedUserPermissionOverrides {
+  items: [UserPermissionOverride!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedUserRoleAssignments {
+  items: [UserRoleAssignment!]!
+  meta: PaginationMeta!
+}
+
+type PaginatedUserSessions {
+  items: [UserSession!]!
+  meta: PaginationMeta!
+}
+
+type PaginationMeta {
+  currentPage: Int!
+  itemCount: Int!
+  itemsPerPage: Int!
+  totalItems: Int!
+  totalPages: Int!
+}
+
+type PerformanceWeightConfig {
+  competencyWeight: Float!
+  configuredBy: Employee!
+  createdAt: DateTime!
+  individualKpiWeight: Float!
+  performanceWeightConfigId: ID!
+  sharedKpiWeight: Float!
+  strategicPeriod: StrategicPeriod!
+  updatedAt: DateTime!
+}
+
+type PermissionDefinition {
+  action: PermissionAction!
+  code: String!
+  createdAt: DateTime!
+  description: String
+  isSystemDefault: Boolean!
+  label: String!
+  module: SystemModule!
+  permissionDefinitionId: ID!
+  scope: PermissionScope!
+  updatedAt: DateTime!
+}
+
+type Position {
+  createdAt: DateTime!
+  description: String
+  grade: String
+  positionId: ID!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type Role {
+  code: String!
+  createdAt: DateTime!
+  createdBy: Employee
+  description: String
+  isCustom: Boolean!
+  isDeleted: Boolean!
+  isSystemRole: Boolean!
+  name: String!
+  parentRole: Role
+  roleId: ID!
+  updatedAt: DateTime!
+}
+
+type RoleAuditLog {
+  actionDescription: String!
+  actionType: String!
+  createdAt: DateTime!
+  ipAddress: String
+  performedBy: Employee!
+  roleAuditLogId: ID!
+  userAgent: String
+}
+
+type RolePermission {
+  grantedAt: DateTime!
+  grantedBy: Employee
+  isActive: Boolean!
+  permission: PermissionDefinition!
+  role: Role!
+  rolePermissionId: ID!
+}
+
+type SharedKpiParticipant {
+  assignedBy: Employee
+  contributionWeight: Float
+  createdAt: DateTime!
+  kpi: Kpi!
+  participant: Employee!
+  sharedKpiParticipantId: ID!
+  strategicPeriod: StrategicPeriod!
+}
+
+type StrategicPeriod {
+  closedAt: DateTime
+  createdAt: DateTime!
+  createdBy: Employee!
+  endDate: String!
+  name: String!
+  openedAt: DateTime
+  periodType: StrategicPeriodType!
+  startDate: String!
+  status: StrategicPeriodStatus!
+  strategicPeriodId: ID!
+  updatedAt: DateTime!
+}
+
+type StrategicPillar {
+  createdAt: DateTime!
+  description: String
+  name: String!
+  strategicPillarId: ID!
+  strategicPlan: StrategicPlan!
+  updatedAt: DateTime!
+}
+
+type StrategicPlan {
+  approvedAt: DateTime
+  approvedBy: Employee
+  archivedAt: DateTime
+  createdAt: DateTime!
+  createdBy: Employee!
+  description: String
+  endDate: String!
+  isActive: Boolean!
+  isDeleted: Boolean!
+  organization: Organization!
+  startDate: String!
+  strategicPlanId: ID!
+  title: String!
+  updatedAt: DateTime!
+  version: String
+}
+
+type Submission {
+  actionedBy: Employee!
+  createdAt: DateTime!
+  kpi: Kpi
+  level: SubmissionLevel!
+  objective: Objective
+  reason: String
+  status: SubmissionStatus!
+  submissionId: ID!
+  submittedBy: Employee!
+  type: SubmissionType!
+  updatedAt: DateTime!
+}
+
+type SystemConfiguration {
+  checkinDayOfWeek: Int!
+  checkoutDayOfWeek: Int!
+  createdAt: DateTime!
+  defaultRatingScaleMax: Int!
+  defaultRatingScaleMin: Int!
+  enableEmailNotifications: Boolean!
+  enableLogbookAttachments: Boolean!
+  enableSharedKpis: Boolean!
+  fiscalYearStartMonth: Int!
+  systemConfigurationId: ID!
+  timezone: String!
+  updatedAt: DateTime!
+  updatedBy: Employee
+}
+
+type Team {
+  createdAt: DateTime!
+  department: Department
+  description: String
+  isActive: Boolean!
+  isDeleted: Boolean!
+  name: String!
+  teamId: ID!
+  teamLead: Employee
+  updatedAt: DateTime!
+}
+
+type UserPermissionOverride {
+  createdAt: DateTime!
+  expiresAt: DateTime
+  grantedAt: DateTime!
+  grantedBy: Employee!
+  isActive: Boolean!
+  isGranted: Boolean!
+  permission: PermissionDefinition!
+  reason: String
+  updatedAt: DateTime!
+  user: Employee!
+  userPermissionOverrideId: ID!
+}
+
+type UserRoleAssignment {
+  assignedAt: DateTime!
+  assignedBy: Employee
+  createdAt: DateTime!
+  expiresAt: DateTime
+  isActive: Boolean!
+  isPrimary: Boolean!
+  revocationReason: String
+  revokedAt: DateTime
+  revokedBy: Employee
+  role: Role!
+  updatedAt: DateTime!
+  user: Employee!
+  userRoleAssignmentId: ID!
+}
+
+type UserSession {
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  ipAddress: String
+  revokedAt: DateTime
+  tokenHash: String!
+  user: Employee!
+  userAgent: String
+  userSessionId: ID!
+}
+
+type Query {
+  activities(initiativeId: ID, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedActivities!
+  activity(activityId: ID!): Activity!
+  activityLog(activityLogId: ID!): ActivityLog!
+  activityLogs(entityType: String, eventType: ActivityEventType, isSuccessful: Boolean, limit: Int!, module: SystemModule, organizationId: ID, page: Int!, userId: ID): PaginatedActivityLogs!
+  aggregatePerformanceResult(aggregatePerformanceResultId: ID!): AggregatePerformanceResult!
+  aggregatePerformanceResults(limit: Int!, organizationId: ID, page: Int!, strategicPeriodId: ID, userId: ID): PaginatedAggregatePerformanceResults!
+  approvalWorkflow(approvalWorkflowId: ID!): ApprovalWorkflow!
+  approvalWorkflows(action: ApprovalAction, entityId: ID, entityType: String, limit: Int!, organizationId: ID, page: Int!): PaginatedApprovalWorkflows!
+  assessmentResponse(assessmentResponseId: ID!): AssessmentResponse!
+  assessmentResponses(assessmentId: ID, limit: Int!, page: Int!): PaginatedAssessmentResponses!
+  auditLog(auditLogId: ID!): AuditLog!
+  auditLogs(action: AuditAction, entityType: String, limit: Int!, organizationId: ID, page: Int!, userId: ID): PaginatedAuditLogs!
+  checkinoutSession(checkinoutSessionId: ID!): CheckinoutSession!
+  checkinoutSessions(employeeUserId: ID, limit: Int!, overallStatus: CheckinoutStatus, page: Int!, strategicPeriodId: ID, supervisorUserId: ID): PaginatedCheckinoutSessions!
+  checkinoutTask(checkinoutTaskId: ID!): CheckinoutTask!
+  checkinoutTasks(limit: Int!, page: Int!, sessionId: ID, taskStatus: TaskStatus): PaginatedCheckinoutTasks!
+  competencies(coreCompetencyId: ID, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedCompetencies!
+  competency(competencyId: ID!): Competency!
+  competencyAssessment(competencyAssessmentId: ID!): CompetencyAssessment!
+  competencyAssessments(evaluateeUserId: ID, evaluationCycleId: ID, evaluatorUserId: ID, limit: Int!, page: Int!): PaginatedCompetencyAssessments!
+  competencyIndicator(competencyIndicatorId: ID!): CompetencyIndicator!
+  competencyIndicators(competencyId: ID, limit: Int!, page: Int!): PaginatedCompetencyIndicators!
+  competencyPositionAssignment(competencyPositionAssignmentId: ID!): CompetencyPositionAssignment!
+  competencyPositionAssignments(competencyId: ID, limit: Int!, page: Int!, positionId: ID): PaginatedCompetencyPositionAssignments!
+  coreCompetencies(isActive: Boolean, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedCoreCompetencies!
+  coreCompetency(coreCompetencyId: ID!): CoreCompetency!
+  department(departmentId: ID!): Department!
+  departments(divisionId: ID, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedDepartments!
+  division(divisionId: ID!): Division!
+  divisions(limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedDivisions!
+  employee(employeeId: ID!): Employee!
+  employees(limit: Int!, page: Int!, search: String): PaginatedEmployees!
+  evaluationCycle(evaluationCycleId: ID!): EvaluationCycle!
+  evaluationCycles(limit: Int!, organizationId: ID, page: Int!, search: String, status: EvaluationCycleStatus): PaginatedEvaluationCycles!
+  evaluationWeightConfig(evaluationWeightConfigId: ID!): EvaluationWeightConfig!
+  evaluationWeightConfigs(evaluationCycleId: ID, limit: Int!, page: Int!): PaginatedEvaluationWeightConfigs!
+  fileAttachment(fileAttachmentId: ID!): FileAttachment!
+  fileAttachments(limit: Int!, organizationId: ID, page: Int!, relatedEntityId: ID, relatedEntityType: String): PaginatedFileAttachments!
+  initiative(initiativeId: ID!): Initiative!
+  initiatives(limit: Int!, organizationId: ID, page: Int!, search: String, status: InitiativeStatus, strategicObjectiveId: ID): PaginatedInitiatives!
+  kpi(kpiId: ID!): Kpi!
+  kpiAssignmentDepartment(kpiAssignmentDepartmentId: ID!): KpiAssignmentDepartment!
+  kpiAssignmentDivision(kpiAssignmentDivisionId: ID!): KpiAssignmentDivision!
+  kpiAssignmentEmployee(kpiAssignmentEmployeeId: ID!): KpiAssignmentEmployee!
+  kpiAssignmentsDepartment(departmentId: ID, kpiId: ID, limit: Int!, page: Int!, strategicPeriodId: ID): PaginatedKpiAssignmentDepartments!
+  kpiAssignmentsDivision(divisionId: ID, kpiId: ID, limit: Int!, page: Int!, strategicPeriodId: ID): PaginatedKpiAssignmentDivisions!
+  kpiAssignmentsEmployee(kpiId: ID, limit: Int!, page: Int!, strategicPeriodId: ID, userId: ID): PaginatedKpiAssignmentEmployees!
+  kpiUpdate(kpiUpdateId: ID!): KpiUpdate!
+  kpiUpdates(kpiId: ID, limit: Int!, page: Int!, reportedByUserId: ID, strategicPeriodId: ID): PaginatedKpiUpdates!
+  kpis(limit: Int!, organizationId: ID, page: Int!, search: String, strategicObjectiveId: ID): PaginatedKpis!
+  logbookEntries(entryStatus: LogbookEntryStatus, limit: Int!, ownerUserId: ID, page: Int!, strategicPeriodId: ID): PaginatedLogbookEntries!
+  logbookEntry(logbookEntryId: ID!): LogbookEntry!
+  me: Employee!
+  notification(notificationId: ID!): Notification!
+  notifications(limit: Int!, organizationId: ID, page: Int!, recipientUserId: ID, status: NotificationStatus): PaginatedNotifications!
+  objective(objectiveId: ID!): Objective!
+  objectives(assigneeId: ID, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedObjectives!
+  organization(organizationId: ID!): Organization!
+  organizations(limit: Int!, page: Int!, search: String): PaginatedOrganizations!
+  performanceWeightConfig(performanceWeightConfigId: ID!): PerformanceWeightConfig!
+  performanceWeightConfigs(limit: Int!, organizationId: ID, page: Int!, strategicPeriodId: ID): PaginatedPerformanceWeightConfigs!
+  permissionDefinition(permissionDefinitionId: ID!): PermissionDefinition!
+  permissionDefinitions(action: PermissionAction, limit: Int!, module: SystemModule, page: Int!, scope: PermissionScope, search: String): PaginatedPermissionDefinitions!
+  position(positionId: ID!): Position!
+  positions(limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedPositions!
+  role(roleId: ID!): Role!
+  roleAuditLog(roleAuditLogId: ID!): RoleAuditLog!
+  roleAuditLogs(affectedRoleId: ID, affectedUserId: ID, limit: Int!, organizationId: ID, page: Int!, performedByUserId: ID): PaginatedRoleAuditLogs!
+  rolePermission(rolePermissionId: ID!): RolePermission!
+  rolePermissions(isActive: Boolean, limit: Int!, page: Int!, permissionId: ID, roleId: ID): PaginatedRolePermissions!
+  roles(isSystemRole: Boolean, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedRoles!
+  sharedKpiParticipant(sharedKpiParticipantId: ID!): SharedKpiParticipant!
+  sharedKpiParticipants(kpiId: ID, limit: Int!, page: Int!, strategicPeriodId: ID): PaginatedSharedKpiParticipants!
+  strategicPeriod(strategicPeriodId: ID!): StrategicPeriod!
+  strategicPeriods(limit: Int!, organizationId: ID, page: Int!, strategicPlanId: ID): PaginatedStrategicPeriods!
+  strategicPillar(strategicPillarId: ID!): StrategicPillar!
+  strategicPillars(limit: Int!, page: Int!, search: String, strategicPlanId: ID): PaginatedStrategicPillars!
+  strategicPlan(strategicPlanId: ID!): StrategicPlan!
+  strategicPlans(limit: Int!, page: Int!, search: String): PaginatedStrategicPlans!
+  submission(submissionId: ID!): Submission!
+  submissions(limit: Int!, page: Int!, submissionType: SubmissionType, type: ObjectiveType!): PaginatedSubmissions!
+  systemConfiguration(systemConfigurationId: ID!): SystemConfiguration!
+  systemConfigurationByOrg(organizationId: ID!): SystemConfiguration
+  systemConfigurations(limit: Int!, page: Int!): PaginatedSystemConfigurations!
+  team(teamId: ID!): Team!
+  teams(departmentId: ID, limit: Int!, organizationId: ID, page: Int!, search: String): PaginatedTeams!
+  userPermissionOverride(userPermissionOverrideId: ID!): UserPermissionOverride!
+  userPermissionOverrides(isActive: Boolean, limit: Int!, organizationId: ID, page: Int!, permissionId: ID, userId: ID): PaginatedUserPermissionOverrides!
+  userRoleAssignment(userRoleAssignmentId: ID!): UserRoleAssignment!
+  userRoleAssignments(isActive: Boolean, limit: Int!, organizationId: ID, page: Int!, roleId: ID, userId: ID): PaginatedUserRoleAssignments!
+  userSession(userSessionId: ID!): UserSession!
+  userSessions(limit: Int!, page: Int!, userId: ID): PaginatedUserSessions!
+}
+
+type Mutation {
+  addEmployeeToDepartment(departmentId: ID!, employeeId: ID!): Department!
+  assignObjective(assignObjectiveInput: AssignObjectiveInput!): Objective!
+  createActivity(createActivityInput: CreateActivityInput!): Activity!
+  createActivityLog(createActivityLogInput: CreateActivityLogInput!): ActivityLog!
+  createAggregatePerformanceResult(createAggregatePerformanceResultInput: CreateAggregatePerformanceResultInput!): AggregatePerformanceResult!
+  createApprovalWorkflow(createApprovalWorkflowInput: CreateApprovalWorkflowInput!): ApprovalWorkflow!
+  createAssessmentResponse(createAssessmentResponseInput: CreateAssessmentResponseInput!): AssessmentResponse!
+  createAuditLog(createAuditLogInput: CreateAuditLogInput!): AuditLog!
+  createCheckinoutSession(createCheckinoutSessionInput: CreateCheckinoutSessionInput!): CheckinoutSession!
+  createCheckinoutTask(createCheckinoutTaskInput: CreateCheckinoutTaskInput!): CheckinoutTask!
+  createCompetency(createCompetencyInput: CreateCompetencyInput!): Competency!
+  createCompetencyAssessment(createCompetencyAssessmentInput: CreateCompetencyAssessmentInput!): CompetencyAssessment!
+  createCompetencyIndicator(createCompetencyIndicatorInput: CreateCompetencyIndicatorInput!): CompetencyIndicator!
+  createCompetencyPositionAssignment(createCompetencyPositionAssignmentInput: CreateCompetencyPositionAssignmentInput!): CompetencyPositionAssignment!
+  createCoreCompetency(createCoreCompetencyInput: CreateCoreCompetencyInput!): CoreCompetency!
+  createDepartment(createDepartmentInput: CreateDepartmentInput!): Department!
+  createDivision(createDivisionInput: CreateDivisionInput!): Division!
+  createEmployee(createEmployeeInput: CreateEmployeeInput!): Employee!
+  createEvaluationCycle(createEvaluationCycleInput: CreateEvaluationCycleInput!): EvaluationCycle!
+  createEvaluationWeightConfig(createEvaluationWeightConfigInput: CreateEvaluationWeightConfigInput!): EvaluationWeightConfig!
+  createFileAttachment(createFileAttachmentInput: CreateFileAttachmentInput!): FileAttachment!
+  createInitiative(createInitiativeInput: CreateInitiativeInput!): Initiative!
+  createKpi(createKpiInput: CreateKpiInput!): Kpi!
+  createKpiAssignmentDepartment(createKpiAssignmentDepartmentInput: CreateKpiAssignmentDepartmentInput!): KpiAssignmentDepartment!
+  createKpiAssignmentDivision(createKpiAssignmentDivisionInput: CreateKpiAssignmentDivisionInput!): KpiAssignmentDivision!
+  createKpiAssignmentEmployee(createKpiAssignmentEmployeeInput: CreateKpiAssignmentEmployeeInput!): KpiAssignmentEmployee!
+  createKpiUpdate(createKpiUpdateInput: CreateKpiUpdateInput!): KpiUpdate!
+  createLogbookEntry(createLogbookEntryInput: CreateLogbookEntryInput!): LogbookEntry!
+  createNotification(createNotificationInput: CreateNotificationInput!): Notification!
+  createObjective(createObjectiveInput: CreateObjectiveInput!): Objective!
+  createOrganization(createOrganizationInput: CreateOrganizationInput!): Organization!
+  createPerformanceWeightConfig(createPerformanceWeightConfigInput: CreatePerformanceWeightConfigInput!): PerformanceWeightConfig!
+  createPermissionDefinition(createPermissionDefinitionInput: CreatePermissionDefinitionInput!): PermissionDefinition!
+  createPosition(createPositionInput: CreatePositionInput!): Position!
+  createRole(createRoleInput: CreateRoleInput!): Role!
+  createRoleAuditLog(createRoleAuditLogInput: CreateRoleAuditLogInput!): RoleAuditLog!
+  createRolePermission(createRolePermissionInput: CreateRolePermissionInput!): RolePermission!
+  createSharedKpiParticipant(createSharedKpiParticipantInput: CreateSharedKpiParticipantInput!): SharedKpiParticipant!
+  createStrategicPeriod(createStrategicPeriodInput: CreateStrategicPeriodInput!): StrategicPeriod!
+  createStrategicPillar(createStrategicPillarInput: CreateStrategicPillarInput!): StrategicPillar!
+  createStrategicPlan(createStrategicPlanInput: CreateStrategicPlanInput!): StrategicPlan!
+  createSubmission(createSubmissionInput: CreateSubmissionInput!): Submission!
+  createSubmissions(createSubmissionInputs: [CreateSubmissionInput!]!): [Submission!]!
+  createSystemConfiguration(createSystemConfigurationInput: CreateSystemConfigurationInput!): SystemConfiguration!
+  createTeam(createTeamInput: CreateTeamInput!): Team!
+  createUserPermissionOverride(createUserPermissionOverrideInput: CreateUserPermissionOverrideInput!): UserPermissionOverride!
+  createUserRoleAssignment(createUserRoleAssignmentInput: CreateUserRoleAssignmentInput!): UserRoleAssignment!
+  createUserSession(createUserSessionInput: CreateUserSessionInput!): UserSession!
+  loginEmployee(loginInput: LoginEmployeeInput!): AuthPayload!
+  markAllNotificationsRead(recipientUserId: ID!): Boolean!
+  removeActivity(activityId: ID!): Activity!
+  removeAggregatePerformanceResult(aggregatePerformanceResultId: ID!): AggregatePerformanceResult!
+  removeApprovalWorkflow(approvalWorkflowId: ID!): ApprovalWorkflow!
+  removeAssessmentResponse(assessmentResponseId: ID!): AssessmentResponse!
+  removeCheckinoutSession(checkinoutSessionId: ID!): CheckinoutSession!
+  removeCheckinoutTask(checkinoutTaskId: ID!): CheckinoutTask!
+  removeCompetency(competencyId: ID!): Competency!
+  removeCompetencyAssessment(competencyAssessmentId: ID!): CompetencyAssessment!
+  removeCompetencyIndicator(competencyIndicatorId: ID!): CompetencyIndicator!
+  removeCompetencyPositionAssignment(competencyPositionAssignmentId: ID!): CompetencyPositionAssignment!
+  removeCoreCompetency(coreCompetencyId: ID!): CoreCompetency!
+  removeDepartment(departmentId: ID!): Department!
+  removeDivision(divisionId: ID!): Division!
+  removeEmployee(employeeId: ID!): Employee!
+  removeEmployeeFromDepartment(departmentId: ID!, employeeId: ID!): Department!
+  removeEvaluationCycle(evaluationCycleId: ID!): EvaluationCycle!
+  removeEvaluationWeightConfig(evaluationWeightConfigId: ID!): EvaluationWeightConfig!
+  removeFileAttachment(fileAttachmentId: ID!): FileAttachment!
+  removeInitiative(initiativeId: ID!): Initiative!
+  removeKpi(kpiId: ID!): Kpi!
+  removeKpiAssignmentDepartment(kpiAssignmentDepartmentId: ID!): KpiAssignmentDepartment!
+  removeKpiAssignmentDivision(kpiAssignmentDivisionId: ID!): KpiAssignmentDivision!
+  removeKpiAssignmentEmployee(kpiAssignmentEmployeeId: ID!): KpiAssignmentEmployee!
+  removeKpiUpdate(kpiUpdateId: ID!): KpiUpdate!
+  removeLogbookEntry(logbookEntryId: ID!): LogbookEntry!
+  removeNotification(notificationId: ID!): Notification!
+  removeObjective(objectiveId: ID!): Objective!
+  removeOrganization(organizationId: ID!): Organization!
+  removePerformanceWeightConfig(performanceWeightConfigId: ID!): PerformanceWeightConfig!
+  removePermissionDefinition(permissionDefinitionId: ID!): PermissionDefinition!
+  removePosition(positionId: ID!): Position!
+  removeRole(roleId: ID!): Role!
+  removeRolePermission(rolePermissionId: ID!): RolePermission!
+  removeSharedKpiParticipant(sharedKpiParticipantId: ID!): SharedKpiParticipant!
+  removeStrategicPeriod(strategicPeriodId: ID!): StrategicPeriod!
+  removeStrategicPillar(strategicPillarId: ID!): StrategicPillar!
+  removeStrategicPlan(strategicPlanId: ID!): StrategicPlan!
+  removeSubmission(submissionId: ID!): Submission!
+  removeSystemConfiguration(systemConfigurationId: ID!): SystemConfiguration!
+  removeTeam(teamId: ID!): Team!
+  removeUserPermissionOverride(userPermissionOverrideId: ID!): UserPermissionOverride!
+  removeUserRoleAssignment(userRoleAssignmentId: ID!): UserRoleAssignment!
+  removeUserSession(userSessionId: ID!): UserSession!
+  revokeUserSession(userSessionId: ID!): UserSession!
+  updateActivity(updateActivityInput: UpdateActivityInput!): Activity!
+  updateAggregatePerformanceResult(updateAggregatePerformanceResultInput: UpdateAggregatePerformanceResultInput!): AggregatePerformanceResult!
+  updateApprovalWorkflow(updateApprovalWorkflowInput: UpdateApprovalWorkflowInput!): ApprovalWorkflow!
+  updateAssessmentResponse(updateAssessmentResponseInput: UpdateAssessmentResponseInput!): AssessmentResponse!
+  updateCheckinoutSession(updateCheckinoutSessionInput: UpdateCheckinoutSessionInput!): CheckinoutSession!
+  updateCheckinoutTask(updateCheckinoutTaskInput: UpdateCheckinoutTaskInput!): CheckinoutTask!
+  updateCompetency(updateCompetencyInput: UpdateCompetencyInput!): Competency!
+  updateCompetencyAssessment(updateCompetencyAssessmentInput: UpdateCompetencyAssessmentInput!): CompetencyAssessment!
+  updateCompetencyIndicator(updateCompetencyIndicatorInput: UpdateCompetencyIndicatorInput!): CompetencyIndicator!
+  updateCompetencyPositionAssignment(updateCompetencyPositionAssignmentInput: UpdateCompetencyPositionAssignmentInput!): CompetencyPositionAssignment!
+  updateCoreCompetency(updateCoreCompetencyInput: UpdateCoreCompetencyInput!): CoreCompetency!
+  updateDepartment(updateDepartmentInput: UpdateDepartmentInput!): Department!
+  updateDivision(updateDivisionInput: UpdateDivisionInput!): Division!
+  updateEmployee(updateEmployeeInput: UpdateEmployeeInput!): Employee!
+  updateEvaluationCycle(updateEvaluationCycleInput: UpdateEvaluationCycleInput!): EvaluationCycle!
+  updateEvaluationWeightConfig(updateEvaluationWeightConfigInput: UpdateEvaluationWeightConfigInput!): EvaluationWeightConfig!
+  updateFileAttachment(updateFileAttachmentInput: UpdateFileAttachmentInput!): FileAttachment!
+  updateInitiative(updateInitiativeInput: UpdateInitiativeInput!): Initiative!
+  updateKpi(updateKpiInput: UpdateKpiInput!): Kpi!
+  updateKpiAssignmentDepartment(updateKpiAssignmentDepartmentInput: UpdateKpiAssignmentDepartmentInput!): KpiAssignmentDepartment!
+  updateKpiAssignmentDivision(updateKpiAssignmentDivisionInput: UpdateKpiAssignmentDivisionInput!): KpiAssignmentDivision!
+  updateKpiAssignmentEmployee(updateKpiAssignmentEmployeeInput: UpdateKpiAssignmentEmployeeInput!): KpiAssignmentEmployee!
+  updateKpiUpdate(updateKpiUpdateInput: UpdateKpiUpdateInput!): KpiUpdate!
+  updateKpis(updateKpiInputs: [UpdateKpiInput!]!): [Kpi!]!
+  updateLogbookEntry(updateLogbookEntryInput: UpdateLogbookEntryInput!): LogbookEntry!
+  updateNotification(updateNotificationInput: UpdateNotificationInput!): Notification!
+  updateObjective(updateObjectiveInput: UpdateObjectiveInput!): Objective!
+  updateObjectives(updateObjectiveInputs: [UpdateObjectiveInput!]!): [Objective!]!
+  updateOrganization(updateOrganizationInput: UpdateOrganizationInput!): Organization!
+  updatePerformanceWeightConfig(updatePerformanceWeightConfigInput: UpdatePerformanceWeightConfigInput!): PerformanceWeightConfig!
+  updatePermissionDefinition(updatePermissionDefinitionInput: UpdatePermissionDefinitionInput!): PermissionDefinition!
+  updatePosition(updatePositionInput: UpdatePositionInput!): Position!
+  updateRole(updateRoleInput: UpdateRoleInput!): Role!
+  updateRolePermission(updateRolePermissionInput: UpdateRolePermissionInput!): RolePermission!
+  updateSharedKpiParticipant(updateSharedKpiParticipantInput: UpdateSharedKpiParticipantInput!): SharedKpiParticipant!
+  updateStrategicPeriod(updateStrategicPeriodInput: UpdateStrategicPeriodInput!): StrategicPeriod!
+  updateStrategicPillar(updateStrategicPillarInput: UpdateStrategicPillarInput!): StrategicPillar!
+  updateStrategicPlan(updateStrategicPlanInput: UpdateStrategicPlanInput!): StrategicPlan!
+  updateSubmission(updateSubmissionInput: UpdateSubmissionInput!): Submission!
+  updateSystemConfiguration(updateSystemConfigurationInput: UpdateSystemConfigurationInput!): SystemConfiguration!
+  updateTeam(updateTeamInput: UpdateTeamInput!): Team!
+  updateUserPermissionOverride(updateUserPermissionOverrideInput: UpdateUserPermissionOverrideInput!): UserPermissionOverride!
+  updateUserRoleAssignment(updateUserRoleAssignmentInput: UpdateUserRoleAssignmentInput!): UserRoleAssignment!
+}

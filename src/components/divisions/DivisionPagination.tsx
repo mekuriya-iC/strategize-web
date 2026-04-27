@@ -75,7 +75,7 @@ const DivisionPagination: React.FC<DivisionPaginationProps> = ({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
       {/* Results info */}
-      <div className="text-sm text-gray-600 order-2 sm:order-1">
+      <div className="text-sm text-gray-600 dark:text-gray-400 order-2 sm:order-1">
         <span>
           Showing {startItem}-{endItem} of {totalItems} divisions
           {totalPages > 1 && (
@@ -101,7 +101,7 @@ const DivisionPagination: React.FC<DivisionPaginationProps> = ({
                         ? "pointer-events-none opacity-50"
                         : "cursor-pointer hover:bg-gray-100"
                     }
-                    px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md
+                    px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-l-md
                   `}
                 />
               </PaginationItem>
@@ -120,7 +120,7 @@ const DivisionPagination: React.FC<DivisionPaginationProps> = ({
                         ${
                           currentPage === page
                             ? "bg-blue-50 border-blue-500 text-blue-600 z-10"
-                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                            : "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                         }
                         ${loading ? "pointer-events-none opacity-50" : ""}
                       `}
@@ -143,7 +143,7 @@ const DivisionPagination: React.FC<DivisionPaginationProps> = ({
                         ? "pointer-events-none opacity-50"
                         : "cursor-pointer hover:bg-gray-100"
                     }
-                    px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md
+                    px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-r-md
                   `}
                 />
               </PaginationItem>

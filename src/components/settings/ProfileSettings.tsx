@@ -124,17 +124,17 @@ export default function ProfileSettings() {
               </AvatarFallback>
             </Avatar>
             <button
-              className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="absolute bottom-0 right-0 p-1.5 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               title="Change avatar"
             >
-              <Camera className="h-4 w-4 text-gray-600" />
+              <Camera className="h-4 w-4 text-gray-600 dark:text-gray-400" />
             </button>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {user?.fullName}
             </h3>
-            <p className="text-sm text-gray-500">{user?.email}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#3838EC]/10 text-[#3838EC] mt-2">
               {user?.role ? ROLE_LABELS[user.role] : "User"}
             </span>
@@ -198,20 +198,20 @@ export default function ProfileSettings() {
         </div>
 
         {/* Organization Info (Read-only) */}
-        <div className="pt-4 border-t border-gray-200">
-          <h4 className="text-sm font-medium text-gray-700 mb-4">
+        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
             Organization Details
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">Department</p>
-              <p className="text-sm font-medium text-gray-900">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Department</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {user?.department?.name || "Not assigned"}
               </p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500 mb-1">Employee ID</p>
-              <p className="text-sm font-medium text-gray-900 font-mono">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 font-mono">
                 {user?.employeeId?.slice(0, 8) || "N/A"}...
               </p>
             </div>

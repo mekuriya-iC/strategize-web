@@ -11,20 +11,18 @@ import {
 } from "@/components/ui/card";
 import { Palette, Sun, Moon, Monitor, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
 
 type ThemeOption = "light" | "dark" | "system";
 
 export default function AppearanceSettings() {
   const [isSaving, setIsSaving] = useState(false);
-  const [theme, setTheme] = useState<ThemeOption>("light");
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [accentColor, setAccentColor] = useState("#3838EC");
 
   useEffect(() => {
-    // Load theme from localStorage
-    const savedTheme = localStorage.getItem("theme") as ThemeOption | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
+    setMounted(true);
     const savedAccent = localStorage.getItem("accentColor");
     if (savedAccent) {
       setAccentColor(savedAccent);
@@ -33,25 +31,11 @@ export default function AppearanceSettings() {
 
   const handleThemeChange = (newTheme: ThemeOption) => {
     setTheme(newTheme);
-    // Apply theme immediately for preview
-    if (newTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (newTheme === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      // System preference
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      localStorage.setItem("theme", theme);
       localStorage.setItem("accentColor", accentColor);
       toast.success("Appearance settings saved");
     } catch {
@@ -90,6 +74,11 @@ export default function AppearanceSettings() {
     { value: "#65A30D", name: "Lime" },
   ];
 
+  const currentTheme = theme as ThemeOption || "light";
+  const isDark = resolvedTheme === "dark";
+
+  if (!mounted) return null;
+
   return (
     <div className="space-y-6">
       {/* Theme Selection */}
@@ -110,9 +99,9 @@ export default function AppearanceSettings() {
                 key={option.value}
                 onClick={() => handleThemeChange(option.value)}
                 className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                  theme === option.value
-                    ? "border-[#3838EC] bg-[#3838EC]/5"
-                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  currentTheme === option.value
+                    ? "border-[#3838EC] dark:border-[#5b5bf7] bg-[#3838EC]/5 dark:bg-[#5b5bf7]/10"
+                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                 }`}
               >
                 {/* Theme Preview */}
@@ -158,14 +147,18 @@ export default function AppearanceSettings() {
                 <div className="flex items-center gap-2">
                   <span
                     className={
-                      theme === option.value ? "text-[#3838EC]" : "text-gray-600"
+                      currentTheme === option.value
+                        ? "text-[#3838EC] dark:text-[#5b5bf7]"
+                        : "text-gray-600 dark:text-gray-400"
                     }
                   >
                     {option.icon}
                   </span>
                   <span
                     className={`text-sm font-medium ${
-                      theme === option.value ? "text-[#3838EC]" : "text-gray-700"
+                      currentTheme === option.value
+                        ? "text-[#3838EC] dark:text-[#5b5bf7]"
+                        : "text-gray-700 dark:text-gray-300"
                     }`}
                   >
                     {option.label}
@@ -193,7 +186,7 @@ export default function AppearanceSettings() {
                 onClick={() => setAccentColor(color.value)}
                 className={`group relative w-12 h-12 rounded-full transition-transform hover:scale-110 ${
                   accentColor === color.value
-                    ? "ring-2 ring-offset-2 ring-gray-400"
+                    ? "ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-500 dark:ring-offset-gray-900"
                     : ""
                 }`}
                 style={{ backgroundColor: color.value }}
@@ -217,7 +210,7 @@ export default function AppearanceSettings() {
               </button>
             ))}
           </div>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
             Selected: <span className="font-medium">{accentColors.find((c) => c.value === accentColor)?.name}</span>
           </p>
         </CardContent>
@@ -242,4 +235,3 @@ export default function AppearanceSettings() {
     </div>
   );
 }
-

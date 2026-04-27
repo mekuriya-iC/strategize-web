@@ -169,8 +169,8 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
     <>
       {/* Selection Action Bar - only show for admins */}
       {!readOnly && someSelected && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-          <span className="text-sm text-blue-800 font-medium">
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-blue-800 dark:text-blue-300 font-medium">
             {selectedIds.size} department{selectedIds.size !== 1 ? "s" : ""}{" "}
             selected
           </span>
@@ -206,25 +206,25 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
                 />
               </TableHead>
             )}
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               DEPARTMENT NAME
             </TableHead>
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               CREATED BY
             </TableHead>
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               CREATED ON
             </TableHead>
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               MANAGER
             </TableHead>
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               DIVISION
             </TableHead>
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               MEMBERS
             </TableHead>
-            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
+            <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               ACTIONS
             </TableHead>
           </TableRow>
@@ -232,7 +232,7 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
         <TableBody>
           {departmentsToShow.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+              <TableCell colSpan={8} className="text-center py-12 text-gray-500 dark:text-gray-400">
                 No departments found
               </TableCell>
             </TableRow>
@@ -240,12 +240,12 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
             departmentsToShow.map((dept, idx) => (
               <TableRow
                 key={dept.id}
-                className={`border-b border-gray-100 ${selectedIds.has(dept.id)
-                  ? "bg-blue-50"
+                className={`border-b border-gray-100 dark:border-gray-800 ${selectedIds.has(dept.id)
+                  ? "bg-blue-50 dark:bg-blue-950/30"
                   : idx % 2 === 1
-                    ? "bg-white"
-                    : "bg-[#ECECFF]"
-                  } hover:bg-gray-50 transition-colors cursor-pointer`}
+                    ? "bg-white dark:bg-transparent"
+                    : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
+                  } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer`}
                 onClick={() => router.push(`/dashboard/departments/${dept.id}`)}
               >
                 {/* Only show checkbox for admins */}
@@ -262,10 +262,10 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
                     />
                   </TableCell>
                 )}
-                <TableCell className="px-6 py-4 font-medium text-gray-900">
+                <TableCell className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                   {dept.departmentName}
                 </TableCell>
-                <TableCell className="px-6 py-4 text-gray-600">
+                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                   {dept.createdBy}
                 </TableCell>
                 <TableCell className="px-6 py-4 text-gray-600">

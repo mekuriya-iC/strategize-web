@@ -44,10 +44,10 @@ export default function ForgotPasswordForm() {
       {/* Back button */}
       <Link
         href="/auth"
-        className="inline-flex items-center justify-center text-gray-600 hover:text-gray-900 mb-8 transition-colors w-full"
+        className="inline-flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8 transition-colors w-full"
       >
         <ChevronLeftIcon className="w-8 h-8 mr-4" />
-        <h1 className="text-3xl md:text-4xl font-bold  font-sans text-[#11181C]">
+        <h1 className="text-3xl md:text-4xl font-bold  font-sans text-[#11181C] dark:text-[#E5E7EB]">
           Reset Password
         </h1>
       </Link>
@@ -72,7 +72,7 @@ export default function ForgotPasswordForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="pl-10"
+            className="pl-10 py-6 border-gray-300 dark:border-gray-700 text-black dark:text-white focus-visible:ring-primary/20 focus-visible:border-primary"
           />
         </div>
       </div>

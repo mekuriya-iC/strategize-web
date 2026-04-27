@@ -71,6 +71,8 @@ export function canAccessRoute(
     '/dashboard/approvals': 'nav:approvals',
     '/dashboard/admin': 'nav:admin',
     '/dashboard/settings': 'nav:settings',
+    '/dashboard/checkin': 'nav:checkin',
+    '/dashboard/logbook': 'nav:logbook',
     '/strategy-period': 'nav:strategy_period',
   };
 
@@ -114,6 +116,7 @@ export function getAccessibleNavItems(
     'Approvals',
     'Admin Panel',
     'Settings',
+    'Check-In/Out',
   ];
 
   const navPermissions: Record<string, Permission> = {
@@ -126,6 +129,7 @@ export function getAccessibleNavItems(
     'Approvals': 'nav:approvals',
     'Admin Panel': 'nav:admin',
     'Settings': 'nav:settings',
+    'Check-In/Out': 'nav:checkin',
   };
 
   return allNavItems.filter(item => {

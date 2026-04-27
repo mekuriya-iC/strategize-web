@@ -1,0 +1,346 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { XIcon, PlusIcon, TrashIcon, UploadIcon } from "lucide-react";
+
+interface LogbookItem {
+  id: string;
+  kpiName: string;
+  target: number;
+  percentageCompletion: string;
+  weight: number;
+  approvalStatus: string;
+}
+
+interface EvidenceItem {
+  id: string;
+  type: "file" | "email" | "drive_link" | "certificate";
+  value: string;
+  file?: File;
+}
+
+interface SubmitApprovalDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: LogbookItem;
+  onSuccess: () => void;
+}
+
+export function SubmitApprovalDialog({
+  open,
+  onOpenChange,
+  item,
+  onSuccess,
+}: SubmitApprovalDialogProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [description, setDescription] = useState("International Livestock Research Institute/Stress Management and Financial Literacy Training");
+  const [remark, setRemark] = useState("Lorem ipsum dolor sit amet consectetur. Ut mattis varius at ac nulla nascetur amet blandit ultrices. Consectetur");
+  const [quantity, setQuantity] = useState("");
+  const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([
+    { id: "1", type: "email", value: "Enter email date and subject" }
+  ]);
+
+  const addEvidenceItem = () => {
+    const newItem: EvidenceItem = {
+      id: Date.now().toString(),
+      type: "file",
+      value: ""
+    };
+    setEvidenceItems([...evidenceItems, newItem]);
+  };
+
+  const removeEvidenceItem = (id: string) => {
+    setEvidenceItems(evidenceItems.filter(item => item.id !== id));
+  };
+
+  const updateEvidenceItem = (id: string, field: keyof EvidenceItem, value: any) => {
+    setEvidenceItems(evidenceItems.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsSubmitting(false);
+      onSuccess();
+      onOpenChange(false);
+    }, 1000);
+  };
+
+  const renderEvidenceInput = (evidence: EvidenceItem) => {
+    switch (evidence.type) {
+      case "file":
+        return (
+          <div className="space-y-2">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+              <UploadIcon className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-blue-600 cursor-pointer">
+                Click or drag here to upload file
+              </p>
+              <p className="text-xs text-gray-500">Upload</p>
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    updateEvidenceItem(evidence.id, 'file', file);
+                    updateEvidenceItem(evidence.id, 'value', file.name);
+                  }
+                }}
+              />
+            </div>
+            {evidence.file && (
+              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+                  📄 {evidence.file.name}
+                </span>
+                <button
+                  onClick={() => {
+                    updateEvidenceItem(evidence.id, 'file', undefined);
+                    updateEvidenceItem(evidence.id, 'value', '');
+                  }}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      
+      case "email":
+        return (
+          <Input
+            placeholder="Enter email date and subject"
+            value={evidence.value}
+            onChange={(e) => updateEvidenceItem(evidence.id, 'value', e.target.value)}
+          />
+        );
+      
+      case "drive_link":
+        return (
+          <Input
+            placeholder="Enter drive link"
+            value={evidence.value}
+            onChange={(e) => updateEvidenceItem(evidence.id, 'value', e.target.value)}
+          />
+        );
+      
+      case "certificate":
+        return (
+          <div className="space-y-2">
+            <Input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  updateEvidenceItem(evidence.id, 'file', file);
+                  updateEvidenceItem(evidence.id, 'value', file.name);
+                }
+              }}
+            />
+            {evidence.file && (
+              <p className="text-xs text-gray-500">Selected: {evidence.file.name}</p>
+            )}
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-[800px] xl:max-w-[900px] p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex flex-row items-center justify-between">
+          <DialogTitle className="text-xl font-semibold">
+            Submit for Approval
+          </DialogTitle>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <XIcon className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+        </DialogHeader>
+
+        <div className="px-6 py-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Top Row - Description and Remark */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Description of Performance */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Description of performance
+              </Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="min-h-[120px] resize-none"
+              />
+            </div>
+
+            {/* Remark */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Remark
+              </Label>
+              <Textarea
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                className="min-h-[120px] resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Bottom Row - Evidence and Quantity */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Evidence of Performance */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Evidence of Performance
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addEvidenceItem}
+                  className="flex items-center gap-1 text-[#3838EC] border-[#3838EC] hover:bg-[#3838EC] hover:text-white"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add
+                </Button>
+              </div>
+
+              {/* Evidence Items */}
+              <div className="space-y-4">
+                {evidenceItems.map((evidence, index) => (
+                  <div key={evidence.id} className="space-y-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Evidence of Performance
+                      </span>
+                      {evidenceItems.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEvidenceItem(evidence.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Radio buttons */}
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`evidence-${evidence.id}`}
+                          value="file"
+                          checked={evidence.type === "file"}
+                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">File</span>
+                      </label>
+                      
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`evidence-${evidence.id}`}
+                          value="email"
+                          checked={evidence.type === "email"}
+                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Email</span>
+                      </label>
+                      
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`evidence-${evidence.id}`}
+                          value="drive_link"
+                          checked={evidence.type === "drive_link"}
+                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Drive Link</span>
+                      </label>
+                      
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`evidence-${evidence.id}`}
+                          value="certificate"
+                          checked={evidence.type === "certificate"}
+                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Certificate</span>
+                      </label>
+                    </div>
+
+                    {/* Dynamic input based on type */}
+                    {renderEvidenceInput(evidence)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quantity/% */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Quantity/%
+              </Label>
+              <Input
+                type="text"
+                placeholder="Enter quantity or percentage"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-8"
+          >
+            {isSubmitting ? "Submitting..." : "Submit"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

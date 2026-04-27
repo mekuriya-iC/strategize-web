@@ -238,15 +238,6 @@ export default function ObjectiveDetailPage() {
           selectedKPIs.includes(kpi.kpiId) && kpi.status === "NOT_SUBMITTED"
       )
       .map((kpi) => {
-        console.log("🔍 KPI being prepared for submission:", {
-          kpiId: kpi.kpiId,
-          kpiName: kpi.name,
-          kpiStatus: kpi.status,
-          objectiveType: objective.type,
-          objectiveId: objective.objectiveId,
-          hasObjective: !!objective,
-        });
-
         return {
           itemId: kpi.kpiId,
           itemName: kpi.name,
@@ -255,7 +246,6 @@ export default function ObjectiveDetailPage() {
         };
       });
 
-    console.log("📋 Final KPI submission data:", filteredKPIs);
     return filteredKPIs;
   }, [objectiveKPIs, selectedKPIs, objective]);
 
@@ -380,9 +370,6 @@ export default function ObjectiveDetailPage() {
                 objectiveType={objective.type}
                 associatedKPIs={objectiveKPIs}
                 onSubmitSuccess={() => {
-                  console.log(
-                    "🔄 Objective submission success callback triggered"
-                  );
                   // Force refresh all data
                   refetch(); // Refresh KPIs
                   // Add a small delay and then trigger a refetch to ensure cache is updated
@@ -663,12 +650,6 @@ export default function ObjectiveDetailPage() {
             strategicTargetsById={(function () {
               try {
                 const parentId = objective.parent?.objectiveId;
-                console.log("🔍 strategicTargetsById calculation:", {
-                  objectiveType: objective.type,
-                  parentId,
-                  objectiveKPIsCount: objectiveKPIs.length,
-                  kpisCount: kpis.length,
-                });
 
                 if (!parentId) return {};
 
@@ -677,16 +658,6 @@ export default function ObjectiveDetailPage() {
                   (k) => k.objective?.objectiveId === parentId
                 );
 
-                console.log("📊 Parent KPIs found:", {
-                  parentId,
-                  parentKPIsCount: parentKPIs.length,
-                  parentKPIs: parentKPIs.map((k) => ({
-                    kpiId: k.kpiId,
-                    name: k.name,
-                    targetsCount: k.targets?.length || 0,
-                  })),
-                });
-
                 const map: Record<string, Record<string, number>> = {};
 
                 // Use parent.kpiId matching for accurate target cascading
@@ -694,12 +665,7 @@ export default function ObjectiveDetailPage() {
                   const parentKpiId = childKpi.parent?.kpiId;
                   const parentKpi = parentKpiId ? parentKPIs.find(pk => pk.kpiId === parentKpiId) : null;
 
-                  console.log("🔗 Matching child KPI:", {
-                    childKpiName: childKpi.name,
-                    childKpiId: childKpi.kpiId,
-                    parentKpiId,
-                    parentKpiName: parentKpi?.name,
-                  });
+                  // Debug: Child KPI ${childKpi.name} (${childKpi.kpiId}) -> Parent KPI ${parentKpi?.name || 'None'}
 
                   if (!parentKpi?.targets) {
                     // Fallback to index-based if no direct parent ID is found (legacy or special case)
@@ -735,7 +701,6 @@ export default function ObjectiveDetailPage() {
                   map[childKpi.kpiId] = byYear;
                 });
 
-                console.log("📋 Final strategicTargetsById map:", map);
                 return map;
               } catch (error) {
                 console.error("❌ Error in strategicTargetsById:", error);

@@ -253,7 +253,6 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
         );
 
         await Promise.all(kpiRejectionPromises);
-        console.log("Selected KPIs rejected:", selectedKPIs);
       }
 
       // Update submission reason if reason is provided

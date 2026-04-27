@@ -164,27 +164,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
           : "DIVISION"; // DIVISION -> DIVISION level
 
     try {
-      console.log("🚀 Objective + KPIs submission data:", {
-        objectiveId,
-        objectiveName,
-        selectedKPIsCount: selectedKPIs.length,
-        associatedKPIsDetails: associatedKPIs.map((kpi) => ({
-          kpiId: kpi.kpiId,
-          name: kpi.name,
-          status: kpi.status,
-          objectiveId: kpi.objective?.objectiveId,
-        })),
-        selectedKPIsDetails: selectedKPIs.map((kpiId) => {
-          const kpi = associatedKPIs.find((k) => k.kpiId === kpiId);
-          return {
-            kpiId,
-            name: kpi?.name,
-            status: kpi?.status,
-            exists: !!kpi,
-          };
-        }),
-      });
-
+      // 1. Submit the objective first
       const successfulSubmissions: Array<{
         type: "objective" | "kpi";
         id: string;
@@ -216,7 +196,6 @@ export default function ObjectiveWithKPIsSubmitDialog({
           id: objectiveId,
           result: objectiveResult,
         });
-        console.log("✅ Objective submission successful:", objectiveResult);
       } catch (objError) {
         failedSubmissions.push({
           type: "objective",
@@ -247,7 +226,6 @@ export default function ObjectiveWithKPIsSubmitDialog({
             id: kpiId,
             result: kpiResult,
           });
-          console.log("✅ KPI submission successful:", kpiResult);
         } catch (kpiError) {
           failedSubmissions.push({
             type: "kpi",
@@ -260,7 +238,6 @@ export default function ObjectiveWithKPIsSubmitDialog({
 
       // Report results
       if (successfulSubmissions.length > 0) {
-        console.log("✅ Some submissions successful:", successfulSubmissions);
         if (failedSubmissions.length > 0) {
           console.warn("⚠️ Some submissions failed:", failedSubmissions);
           toast.warning(
@@ -271,12 +248,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
         throw new Error("All submissions failed");
       }
 
-      console.log("✅ Smart submissions completed:", {
-        successfulCount: successfulSubmissions.length,
-        failedCount: failedSubmissions.length,
-        successfulSubmissions,
-        failedSubmissions,
-      });
+      // Submission results: ${successfulSubmissions.length} successful, ${failedSubmissions.length} failed
 
       // Note: handleSmartSubmission already updates KPI statuses to PENDING
       // No need for additional status updates here

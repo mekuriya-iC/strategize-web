@@ -127,6 +127,25 @@ export const PERMISSIONS = {
   'admin:view_audit_logs': 'View audit logs',
   'admin:system_settings': 'Access system settings',
 
+  // ==================== CHECK-IN/OUT ====================
+  'checkins:read_own': 'View own check-ins',
+  'checkins:read_department': 'View department check-ins',
+  'checkins:read_all': 'View all check-ins',
+  'checkins:create': 'Create check-ins',
+  'checkins:update_own': 'Update own check-ins',
+  'checkins:update_all': 'Update any check-in',
+  'checkins:delete_own': 'Delete own check-ins',
+  'checkins:delete_all': 'Delete any check-in',
+
+  // ==================== LOGBOOK ====================
+  'logbook:read_own': 'View own logbook',
+  'logbook:read_department': 'View department logbook',
+  'logbook:read_all': 'View all logbooks',
+  'logbook:submit': 'Submit logbook for approval',
+  'logbook:approve': 'Approve logbook submissions',
+  'logbook:delete_own': 'Delete own logbook entries',
+  'logbook:delete_all': 'Delete any logbook entry',
+
   // ==================== NAVIGATION ====================
   'nav:dashboard': 'Access dashboard',
   'nav:objectives': 'Access objectives page',
@@ -138,6 +157,8 @@ export const PERMISSIONS = {
   'nav:admin': 'Access admin panel',
   'nav:settings': 'Access settings page',
   'nav:strategy_period': 'Access strategy period page',
+  'nav:checkin': 'Access check-in/out page',
+  'nav:logbook': 'Access logbook page',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

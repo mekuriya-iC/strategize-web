@@ -35,15 +35,15 @@ const DepartmentDetailsPage = () => {
           <button
             type="button"
             onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </button>
-          <div className="animate-pulse h-8 bg-gray-200 rounded w-64"></div>
+          <div className="animate-pulse h-8 bg-gray-200 dark:bg-gray-800 rounded w-64"></div>
         </div>
         <div className="animate-pulse">
-          <div className="h-96 bg-gray-200 rounded"></div>
+          <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded"></div>
         </div>
       </div>
     );
@@ -56,12 +56,12 @@ const DepartmentDetailsPage = () => {
           <button
             type="button"
             onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </button>
-          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
             Department Details
           </h1>
         </div>
@@ -81,17 +81,17 @@ const DepartmentDetailsPage = () => {
           <button
             type="button"
             onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </button>
-          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
             Department Details
           </h1>
         </div>
         <div className="p-8 text-center">
-          <p className="text-gray-600">Department not found</p>
+          <p className="text-gray-600 dark:text-gray-400">Department not found</p>
         </div>
       </div>
     );
@@ -105,37 +105,37 @@ const DepartmentDetailsPage = () => {
           <button
             type="button"
             onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </button>
-          <h1 className="text-2xl md:text-4xl text-[#3F3F46] font-bold tracking-tight">
+          <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
             {department.name}
           </h1>
         </div>
       </div>
 
       {/* Department Info Summary */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-white dark:bg-[#18181b] rounded-lg border dark:border-gray-800 p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Manager</h3>
-            <p className="text-gray-900">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Manager</h3>
+            <p className="text-gray-900 dark:text-gray-100">
               {department.manager?.fullName || "No Manager"}
             </p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Division</h3>
-            <p className="text-gray-900">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Division</h3>
+            <p className="text-gray-900 dark:text-gray-100">
               {department.division?.name || "No Division"}
             </p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Total Members
             </h3>
-            <p className="text-gray-900">{department.employees?.length || 0}</p>
+            <p className="text-gray-900 dark:text-gray-100">{department.employees?.length || 0}</p>
           </div>
         </div>
       </div>

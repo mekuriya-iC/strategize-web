@@ -11,6 +11,7 @@ import ErrorBoundary, {
 import { useUIStore, useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
 import { GET_ME } from "@/lib/graphql/queries/employees";
+import { useAutoSelectStrategicPeriod } from "@/hooks/objectives/useAutoSelectStrategicPeriod";
 
 // Component to sync Apollo user data with Zustand store
 function AuthSync() {
@@ -47,6 +48,12 @@ function UIInitializer() {
   return null;
 }
 
+// Component to auto-select strategic period for non-admin users
+function StrategicPeriodInitializer() {
+  useAutoSelectStrategicPeriod();
+  return null;
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -58,9 +65,11 @@ export default function DashboardLayout({
       <AuthSync />
       {/* Initialize UI state */}
       <UIInitializer />
+      {/* Auto-select strategic period */}
+      <StrategicPeriodInitializer />
 
       <DepartmentSelectionProvider>
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <div className="flex h-screen bg-gray-50 dark:bg-[#09090b] overflow-hidden">
           {/* Sidebar with its own error boundary */}
           <SectionErrorBoundary sectionName="sidebar">
             <Sidebar />

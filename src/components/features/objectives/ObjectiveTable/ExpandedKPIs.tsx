@@ -36,7 +36,7 @@ const ExpandedKPIs: React.FC<ExpandedKPIsProps> = ({
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                         <h4 className="font-bold text-gray-900 text-sm uppercase tracking-tight">
-                            KPIs for {objective.name}
+                            KPIs for {objective.title || objective.name}
                         </h4>
                     </div>
 

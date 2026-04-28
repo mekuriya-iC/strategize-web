@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon, FileIcon, LockIcon, ChevronDownIcon } from "lucide-react";
 import { useMutation } from "@apollo/client";
-import { DELETE_CHECKIN } from "@/lib/graphql/mutations/checkins";
+import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 
 interface Task {
@@ -22,15 +22,15 @@ interface Task {
   isKpiMet: boolean;
   isInitiativeMet: boolean;
   isSelfDevComplete: boolean;
+  createdAt: string;
+  isMidWeekTask?: boolean;
 }
 
 interface CheckInTableRowProps {
   task: Task;
   isEditable: boolean;
   onRefetch: () => void;
-  useMockData?: boolean;
-  onDeleteTask?: (taskId: string) => boolean;
-  onEditTask?: (task: Task) => boolean;
+  onEditTask?: (task: Task) => void;
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -45,8 +45,10 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
 };
 
-export function CheckInTableRow({ task, isEditable, onRefetch, useMockData = false, onDeleteTask, onEditTask }: CheckInTableRowProps) {
-  const [deleteCheckin, { loading }] = useMutation(DELETE_CHECKIN);
+export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: CheckInTableRowProps) {
+  const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
+    refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+  });
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
@@ -70,24 +72,14 @@ export function CheckInTableRow({ task, isEditable, onRefetch, useMockData = fal
       return;
     }
 
-    // Handle mock data deletion
-    if (useMockData && onDeleteTask) {
-      const success = onDeleteTask(task.id);
-      if (success) {
-        toast.success("Task deleted successfully");
-        return;
-      }
-    }
-
-    // Handle real data deletion
     try {
       await deleteCheckin({
-        variables: { id: task.id },
+        variables: { checkinoutTaskId: task.id },
       });
       toast.success("Task deleted successfully");
       onRefetch();
-    } catch (error) {
-      toast.error("Failed to delete task");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete task");
       console.error(error);
     }
   };
@@ -98,16 +90,9 @@ export function CheckInTableRow({ task, isEditable, onRefetch, useMockData = fal
       return;
     }
 
-    // Handle mock data editing
-    if (useMockData && onEditTask) {
-      const success = onEditTask(task);
-      if (success) {
-        return;
-      }
+    if (onEditTask) {
+      onEditTask(task);
     }
-
-    // TODO: Open edit dialog for real data
-    toast.info("Edit functionality coming soon");
   };
 
   return (
@@ -188,7 +173,7 @@ export function CheckInTableRow({ task, isEditable, onRefetch, useMockData = fal
       {/* Checkout */}
       <td className="px-4 py-4">
         <Badge className={STATUS_COLORS[task.checkoutStatus] || STATUS_COLORS.NOT_DONE}>
-          {task.checkoutStatus.replace("_", " ")}
+          {task.checkoutStatus ? task.checkoutStatus.replace("_", " ") : "Unknown"}
         </Badge>
       </td>
 

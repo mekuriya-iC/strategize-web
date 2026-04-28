@@ -8,10 +8,12 @@ import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
 import { useAssignmentState } from "@/hooks/objectives/useAssignmentState";
 import { useStrategicPeriodStore } from "@/stores";
 import { useObjectives } from "@/hooks/objectives/useObjectives";
+import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
-import { GET_ME, GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { GET_ME } from "@/lib/graphql/queries/auth";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { detectKPIType, getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import type {
   Objective,
@@ -51,7 +53,12 @@ export function useAssignmentDialog({
 }: UseAssignmentDialogProps) {
   const { assignObjective, loading } = useObjectiveAssignment();
   const { updateObjective } = useObjectiveMutations();
-  const { updateKpiTargets, createKpi } = useKPIMutations();
+  const { updateKpi, createKpi } = useKPIMutations();
+  
+  // Fetch strategic plans to get organizationId
+  const { strategicPlans } = useStrategicPlansQuery();
+  const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
+  const organizationId = activeStrategicPlan?.organization?.organizationId || "";
 
   // Get strategic period from store
   const { selectedPeriod, annualTimeline } = useStrategicPeriodStore();
@@ -535,13 +542,19 @@ export function useAssignmentDialog({
           for (const newKPI of newKPIs) {
             try {
               const createdKPI = await createKpi({
-                name: newKPI.name,
-                baseline: newKPI.baseline || 0,
-                weight: newKPI.weight || 0,
-                unitType: newKPI.unitType || "NUMBER",
-                objectiveId: existingObjective.objectiveId,
-                parentId: newKPI.kpiId,
-                targets: [],
+                input: {
+                  name: newKPI.name,
+                  baseline: newKPI.baseline || 0,
+                  weight: newKPI.weight || 0,
+                  unitType: newKPI.unitType || "NUMBER",
+                  strategicObjectiveId: existingObjective.objectiveId, // Backend uses strategicObjectiveId
+                  parentId: newKPI.kpiId,
+                  frequency: "QUARTERLY", // Default to QUARTERLY
+                  measurementUnit: "NUMBER", // Default to NUMBER
+                  organizationId: organizationId, // Required by backend
+                  targetValue: 0, // Will be updated with targets
+                  targets: [],
+                }
               });
               createdKPIs.push(createdKPI);
 
@@ -550,9 +563,14 @@ export function useAssignmentDialog({
                 assignment.assigneeId
               );
               if (targetValue !== null) {
-                await updateKpiTargets(createdKPI.kpiId, [
-                  { timeline: getTimelineFromContext(), target: targetValue },
-                ]);
+                await updateKpi({
+                  input: {
+                    kpiId: createdKPI.kpiId,
+                    targets: [
+                      { timeline: getTimelineFromContext(), target: targetValue },
+                    ]
+                  }
+                });
               }
             } catch (error) {
               appLogger.error("Failed to create KPI:", newKPI.name, error);
@@ -590,11 +608,12 @@ export function useAssignmentDialog({
           const correctType = getAssigneeObjectiveType();
           const placeholderName = generatePlaceholderName();
 
+          appLogger.debug("Updating child objective", {
             objectiveId: createdObjective.objectiveId,
             targetType: correctType,
             targetName: placeholderName,
             currentType: createdObjective.type,
-            currentName: createdObjective.name,
+            currentName: createdObjective.title,
           });
 
           try {
@@ -602,7 +621,7 @@ export function useAssignmentDialog({
               input: {
                 objectiveId: createdObjective.objectiveId,
                 type: correctType,
-                name: placeholderName,
+                title: placeholderName,
               },
             });
 
@@ -643,7 +662,7 @@ export function useAssignmentDialog({
       getTargetAssignment,
       getTimelineFromContext,
       createKpi,
-      updateKpiTargets,
+      updateKpi,
       assignObjective,
       updateObjective,
     ]
@@ -694,9 +713,14 @@ export function useAssignmentDialog({
                 originalKpiIdToAssigneeId.get(originalKpiId);
               if (!assigneeKpiId) continue;
 
-              await updateKpiTargets(assigneeKpiId, [
-                { timeline: getTimelineFromContext(), target: targetValue },
-              ]);
+              await updateKpi({
+                input: {
+                  kpiId: assigneeKpiId,
+                  targets: [
+                    { timeline: getTimelineFromContext(), target: targetValue },
+                  ]
+                }
+              });
             } catch (error) {
               appLogger.error("Failed to update assignee KPI targets:", error);
             }
@@ -726,7 +750,7 @@ export function useAssignmentDialog({
     handleSmartAssignment,
     getTargetAssignment,
     getTimelineFromContext,
-    updateKpiTargets,
+    updateKpi,
     onSuccess,
     onOpenChange,
   ]);

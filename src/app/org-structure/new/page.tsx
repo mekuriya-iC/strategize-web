@@ -3,7 +3,7 @@ import Logo from "@/components/Logo";
 import AddOrgStructureForm from "@/components/org-structure/AddOrgStructureForm";
 import { useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useEffect } from "react";
 
 export default function AddOrgStructurePage() {

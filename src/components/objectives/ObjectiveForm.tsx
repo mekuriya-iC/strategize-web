@@ -12,6 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
 import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
+import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { ObjectiveType } from "@/types/graphql";
 import { toast } from "sonner";
@@ -21,11 +22,16 @@ export default function ObjectiveForm() {
   const router = useRouter();
   const { createObjective, updateObjective, loading } = useObjectiveMutations();
   const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
+  const { strategicPlans, loading: plansLoading } = useStrategicPlansQuery();
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
   const user = useAuthStore((state) => state.user);
 
   // For backwards compatibility
   const selected = selectedPeriod ? { period: selectedPeriod } : null;
+  
+  // Get the active strategic plan and organizationId
+  const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
+  const organizationId = activeStrategicPlan?.organization?.organizationId || "";
 
   // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
   const isCorporateUser =
@@ -69,14 +75,36 @@ export default function ObjectiveForm() {
       return;
     }
 
+    if (!organizationId) {
+      toast.error("No active strategic plan found. Please contact your administrator.");
+      return;
+    }
+
+    if (!activeStrategicPlan?.strategicPlanId) {
+      toast.error("No active strategic plan found. Please contact your administrator.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Map ObjectiveType to ObjectiveLevel
+      // CORPORATE -> CORPORATE, DIVISION -> DIVISION, DEPARTMENT -> DEPARTMENT, PERSONNEL -> INDIVIDUAL
+      const levelMap: Record<ObjectiveType, string> = {
+        CORPORATE: "CORPORATE",
+        DIVISION: "DIVISION",
+        DEPARTMENT: "DEPARTMENT",
+        PERSONNEL: "INDIVIDUAL",
+      };
+
       const created = await createObjective({
         input: {
-          name: objectiveName.trim(),
+          title: objectiveName.trim(),
           type: objectiveType,
+          level: levelMap[objectiveType],
           strategicPeriodId: strategicPeriodValue,
+          organizationId: organizationId,
+          strategicPlanId: activeStrategicPlan.strategicPlanId,
         },
       });
 
@@ -184,6 +212,28 @@ export default function ObjectiveForm() {
             </Select>
           </div>
 
+          {/* Strategic Plan Info */}
+          {plansLoading ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-w-xl">
+              <p className="text-sm text-gray-600">Loading strategic plan...</p>
+            </div>
+          ) : activeStrategicPlan ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-xl">
+              <p className="text-sm text-green-800">
+                <strong>Strategic Plan:</strong> {activeStrategicPlan.title}
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                Organization: {activeStrategicPlan.organization.name}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-xl">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> No active strategic plan found. Please contact your administrator to create one.
+              </p>
+            </div>
+          )}
+
           {/* Note about KPIs */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-xl">
             <p className="text-sm text-blue-800">
@@ -211,9 +261,12 @@ export default function ObjectiveForm() {
             disabled={
               loading ||
               isSubmitting ||
+              plansLoading ||
               !objectiveName.trim() ||
               !objectiveType ||
-              !strategicPeriodValue
+              !strategicPeriodValue ||
+              !organizationId ||
+              !activeStrategicPlan
             }
           >
             {loading || isSubmitting ? "Creating..." : "Add Objective"}

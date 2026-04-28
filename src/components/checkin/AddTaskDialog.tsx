@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
+  CREATE_CHECKINOUT_TASK,
+  UPDATE_CHECKINOUT_TASK,
+} from "@/lib/graphql/mutations/checkins";
+import { GETOBJECTIVES } from "@/lib/graphql/queries/objectives";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -11,8 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CREATE_CHECKIN } from "@/lib/graphql/mutations/checkins";
-import { GET_MY_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -37,9 +40,7 @@ interface AddTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  useMockData?: boolean;
-  onMockAdd?: (task: any) => boolean;
-  onMockUpdate?: (task: any) => boolean;
+  sessionId?: string;
   editingTask?: any;
 }
 
@@ -80,11 +81,19 @@ export function AddTaskDialog({
   open,
   onOpenChange,
   onSuccess,
-  useMockData = false,
-  onMockAdd,
-  onMockUpdate,
+  sessionId,
   editingTask,
 }: AddTaskDialogProps) {
+  // Mutations
+  const [createTaskMutation, { loading: creating }] = useMutation(CREATE_CHECKINOUT_TASK, {
+    refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+  });
+
+  const [updateTaskMutation, { loading: updating }] = useMutation(UPDATE_CHECKINOUT_TASK, {
+    refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+  });
+
+  const mutationLoading = creating || updating;
   const getNextSaturday = (fromDate: Date = new Date()) => {
     const date = new Date(fromDate);
     const day = date.getDay();
@@ -126,8 +135,9 @@ export function AddTaskDialog({
   const [startTimeOpen, setStartTimeOpen] = useState(false);
   const [endTimeOpen, setEndTimeOpen] = useState(false);
 
-  const { data: objectivesData } = useQuery(GET_MY_OBJECTIVES);
-  const [createCheckin, { loading }] = useMutation(CREATE_CHECKIN);
+  const { data: objectivesData } = useQuery(GETOBJECTIVES, {
+    variables: { page: 1, limit: 100 },
+  });
 
   // Populate form when editing
   useEffect(() => {
@@ -189,59 +199,62 @@ export function AddTaskDialog({
       return;
     }
 
-    const taskData = {
-      taskType,
-      task,
-      description,
-      relatedTo,
-      linkedKpi: taskType === "KPI_LINKED" ? linkedKpi : undefined,
-      linkedInitiative: taskType === "INITIATIVE_LINKED" ? linkedInitiative : undefined,
-      startTime: buildDateTime(startDate, startTime).toISOString(),
-      endTime: buildDateTime(endDate, endTime).toISOString(),
-      checkoutStatus: checkoutStatus || "NOT_DONE",
-      attachment: attachment?.name,
-      remark,
-      isKpiMet,
-      isInitiativeMet,
-      isSelfDevComplete,
-      isMidWeekTask: false,
-    };
-
-    // Handle mock data
-    if (useMockData) {
-      if (editingTask && onMockUpdate) {
-        const success = onMockUpdate({ ...taskData, id: editingTask.id, createdAt: editingTask.createdAt });
-        if (success) {
-          toast.success("Task updated successfully");
-          onSuccess();
-          resetForm();
-          return;
-        }
-      } else if (onMockAdd) {
-        const success = onMockAdd(taskData);
-        if (success) {
-          toast.success("Task added successfully");
-          onSuccess();
-          resetForm();
-          return;
-        }
-      }
+    if (!sessionId && !editingTask) {
+      toast.error("No active session found");
+      return;
     }
 
-    // Handle real data
     try {
-      await createCheckin({
-        variables: {
-          input: taskData,
-        },
-      });
+      const taskData = {
+        taskTitle: task.trim(),
+        taskLinkType: taskType,
+        plannedDescription: description.trim() || null,
+        taskStartDate: buildDateTime(startDate, startTime).toISOString(),
+        taskEndDate: buildDateTime(endDate, endTime).toISOString(),
+        taskStatus: checkoutStatus || "NOT_DONE",
+        evidenceUrl: attachment?.name || null,
+        challenges: remark.trim() || null,
+        requiresApproval: false,
+      };
 
-      toast.success(editingTask ? "Task updated successfully" : "Task added successfully");
+      if (editingTask) {
+        // Update existing task
+        await updateTaskMutation({
+          variables: {
+            input: {
+              checkinoutTaskId: editingTask.id,
+              taskTitle: taskData.taskTitle,
+              taskLinkType: taskData.taskLinkType,
+              plannedDescription: taskData.plannedDescription,
+              achievedDescription: description.trim() || null,
+              taskStartDate: taskData.taskStartDate,
+              taskEndDate: taskData.taskEndDate,
+              taskStatus: taskData.taskStatus,
+              evidenceUrl: taskData.evidenceUrl,
+              challenges: taskData.challenges,
+              requiresApproval: taskData.requiresApproval,
+            },
+          },
+        });
+        toast.success("Task updated successfully");
+      } else {
+        // Create new task
+        await createTaskMutation({
+          variables: {
+            input: {
+              sessionId: sessionId!,
+              ...taskData,
+            },
+          },
+        });
+        toast.success("Task created successfully");
+      }
+
       onSuccess();
       resetForm();
-    } catch (error) {
-      toast.error(editingTask ? "Failed to update task" : "Failed to add task");
-      console.error(error);
+    } catch (error: any) {
+      console.error("Task operation error:", error);
+      toast.error(error.message || `Failed to ${editingTask ? "update" : "create"} task`);
     }
   };
 
@@ -340,9 +353,9 @@ export function AddTaskDialog({
                   </Label>
                   <CheckboxSelect
                     options={
-                      objectivesData?.myObjectives?.map((obj: any) => ({
+                      objectivesData?.objectives?.items?.map((obj: any) => ({
                         value: obj.objectiveId,
-                        label: obj.name,
+                        label: obj.title,
                       })) || []
                     }
                     value={linkedKpi ? [linkedKpi] : []}
@@ -362,9 +375,9 @@ export function AddTaskDialog({
                   </Label>
                   <CheckboxSelect
                     options={
-                      objectivesData?.myObjectives?.map((obj: any) => ({
+                      objectivesData?.objectives?.items?.map((obj: any) => ({
                         value: obj.objectiveId,
-                        label: obj.name,
+                        label: obj.title,
                       })) || []
                     }
                     value={linkedInitiative ? [linkedInitiative] : []}
@@ -679,17 +692,17 @@ export function AddTaskDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={loading}
+            disabled={mutationLoading}
             className="sm:w-auto"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={mutationLoading}
             className="sm:w-auto bg-[#3838EC] hover:bg-[#2d2dbd] text-white"
           >
-            {loading ? (editingTask ? "Updating..." : "Adding...") : (editingTask ? "Update Task" : "Add Task")}
+            {mutationLoading ? (editingTask ? "Updating..." : "Adding...") : (editingTask ? "Update Task" : "Add Task")}
           </Button>
         </div>
       </DialogContent>

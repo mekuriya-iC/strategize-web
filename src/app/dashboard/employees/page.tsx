@@ -186,7 +186,7 @@ const EmployeesPage = () => {
         input: {
           name: departmentName.trim(),
           divisionId: selectedDivision,
-          managerId: departmentManager || undefined,
+          headUserId: departmentManager || undefined,
         },
         employeeIds: departmentMembers,
       });

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useApolloClient } from "@apollo/client";
 import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
 import { useKPI } from "@/hooks/objectives/useKPIs";
+import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import { kpiLogger } from "@/lib/logger";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import type {
@@ -37,6 +38,11 @@ interface UseCreateKPIFormProps {
 export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }: UseCreateKPIFormProps) {
     const { createKpi, updateKpi } = useKPIMutations();
     const client = useApolloClient();
+    
+    // Fetch strategic plans to get organizationId
+    const { strategicPlans } = useStrategicPlansQuery();
+    const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
+    const organizationId = activeStrategicPlan?.organization?.organizationId || "";
 
     const [formData, setFormData] = useState<CreateKPIFormData>({
         name: "",
@@ -137,18 +143,23 @@ export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }
                 baseline: parseFloat(formData.baseline) || 0,
                 weight: parseFloat(formData.weight) || 0,
                 unitType: formData.unitType,
-                objectiveId: objectiveId,
-                // No parentId - removed parent reference for creation
+                strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
+                frequency: "QUARTERLY", // Default to QUARTERLY
+                measurementUnit: "NUMBER", // Default to NUMBER
+                organizationId: organizationId, // Required by backend
+                targetValue: targets.length > 0 ? Math.max(...targets.map(t => t.target)) : 0, // Calculate from targets
                 targets: targets,
             };
 
-            const createdKpi = await createKpi(input);
+            const createdKpi = await createKpi({ input });
 
             // If Corporate, auto-approve
             if (isCorporate && createdKpi?.kpiId) {
                 await updateKpi({
-                    kpiId: createdKpi.kpiId,
-                    status: "APPROVED"
+                    input: {
+                        kpiId: createdKpi.kpiId,
+                        status: "APPROVED"
+                    }
                 });
             }
 

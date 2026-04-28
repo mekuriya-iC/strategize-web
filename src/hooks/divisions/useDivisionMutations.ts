@@ -96,7 +96,9 @@ export const useDivisionMutations = () => {
 
   const createDivision = async (variables: CreateDivisionMutationVariables) => {
     try {
-      const result = await createDivisionMutation({ variables });
+      const result = await createDivisionMutation({ 
+        variables: { createDivisionInput: variables.input } 
+      });
       return result.data?.createDivision;
     } catch (error) {
       divLogger.error("Error creating division:", error);
@@ -106,7 +108,9 @@ export const useDivisionMutations = () => {
 
   const updateDivision = async (variables: UpdateDivisionMutationVariables) => {
     try {
-      const result = await updateDivisionMutation({ variables });
+      const result = await updateDivisionMutation({ 
+        variables: { updateDivisionInput: variables.input } 
+      });
       return result.data?.updateDivision;
     } catch (error) {
       divLogger.error("Error updating division:", error);
@@ -116,7 +120,9 @@ export const useDivisionMutations = () => {
 
   const removeDivision = async (variables: RemoveDivisionMutationVariables) => {
     try {
-      const result = await removeDivisionMutation({ variables });
+      const result = await removeDivisionMutation({ 
+        variables: { divisionId: variables.id || variables.divisionId } 
+      });
       return result.data?.removeDivision;
     } catch (error) {
       divLogger.error("Error removing division:", error);

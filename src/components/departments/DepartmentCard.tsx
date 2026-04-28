@@ -7,7 +7,7 @@ import { Building2, Users, User } from "lucide-react";
 interface SimpleDepartment {
   departmentId: string;
   name: string;
-  manager?: { fullName: string } | null;
+  head?: { fullName: string } | null;
   division?: { name: string } | null;
 }
 
@@ -57,10 +57,10 @@ export default function DepartmentCard({
 
       {/* Department Info */}
       <div className="text-center space-y-2 w-full">
-        {department.manager && (
+        {department.head && (
           <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
             <User className="w-4 h-4" />
-            <span>Manager: {department.manager.fullName}</span>
+            <span>Manager: {department.head.fullName}</span>
           </div>
         )}
 

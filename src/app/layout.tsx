@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ApolloWrapper } from "@/components/ApolloWrapper";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { SessionTimeoutWarning } from "@/components/auth/SessionTimeoutWarning";
 import { Toaster } from "@/components/ui/sonner";
 import DebugInfoPanel from "@/components/debug/DebugInfoPanel";
 
@@ -21,10 +23,13 @@ export default function RootLayout({
       <body className={`  antialiased `}>
         <ApolloWrapper>
           <ThemeProvider>
-            {children}
-            <Toaster />
-            {/* Temporary Debug Panel - Remove before production */}
-            <DebugInfoPanel />
+            <AuthProvider>
+              {children}
+              <SessionTimeoutWarning />
+              <Toaster />
+              {/* Temporary Debug Panel - Remove before production */}
+              <DebugInfoPanel />
+            </AuthProvider>
           </ThemeProvider>
         </ApolloWrapper>
       </body>

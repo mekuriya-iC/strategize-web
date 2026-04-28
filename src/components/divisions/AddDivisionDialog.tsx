@@ -27,7 +27,7 @@ interface AddDivisionDialogProps {
   divisionName: string;
   setDivisionName: (name: string) => void;
   divisionManager: string;
-  setDivisionManager: (managerId: string) => void;
+  setDivisionManager: (headUserId: string) => void;
   departments: string[];
   setDepartments: (departments: string[]) => void;
   managers: Manager[];

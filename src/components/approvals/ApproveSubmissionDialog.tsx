@@ -26,7 +26,8 @@ interface Submission {
   };
   objective?: {
     objectiveId: string;
-    name: string;
+    title?: string; // Backend uses 'title'
+    name?: string; // Backward compatibility
     type: string;
     status: string;
   };
@@ -36,7 +37,8 @@ interface Submission {
     status: string;
     objective?: {
       objectiveId: string;
-      name: string;
+      title?: string; // Backend uses 'title'
+      name?: string; // Backward compatibility
       type: string;
     };
   };
@@ -93,7 +95,7 @@ export default function ApproveSubmissionDialog({
 
   const getItemName = () => {
     if (submission.type === "OBJECTIVE" && submission.objective) {
-      return submission.objective.name;
+      return submission.objective.title || submission.objective.name;
     } else if (submission.type === "KPI" && submission.kpi) {
       return submission.kpi.name;
     }

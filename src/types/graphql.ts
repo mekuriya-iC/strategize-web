@@ -66,27 +66,41 @@ export interface UpdateEmployeeInput {
 // Division Input Types
 export interface CreateDivisionInput {
   name: string;
-  managerId: string;
+  headUserId?: string;
+  organizationId?: string;
+  description?: string;
+  isActive?: boolean;
+  parentDivisionId?: string;
 }
 
 export interface UpdateDivisionInput {
   divisionId: string;
   name?: string;
-  managerId?: string;
+  headUserId?: string;
+  organizationId?: string;
+  description?: string;
+  isActive?: boolean;
+  parentDivisionId?: string;
 }
 
 // Department Input Types
 export interface CreateDepartmentInput {
   name: string;
-  managerId?: string;
+  headUserId?: string;
   divisionId?: string;
+  organizationId?: string;
+  description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateDepartmentInput {
   departmentId: string;
   name?: string;
-  managerId?: string;
+  headUserId?: string;
   divisionId?: string | null; // null to explicitly remove division association
+  organizationId?: string;
+  description?: string;
+  isActive?: boolean;
 }
 
 // GraphQL Response Types
@@ -110,7 +124,7 @@ export interface Employee {
 export interface Division {
   divisionId: string;
   name: string;
-  manager?: Employee;
+  head?: Employee;
   departments?: Department[];
   createdAt: string;
   updatedAt: string;
@@ -119,12 +133,14 @@ export interface Division {
 export interface Department {
   departmentId: string;
   name: string;
-  manager?: Employee;
+  head?: Employee;
   division?: Division;
   employees?: Employee[];
   createdAt: string;
   updatedAt: string;
-
+  description?: string;
+  isActive?: boolean;
+  isDeleted?: boolean;
 }
 
 export interface AuthPayload {
@@ -230,7 +246,8 @@ export interface UpdateDivisionMutationVariables {
 }
 
 export interface RemoveDivisionMutationVariables {
-  id: string;
+  id?: string;
+  divisionId?: string;
 }
 
 export interface CreateDepartmentMutationVariables {
@@ -242,7 +259,8 @@ export interface UpdateDepartmentMutationVariables {
 }
 
 export interface RemoveDepartmentMutationVariables {
-  id: string;
+  id?: string;
+  departmentId?: string;
 }
 
 export interface AddEmployeeToDepartmentMutationVariables {
@@ -296,20 +314,39 @@ export type ObjectiveStatus =
 
 export interface Objective {
   objectiveId: string;
-  name: string;
+  title?: string; // Backend uses 'title' - made optional for backward compatibility
+  name?: string; // Deprecated: kept for backward compatibility
+  description?: string;
   type: ObjectiveType;
+  level: string; // ObjectiveLevel: CORPORATE, DIVISION, DEPARTMENT, INDIVIDUAL, TEAM
   status: ObjectiveStatus;
+  cascadeStatus?: string;
   strategicPeriod: StrategicPeriod | null;
   createdBy?: {
     employeeId: string;
     fullName: string;
   } | null;
+  approvedBy?: {
+    employeeId: string;
+    fullName: string;
+  } | null;
+  approvedAt?: string;
   assigneeId?: string;
   assignerId?: string;
   assigneeType?: string;
+  ownerUser?: {
+    employeeId: string;
+    fullName: string;
+    email?: string;
+    title?: string;
+  } | null;
   parent?: {
     objectiveId: string;
-    name: string;
+    title?: string; // Backend uses 'title' - made optional
+    name?: string; // Deprecated: kept for backward compatibility
+    level?: string;
+    type?: ObjectiveType;
+    assigneeType?: string;
   } | null;
   kpis?: Array<{
     kpiId: string;
@@ -318,22 +355,51 @@ export interface Objective {
     status: string;
     targetStatus?: string;
   }>;
+  weight?: number;
+  order?: number;
+  dueDate?: string;
+  isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateObjectiveInput {
-  name: string;
+  title: string; // Backend uses 'title' not 'name'
   type: ObjectiveType;
   strategicPeriodId: string;
+  level: string; // ObjectiveLevel: CORPORATE, DIVISION, DEPARTMENT, INDIVIDUAL, TEAM
+  organizationId: string; // Required by backend
+  strategicPlanId: string; // Required by backend
+  description?: string;
+  assigneeId?: string;
+  assigneeType?: string;
+  assignerId?: string;
+  parentId?: string;
+  weight?: number;
+  dueDate?: string;
 }
 
 export interface UpdateObjectiveInput {
   objectiveId: string;
-  name?: string;
+  title?: string; // Backend uses 'title' not 'name'
   type?: ObjectiveType;
+  level?: string; // ObjectiveLevel
   status?: ObjectiveStatus;
   strategicPeriodId?: string;
+  description?: string;
+  assigneeId?: string;
+  assigneeType?: string;
+  assignerId?: string;
+  cascadeStatus?: string;
+  weight?: number;
+  order?: number;
+  dueDate?: string;
+  approvedAt?: string;
+  approvedById?: string;
+  ownerDepartmentId?: string;
+  ownerDivisionId?: string;
+  ownerTeamId?: string;
+  ownerUserId?: string;
 }
 
 export interface PaginatedObjectives {
@@ -379,12 +445,24 @@ export interface Kpi {
 
 export interface CreateKpiInput {
   name: string;
-  baseline: number; // Float in GraphQL schema
-  weight: number; // Float in GraphQL schema - accepts decimal values
-  unitType: KpiUnitType;
-  targets: KpiTargetInput[]
-  objectiveId: string;
+  baseline?: number;
+  baselineValue?: number;
+  weight?: number;
+  unitType?: string;
+  customUnitLabel?: string;
+  targets?: KpiTargetInput[];
+  strategicObjectiveId: string; // Backend uses strategicObjectiveId not objectiveId
   parentId?: string;
+  frequency: string; // KpiFrequency: DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
+  measurementUnit: string; // KpiMeasurementUnit: NUMBER, PERCENTAGE, CURRENCY, etc.
+  organizationId: string; // Required by backend
+  targetValue: number; // Required by backend
+  description?: string;
+  kpiType?: string;
+  initiativeId?: string;
+  assigneeId?: string;
+  assigneeType?: string;
+  assignerId?: string;
 }
 
 export interface UpdateKpiInput {
@@ -486,6 +564,28 @@ export interface RemoveObjectiveMutationVariables {
   id: string;
 }
 
+// Alias for backward compatibility
+export type DeleteObjectiveMutationVariables = RemoveObjectiveMutationVariables;
+
+export interface ApproveObjectiveMutationVariables {
+  objectiveId: string;
+  comment?: string;
+}
+
+export interface RejectObjectiveMutationVariables {
+  objectiveId: string;
+  comment?: string;
+}
+
+export interface CascadeObjectiveMutationVariables {
+  objectiveId: string;
+}
+
+export interface UpdateObjectiveStatusMutationVariables {
+  objectiveId: string;
+  status: ObjectiveStatus;
+}
+
 export interface CreateKpiMutationVariables {
   input: CreateKpiInput;
 }
@@ -496,6 +596,82 @@ export interface UpdateKpiMutationVariables {
 
 export interface RemoveKpiMutationVariables {
   id: string;
+}
+
+// Alias for backward compatibility
+export type DeleteKpiMutationVariables = RemoveKpiMutationVariables;
+
+// Additional KPI mutation variable types
+export interface CreateKpiUpdateMutationVariables {
+  input: {
+    kpiId: string;
+    achievedValue: number;
+    progressPercentage: number;
+    progressStatus: string;
+    reportingDate: string;
+    strategicPeriodId: string;
+    notes?: string;
+    evidenceUrl?: string;
+  };
+}
+
+export interface UpdateKpiProgressMutationVariables {
+  input: {
+    kpiUpdateId: string;
+    achievedValue?: number;
+    progressPercentage?: number;
+    progressStatus?: string;
+    notes?: string;
+    evidenceUrl?: string;
+  };
+}
+
+export interface ApproveKpiUpdateMutationVariables {
+  kpiUpdateId: string;
+  comment?: string;
+}
+
+export interface AssignKpiToEmployeeMutationVariables {
+  kpiId: string;
+  employeeId: string;
+}
+
+export interface AssignKpiToDepartmentMutationVariables {
+  kpiId: string;
+  departmentId: string;
+}
+
+export interface AssignKpiToDivisionMutationVariables {
+  kpiId: string;
+  divisionId: string;
+}
+
+export interface RemoveKpiAssignmentEmployeeMutationVariables {
+  kpiId: string;
+  employeeId: string;
+}
+
+export interface RemoveKpiAssignmentDepartmentMutationVariables {
+  kpiId: string;
+  departmentId: string;
+}
+
+export interface RemoveKpiAssignmentDivisionMutationVariables {
+  kpiId: string;
+  divisionId: string;
+}
+
+export interface UpdateKpiStatusMutationVariables {
+  kpiId: string;
+  status: KpiStatus;
+}
+
+export interface ToggleKpiActiveMutationVariables {
+  kpiId: string;
+}
+
+export interface CreateSharedKpiMutationVariables {
+  input: CreateKpiInput;
 }
 
 // Submission Types
@@ -515,7 +691,8 @@ export interface Submission {
   };
   objective?: {
     objectiveId: string;
-    name: string;
+    title?: string; // Backend uses 'title' - made optional
+    name?: string; // Deprecated: kept for backward compatibility
   };
   kpi?: {
     kpiId: string;

@@ -216,7 +216,7 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
           status: "APPROVED",
         },
       });
-      toast.success(`Objective "${objective.name}" approved successfully`);
+      toast.success(`Objective "${objective.title || objective.name}" approved successfully`);
       await refetch();
     } catch (error) {
       console.error("Error approving objective:", error);
@@ -247,8 +247,10 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
       if (selectedKPIs.length > 0) {
         const kpiRejectionPromises = selectedKPIs.map((kpiId) =>
           updateKpi({
-            kpiId: kpiId,
-            status: "REJECTED",
+            input: {
+              kpiId: kpiId,
+              status: "REJECTED",
+            }
           })
         );
 
@@ -276,9 +278,9 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
       const rejectedCount = selectedKPIs.length;
       const message =
         rejectedCount > 0
-          ? `Objective "${objective.name}" and ${rejectedCount} KPI${rejectedCount > 1 ? "s" : ""
+          ? `Objective "${objective.title || objective.name}" and ${rejectedCount} KPI${rejectedCount > 1 ? "s" : ""
           } rejected successfully`
-          : `Objective "${objective.name}" rejected successfully`;
+          : `Objective "${objective.title || objective.name}" rejected successfully`;
 
       toast.success(message);
       await refetch();
@@ -292,8 +294,10 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
   const handleApproveKPI = async (kpi: Kpi) => {
     try {
       await updateKpi({
-        kpiId: kpi.kpiId,
-        status: "APPROVED",
+        input: {
+          kpiId: kpi.kpiId,
+          status: "APPROVED",
+        }
       });
       toast.success(`KPI "${kpi.name}" approved successfully`);
     } catch (error) {
@@ -305,8 +309,10 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
   const handleRejectKPI = async (kpi: Kpi) => {
     try {
       await updateKpi({
-        kpiId: kpi.kpiId,
-        status: "REJECTED",
+        input: {
+          kpiId: kpi.kpiId,
+          status: "REJECTED",
+        }
       });
       toast.success(`KPI "${kpi.name}" rejected successfully`);
     } catch (error) {

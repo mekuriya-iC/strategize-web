@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Filter, ChevronDown } from "lucide-react";
+import { Filter, ChevronDown, Shield, Users, Settings, Database } from "lucide-react";
 
 export default function AdminPanelPage() {
   const router = useRouter();
@@ -75,8 +75,8 @@ export default function AdminPanelPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Admin Panel</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Admin Panel</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Manage administrators and view system analytics
           </p>
         </div>
@@ -96,6 +96,75 @@ export default function AdminPanelPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Admin Features Navigation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Button
+          variant="outline"
+          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+          onClick={() => router.push("/dashboard/admin/permissions")}
+          disabled={!guards.isSuperAdmin}
+        >
+          <Shield className="w-6 h-6 text-blue-600" />
+          <div className="text-center">
+            <div className="font-medium">Permissions</div>
+            <div className="text-xs text-gray-500">Manage roles & permissions</div>
+          </div>
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-green-50 dark:hover:bg-green-950/30"
+          onClick={() => router.push("/dashboard/admin")}
+        >
+          <Users className="w-6 h-6 text-green-600" />
+          <div className="text-center">
+            <div className="font-medium">User Management</div>
+            <div className="text-xs text-gray-500">Manage admin users</div>
+          </div>
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+          onClick={() => router.push("/dashboard/admin")}
+        >
+          <Settings className="w-6 h-6 text-purple-600" />
+          <div className="text-center">
+            <div className="font-medium">System Settings</div>
+            <div className="text-xs text-gray-500">Configure system</div>
+          </div>
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+          onClick={() => router.push("/dashboard/admin")}
+        >
+          <Database className="w-6 h-6 text-orange-600" />
+          <div className="text-center">
+            <div className="font-medium">Data Management</div>
+            <div className="text-xs text-gray-500">Backup & cleanup</div>
+          </div>
+        </Button>
+      </div>
+
+      {/* Permission Notice */}
+      {!guards.isSuperAdmin && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                Limited Access
+              </h3>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+                Some admin features require Super Administrator privileges. Contact your system administrator for access.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Analytics Cards */}
       <AdminAnalyticsCards admins={admins} loading={loading} />

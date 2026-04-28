@@ -1,179 +1,367 @@
 import { useMutation } from "@apollo/client";
-import { toast } from "sonner";
 import {
   CREATE_KPI,
   UPDATE_KPI,
-  REMOVE_KPI,
+  DELETE_KPI,
+  CREATE_KPI_UPDATE,
+  UPDATE_KPI_PROGRESS,
+  APPROVE_KPI_UPDATE,
+  ASSIGN_KPI_TO_EMPLOYEE,
+  ASSIGN_KPI_TO_DEPARTMENT,
+  ASSIGN_KPI_TO_DIVISION,
+  REMOVE_KPI_ASSIGNMENT_EMPLOYEE,
+  REMOVE_KPI_ASSIGNMENT_DEPARTMENT,
+  REMOVE_KPI_ASSIGNMENT_DIVISION,
+  UPDATE_KPI_STATUS,
+  TOGGLE_KPI_ACTIVE,
+  CREATE_SHARED_KPI,
 } from "@/lib/graphql/mutations/kpis";
-import { GET_KPIS } from "@/lib/graphql/queries/kpis";
+import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
 import {
-  GET_PENDING_SUBMISSIONS,
-  GET_KPI_SUBMISSIONS,
-} from "@/lib/graphql/queries/submissions";
-import type {
-  CreateKpiInput,
-  UpdateKpiInput,
-  KpiTargetInput,
+  CreateKpiMutationVariables,
+  UpdateKpiMutationVariables,
+  DeleteKpiMutationVariables,
+  CreateKpiUpdateMutationVariables,
+  UpdateKpiProgressMutationVariables,
+  ApproveKpiUpdateMutationVariables,
+  AssignKpiToEmployeeMutationVariables,
+  AssignKpiToDepartmentMutationVariables,
+  AssignKpiToDivisionMutationVariables,
+  RemoveKpiAssignmentEmployeeMutationVariables,
+  RemoveKpiAssignmentDepartmentMutationVariables,
+  RemoveKpiAssignmentDivisionMutationVariables,
+  UpdateKpiStatusMutationVariables,
+  ToggleKpiActiveMutationVariables,
+  CreateSharedKpiMutationVariables,
 } from "@/types/graphql";
-import { kpiLogger } from "@/lib/logger";
 import { invalidateAfterMutation } from "@/stores/cacheStore";
 
 export const useKPIMutations = () => {
-  const [createKpiMutation, { loading: createLoading }] = useMutation(
-    CREATE_KPI,
-    {
-      onCompleted: (data) => {
-        const createdKpi = data.createKpi;
-        toast.success("KPI created successfully!", {
-          description: `"${createdKpi.name}" has been created.`,
-        });
-        // Invalidate related caches
+  const [createKpi, { loading: createLoading, error: createError }] =
+    useMutation(CREATE_KPI, {
+      onCompleted: () => {
         invalidateAfterMutation.kpi();
-      },
-      onError: (error) => {
-        kpiLogger.error("Error creating KPI:", error);
-        toast.error("Failed to create KPI", {
-          description: error.message,
-        });
-      },
-      refetchQueries: [{ query: GET_KPIS }],
-      awaitRefetchQueries: true,
-    }
-  );
-
-  const [updateKpiMutation, { loading: updateLoading }] = useMutation(
-    UPDATE_KPI,
-    {
-      onCompleted: (data) => {
-        const updatedKpi = data.updateKpi;
-        toast.success("KPI updated successfully!", {
-          description: `"${updatedKpi.name}" has been updated.`,
-        });
-        // Invalidate related caches
-        invalidateAfterMutation.kpi();
-      },
-      onError: (error) => {
-        kpiLogger.error("Error updating KPI:", error);
-        toast.error("Failed to update KPI", {
-          description: error.message,
-        });
       },
       refetchQueries: [
-        { query: GET_KPIS },
-        // Refetch submissions for all objective types
-        {
-          query: GET_PENDING_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type: "CORPORATE" },
-        },
-        {
-          query: GET_PENDING_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type: "DIVISION" },
-        },
-        {
-          query: GET_PENDING_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
-        },
-        {
-          query: GET_KPI_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type: "CORPORATE" },
-        },
-        {
-          query: GET_KPI_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type: "DIVISION" },
-        },
-        {
-          query: GET_KPI_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
-        },
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
       ],
-      awaitRefetchQueries: true,
-    }
-  );
+    });
 
-  const [removeKpiMutation, { loading: removeLoading }] = useMutation(
-    REMOVE_KPI,
-    {
-      onCompleted: (data) => {
-        const removedKpi = data.removeKpi;
-        toast.success("KPI removed successfully!", {
-          description: `"${removedKpi.name}" has been removed.`,
-        });
-        // Invalidate related caches - especially submissions that might reference this KPI
+  const [updateKpi, { loading: updateLoading, error: updateError }] =
+    useMutation(UPDATE_KPI, {
+      onCompleted: () => {
         invalidateAfterMutation.kpi();
-        invalidateAfterMutation.submission();
       },
-      onError: (error) => {
-        kpiLogger.error("Error removing KPI:", error);
-        toast.error("Failed to remove KPI", {
-          description: error.message,
-        });
-      },
-      refetchQueries: [{ query: GET_KPIS }],
-      awaitRefetchQueries: true,
-    }
-  );
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
 
-  const createKpi = async (input: CreateKpiInput) => {
+  const [deleteKpi, { loading: deleteLoading, error: deleteError }] =
+    useMutation(DELETE_KPI, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [createKpiUpdate, { loading: createUpdateLoading, error: createUpdateError }] =
+    useMutation(CREATE_KPI_UPDATE, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [updateKpiProgress, { loading: updateProgressLoading, error: updateProgressError }] =
+    useMutation(UPDATE_KPI_PROGRESS, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [approveKpiUpdate, { loading: approveLoading, error: approveError }] =
+    useMutation(APPROVE_KPI_UPDATE, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [assignKpiToEmployee, { loading: assignEmployeeLoading, error: assignEmployeeError }] =
+    useMutation(ASSIGN_KPI_TO_EMPLOYEE, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [assignKpiToDepartment, { loading: assignDepartmentLoading, error: assignDepartmentError }] =
+    useMutation(ASSIGN_KPI_TO_DEPARTMENT, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [assignKpiToDivision, { loading: assignDivisionLoading, error: assignDivisionError }] =
+    useMutation(ASSIGN_KPI_TO_DIVISION, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [removeKpiAssignmentEmployee, { loading: removeEmployeeLoading, error: removeEmployeeError }] =
+    useMutation(REMOVE_KPI_ASSIGNMENT_EMPLOYEE, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [removeKpiAssignmentDepartment, { loading: removeDepartmentLoading, error: removeDepartmentError }] =
+    useMutation(REMOVE_KPI_ASSIGNMENT_DEPARTMENT, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [removeKpiAssignmentDivision, { loading: removeDivisionLoading, error: removeDivisionError }] =
+    useMutation(REMOVE_KPI_ASSIGNMENT_DIVISION, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [updateKpiStatus, { loading: statusLoading, error: statusError }] =
+    useMutation(UPDATE_KPI_STATUS, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [toggleKpiActive, { loading: toggleLoading, error: toggleError }] =
+    useMutation(TOGGLE_KPI_ACTIVE, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [createSharedKpi, { loading: createSharedLoading, error: createSharedError }] =
+    useMutation(CREATE_SHARED_KPI, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const handleCreateKpi = async (variables: CreateKpiMutationVariables) => {
     try {
-      const result = await createKpiMutation({ variables: { input } });
+      const result = await createKpi({ variables });
       return result.data?.createKpi;
     } catch (error) {
-      kpiLogger.error("Error in createKpi:", error);
+      console.error("Error creating KPI:", error);
       throw error;
     }
   };
 
-  const updateKpi = async (input: UpdateKpiInput) => {
+  const handleUpdateKpi = async (variables: UpdateKpiMutationVariables) => {
     try {
-      const result = await updateKpiMutation({ variables: { input } });
+      const result = await updateKpi({ variables });
       return result.data?.updateKpi;
     } catch (error) {
-      kpiLogger.error("Error in updateKpi:", error);
+      console.error("Error updating KPI:", error);
       throw error;
     }
   };
 
-  const removeKpi = async (kpiId: string) => {
+  const handleDeleteKpi = async (variables: DeleteKpiMutationVariables) => {
     try {
-      const result = await removeKpiMutation({ variables: { id: kpiId } });
-      return result.data?.removeKpi;
+      const result = await deleteKpi({ variables });
+      return result.data?.deleteKpi;
     } catch (error) {
-      kpiLogger.error("Error in removeKpi:", error);
+      console.error("Error deleting KPI:", error);
       throw error;
     }
   };
 
-  // Function to update KPI targets for assignment
-  const updateKpiTargets = async (kpiId: string, targets: KpiTargetInput[]) => {
-    kpiLogger.debug("updateKpiTargets called:", { kpiId, targets });
-
+  const handleCreateKpiUpdate = async (variables: CreateKpiUpdateMutationVariables) => {
     try {
-      const result = await updateKpiMutation({
-        variables: {
-          input: {
-            kpiId,
-            targets,
-          },
-        },
-      });
-
-      kpiLogger.debug("updateKpiTargets result:", {
-        success: !!result.data?.updateKpi,
-        updatedKpi: result.data?.updateKpi,
-      });
-
-      return result.data?.updateKpi;
+      const result = await createKpiUpdate({ variables });
+      return result.data?.createKpiUpdate;
     } catch (error) {
-      kpiLogger.error("Error in updateKpiTargets:", error);
+      console.error("Error creating KPI update:", error);
+      throw error;
+    }
+  };
+
+  const handleUpdateKpiProgress = async (variables: UpdateKpiProgressMutationVariables) => {
+    try {
+      const result = await updateKpiProgress({ variables });
+      return result.data?.updateKpiUpdate;
+    } catch (error) {
+      console.error("Error updating KPI progress:", error);
+      throw error;
+    }
+  };
+
+  const handleApproveKpiUpdate = async (variables: ApproveKpiUpdateMutationVariables) => {
+    try {
+      const result = await approveKpiUpdate({ variables });
+      return result.data?.approveKpiUpdate;
+    } catch (error) {
+      console.error("Error approving KPI update:", error);
+      throw error;
+    }
+  };
+
+  const handleAssignKpiToEmployee = async (variables: AssignKpiToEmployeeMutationVariables) => {
+    try {
+      const result = await assignKpiToEmployee({ variables });
+      return result.data?.assignKpiToEmployee;
+    } catch (error) {
+      console.error("Error assigning KPI to employee:", error);
+      throw error;
+    }
+  };
+
+  const handleAssignKpiToDepartment = async (variables: AssignKpiToDepartmentMutationVariables) => {
+    try {
+      const result = await assignKpiToDepartment({ variables });
+      return result.data?.assignKpiToDepartment;
+    } catch (error) {
+      console.error("Error assigning KPI to department:", error);
+      throw error;
+    }
+  };
+
+  const handleAssignKpiToDivision = async (variables: AssignKpiToDivisionMutationVariables) => {
+    try {
+      const result = await assignKpiToDivision({ variables });
+      return result.data?.assignKpiToDivision;
+    } catch (error) {
+      console.error("Error assigning KPI to division:", error);
+      throw error;
+    }
+  };
+
+  const handleRemoveKpiAssignmentEmployee = async (variables: RemoveKpiAssignmentEmployeeMutationVariables) => {
+    try {
+      const result = await removeKpiAssignmentEmployee({ variables });
+      return result.data?.removeKpiAssignmentEmployee;
+    } catch (error) {
+      console.error("Error removing KPI assignment from employee:", error);
+      throw error;
+    }
+  };
+
+  const handleRemoveKpiAssignmentDepartment = async (variables: RemoveKpiAssignmentDepartmentMutationVariables) => {
+    try {
+      const result = await removeKpiAssignmentDepartment({ variables });
+      return result.data?.removeKpiAssignmentDepartment;
+    } catch (error) {
+      console.error("Error removing KPI assignment from department:", error);
+      throw error;
+    }
+  };
+
+  const handleRemoveKpiAssignmentDivision = async (variables: RemoveKpiAssignmentDivisionMutationVariables) => {
+    try {
+      const result = await removeKpiAssignmentDivision({ variables });
+      return result.data?.removeKpiAssignmentDivision;
+    } catch (error) {
+      console.error("Error removing KPI assignment from division:", error);
+      throw error;
+    }
+  };
+
+  const handleUpdateKpiStatus = async (variables: UpdateKpiStatusMutationVariables) => {
+    try {
+      const result = await updateKpiStatus({ variables });
+      return result.data?.updateKpiStatus;
+    } catch (error) {
+      console.error("Error updating KPI status:", error);
+      throw error;
+    }
+  };
+
+  const handleToggleKpiActive = async (variables: ToggleKpiActiveMutationVariables) => {
+    try {
+      const result = await toggleKpiActive({ variables });
+      return result.data?.toggleKpiActive;
+    } catch (error) {
+      console.error("Error toggling KPI active status:", error);
+      throw error;
+    }
+  };
+
+  const handleCreateSharedKpi = async (variables: CreateSharedKpiMutationVariables) => {
+    try {
+      const result = await createSharedKpi({ variables });
+      return result.data?.createSharedKpi;
+    } catch (error) {
+      console.error("Error creating shared KPI:", error);
       throw error;
     }
   };
 
   return {
-    createKpi,
-    updateKpi,
-    removeKpi,
-    updateKpiTargets,
-    loading: createLoading || updateLoading || removeLoading,
+    createKpi: handleCreateKpi,
+    updateKpi: handleUpdateKpi,
+    deleteKpi: handleDeleteKpi,
+    createKpiUpdate: handleCreateKpiUpdate,
+    updateKpiProgress: handleUpdateKpiProgress,
+    approveKpiUpdate: handleApproveKpiUpdate,
+    assignKpiToEmployee: handleAssignKpiToEmployee,
+    assignKpiToDepartment: handleAssignKpiToDepartment,
+    assignKpiToDivision: handleAssignKpiToDivision,
+    removeKpiAssignmentEmployee: handleRemoveKpiAssignmentEmployee,
+    removeKpiAssignmentDepartment: handleRemoveKpiAssignmentDepartment,
+    removeKpiAssignmentDivision: handleRemoveKpiAssignmentDivision,
+    updateKpiStatus: handleUpdateKpiStatus,
+    toggleKpiActive: handleToggleKpiActive,
+    createSharedKpi: handleCreateSharedKpi,
+    loading: createLoading || updateLoading || deleteLoading || createUpdateLoading || 
+             updateProgressLoading || approveLoading || assignEmployeeLoading || 
+             assignDepartmentLoading || assignDivisionLoading || removeEmployeeLoading || 
+             removeDepartmentLoading || removeDivisionLoading || statusLoading || 
+             toggleLoading || createSharedLoading,
+    error: createError || updateError || deleteError || createUpdateError || 
+           updateProgressError || approveError || assignEmployeeError || 
+           assignDepartmentError || assignDivisionError || removeEmployeeError || 
+           removeDepartmentError || removeDivisionError || statusError || 
+           toggleError || createSharedError,
   };
 };

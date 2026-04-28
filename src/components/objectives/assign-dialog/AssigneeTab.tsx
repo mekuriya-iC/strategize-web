@@ -46,7 +46,7 @@ export function AssigneeTab({
         return (
           <>
             <p className="text-sm text-gray-500">
-              Manager: {division.manager?.fullName || "No Manager"}
+              Manager: {division.head?.fullName || "No Manager"}
             </p>
             <p className="text-sm text-gray-500">
               Departments: {division.departments?.length || 0}
@@ -59,7 +59,7 @@ export function AssigneeTab({
         return (
           <>
             <p className="text-sm text-gray-500">
-              Manager: {department.manager?.fullName || "No Manager"}
+              Manager: {department.head?.fullName || "No Manager"}
             </p>
             <p className="text-sm text-gray-500">
               Division: {department.division?.name || "No Division"}

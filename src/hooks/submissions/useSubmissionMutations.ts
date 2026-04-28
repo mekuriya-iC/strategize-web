@@ -3,7 +3,7 @@ import {
   CREATE_SUBMISSION,
   CREATE_SUBMISSIONS,
   UPDATE_SUBMISSION,
-  REMOVE_SUBMISSION,
+  DELETE_SUBMISSION,
 } from "@/lib/graphql/mutations/submissions";
 import { GET_SUBMISSIONS } from "@/lib/graphql/queries/submissions";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
@@ -82,7 +82,7 @@ export const useSubmissionMutations = () => {
     });
 
   const [removeSubmission, { loading: removeLoading, error: removeError }] =
-    useMutation(REMOVE_SUBMISSION, {
+    useMutation(DELETE_SUBMISSION, {
       onCompleted: () => {
         invalidateAfterMutation.submission();
       },

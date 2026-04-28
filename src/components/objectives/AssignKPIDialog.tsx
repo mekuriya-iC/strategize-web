@@ -46,7 +46,7 @@ export default function AssignKPIDialog({
                         Assign KPI
                     </DialogTitle>
                     <DialogDescription>
-                        Assign KPI &quot;{kpi.name}&quot; from &quot;{objective.name}&quot; to a{" "}
+                        Assign KPI &quot;{kpi.name}&quot; from &quot;{objective.title || objective.name}&quot; to a{" "}
                         {objective.type === "CORPORATE"
                             ? "division or department"
                             : objective.type === "DIVISION"

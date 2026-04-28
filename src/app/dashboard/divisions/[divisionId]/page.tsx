@@ -111,7 +111,7 @@ const DivisionDetailsPage = () => {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        managedBy: dept.manager?.fullName || "Unassigned",
+        managedBy: dept.head?.fullName || "Unassigned",
         division: divisionName,
         members: dept.employees?.length || 0,
       })) || [];
@@ -138,7 +138,7 @@ const DivisionDetailsPage = () => {
         input: {
           name: departmentName.trim(),
           divisionId: divisionId,
-          managerId: departmentManager || undefined,
+          headUserId: departmentManager || undefined,
         },
         employeeIds: departmentMembers,
       });

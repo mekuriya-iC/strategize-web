@@ -72,14 +72,14 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
     const approvedKPIs = objectiveKPIs.filter(k => k.status === "APPROVED").length;
 
     const getFirstColumnContent = () => {
-        if (objective.parent) return objective.parent.name || "Unnamed Parent Objective";
-        return objective.name || "Please add name";
+        if (objective.parent) return objective.parent.title || objective.parent.name || "Unnamed Parent Objective";
+        return objective.title || objective.name || "Please add title";
     };
 
     const getSecondColumnContent = () => {
         if (objective.type === "CORPORATE" && !objective.parent) return "N/A";
-        if (objective.type === "PERSONNEL") return unitNames[objective.assigneeId || ""] || objective.name || "Unnamed Personal Objective";
-        return objective.name || "Please add name";
+        if (objective.type === "PERSONNEL") return unitNames[objective.assigneeId || ""] || objective.title || objective.name || "Unnamed Personal Objective";
+        return objective.title || objective.name || "Please add title";
     };
 
     const getFromText = () => {
@@ -137,8 +137,8 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
                             <span className="font-bold text-blue-600">
                                 {unitNames[objective.assigneeId || ""] || "Unassigned"}
                             </span>
-                            <span className="text-xs text-gray-500 truncate" title={objective.name || ""}>
-                                {objective.name || "Unnamed Objective"}
+                            <span className="text-xs text-gray-500 truncate" title={objective.title || objective.name || ""}>
+                                {objective.title || objective.name || "Unnamed Objective"}
                             </span>
                         </div>
                     ) : (

@@ -43,7 +43,8 @@ type KpiSubmission = {
   submittedBy?: { fullName: string };
   objective?: {
     objectiveId: string;
-    name?: string;
+    title?: string; // Backend uses 'title'
+    name?: string; // Backward compatibility
     type?: string;
   } | null;
   kpi?: {
@@ -66,10 +67,11 @@ export type GroupedSubmission = {
   };
   objective?: {
     objectiveId: string;
-    name?: string;
+    title?: string; // Backend uses 'title'
+    name?: string; // Backward compatibility
     type?: string;
     status?: string;
-    parent?: { objectiveId: string; name?: string } | null;
+    parent?: { objectiveId: string; title?: string; name?: string } | null;
     kpis?: Array<{
       kpiId: string;
       name: string;
@@ -87,7 +89,8 @@ export type GroupedSubmission = {
     baseline?: number | string;
     objective?: {
       objectiveId: string;
-      name?: string;
+      title?: string; // Backend uses 'title'
+      name?: string; // Backward compatibility
       type?: string;
     } | null;
   } | null;
@@ -731,7 +734,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                             objective: obj.objective
                               ? {
                                 objectiveId: obj.objective.objectiveId,
-                                name: obj.objective.name || "",
+                                name: obj.objective.title || obj.objective.name || "",
                                 type: obj.objective.type || "",
                                 status: obj.objective.status || obj.status,
                               }
@@ -782,7 +785,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                       ? {
                                         objectiveId:
                                           obj.objective.objectiveId,
-                                        name: obj.objective.name || "",
+                                        name: obj.objective.title || obj.objective.name || "",
                                         type: obj.objective.type || "",
                                         status: "APPROVED",
                                       }
@@ -814,7 +817,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                       ? {
                                         objectiveId:
                                           obj.objective.objectiveId,
-                                        name: obj.objective.name || "",
+                                        name: obj.objective.title || obj.objective.name || "",
                                         type: obj.objective.type || "",
                                         status: "APPROVED",
                                       }
@@ -895,7 +898,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                 objectiveId:
                                                   obj.objective.objectiveId,
                                                 name:
-                                                  obj.objective.name || "",
+                                                  obj.objective.title || obj.objective.name || "",
                                                 type:
                                                   obj.objective.type || "",
                                                 status:
@@ -945,7 +948,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                   objective: obj.objective
                                     ? {
                                       objectiveId: obj.objective.objectiveId,
-                                      name: obj.objective.name || "",
+                                      name: obj.objective.title || obj.objective.name || "",
                                       type: obj.objective.type || "",
                                       status:
                                         obj.objective.status || obj.status,
@@ -977,7 +980,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                 objective: obj.objective
                                   ? {
                                     objectiveId: obj.objective.objectiveId,
-                                    name: obj.objective.name || "",
+                                    name: obj.objective.title || obj.objective.name || "",
                                     type: obj.objective.type || "",
                                     status:
                                       obj.objective.status || obj.status,

@@ -62,11 +62,11 @@ export function buildUserScope(
 
   // Get IDs of managed units
   const managedDivisionIds = managedDivisions
-    .filter(d => d.manager?.employeeId === user.employeeId)
+    .filter(d => d.head?.employeeId === user.employeeId)
     .map(d => d.divisionId);
 
   const managedDepartmentIds = managedDepartments
-    .filter(d => d.manager?.employeeId === user.employeeId)
+    .filter(d => d.head?.employeeId === user.employeeId)
     .map(d => d.departmentId);
 
   // Build accessible IDs based on role

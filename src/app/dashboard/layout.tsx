@@ -10,7 +10,7 @@ import ErrorBoundary, {
 } from "@/components/ErrorBoundary";
 import { useUIStore, useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useAutoSelectStrategicPeriod } from "@/hooks/objectives/useAutoSelectStrategicPeriod";
 
 // Component to sync Apollo user data with Zustand store

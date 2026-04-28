@@ -7,9 +7,10 @@ import { useAssignmentContext } from "@/context/AssignmentContext";
 import { useObjectiveAssignment } from "@/hooks/objectives/useObjectiveAssignment";
 import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
 import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
+import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import { useStrategicPeriodStore } from "@/stores";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import { detectKPIType, getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import { appLogger } from "@/lib/logger";
@@ -42,8 +43,13 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
 
     const { assignObjective } = useObjectiveAssignment();
     const { updateObjective } = useObjectiveMutations();
-    const { updateKpiTargets, createKpi } = useKPIMutations();
+    const { updateKpi, createKpi } = useKPIMutations();
     const { selectedPeriod, annualTimeline } = useStrategicPeriodStore();
+    
+    // Fetch strategic plans to get organizationId
+    const { strategicPlans } = useStrategicPlansQuery();
+    const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
+    const organizationId = activeStrategicPlan?.organization?.organizationId || "";
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -116,7 +122,7 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                             input: {
                                 objectiveId: created.objectiveId,
                                 type: correctType,
-                                name: placeholderName,
+                                title: placeholderName,
                             }
                         });
                     }
@@ -132,13 +138,19 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                         // Strict check: Ensure we only adding the KPI if it's in the current assignment's list
                         if (sourceKpi && !existingKpiNames.has(sourceKpi.name)) {
                             await createKpi({
-                                name: sourceKpi.name,
-                                baseline: sourceKpi.baseline || 0,
-                                weight: sourceKpi.weight || 0,
-                                unitType: sourceKpi.unitType || "NUMBER",
-                                objectiveId: targetObjectiveId,
-                                parentId: sourceKpi.kpiId,
-                                targets: []
+                                input: {
+                                    name: sourceKpi.name,
+                                    baseline: sourceKpi.baseline || 0,
+                                    weight: sourceKpi.weight || 0,
+                                    unitType: sourceKpi.unitType || "NUMBER",
+                                    strategicObjectiveId: targetObjectiveId, // Backend uses strategicObjectiveId
+                                    parentId: sourceKpi.kpiId,
+                                    frequency: "QUARTERLY", // Default to QUARTERLY
+                                    measurementUnit: "NUMBER", // Default to NUMBER
+                                    organizationId: organizationId, // Required by backend
+                                    targetValue: 0, // Will be updated with targets
+                                    targets: []
+                                }
                             });
                         }
                     }
@@ -173,10 +185,15 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                         );
 
                         if (childKpi) {
-                            await updateKpiTargets(childKpi.kpiId, [{
-                                timeline,
-                                target: targetValue
-                            }]);
+                            await updateKpi({
+                                input: {
+                                    kpiId: childKpi.kpiId,
+                                    targets: [{
+                                        timeline,
+                                        target: targetValue
+                                    }]
+                                }
+                            });
                         } else {
                             console.warn(`[useAssignmentActions] Could not find child KPI for source KPI ${sourceKpiId}`);
                         }

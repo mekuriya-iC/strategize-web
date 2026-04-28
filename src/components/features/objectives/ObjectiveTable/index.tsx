@@ -223,7 +223,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
                             <div className="bg-white dark:bg-[#18181b] shadow-xl rounded-lg border-2 border-blue-400 p-4 opacity-95 flex items-center gap-3">
                                 <GripVertical className="h-5 w-5 text-blue-500" />
                                 <div>
-                                    <p className="font-bold text-gray-900 dark:text-gray-100">{activeObjective.name || "Unnamed Objective"}</p>
+                                    <p className="font-bold text-gray-900 dark:text-gray-100">{activeObjective.title || activeObjective.name || "Unnamed Objective"}</p>
                                     <p className="text-xs text-gray-500 uppercase font-medium">{activeObjective.type} OBJECTIVE</p>
                                 </div>
                             </div>

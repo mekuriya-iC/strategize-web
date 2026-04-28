@@ -142,7 +142,7 @@ export const useDepartmentMutations = () => {
   ) => {
     try {
       const result = await createDepartmentMutation({
-        variables: { input: variables.input },
+        variables: { createDepartmentInput: variables.input },
       });
       const createdDepartment = result.data?.createDepartment;
 
@@ -191,7 +191,7 @@ export const useDepartmentMutations = () => {
   ) => {
     try {
       const result = await updateDepartmentMutation({
-        variables: { input: variables.input },
+        variables: { updateDepartmentInput: variables.input },
       });
       const updatedDepartment = result.data?.updateDepartment;
 
@@ -248,7 +248,9 @@ export const useDepartmentMutations = () => {
 
   const removeDepartment = async (variables: RemoveDepartmentMutationVariables) => {
     try {
-      const result = await removeDepartmentMutation({ variables });
+      const result = await removeDepartmentMutation({ 
+        variables: { departmentId: variables.id || variables.departmentId } 
+      });
       return result.data?.removeDepartment;
     } catch (error) {
       deptLogger.error("Error removing department:", error);

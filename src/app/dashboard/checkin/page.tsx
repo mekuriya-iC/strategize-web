@@ -2,103 +2,47 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@apollo/client";
-import { GET_MY_CHECKINS } from "@/lib/graphql/queries/checkins";
+import { GET_CHECKINOUT_SESSIONS, GET_CHECKINOUT_TASKS } from "@/lib/graphql/queries/checkins";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { CheckInTable } from "@/components/checkin/CheckInTable";
 import { AddTaskDialog } from "@/components/checkin/AddTaskDialog";
 import { FilterDialog, FilterState } from "@/components/checkin/FilterDialog";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, SearchIcon, FilterIcon, EyeIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-// Mock data for preview
-const MOCK_DATA = {
-  myCheckins: [
-    {
-      id: "mock-checkin-1",
-      createdAt: new Date().toISOString(),
-      endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      tasks: [
-        {
-          id: "mock-task-1",
-          taskType: "KPI_LINKED",
-          task: "Review a Gafat RFP ON Stress Management Training",
-          description: "Comprehensive review of the RFP requirements and deliverables",
-          relatedTo: "John Doe",
-          startTime: new Date().toISOString(),
-          endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          checkoutStatus: "NOT_DONE",
-          attachment: "proposal.pdf",
-          remark: "Priority task for this week",
-          isKpiMet: true,
-          isInitiativeMet: true,
-          isSelfDevComplete: true,
-          createdAt: new Date().toISOString(),
-          isMidWeekTask: false,
-        },
-        {
-          id: "mock-task-2",
-          taskType: "INITIATIVE_LINKED",
-          task: "Preparing Technical Proposal FOR Gafat",
-          description: "Draft technical approach and methodology",
-          relatedTo: "Jane Smith",
-          startTime: new Date().toISOString(),
-          endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          checkoutStatus: "POSTPONED",
-          attachment: null,
-          remark: "Waiting for client feedback",
-          isKpiMet: false,
-          isInitiativeMet: true,
-          isSelfDevComplete: false,
-          createdAt: new Date().toISOString(),
-          isMidWeekTask: false,
-        },
-        {
-          id: "mock-task-3",
-          taskType: "UNLINKED",
-          task: "Finalize performance report logbook",
-          description: "Complete Q4 performance documentation",
-          relatedTo: "Team Lead",
-          startTime: new Date().toISOString(),
-          endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          checkoutStatus: "CANCELLED",
-          attachment: null,
-          remark: "Moved to next quarter",
-          isKpiMet: true,
-          isInitiativeMet: false,
-          isSelfDevComplete: true,
-          createdAt: new Date().toISOString(),
-          isMidWeekTask: false,
-        },
-        {
-          id: "mock-task-4",
-          taskType: "KPI_LINKED",
-          task: "Refine LEAD Proposal LEAD (CORPORATE)",
-          description: "Update proposal based on stakeholder feedback",
-          relatedTo: "Sarah Johnson",
-          startTime: new Date().toISOString(),
-          endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          checkoutStatus: "NOT_DONE",
-          attachment: "lead_proposal_v2.pdf",
-          remark: "Final review pending",
-          isKpiMet: true,
-          isInitiativeMet: true,
-          isSelfDevComplete: true,
-          createdAt: new Date().toISOString(),
-          isMidWeekTask: false,
-        },
-      ],
-    },
-  ],
-};
+// Helper function to map backend task to frontend format
+const mapTaskToFrontend = (task: any) => ({
+  id: task.checkinoutTaskId,
+  taskType: task.taskLinkType,
+  task: task.taskTitle,
+  description: task.plannedDescription || "",
+  relatedTo: task.relatedTo?.fullName || "",
+  startTime: task.taskStartDate,
+  endTime: task.taskEndDate,
+  checkoutStatus: task.taskStatus,
+  attachment: task.evidenceUrl || null,
+  remark: task.challenges || "",
+  isKpiMet: task.taskLinkType === "KPI_FULFILLED",
+  isInitiativeMet: task.taskLinkType === "INITIATIVE_FULFILLED",
+  isSelfDevComplete: task.taskLinkType === "SELF_DEVELOPMENT",
+  createdAt: task.createdAt,
+  isMidWeekTask: false, // TODO: Calculate based on creation date
+  achievedDescription: task.achievedDescription || "",
+  nextSteps: task.nextSteps || "",
+});
 
 export default function CheckInPage() {
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [useMockData, setUseMockData] = useState(false);
-  const [mockTasks, setMockTasks] = useState(MOCK_DATA.myCheckins[0].tasks);
   const [editingTask, setEditingTask] = useState<any>(null);
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setIsAddTaskOpen(true);
+  };
   const [filters, setFilters] = useState<FilterState>({
     objective: "",
     startDate: undefined,
@@ -106,30 +50,69 @@ export default function CheckInPage() {
     attachment: "all",
     checkoutStatus: [],
   });
-  const { data, loading, refetch } = useQuery(GET_MY_CHECKINS);
+
+  // Get current user
+  const { data: userData } = useQuery(GET_ME);
+  const currentUser = userData?.me;
+
+  // Get check-in sessions
+  const { data, loading, refetch } = useQuery(GET_CHECKINOUT_SESSIONS, {
+    variables: {
+      employeeUserId: currentUser?.employeeId,
+      limit: 10,
+      page: 1,
+    },
+    skip: !currentUser?.employeeId,
+  });
 
   // Get current week's check-in data
   const currentWeekData = useMemo(() => {
-    if (useMockData) {
-      // Return mock data with current tasks state
-      return {
-        ...MOCK_DATA.myCheckins[0],
-        tasks: mockTasks,
-      };
+    if (!data?.checkinoutSessions?.items || data.checkinoutSessions.items.length === 0) {
+      return null;
     }
     
-    if (!data?.myCheckins || data.myCheckins.length === 0) return null;
+    // Get the most recent session
+    const session = data.checkinoutSessions.items[0];
     
-    // For now, get the most recent check-in week
-    // In production, filter by current week
-    return data.myCheckins[0];
-  }, [data, useMockData, mockTasks]);
+    return {
+      id: session.checkinoutSessionId,
+      createdAt: session.weekStartDate,
+      endDate: session.weekEndDate,
+      status: session.overallStatus,
+      tasks: [], // Tasks will be loaded separately
+    };
+  }, [data]);
+
+  // Get tasks for the current session
+  const { data: tasksData, loading: tasksLoading, refetch: refetchTasks } = useQuery(GET_CHECKINOUT_TASKS, {
+    variables: {
+      sessionId: currentWeekData?.id,
+      limit: 100,
+      page: 1,
+    },
+    skip: !currentWeekData?.id,
+  });
+
+  // Map tasks to frontend format
+  const tasks = useMemo(() => {
+    if (!tasksData?.checkinoutTasks?.items) return [];
+    return tasksData.checkinoutTasks.items.map(mapTaskToFrontend);
+  }, [tasksData]);
+
+  // Update currentWeekData with tasks
+  const currentWeekDataWithTasks = useMemo(() => {
+    if (!currentWeekData) return null;
+    return {
+      ...currentWeekData,
+      tasks,
+    };
+  }, [currentWeekData, tasks]);
 
   // Calculate if we can add mid-week tasks
   const canAddMidWeekTask = useMemo(() => {
-    if (!currentWeekData) return false;
+    if (!currentWeekDataWithTasks) return false;
     
-    const createdDate = new Date(currentWeekData.createdAt);
+    const createdDate = new Date(currentWeekDataWithTasks.createdAt);
     const today = new Date();
     const createdDay = createdDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const currentDay = today.getDay();
@@ -139,27 +122,27 @@ export default function CheckInPage() {
     const isNotSaturday = currentDay !== 6;
     
     // Count mid-week tasks
-    const midWeekTaskCount = currentWeekData.tasks?.filter((task: any) => task.isMidWeekTask).length || 0;
+    const midWeekTaskCount = currentWeekDataWithTasks.tasks?.filter((task: any) => task.isMidWeekTask).length || 0;
     const hasRoomForMore = midWeekTaskCount < 3;
     
     return isNotCreationDay && isNotSaturday && hasRoomForMore;
-  }, [currentWeekData]);
+  }, [currentWeekDataWithTasks]);
 
   // Show mid-week button (visible Tuesday-Friday)
   const showMidWeekButton = useMemo(() => {
-    if (!currentWeekData) return false;
+    if (!currentWeekDataWithTasks) return false;
     
-    const createdDate = new Date(currentWeekData.createdAt);
+    const createdDate = new Date(currentWeekDataWithTasks.createdAt);
     const today = new Date();
     const createdDay = createdDate.getDay();
     const currentDay = today.getDay();
     
     return currentDay !== createdDay && currentDay !== 6;
-  }, [currentWeekData]);
+  }, [currentWeekDataWithTasks]);
 
   // Calculate statistics
   const statistics = useMemo(() => {
-    if (!currentWeekData?.tasks) {
+    if (!currentWeekDataWithTasks?.tasks) {
       return {
         totalTasks: 0,
         kpiMet: 0,
@@ -169,9 +152,11 @@ export default function CheckInPage() {
       };
     }
 
-    const tasks = currentWeekData.tasks;
+    const tasks = currentWeekDataWithTasks.tasks;
     const totalTasks = tasks.length;
-    const kpiMet = tasks.filter((task: any) => task.isKpiMet).length;
+    const kpiMet = tasks.filter((task: any) => 
+      task.taskLinkType === "KPI_FULFILLED" || task.taskStatus === "DONE"
+    ).length;
     const kpiUnmet = totalTasks - kpiMet;
 
     return {
@@ -181,10 +166,10 @@ export default function CheckInPage() {
       kpiMetPercentage: totalTasks > 0 ? Math.round((kpiMet / totalTasks) * 100) : 0,
       kpiUnmetPercentage: totalTasks > 0 ? Math.round((kpiUnmet / totalTasks) * 100) : 0,
     };
-  }, [currentWeekData]);
+  }, [currentWeekDataWithTasks]);
 
-  const hasCheckins = currentWeekData && currentWeekData.tasks?.length > 0;
-  const midWeekTaskCount = currentWeekData?.tasks?.filter((task: any) => task.isMidWeekTask).length || 0;
+  const hasCheckins = currentWeekDataWithTasks && currentWeekDataWithTasks.tasks?.length > 0;
+  const midWeekTaskCount = currentWeekDataWithTasks?.tasks?.filter((task: any) => task.isMidWeekTask).length || 0;
 
   // Count active filters
   const activeFiltersCount = [
@@ -197,49 +182,6 @@ export default function CheckInPage() {
 
   const handleApplyFilters = (newFilters: FilterState) => {
     setFilters(newFilters);
-    // TODO: Apply filters to the task list
-  };
-
-  // Handle mock data operations
-  const handleDeleteTask = (taskId: string) => {
-    if (useMockData) {
-      setMockTasks((prev) => prev.filter((task) => task.id !== taskId));
-      return true;
-    }
-    return false;
-  };
-
-  const handleEditTask = (task: any) => {
-    if (useMockData) {
-      setEditingTask(task);
-      setIsAddTaskOpen(true);
-      return true;
-    }
-    return false;
-  };
-
-  const handleUpdateTask = (updatedTask: any) => {
-    if (useMockData) {
-      setMockTasks((prev) =>
-        prev.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-      );
-      setEditingTask(null);
-      return true;
-    }
-    return false;
-  };
-
-  const handleAddTask = (newTask: any) => {
-    if (useMockData) {
-      const task = {
-        ...newTask,
-        id: `mock-task-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-      setMockTasks((prev) => [...prev, task]);
-      return true;
-    }
-    return false;
   };
 
   return (
@@ -251,27 +193,16 @@ export default function CheckInPage() {
             Check In/Out - Current Week(Active)
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {currentWeekData && (
+            {currentWeekDataWithTasks && (
               <>
-                Week: {new Date(currentWeekData.createdAt).toLocaleDateString()} - {new Date(currentWeekData.endDate).toLocaleDateString()}
+                Week: {new Date(currentWeekDataWithTasks.createdAt).toLocaleDateString()} - {new Date(currentWeekDataWithTasks.endDate).toLocaleDateString()}
               </>
             )}
           </p>
         </div>
-        
-        {/* Mock Data Toggle */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setUseMockData(!useMockData)}
-          className={`gap-2 ${useMockData ? 'bg-[#3838EC] text-white hover:bg-[#2d2dbd]' : ''}`}
-        >
-          <EyeIcon className="w-4 h-4" />
-          {useMockData ? "Viewing Mock Data" : "Preview Design"}
-        </Button>
       </div>
 
-      {loading ? (
+      {loading || tasksLoading ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-gray-500">Loading...</div>
         </div>
@@ -416,12 +347,13 @@ export default function CheckInPage() {
 
           {/* Tasks Table */}
           <CheckInTable
-            tasks={currentWeekData.tasks || []}
-            createdDate={new Date(currentWeekData.createdAt)}
+            tasks={currentWeekDataWithTasks.tasks || []}
+            createdDate={new Date(currentWeekDataWithTasks.createdAt)}
             searchQuery={searchQuery}
-            onRefetch={refetch}
-            useMockData={useMockData}
-            onDeleteTask={handleDeleteTask}
+            onRefetch={() => {
+              refetch();
+              refetchTasks();
+            }}
             onEditTask={handleEditTask}
             filters={filters}
           />
@@ -451,12 +383,11 @@ export default function CheckInPage() {
         }}
         onSuccess={() => {
           refetch();
+          refetchTasks();
           setIsAddTaskOpen(false);
           setEditingTask(null);
         }}
-        useMockData={useMockData}
-        onMockAdd={handleAddTask}
-        onMockUpdate={handleUpdateTask}
+        sessionId={currentWeekDataWithTasks?.id}
         editingTask={editingTask}
       />
 

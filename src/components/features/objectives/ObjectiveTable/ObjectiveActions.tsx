@@ -165,7 +165,7 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
                 open={showDeleteDialog}
                 onOpenChange={setShowDeleteDialog}
                 objectiveId={objective.objectiveId}
-                objectiveName={objective.name}
+                objectiveName={objective.title || objective.name || "Unnamed Objective"}
                 onDeleteSuccess={() => onDelete?.(objective)}
             />
 
@@ -181,7 +181,7 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
                 open={showSubmitDialog}
                 onOpenChange={setShowSubmitDialog}
                 objectiveId={objective.objectiveId}
-                objectiveName={objective.name}
+                objectiveName={objective.title || objective.name || "Unnamed Objective"}
                 objectiveType={objective.type}
                 associatedKPIs={objectiveKPIs}
                 onSubmitSuccess={onEditSuccess}

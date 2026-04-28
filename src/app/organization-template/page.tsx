@@ -4,7 +4,7 @@ import OrganizationTemplateGrid from "../../components/organization-template/Org
 import StartFromScratchButton from "../../components/organization-template/StartFromScratchButton";
 import { useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useEffect } from "react";
 
 export default function OrganizationTemplatePage() {

@@ -339,14 +339,14 @@ export default function ObjectiveDetailPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-[#3F3F46] mb-2">
-            {objective.name}
+            {objective.title || objective.name}
           </h1>
           <div className="flex flex-wrap gap-2">
             <Badge className={`${typeColors[objective.type]} border-0`}>
               {objective.type}
             </Badge>
             <Badge className={`${statusColors[objective.status]} border-0`}>
-              {objective.status.replace("_", " ")}
+              {objective.status ? objective.status.replace("_", " ") : "Unknown"}
             </Badge>
             {hasBeenAssigned() && (
               <Badge
@@ -366,7 +366,7 @@ export default function ObjectiveDetailPage() {
             ((objective.kpis?.length ?? 0) > 0 ? (
               <ObjectiveWithKPIsSubmitDialog
                 objectiveId={objective.objectiveId}
-                objectiveName={objective.name}
+                objectiveName={objective.title || objective.name || "Unnamed Objective"}
                 objectiveType={objective.type}
                 associatedKPIs={objectiveKPIs}
                 onSubmitSuccess={() => {
@@ -533,7 +533,7 @@ export default function ObjectiveDetailPage() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Status</p>
-            <p className="font-medium">{objective.status.replace("_", " ")}</p>
+            <p className="font-medium">{objective.status ? objective.status.replace("_", " ") : "Unknown"}</p>
           </div>
           {objective.strategicPeriod && (
             <>

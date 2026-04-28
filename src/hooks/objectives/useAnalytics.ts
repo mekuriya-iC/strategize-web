@@ -314,7 +314,7 @@ export const useAnalytics = (
 
     const departmentsWithManagersCount = canAccessGlobalData
       ? filteredDepartments.filter(
-        (department: any) => department.manager && department.manager !== null
+        (department: any) => department.head && department.head !== null
       ).length
       : 0;
 

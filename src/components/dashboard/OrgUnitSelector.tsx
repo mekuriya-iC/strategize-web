@@ -46,13 +46,13 @@ export default function OrgUnitSelector() {
     // Managers see both divisions and departments they manage
     const divisions =
       divisionsData?.divisions.items.filter(
-        (d: Division) => d.manager?.employeeId === user?.employeeId
+        (d: Division) => d.head?.employeeId === user?.employeeId
       ) || [];
 
     // Only include departments for Managers, not Directors
     const departments = user?.role === "MANAGER"
       ? departmentsData?.departments.items.filter(
-        (d: Department) => d.manager?.employeeId === user?.employeeId
+        (d: Department) => d.head?.employeeId === user?.employeeId
         ) || []
       : [];
 

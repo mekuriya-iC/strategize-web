@@ -15,7 +15,7 @@ import {
 import { apolloLogger } from "@/lib/logger";
 
 const httpLink = createHttpLink({
-  uri: "/api/graphql", // Use proxy to avoid CORS issues
+  uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/graphql",
 });
 
 // Auth link - adds token to every request

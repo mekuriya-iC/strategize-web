@@ -28,9 +28,7 @@ interface CheckInTableProps {
   createdDate: Date;
   searchQuery: string;
   onRefetch: () => void;
-  useMockData?: boolean;
-  onDeleteTask?: (taskId: string) => boolean;
-  onEditTask?: (task: Task) => boolean;
+  onEditTask?: (task: Task) => void;
   filters?: {
     objective: string;
     startDate: Date | undefined;
@@ -45,8 +43,6 @@ export function CheckInTable({
   createdDate,
   searchQuery,
   onRefetch,
-  useMockData = false,
-  onDeleteTask,
   onEditTask,
   filters,
 }: CheckInTableProps) {
@@ -172,8 +168,6 @@ export function CheckInTable({
                   task={task}
                   isEditable={isTaskEditable(task)}
                   onRefetch={onRefetch}
-                  useMockData={useMockData}
-                  onDeleteTask={onDeleteTask}
                   onEditTask={onEditTask}
                 />
               ))}
@@ -190,8 +184,6 @@ export function CheckInTable({
             task={task}
             isEditable={isTaskEditable(task)}
             onRefetch={onRefetch}
-            useMockData={useMockData}
-            onDeleteTask={onDeleteTask}
             onEditTask={onEditTask}
           />
         ))}

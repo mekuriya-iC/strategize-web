@@ -84,9 +84,9 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
 
   // Set manager from department query data (more reliable than matching by name)
   useEffect(() => {
-    if (departmentData?.department?.manager) {
-      setDepartmentManager(departmentData.department.manager.employeeId);
-    } else if (departmentData?.department && !departmentData.department.manager) {
+    if (departmentData?.department?.head) {
+      setDepartmentManager(departmentData.department.head.employeeId);
+    } else if (departmentData?.department && !departmentData.department.head) {
       // Department loaded but has no manager
       setDepartmentManager(undefined);
     }
@@ -129,7 +129,7 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
           name: departmentName.trim(),
           // Use null to explicitly remove division association, undefined if not changing
           divisionId: selectedDivision === undefined ? null : selectedDivision,
-          managerId: departmentManager || undefined,
+          headUserId: departmentManager || undefined,
         },
         employeeIds: departmentMembers, // New member IDs
         currentEmployeeIds: currentMemberIds, // Current member IDs
@@ -197,19 +197,19 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
                       departmentLoading
                         ? "Loading..."
                         : managers.length === 0
-                          ? departmentData?.department?.manager?.fullName || "No managers available"
+                          ? departmentData?.department?.head?.fullName || "No managers available"
                           : "Select Manager"
                     } />
                   </SelectTrigger>
                   <SelectContent>
                     {/* Show current manager from department data if not in managers list */}
-                    {departmentData?.department?.manager &&
-                      !managers.find(m => m.employeeId === departmentData.department?.manager?.employeeId) && (
+                    {departmentData?.department?.head &&
+                      !managers.find(m => m.employeeId === departmentData.department?.head?.employeeId) && (
                         <SelectItem
-                          key={departmentData.department.manager.employeeId}
-                          value={departmentData.department.manager.employeeId}
+                          key={departmentData.department.head.employeeId}
+                          value={departmentData.department.head.employeeId}
                         >
-                          {departmentData.department.manager.fullName} (Current)
+                          {departmentData.department.head.fullName} (Current)
                         </SelectItem>
                       )}
                     {managers.map((manager) => (

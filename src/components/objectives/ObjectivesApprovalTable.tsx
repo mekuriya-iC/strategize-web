@@ -329,7 +329,7 @@ export default function ObjectivesApprovalTable() {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (obj) =>
-          obj.name?.toLowerCase().includes(term)
+          obj.title?.toLowerCase().includes(term)
       );
     }
 
@@ -416,7 +416,7 @@ export default function ObjectivesApprovalTable() {
       )
       .map((obj) => ({
         itemId: obj.objectiveId,
-        itemName: obj.name,
+        itemName: obj.title || obj.name || "Unnamed Objective",
         objectiveType: obj.type,
         itemType: "objective" as const,
       }));

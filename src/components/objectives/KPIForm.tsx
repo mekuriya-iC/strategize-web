@@ -20,6 +20,7 @@ import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import { buildYearRanges } from "./YearSelector";
 import { useKPIFormState } from "@/hooks/objectives/useKPIFormState";
+import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import {
   KPIFormHeader,
   KPIInformationCard,
@@ -46,6 +47,11 @@ export default function KPIForm({
   objective,
   strategicTargetsById,
 }: KPIFormProps) {
+  // Fetch strategic plans to get organizationId
+  const { strategicPlans } = useStrategicPlansQuery();
+  const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
+  const organizationId = activeStrategicPlan?.organization?.organizationId || "";
+
   const state = useKPIFormState({
     objectiveId,
     kpiId,
@@ -150,7 +156,11 @@ export default function KPIForm({
         weight: formData.weight ? Number(formData.weight) : 0,
         unitType: formData.weightType,
         targets: validTargets,
-        objectiveId,
+        strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
+        frequency: "QUARTERLY", // Default to QUARTERLY
+        measurementUnit: "NUMBER", // Default to NUMBER
+        organizationId: organizationId, // Required by backend
+        targetValue: validTargets.length > 0 ? Math.max(...validTargets.map(t => t.target)) : 0, // Calculate from targets
         ...(parentId ? { parentId } : {}),
       };
 
@@ -171,13 +181,13 @@ export default function KPIForm({
           ...(isCurrentlyRejected ? { status: "NOT_SUBMITTED" as KpiStatus } : {}),
         };
 
-        await updateKpi(mutationInput);
+        await updateKpi({ input: mutationInput });
         toast.success("KPI updated successfully!");
       } else {
-        const created = await createKpi(kpiData);
+        const created = await createKpi({ input: kpiData });
 
         if (objective?.type === "CORPORATE" && created?.kpiId) {
-          await updateKpi({ kpiId: created.kpiId, status: "APPROVED" });
+          await updateKpi({ input: { kpiId: created.kpiId, status: "APPROVED" } });
           toast.success("KPI created and auto-approved");
         } else {
           toast.success("KPI created successfully!");

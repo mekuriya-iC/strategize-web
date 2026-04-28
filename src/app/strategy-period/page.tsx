@@ -4,7 +4,7 @@ import StrategyPeriodGrid from "@/components/strategy-period/StrategyPeriodGrid"
 import NewStrategyButton from "@/components/strategy-period/NewStrategyButton";
 import { useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useEffect } from "react";
 
 export default function StrategyPeriodPage() {

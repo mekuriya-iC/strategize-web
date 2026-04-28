@@ -112,10 +112,10 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
                                     <>
                                         <p className="font-semibold">Workflow incomplete:</p>
                                         <p className="text-xs mt-1">
-                                            • KPI: {kpi.status.replace("_", " ")} {isKpiApproved ? "✓" : "×"}
+                                            • KPI: {kpi.status ? kpi.status.replace("_", " ") : "Unknown"} {isKpiApproved ? "✓" : "×"}
                                         </p>
                                         <p className="text-xs">
-                                            • Objective: {kpi.objective?.status?.replace("_", " ") || "N/A"} {isObjectiveApproved ? "✓" : "×"}
+                                            • Objective: {kpi.objective?.status ? kpi.objective.status.replace("_", " ") : "N/A"} {isObjectiveApproved ? "✓" : "×"}
                                         </p>
                                         <p className="text-[10px] mt-2 italic">Both must be APPROVED to assign.</p>
                                     </>

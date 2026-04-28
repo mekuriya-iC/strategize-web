@@ -1,19 +1,73 @@
-import { gql } from "@apollo/client";
+import { gql } from '@apollo/client';
 
-export const SUBMIT_FOR_APPROVAL = gql`
-  mutation SubmitForApproval($id: ID!) {
-    submitForApproval(id: $id) {
-      id
-      approvalStatus
+/**
+ * Logbook Mutations
+ * Matches backend schema exactly
+ */
+
+// Create a new logbook entry
+export const CREATE_LOGBOOK_ENTRY = gql`
+  mutation CreateLogbookEntry($input: CreateLogbookEntryInput!) {
+    createLogbookEntry(createLogbookEntryInput: $input) {
+      logbookEntryId
+      entryDate
+      activityDescription
+      entryStatus
+      kpiTargetValue
+      kpiAchievedValue
+      kpiCompletionPercent
+      evidenceUrl
+      evidenceDescription
+      decisionsMade
+      risksIssues
+      lessonsLearned
+      submittedAt
+      createdAt
+      owner {
+        employeeId
+        fullName
+      }
     }
   }
 `;
 
-export const DELETE_LOGBOOK_ITEM = gql`
-  mutation DeleteLogbookItem($id: ID!) {
-    deleteLogbookItem(id: $id) {
-      success
-      message
+// Update a logbook entry
+export const UPDATE_LOGBOOK_ENTRY = gql`
+  mutation UpdateLogbookEntry($input: UpdateLogbookEntryInput!) {
+    updateLogbookEntry(updateLogbookEntryInput: $input) {
+      logbookEntryId
+      entryDate
+      activityDescription
+      entryStatus
+      kpiTargetValue
+      kpiAchievedValue
+      kpiCompletionPercent
+      evidenceUrl
+      evidenceDescription
+      decisionsMade
+      risksIssues
+      lessonsLearned
+      submittedAt
+      approvedAt
+      rejectionReason
+      updatedAt
+      owner {
+        employeeId
+        fullName
+      }
+      approvedBy {
+        employeeId
+        fullName
+      }
+    }
+  }
+`;
+
+// Delete a logbook entry
+export const REMOVE_LOGBOOK_ENTRY = gql`
+  mutation RemoveLogbookEntry($logbookEntryId: ID!) {
+    removeLogbookEntry(logbookEntryId: $logbookEntryId) {
+      logbookEntryId
     }
   }
 `;

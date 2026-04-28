@@ -3,7 +3,7 @@
 import { useQuery } from "@apollo/client";
 import { useMemo } from "react";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
-import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE, GET_DEPARTMENTS_FOR_ASSIGNMENT } from "@/lib/graphql/queries/departments";
+import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
 import { GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees"; // Only for fallback
 import { useAssignmentContext, type AssigneeType } from "@/context/AssignmentContext";

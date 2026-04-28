@@ -472,7 +472,7 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
       };
 
       // Call the updateKpi mutation with the correct input structure
-      await updateKpi(updateInput);
+      await updateKpi({ input: updateInput });
 
       // Refresh any relevant queries
       await client.refetchQueries({

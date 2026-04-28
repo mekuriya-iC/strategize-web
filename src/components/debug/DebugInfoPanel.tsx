@@ -19,14 +19,14 @@ const DEBUG_QUERY = gql`
     objectives(page: 1, limit: 1000) {
       items {
         objectiveId
-        name
+        title
         type
         status
         assigneeId
         assigneeType
         parent {
           objectiveId
-          name
+          title
         }
         strategicPeriod {
           strategicPeriodId

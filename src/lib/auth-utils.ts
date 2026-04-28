@@ -174,36 +174,53 @@ export function validateToken(): boolean {
 }
 
 /**
- * Token refresh placeholder
- * Implement when backend supports refresh tokens
+ * Token refresh with backend support
+ * Attempts to refresh the access token using the backend refresh endpoint
  */
 export async function refreshAccessToken(): Promise<string | null> {
-  // TODO: Implement when backend adds refresh token support
-  // Example implementation:
-  //
-  // const refreshToken = Cookies.get("refreshToken");
-  // if (!refreshToken) return null;
-  //
-  // try {
-  //   const response = await fetch("/api/auth/refresh", {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ refreshToken }),
-  //   });
-  //
-  //   if (!response.ok) return null;
-  //
-  //   const { accessToken } = await response.json();
-  //   setAccessToken(accessToken);
-  //   return accessToken;
-  // } catch (error) {
-  //   authLogger.error("Failed to refresh token:", error);
-  //   return null;
-  // }
+  try {
+    // Import dynamically to avoid circular dependencies
+    const { ApolloClient, InMemoryCache, HttpLink, gql } = await import('@apollo/client');
+    
+    const REFRESH_TOKEN_MUTATION = gql`
+      mutation RefreshToken {
+        refreshToken {
+          accessToken
+        }
+      }
+    `;
 
-  authLogger.warn("Token refresh not implemented - backend support required");
-  return null;
+    // Create a temporary Apollo client for the refresh request
+    const client = new ApolloClient({
+      link: new HttpLink({
+        uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:3000/graphql',
+        credentials: 'include', // Include cookies for refresh token
+      }),
+      cache: new InMemoryCache(),
+    });
+
+    const { data } = await client.mutate({
+      mutation: REFRESH_TOKEN_MUTATION,
+    });
+
+    if (data?.refreshToken?.accessToken) {
+      const newToken = data.refreshToken.accessToken;
+      setAccessToken(newToken);
+      authLogger.info("Token refreshed successfully");
+      return newToken;
+    }
+
+    authLogger.warn("No access token in refresh response");
+    return null;
+  } catch (error) {
+    authLogger.error("Failed to refresh token:", error);
+    
+    // If refresh fails, handle session expiration
+    handleSessionExpired("Your session has expired. Please log in again.");
+    return null;
+  }
 }
+
 
 /**
  * Setup automatic token expiration checking

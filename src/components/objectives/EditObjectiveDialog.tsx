@@ -59,7 +59,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
   // Initialize form with objective data when dialog opens
   useEffect(() => {
     if (open && objective) {
-      setObjectiveName(objective.name);
+      setObjectiveName(objective.title || objective.name || "");
       setObjectiveType(objective.type);
       setObjectiveStatus(objective.status);
       setStrategicPeriodId(objective.strategicPeriod?.strategicPeriodId || "");
@@ -91,7 +91,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
       // For non-corporate users, keep original status and strategic period
       const updateInput = {
         objectiveId: objective.objectiveId,
-        name: objectiveName.trim(),
+        title: objectiveName.trim(), // Backend uses 'title' not 'name'
         type: normalizedType,
         status: isNonCorporateUser ? objective.status : objectiveStatus,
         strategicPeriodId: isNonCorporateUser
@@ -116,7 +116,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
     setOpen(false);
     // Reset form to original values
     if (objective) {
-      setObjectiveName(objective.name);
+      setObjectiveName(objective.title || objective.name || "");
       setObjectiveType(objective.type);
       setObjectiveStatus(objective.status);
       setStrategicPeriodId(objective.strategicPeriod?.strategicPeriodId || "");

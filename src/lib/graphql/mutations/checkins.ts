@@ -1,52 +1,111 @@
-import { gql } from "@apollo/client";
+import { gql } from '@apollo/client';
 
-export const CREATE_CHECKIN = gql`
-  mutation CreateCheckin($input: CreateCheckinInput!) {
-    createCheckin(input: $input) {
-      id
-      taskType
-      task
-      description
-      relatedTo
-      startTime
-      endTime
-      checkoutStatus
-      attachment
-      remark
-      isKpiMet
-      isInitiativeMet
-      isSelfDevComplete
+/**
+ * Check-In/Out Mutations
+ * Matches backend schema exactly
+ */
+
+// Create a new check-in session
+export const CREATE_CHECKINOUT_SESSION = gql`
+  mutation CreateCheckinoutSession($input: CreateCheckinoutSessionInput!) {
+    createCheckinoutSession(createCheckinoutSessionInput: $input) {
+      checkinoutSessionId
+      weekStartDate
+      weekEndDate
+      overallStatus
       createdAt
+      employee {
+        employeeId
+        fullName
+      }
+      supervisor {
+        employeeId
+        fullName
+      }
     }
   }
 `;
 
-export const UPDATE_CHECKIN = gql`
-  mutation UpdateCheckin($id: ID!, $input: UpdateCheckinInput!) {
-    updateCheckin(id: $id, input: $input) {
-      id
-      taskType
-      task
-      description
-      relatedTo
-      startTime
-      endTime
-      checkoutStatus
-      attachment
-      remark
-      isKpiMet
-      isInitiativeMet
-      isSelfDevComplete
+// Update a check-in session
+export const UPDATE_CHECKINOUT_SESSION = gql`
+  mutation UpdateCheckinoutSession($input: UpdateCheckinoutSessionInput!) {
+    updateCheckinoutSession(updateCheckinoutSessionInput: $input) {
+      checkinoutSessionId
+      weekStartDate
+      weekEndDate
+      overallStatus
+      checkinSubmittedAt
+      checkoutSubmittedAt
+      overallRating
+      supervisorComment
+      supervisorReviewAt
       updatedAt
     }
   }
 `;
 
-export const DELETE_CHECKIN = gql`
-  mutation DeleteCheckin($id: ID!) {
-    deleteCheckin(id: $id) {
-      success
-      message
+// Delete a check-in session
+export const REMOVE_CHECKINOUT_SESSION = gql`
+  mutation RemoveCheckinoutSession($checkinoutSessionId: ID!) {
+    removeCheckinoutSession(checkinoutSessionId: $checkinoutSessionId) {
+      checkinoutSessionId
+    }
+  }
+`;
+
+// Aliases for consistency
+export const DELETE_CHECKIN = REMOVE_CHECKINOUT_SESSION;
+
+// Create a new task
+export const CREATE_CHECKINOUT_TASK = gql`
+  mutation CreateCheckinoutTask($input: CreateCheckinoutTaskInput!) {
+    createCheckinoutTask(createCheckinoutTaskInput: $input) {
+      checkinoutTaskId
+      taskTitle
+      taskLinkType
+      plannedDescription
+      achievedDescription
+      taskStatus
+      evidenceUrl
+      challenges
+      nextSteps
+      requiresApproval
+      taskStartDate
+      taskEndDate
+      createdAt
+      session {
+        checkinoutSessionId
+      }
+    }
+  }
+`;
+
+// Update a task
+export const UPDATE_CHECKINOUT_TASK = gql`
+  mutation UpdateCheckinoutTask($input: UpdateCheckinoutTaskInput!) {
+    updateCheckinoutTask(updateCheckinoutTaskInput: $input) {
+      checkinoutTaskId
+      taskTitle
+      taskLinkType
+      plannedDescription
+      achievedDescription
+      taskStatus
+      evidenceUrl
+      challenges
+      nextSteps
+      requiresApproval
+      taskStartDate
+      taskEndDate
+      updatedAt
+    }
+  }
+`;
+
+// Delete a task
+export const REMOVE_CHECKINOUT_TASK = gql`
+  mutation RemoveCheckinoutTask($checkinoutTaskId: ID!) {
+    removeCheckinoutTask(checkinoutTaskId: $checkinoutTaskId) {
+      checkinoutTaskId
     }
   }
 `;

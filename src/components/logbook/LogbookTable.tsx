@@ -6,12 +6,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface LogbookItem {
   id: string;
-  kpiName: string;
-  target: number;
-  percentageCompletion: string;
-  weight: number;
-  approvalStatus: string;
+  activity: string;
+  description: string;
+  outcome: string;
+  entryDate: string;
+  attachmentUrl?: string | null;
   createdAt: string;
+  updatedAt: string;
+  employee?: any;
 }
 
 interface LogbookTableProps {
@@ -20,6 +22,7 @@ interface LogbookTableProps {
   onSelectAll: (checked: boolean) => void;
   onSelectItem: (id: string, checked: boolean) => void;
   onRefetch: () => void;
+  onEditEntry?: (entry: LogbookItem) => void;
 }
 
 export function LogbookTable({
@@ -28,6 +31,7 @@ export function LogbookTable({
   onSelectAll,
   onSelectItem,
   onRefetch,
+  onEditEntry,
 }: LogbookTableProps) {
   const allSelected = data.length > 0 && selectedItems.length === data.length;
   const someSelected = selectedItems.length > 0 && selectedItems.length < data.length;
@@ -49,19 +53,19 @@ export function LogbookTable({
                   />
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  KPI NAME
+                  DATE & TIME
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  TARGET
+                  ACTIVITY
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  PERCENTAGE COMPLETION
+                  DESCRIPTION
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  WEIGHT
+                  OUTCOME
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  APPROVAL STATUS
+                  ATTACHMENT
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   ACTIONS
@@ -76,6 +80,7 @@ export function LogbookTable({
                   isSelected={selectedItems.includes(item.id)}
                   onSelect={(checked) => onSelectItem(item.id, checked)}
                   onRefetch={onRefetch}
+                  onEditEntry={onEditEntry}
                 />
               ))}
             </tbody>
@@ -92,6 +97,7 @@ export function LogbookTable({
             isSelected={selectedItems.includes(item.id)}
             onSelect={(checked) => onSelectItem(item.id, checked)}
             onRefetch={onRefetch}
+            onEditEntry={onEditEntry}
           />
         ))}
       </div>

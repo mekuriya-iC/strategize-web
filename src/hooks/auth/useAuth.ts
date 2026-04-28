@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useLazyQuery, useApolloClient } from "@apollo/client";
 import { useRouter, usePathname } from "next/navigation";
-import { LOGIN_EMPLOYEE } from "@/lib/graphql/mutations/employees";
-import { GET_ME } from "@/lib/graphql/queries/employees";
+import { LOGIN_EMPLOYEE } from "@/lib/graphql/mutations/auth";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { LoginEmployeeInput, Employee } from "@/types/graphql";
 import { authLogger } from "@/lib/logger";
 import {

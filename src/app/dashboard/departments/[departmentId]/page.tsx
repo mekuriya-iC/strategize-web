@@ -122,7 +122,7 @@ const DepartmentDetailsPage = () => {
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Manager</h3>
             <p className="text-gray-900 dark:text-gray-100">
-              {department.manager?.fullName || "No Manager"}
+              {department.head?.fullName || "No Manager"}
             </p>
           </div>
           <div>

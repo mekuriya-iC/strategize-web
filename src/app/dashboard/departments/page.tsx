@@ -13,6 +13,7 @@ import EmptyState from "@/components/departments/EmptyState";
 import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS, GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { GET_STRATEGIC_PLANS } from "@/lib/graphql/queries/strategic-plans";
 import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {
@@ -24,6 +25,7 @@ import {
   PaginatedDivisions,
   PaginatedEmployees,
 } from "@/types/graphql";
+import { toast } from "sonner";
 
 const DepartmentsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,6 +93,12 @@ const DepartmentsPage = () => {
     }
   );
 
+  // Get strategic plans to extract organizationId
+  const { data: strategicPlansData } = useQuery(GET_STRATEGIC_PLANS, {
+    variables: { page: 1, limit: 100, search: "" },
+    skip: !isAdmin,
+  });
+
   // Only fetch employees if user has admin access (backend requires ADMIN or SUPER_ADMIN)
   const { data: employeesData } = useQuery<{ employees: PaginatedEmployees }>(
     GET_EMPLOYEES,
@@ -123,7 +131,7 @@ const DepartmentsPage = () => {
       hour: "2-digit",
       minute: "2-digit",
     }),
-    managedBy: dept.manager?.fullName || "Unassigned",
+    managedBy: dept.head?.fullName || "Unassigned",
     division: dept.division?.name || "Unassigned",
     members: dept.employees?.length || 0,
   });
@@ -154,9 +162,9 @@ const DepartmentsPage = () => {
         (dept: any) => {
           switch (filterStatus) {
             case "with_manager":
-              return dept.manager !== null;
+              return dept.head !== null;
             case "no_manager":
-              return dept.manager === null;
+              return dept.head === null;
             case "has_members":
               return (dept.employees?.length || 0) > 0;
             case "no_members":
@@ -234,12 +242,24 @@ const DepartmentsPage = () => {
       return;
     }
 
+    // Get organizationId from active strategic plan
+    const activeStrategicPlan = strategicPlansData?.strategicPlans?.items?.find(
+      (plan: any) => plan.isActive
+    );
+    const organizationId = activeStrategicPlan?.organization?.organizationId;
+
+    if (!organizationId) {
+      toast.error("No active strategic plan found. Please contact your administrator.");
+      return;
+    }
+
     try {
       await createDepartment({
         input: {
           name: departmentName.trim(),
           divisionId: selectedDivision || undefined,
-          managerId: departmentManager || undefined,
+          headUserId: departmentManager || undefined,
+          organizationId: organizationId,
         },
         employeeIds: departmentMembers,
       });

@@ -79,9 +79,9 @@ const EditDivisionDialog: React.FC<EditDivisionDialogProps> = ({
 
   // Set manager from division query data (more reliable than matching by name)
   useEffect(() => {
-    if (divisionData?.division?.manager) {
-      setDivisionManager(divisionData.division.manager.employeeId);
-    } else if (divisionData?.division && !divisionData.division.manager) {
+    if (divisionData?.division?.head) {
+      setDivisionManager(divisionData.division.head.employeeId);
+    } else if (divisionData?.division && !divisionData.division.head) {
       // Division loaded but has no manager
       setDivisionManager("");
     }
@@ -125,7 +125,7 @@ const EditDivisionDialog: React.FC<EditDivisionDialogProps> = ({
         input: {
           divisionId: String(division.id),
           name: divisionName.trim(),
-          managerId: divisionManager,
+          headUserId: divisionManager,
         },
       });
 
@@ -220,19 +220,19 @@ const EditDivisionDialog: React.FC<EditDivisionDialogProps> = ({
                     divisionLoading
                       ? "Loading..."
                       : managers.length === 0
-                        ? divisionData?.division?.manager?.fullName || "No directors available"
+                        ? divisionData?.division?.head?.fullName || "No directors available"
                         : "Select Director"
                   } />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Show current manager from division data if not in managers list */}
-                  {divisionData?.division?.manager &&
-                    !managers.find(m => m.id === divisionData.division?.manager?.employeeId) && (
+                  {divisionData?.division?.head &&
+                    !managers.find(m => m.id === divisionData.division?.head?.employeeId) && (
                       <SelectItem
-                        key={divisionData.division.manager.employeeId}
-                        value={divisionData.division.manager.employeeId}
+                        key={divisionData.division.head.employeeId}
+                        value={divisionData.division.head.employeeId}
                       >
-                        {divisionData.division.manager.fullName} (Current)
+                        {divisionData.division.head.fullName} (Current)
                       </SelectItem>
                     )}
                   {managers.map((manager) => (

@@ -140,7 +140,7 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
                         className={`${statusColors[kpi.status] || "bg-gray-100 text-gray-600"
                             } rounded-full px-3 py-1 text-xs font-medium border-0 w-fit`}
                     >
-                        {kpi.status.replace("_", " ")}
+                        {kpi.status ? kpi.status.replace("_", " ") : "Unknown"}
                     </Badge>
                     {allKpis.some(other => other.parent?.kpiId === kpi.kpiId) && (
                         <span className="text-[10px] font-bold text-purple-600 px-1 uppercase tracking-wider">

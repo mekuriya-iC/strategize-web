@@ -26,7 +26,7 @@ const transformDepartmentToTableData = (
   return {
     id: department.departmentId,
     departmentName: department.name,
-    createdBy: department.manager?.fullName || "System",
+    createdBy: department.head?.fullName || "System",
     createdOn: new Date(department.createdAt).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -34,7 +34,7 @@ const transformDepartmentToTableData = (
       hour: "numeric",
       minute: "2-digit",
     }),
-    managedBy: department.manager?.fullName || "No Manager",
+    managedBy: department.head?.fullName || "No Manager",
     division: department.division?.name || "No Division",
     members: memberNames,
   };

@@ -109,6 +109,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
     sessionStorage.setItem("orgStructure", JSON.stringify(orgStructure));
     toast.success("Organization structure saved!");
     router.push("/strategy-period");
+    console.log(orgStructure);
   };
 
   const renderNode = (node: OrgNodeData): React.ReactNode => {

@@ -114,7 +114,7 @@ const DivisionsPage = () => {
         (division: GraphQLDivision) => {
           switch (filterType) {
             case "managed":
-              return division.manager !== null;
+              return division.head !== null;
             case "recent":
               const weekAgo = new Date();
               weekAgo.setDate(weekAgo.getDate() - 7);
@@ -144,7 +144,7 @@ const DivisionsPage = () => {
           minute: "2-digit",
         }
       ),
-      managedBy: graphqlDivision.manager?.fullName || "No Manager",
+      managedBy: graphqlDivision.head?.fullName || "No Manager",
       departments: graphqlDivision.departments?.length || 0,
     }));
   }, [divisionsData, filterType]);
@@ -217,7 +217,8 @@ const DivisionsPage = () => {
       const createdDivision = await createDivision({
         input: {
           name: divisionName.trim(),
-          managerId: divisionManager,
+          headUserId: divisionManager,
+          organizationId: "1", // TODO: Get from context
         },
       });
 
@@ -266,7 +267,7 @@ const DivisionsPage = () => {
       await createDepartment({
         input: {
           name: departmentName.trim(),
-          managerId: departmentManager,
+          headUserId: departmentManager,
           divisionId: selectedDepartment,
         },
         employeeIds: departmentMembers, // Assign selected members

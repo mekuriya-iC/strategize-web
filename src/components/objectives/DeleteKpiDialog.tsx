@@ -32,7 +32,7 @@ const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = setExternalOpen || setInternalOpen;
-  const { removeKpi } = useKPIMutations();
+  const { deleteKpi } = useKPIMutations();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -45,7 +45,7 @@ const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
 
     setIsDeleting(true);
     try {
-      await removeKpi(kpiId);
+      await deleteKpi({ id: kpiId });
       toast.success("KPI deleted successfully", {
         description: `${kpiName} has been removed from the system.`,
       });

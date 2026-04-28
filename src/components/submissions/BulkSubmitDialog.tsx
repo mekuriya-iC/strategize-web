@@ -212,8 +212,10 @@ export default function BulkSubmitDialog({
         if (submission.type === "kpi") {
           try {
             await updateKpi({
-              kpiId: submission.id,
-              status: "PENDING",
+              input: {
+                kpiId: submission.id,
+                status: "PENDING",
+              }
             });
           } catch (updateError) {
             console.error("❌ Error updating KPI status:", updateError);

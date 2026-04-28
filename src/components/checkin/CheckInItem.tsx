@@ -110,7 +110,7 @@ export function CheckInItem({ checkin, onRefetch }: CheckInItemProps) {
                 STATUS_COLORS.NOT_DONE
               }
             >
-              {checkin.checkoutStatus.replace("_", " ")}
+              {checkin.checkoutStatus ? checkin.checkoutStatus.replace("_", " ") : "Unknown"}
             </Badge>
             {checkin.isKpiMet && (
               <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">

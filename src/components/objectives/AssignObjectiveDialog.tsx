@@ -40,7 +40,7 @@ export default function AssignObjectiveDialog({
             Assign Objective
           </DialogTitle>
           <DialogDescription>
-            Assign &quot;{objective.name}&quot; to a{" "}
+            Assign &quot;{objective.title || objective.name}&quot; to a{" "}
             {objective.type === "CORPORATE"
               ? "division or department"
               : objective.type === "DIVISION"

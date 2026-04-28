@@ -62,7 +62,7 @@ export default function AddKPIDialog({
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Add KPI to &ldquo;{objective.name || "Unnamed Objective"}&rdquo;
+              Add KPI to &ldquo;{objective.title || objective.name || "Unnamed Objective"}&rdquo;
             </DialogTitle>
           </DialogHeader>
 

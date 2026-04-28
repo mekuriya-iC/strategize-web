@@ -1,31 +1,105 @@
-import { gql } from "@apollo/client";
+import { gql } from '@apollo/client';
 
-export const GET_MY_LOGBOOK = gql`
-  query GetMyLogbook {
-    myLogbook {
-      id
-      kpiName
-      target
-      percentageCompletion
-      weight
-      approvalStatus
-      createdAt
-      updatedAt
+/**
+ * Logbook Queries
+ * Matches backend schema exactly
+ */
+
+// Get paginated logbook entries
+export const GET_LOGBOOK_ENTRIES = gql`
+  query GetLogbookEntries(
+    $entryStatus: LogbookEntryStatus
+    $limit: Int!
+    $ownerUserId: ID
+    $page: Int!
+    $strategicPeriodId: ID
+  ) {
+    logbookEntries(
+      entryStatus: $entryStatus
+      limit: $limit
+      ownerUserId: $ownerUserId
+      page: $page
+      strategicPeriodId: $strategicPeriodId
+    ) {
+      items {
+        logbookEntryId
+        entryDate
+        activityDescription
+        entryStatus
+        kpiTargetValue
+        kpiAchievedValue
+        kpiCompletionPercent
+        evidenceUrl
+        evidenceDescription
+        decisionsMade
+        risksIssues
+        lessonsLearned
+        submittedAt
+        approvedAt
+        rejectionReason
+        createdAt
+        updatedAt
+        owner {
+          employeeId
+          fullName
+          email
+          title
+        }
+        approvedBy {
+          employeeId
+          fullName
+        }
+        strategicPeriod {
+          strategicPeriodId
+          name
+        }
+      }
+      meta {
+        currentPage
+        totalPages
+        totalItems
+        itemsPerPage
+        itemCount
+      }
     }
   }
 `;
 
-export const GET_LOGBOOK_ITEM = gql`
-  query GetLogbookItem($id: ID!) {
-    logbookItem(id: $id) {
-      id
-      kpiName
-      target
-      percentageCompletion
-      weight
-      approvalStatus
+// Get single logbook entry
+export const GET_LOGBOOK_ENTRY = gql`
+  query GetLogbookEntry($logbookEntryId: ID!) {
+    logbookEntry(logbookEntryId: $logbookEntryId) {
+      logbookEntryId
+      entryDate
+      activityDescription
+      entryStatus
+      kpiTargetValue
+      kpiAchievedValue
+      kpiCompletionPercent
+      evidenceUrl
+      evidenceDescription
+      decisionsMade
+      risksIssues
+      lessonsLearned
+      submittedAt
+      approvedAt
+      rejectionReason
       createdAt
       updatedAt
+      owner {
+        employeeId
+        fullName
+        email
+        title
+      }
+      approvedBy {
+        employeeId
+        fullName
+      }
+      strategicPeriod {
+        strategicPeriodId
+        name
+      }
     }
   }
 `;

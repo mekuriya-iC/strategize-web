@@ -32,7 +32,7 @@ const DeleteObjectiveDialog: React.FC<DeleteObjectiveDialogProps> = ({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = setExternalOpen || setInternalOpen;
-  const { removeObjective, loading } = useObjectiveMutations();
+  const { deleteObjective, loading } = useObjectiveMutations();
 
   const handleDelete = async () => {
     if (!objectiveId) {
@@ -41,7 +41,7 @@ const DeleteObjectiveDialog: React.FC<DeleteObjectiveDialogProps> = ({
     }
 
     try {
-      await removeObjective({ id: objectiveId });
+      await deleteObjective({ id: objectiveId });
       toast.success("Objective deleted successfully");
       setOpen(false);
       onDeleteSuccess?.();

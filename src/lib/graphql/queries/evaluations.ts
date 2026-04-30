@@ -155,9 +155,9 @@ export const GET_ASSESSMENT_RESPONSES = gql`
     assessmentResponses(assessmentId: $assessmentId, page: $page, limit: $limit) {
       items {
         assessmentResponseId
-        ratingValue
+        rating
         comment
-        competencyIndicator {
+        indicator {
           competencyIndicatorId
           description
           ratingScaleMin
@@ -168,7 +168,7 @@ export const GET_ASSESSMENT_RESPONSES = gql`
             description
           }
         }
-        competencyAssessment {
+        assessment {
           competencyAssessmentId
           status
         }
@@ -179,6 +179,7 @@ export const GET_ASSESSMENT_RESPONSES = gql`
         totalItems
         totalPages
         currentPage
+        itemsPerPage
       }
     }
   }

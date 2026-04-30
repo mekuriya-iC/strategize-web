@@ -25,6 +25,7 @@ export const GET_CHECKINOUT_SESSIONS = gql`
     ) {
       items {
         checkinoutSessionId
+        title
         weekStartDate
         weekEndDate
         overallStatus

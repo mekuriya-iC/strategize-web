@@ -7,10 +7,13 @@ import { GET_ME } from "@/lib/graphql/queries/auth";
 import { CheckInTable } from "@/components/checkin/CheckInTable";
 import { AddTaskDialog } from "@/components/checkin/AddTaskDialog";
 import { FilterDialog, FilterState } from "@/components/checkin/FilterDialog";
+import CreateSessionDialog from "@/components/checkin/CreateSessionDialog";
+import SessionListView from "@/components/checkin/SessionListView";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, FilterIcon, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Helper function to map backend task to frontend format
 const mapTaskToFrontend = (task: any) => ({
@@ -34,8 +37,11 @@ const mapTaskToFrontend = (task: any) => ({
 });
 
 export default function CheckInPage() {
+  const [view, setView] = useState<'list' | 'detail'>('list');
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingTask, setEditingTask] = useState<any>(null);
 
@@ -55,33 +61,38 @@ export default function CheckInPage() {
   const { data: userData } = useQuery(GET_ME);
   const currentUser = userData?.me;
 
-  // Get check-in sessions
+  // Get check-in sessions for current user
   const { data, loading, refetch } = useQuery(GET_CHECKINOUT_SESSIONS, {
     variables: {
       employeeUserId: currentUser?.employeeId,
-      limit: 10,
+      limit: 100,
       page: 1,
     },
     skip: !currentUser?.employeeId,
   });
 
+  const sessions = data?.checkinoutSessions?.items || [];
+
+  // Auto-select first session or use selected session
+  const currentSession = useMemo(() => {
+    if (selectedSessionId) {
+      return sessions.find((s: any) => s.checkinoutSessionId === selectedSessionId);
+    }
+    return sessions[0] || null;
+  }, [sessions, selectedSessionId]);
+
   // Get current week's check-in data
   const currentWeekData = useMemo(() => {
-    if (!data?.checkinoutSessions?.items || data.checkinoutSessions.items.length === 0) {
-      return null;
-    }
-    
-    // Get the most recent session
-    const session = data.checkinoutSessions.items[0];
+    if (!currentSession) return null;
     
     return {
-      id: session.checkinoutSessionId,
-      createdAt: session.weekStartDate,
-      endDate: session.weekEndDate,
-      status: session.overallStatus,
+      id: currentSession.checkinoutSessionId,
+      createdAt: currentSession.weekStartDate,
+      endDate: currentSession.weekEndDate,
+      status: currentSession.overallStatus,
       tasks: [], // Tasks will be loaded separately
     };
-  }, [data]);
+  }, [currentSession]);
 
   // Get tasks for the current session
   const { data: tasksData, loading: tasksLoading, refetch: refetchTasks } = useQuery(GET_CHECKINOUT_TASKS, {
@@ -184,9 +195,76 @@ export default function CheckInPage() {
     setFilters(newFilters);
   };
 
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setView('detail');
+  };
+
+  const handleBackToList = () => {
+    setView('list');
+    setSelectedSessionId(null);
+  };
+
+  // Show session list view
+  if (view === 'list') {
+    return (
+      <div className="h-full">
+        <SessionListView
+          currentUser={currentUser}
+          onCreateSession={() => setIsCreateSessionOpen(true)}
+          onSelectSession={handleSelectSession}
+        />
+
+        {/* Create Session Dialog */}
+        <CreateSessionDialog
+          open={isCreateSessionOpen}
+          onOpenChange={setIsCreateSessionOpen}
+          currentUserId={currentUser?.employeeId}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Show session detail view (existing check-in page)
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
+      {/* Header with Back Button and Session Selector */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4 flex-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBackToList}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Sessions
+          </Button>
+
+          {sessions.length > 1 && (
+            <Select
+              value={currentSession?.checkinoutSessionId || ''}
+              onValueChange={(value) => setSelectedSessionId(value)}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select session..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.map((session: any, index: number) => (
+                  <SelectItem key={session.checkinoutSessionId} value={session.checkinoutSessionId}>
+                    Sprint {index + 1} - Week of {new Date(session.weekStartDate).toLocaleDateString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
+
+      {/* Original Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

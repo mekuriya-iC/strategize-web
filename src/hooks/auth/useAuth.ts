@@ -11,6 +11,9 @@ import {
   getAccessToken,
   setAccessToken,
   removeAccessToken,
+  getRefreshToken,
+  setRefreshToken,
+  removeRefreshToken,
   isTokenExpired,
   isTokenExpiringSoon,
   getTokenExpiryDisplay,
@@ -171,9 +174,14 @@ export const useAuth = () => {
 
       if (data?.loginEmployee?.accessToken) {
         const token = data.loginEmployee.accessToken;
+        const refreshToken = data.loginEmployee.refreshToken;
 
-        // Store token in secure cookie
+        // Store both tokens in secure cookies
         setAccessToken(token);
+        if (refreshToken) {
+          setRefreshToken(refreshToken);
+          authLogger.info("Refresh token stored");
+        }
 
         // Set user data from login response
         setAuthState({
@@ -215,8 +223,9 @@ export const useAuth = () => {
   const logout = useCallback(() => {
     authLogger.info("User logging out");
 
-    // Remove token
+    // Remove both tokens
     removeAccessToken();
+    removeRefreshToken();
 
     // Clear Apollo cache to prevent stale data
     apolloClient.clearStore();

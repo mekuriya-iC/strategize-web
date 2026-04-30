@@ -44,11 +44,14 @@ interface AddTaskDialogProps {
   editingTask?: any;
 }
 
-type TaskType = "KPI_LINKED" | "INITIATIVE_LINKED" | "UNLINKED";
+type TaskType = "KPI_FULFILLED" | "KPI_UNMET" | "INITIATIVE_FULFILLED" | "INITIATIVE_UNMET" | "SELF_DEVELOPMENT" | "UNLINKED";
 
 const TASK_TYPES = [
-  { value: "KPI_LINKED", label: "KPI Linked" },
-  { value: "INITIATIVE_LINKED", label: "Initiative Linked" },
+  { value: "KPI_FULFILLED", label: "KPI Fulfilled" },
+  { value: "KPI_UNMET", label: "KPI Unmet" },
+  { value: "INITIATIVE_FULFILLED", label: "Initiative Fulfilled" },
+  { value: "INITIATIVE_UNMET", label: "Initiative Unmet" },
+  { value: "SELF_DEVELOPMENT", label: "Self Development" },
   { value: "UNLINKED", label: "Unlinked" },
 ];
 
@@ -104,7 +107,7 @@ export function AddTaskDialog({
 
   const today = new Date();
 
-  const [taskType, setTaskType] = useState<TaskType>("KPI_LINKED");
+  const [taskType, setTaskType] = useState<TaskType>("KPI_FULFILLED");
   const [task, setTask] = useState("");
   const [description, setDescription] = useState("");
   const [relatedTo, setRelatedTo] = useState("");
@@ -260,7 +263,7 @@ export function AddTaskDialog({
 
   const resetForm = () => {
     const newToday = new Date();
-    setTaskType("KPI_LINKED");
+    setTaskType("KPI_FULFILLED");
     setTask("");
     setDescription("");
     setRelatedTo("");
@@ -346,7 +349,7 @@ export function AddTaskDialog({
               </div>
 
               {/* Linked Dropdowns — react-select handles portal automatically */}
-              {taskType === "KPI_LINKED" && (
+              {(taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") && (
                 <div className="pt-2">
                   <Label className="text-xs text-gray-500 mb-1 block">
                     Linked KPI
@@ -368,7 +371,7 @@ export function AddTaskDialog({
                 </div>
               )}
 
-              {taskType === "INITIATIVE_LINKED" && (
+              {(taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET") && (
                 <div className="pt-2">
                   <Label className="text-xs text-gray-500 mb-1 block">
                     Linked Initiative

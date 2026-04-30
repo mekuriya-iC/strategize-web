@@ -48,6 +48,27 @@ export function removeAccessToken(): void {
 }
 
 /**
+ * Get the current refresh token from cookies
+ */
+export function getRefreshToken(): string | undefined {
+  return Cookies.get("refreshToken");
+}
+
+/**
+ * Set the refresh token in cookies
+ */
+export function setRefreshToken(token: string): void {
+  Cookies.set("refreshToken", token, COOKIE_OPTIONS);
+}
+
+/**
+ * Remove the refresh token from cookies
+ */
+export function removeRefreshToken(): void {
+  Cookies.remove("refreshToken", { path: "/" });
+}
+
+/**
  * Decode a JWT token and return its payload
  */
 export function decodeToken(token: string): JWTPayload | null {
@@ -175,48 +196,75 @@ export function validateToken(): boolean {
 
 /**
  * Token refresh with backend support
- * Attempts to refresh the access token using the backend refresh endpoint
+ * Uses the refresh token to get a new access token
  */
 export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  
+  if (!refreshToken) {
+    authLogger.warn("❌ No refresh token available for refresh");
+    return null;
+  }
+
+  authLogger.info("🔄 Attempting to refresh access token...");
+
   try {
-    // Import dynamically to avoid circular dependencies
-    const { ApolloClient, InMemoryCache, HttpLink, gql } = await import('@apollo/client');
-    
-    const REFRESH_TOKEN_MUTATION = gql`
-      mutation RefreshToken {
-        refreshToken {
-          accessToken
-        }
-      }
-    `;
-
-    // Create a temporary Apollo client for the refresh request
-    const client = new ApolloClient({
-      link: new HttpLink({
-        uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:3000/graphql',
-        credentials: 'include', // Include cookies for refresh token
+    // Use fetch instead of Apollo Client to avoid CORS issues
+    // This will go through the Next.js API proxy
+    const response = await fetch('/api/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          mutation RefreshToken($refreshToken: String!) {
+            refreshToken(refreshToken: $refreshToken) {
+              accessToken
+            }
+          }
+        `,
+        variables: { refreshToken },
       }),
-      cache: new InMemoryCache(),
     });
 
-    const { data } = await client.mutate({
-      mutation: REFRESH_TOKEN_MUTATION,
-    });
+    if (!response.ok) {
+      authLogger.error("❌ Refresh request failed:", response.status, response.statusText);
+      return null;
+    }
 
-    if (data?.refreshToken?.accessToken) {
-      const newToken = data.refreshToken.accessToken;
+    const result = await response.json();
+
+    if (result.errors) {
+      authLogger.error("❌ GraphQL errors in refresh:", result.errors);
+      
+      // If refresh token is invalid/expired, clear both tokens
+      const errorMessage = result.errors[0]?.message || '';
+      if (errorMessage.includes('invalid') || errorMessage.includes('expired')) {
+        authLogger.warn("🗑️ Refresh token is invalid/expired - clearing all tokens");
+        removeAccessToken();
+        removeRefreshToken();
+      }
+      
+      return null;
+    }
+
+    if (result.data?.refreshToken?.accessToken) {
+      const newToken = result.data.refreshToken.accessToken;
       setAccessToken(newToken);
-      authLogger.info("Token refreshed successfully");
+      authLogger.info("✅ Token refreshed successfully - new token stored");
       return newToken;
     }
 
-    authLogger.warn("No access token in refresh response");
+    authLogger.warn("⚠️ No access token in refresh response");
     return null;
-  } catch (error) {
-    authLogger.error("Failed to refresh token:", error);
+  } catch (error: any) {
+    authLogger.error("❌ Failed to refresh token:", error);
+    authLogger.error("Error details:", {
+      message: error?.message,
+      name: error?.name,
+    });
     
-    // If refresh fails, handle session expiration
-    handleSessionExpired("Your session has expired. Please log in again.");
     return null;
   }
 }
@@ -230,23 +278,58 @@ export function setupTokenExpirationChecker(
   onExpired?: () => void
 ): () => void {
   const CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
+  let isRefreshing = false; // Prevent multiple simultaneous refresh attempts
 
-  const intervalId = setInterval(() => {
+  const intervalId = setInterval(async () => {
     const token = getAccessToken();
     if (!token) return;
 
-    if (isTokenExpired(token)) {
-      authLogger.warn("Token expired during session");
-      handleSessionExpired("Your session has expired. Please log in again.");
-      onExpired?.();
-      clearInterval(intervalId);
-    } else if (isTokenExpiringSoon(token)) {
-      // Try to refresh token if supported
-      refreshAccessToken().then((newToken) => {
-        if (!newToken) {
-          authLogger.warn("Could not refresh token - will expire soon");
+    // If token is expired or expiring soon, try to refresh it
+    if (isTokenExpired(token) || isTokenExpiringSoon(token)) {
+      // Prevent multiple simultaneous refresh attempts
+      if (isRefreshing) {
+        authLogger.debug("Refresh already in progress, skipping...");
+        return;
+      }
+
+      const expiryDisplay = getTokenExpiryDisplay(token);
+      const status = isTokenExpired(token) ? "expired" : "expiring soon";
+      authLogger.info(`Token ${status} (${expiryDisplay} remaining) - attempting refresh`);
+      
+      isRefreshing = true;
+      
+      try {
+        const newToken = await refreshAccessToken();
+        
+        if (newToken) {
+          authLogger.info("✅ Token refreshed successfully in background");
+          isRefreshing = false;
+        } else {
+          // Refresh failed - check if we have a refresh token
+          const refreshToken = getRefreshToken();
+          
+          if (!refreshToken) {
+            authLogger.error("❌ No refresh token available - logging out");
+            handleSessionExpired("Your session has expired. Please log in again.");
+            onExpired?.();
+            clearInterval(intervalId);
+          } else {
+            authLogger.warn("⚠️ Could not refresh token but refresh token exists - will retry");
+            isRefreshing = false;
+          }
         }
-      });
+      } catch (error) {
+        authLogger.error("❌ Error during token refresh:", error);
+        isRefreshing = false;
+        
+        // Only log out if we don't have a refresh token
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) {
+          handleSessionExpired("Your session has expired. Please log in again.");
+          onExpired?.();
+          clearInterval(intervalId);
+        }
+      }
     }
   }, CHECK_INTERVAL_MS);
 

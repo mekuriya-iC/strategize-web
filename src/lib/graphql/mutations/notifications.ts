@@ -3,22 +3,11 @@ import { gql } from '@apollo/client';
 /**
  * Notification Mutations
  */
-export const CREATE_NOTIFICATION = gql`
-  mutation CreateNotification($createNotificationInput: CreateNotificationInput!) {
-    createNotification(createNotificationInput: $createNotificationInput) {
-      notificationId
-      title
-      message
-      notificationType
-      status
-      createdAt
-    }
-  }
-`;
 
+// Mark notification as read
 export const UPDATE_NOTIFICATION = gql`
-  mutation UpdateNotification($updateNotificationInput: UpdateNotificationInput!) {
-    updateNotification(updateNotificationInput: $updateNotificationInput) {
+  mutation UpdateNotification($input: UpdateNotificationInput!) {
+    updateNotification(updateNotificationInput: $input) {
       notificationId
       status
       readAt
@@ -26,31 +15,8 @@ export const UPDATE_NOTIFICATION = gql`
   }
 `;
 
-export const MARK_NOTIFICATION_AS_READ = gql`
-  mutation MarkNotificationAsRead($notificationId: ID!) {
-    updateNotification(
-      updateNotificationInput: {
-        notificationId: $notificationId
-        status: READ
-      }
-    ) {
-      notificationId
-      status
-      readAt
-    }
-  }
-`;
+// Mark as read helper
+export const MARK_AS_READ = UPDATE_NOTIFICATION;
 
-export const MARK_ALL_NOTIFICATIONS_READ = gql`
-  mutation MarkAllNotificationsRead($recipientUserId: ID!) {
-    markAllNotificationsRead(recipientUserId: $recipientUserId)
-  }
-`;
-
-export const REMOVE_NOTIFICATION = gql`
-  mutation RemoveNotification($notificationId: ID!) {
-    removeNotification(notificationId: $notificationId) {
-      notificationId
-    }
-  }
-`;
+// Mark as unread helper
+export const MARK_AS_UNREAD = UPDATE_NOTIFICATION;

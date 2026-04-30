@@ -10,6 +10,7 @@ export const LOGIN_EMPLOYEE = gql`
   mutation LoginEmployee($input: LoginEmployeeInput!) {
     loginEmployee(loginInput: $input) {
       accessToken
+      refreshToken
       employee {
         employeeId
         fullName
@@ -24,10 +25,10 @@ export const LOGIN_EMPLOYEE = gql`
   }
 `;
 
-// Refresh token mutation (for when backend implements it)
+// Refresh token mutation
 export const REFRESH_TOKEN = gql`
-  mutation RefreshToken {
-    refreshToken {
+  mutation RefreshToken($refreshToken: String!) {
+    refreshToken(refreshToken: $refreshToken) {
       accessToken
     }
   }

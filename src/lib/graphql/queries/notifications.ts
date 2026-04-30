@@ -3,18 +3,22 @@ import { gql } from '@apollo/client';
 /**
  * Notification Queries
  */
+
+// Get paginated notifications
 export const GET_NOTIFICATIONS = gql`
   query GetNotifications(
     $page: Int!
     $limit: Int!
     $recipientUserId: ID
     $status: NotificationStatus
+    $organizationId: ID
   ) {
     notifications(
       page: $page
       limit: $limit
       recipientUserId: $recipientUserId
       status: $status
+      organizationId: $organizationId
     ) {
       items {
         notificationId
@@ -23,6 +27,7 @@ export const GET_NOTIFICATIONS = gql`
         notificationType
         status
         readAt
+        createdAt
         relatedEntityType
         relatedEntityId
         sender {
@@ -34,17 +39,19 @@ export const GET_NOTIFICATIONS = gql`
           employeeId
           fullName
         }
-        createdAt
       }
       meta {
-        totalItems
-        totalPages
         currentPage
+        totalPages
+        totalItems
+        itemsPerPage
+        itemCount
       }
     }
   }
 `;
 
+// Get single notification
 export const GET_NOTIFICATION = gql`
   query GetNotification($notificationId: ID!) {
     notification(notificationId: $notificationId) {
@@ -54,38 +61,19 @@ export const GET_NOTIFICATION = gql`
       notificationType
       status
       readAt
+      createdAt
       relatedEntityType
       relatedEntityId
       sender {
         employeeId
         fullName
-        email
         picture
+        email
       }
       recipient {
         employeeId
         fullName
         email
-      }
-      createdAt
-    }
-  }
-`;
-
-/**
- * Get unread notification count
- * Uses the notifications query with status filter
- */
-export const GET_UNREAD_COUNT = gql`
-  query GetUnreadCount($recipientUserId: ID!) {
-    notifications(
-      page: 1
-      limit: 1
-      recipientUserId: $recipientUserId
-      status: UNREAD
-    ) {
-      meta {
-        totalItems
       }
     }
   }

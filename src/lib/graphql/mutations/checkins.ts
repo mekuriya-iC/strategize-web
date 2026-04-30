@@ -10,6 +10,7 @@ export const CREATE_CHECKINOUT_SESSION = gql`
   mutation CreateCheckinoutSession($input: CreateCheckinoutSessionInput!) {
     createCheckinoutSession(createCheckinoutSessionInput: $input) {
       checkinoutSessionId
+      title
       weekStartDate
       weekEndDate
       overallStatus

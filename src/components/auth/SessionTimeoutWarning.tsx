@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertTriangle, Clock } from "lucide-react";
-import { refreshAccessToken } from "@/lib/auth-utils";
+import { refreshAccessToken, getRefreshToken } from "@/lib/auth-utils";
 import { toast } from "sonner";
 
 export function SessionTimeoutWarning() {
@@ -26,10 +26,15 @@ export function SessionTimeoutWarning() {
       return;
     }
 
-    // Show warning if less than 5 minutes remaining
+    // Only show warning if:
+    // 1. Less than 3 minutes remaining (very urgent)
+    // 2. AND we have a refresh token (so user can extend)
+    // This means automatic refresh likely failed, so we give user manual option
+    const hasRefreshToken = !!getRefreshToken();
     const shouldWarn = 
+      hasRefreshToken &&
       tokenExpiresIn.includes("minute") && 
-      parseInt(tokenExpiresIn) <= 5 &&
+      parseInt(tokenExpiresIn) <= 3 &&
       parseInt(tokenExpiresIn) > 0;
 
     setShowWarning(shouldWarn);
@@ -83,7 +88,7 @@ export function SessionTimeoutWarning() {
         <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800">
           <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            You'll be automatically logged out when the session expires to protect your account.
+            Automatic session refresh failed. Click "Extend Session" to stay logged in.
           </p>
         </div>
 

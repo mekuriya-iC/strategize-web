@@ -93,9 +93,9 @@ export const CREATE_ASSESSMENT_RESPONSE = gql`
   mutation CreateAssessmentResponse($createAssessmentResponseInput: CreateAssessmentResponseInput!) {
     createAssessmentResponse(createAssessmentResponseInput: $createAssessmentResponseInput) {
       assessmentResponseId
-      ratingValue
+      rating
       comment
-      competencyIndicator {
+      indicator {
         competencyIndicatorId
         description
       }
@@ -108,7 +108,7 @@ export const UPDATE_ASSESSMENT_RESPONSE = gql`
   mutation UpdateAssessmentResponse($updateAssessmentResponseInput: UpdateAssessmentResponseInput!) {
     updateAssessmentResponse(updateAssessmentResponseInput: $updateAssessmentResponseInput) {
       assessmentResponseId
-      ratingValue
+      rating
       comment
       updatedAt
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getOrganizationId } from '@/lib/constants/organization';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,7 +50,7 @@ export default function CreateEvaluationCycleDialog({
         startDate,
         endDate,
         status: EvaluationCycleStatus.UPCOMING,
-        organizationId: '1', // TODO: Get from context
+        organizationId: getOrganizationId(),
       });
 
       toast.success('Evaluation cycle created successfully');

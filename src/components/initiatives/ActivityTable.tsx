@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
 import { type Activity, useInitiativeMutations } from "@/hooks/initiatives/useInitiatives";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,7 +111,7 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
       await createActivity({
         ...form,
         initiativeId,
-        organizationId: "1",
+        organizationId: getOrganizationId(),
         startDate: form.startDate || undefined,
         dueDate: form.dueDate || undefined,
       });

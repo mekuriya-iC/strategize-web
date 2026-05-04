@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getOrganizationId } from '@/lib/constants/organization';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,7 @@ export default function CreateIndicatorDialog({
         description,
         ratingScaleMin: min,
         ratingScaleMax: max,
-        organizationId: '1',
+        organizationId: getOrganizationId(),
       });
 
       toast.success('Indicator created successfully');

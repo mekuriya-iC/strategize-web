@@ -17,8 +17,10 @@ import {
   useSystemConfigurationByOrg,
   useSystemConfigurationMutations,
 } from "@/hooks/systemConfiguration/useSystemConfiguration";
-import { Settings, Clock, Calendar, Star, Mail, FileText, Users, Loader2, Save } from "lucide-react";
+import { Settings, Clock, Calendar, Star, Mail, FileText, Users, Loader2, Save, Database } from "lucide-react";
 import { useAuth } from "@/hooks/auth/useAuth";
+import FixAssigneeType from "@/components/admin/FixAssigneeType";
+import { toast } from "sonner";
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Sunday" },
@@ -130,6 +132,12 @@ export default function SystemConfigPage() {
   ]);
 
   const handleSave = async () => {
+    // Skip organization-specific settings if no org ID
+    if (!organizationId) {
+      toast.warning("Cannot save system configuration without an organization ID.");
+      return;
+    }
+
     const input = {
       timezone,
       fiscalYearStartMonth,
@@ -184,7 +192,7 @@ export default function SystemConfigPage() {
           </p>
         </div>
         {hasChanges && (
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || !organizationId}>
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -199,6 +207,18 @@ export default function SystemConfigPage() {
           </Button>
         )}
       </div>
+
+      {/* Warning if no organization ID */}
+      {!organizationId && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-yellow-900 mb-1">
+            ⚠️ No Organization ID
+          </h3>
+          <p className="text-xs text-yellow-700">
+            Your user account doesn't have an organization ID set. System configuration settings cannot be saved, but you can still use the Data Management tools below.
+          </p>
+        </div>
+      )}
 
       {/* General Settings */}
       <Card>
@@ -420,10 +440,24 @@ export default function SystemConfigPage() {
         </CardContent>
       </Card>
 
+      {/* Data Management Tools - Always show */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-orange-600" />
+            <CardTitle>Data Management</CardTitle>
+          </div>
+          <CardDescription>Tools for fixing and maintaining data integrity</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FixAssigneeType />
+        </CardContent>
+      </Card>
+
       {/* Save Button (Bottom) */}
       {hasChanges && (
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={isSaving} size="lg">
+          <Button onClick={handleSave} disabled={isSaving || !organizationId} size="lg">
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

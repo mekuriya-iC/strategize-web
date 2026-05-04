@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getOrganizationId } from '@/lib/constants/organization';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -283,7 +284,7 @@ export default function AdminSetup() {
         peerWeight,
         supervisorWeight,
         subordinateWeight,
-        organizationId: '1',
+        organizationId: getOrganizationId(),
       });
       toast.success('Weight configuration saved successfully');
     } catch (error: any) {

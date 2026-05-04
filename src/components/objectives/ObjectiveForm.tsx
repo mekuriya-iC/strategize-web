@@ -10,13 +10,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
 import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
+import { useStrategicPillars } from "@/hooks/strategicPlans/useStrategicPlans";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { ObjectiveType } from "@/types/graphql";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ObjectiveForm() {
   const router = useRouter();
@@ -33,11 +37,18 @@ export default function ObjectiveForm() {
   const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
   const organizationId = activeStrategicPlan?.organization?.organizationId || "";
 
+  // Fetch strategic pillars from the active plan
+  const { strategicPillars, loading: pillarsLoading } = useStrategicPillars(
+    activeStrategicPlan?.strategicPlanId
+  );
+
   // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
   const isCorporateUser =
     user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
+  const [selectedPillarId, setSelectedPillarId] = useState<string>("");
   const [objectiveName, setObjectiveName] = useState("");
+  const [objectiveDescription, setObjectiveDescription] = useState("");
   const [objectiveType, setObjectiveType] = useState<ObjectiveType | "">(
     isCorporateUser ? "CORPORATE" : ""
   );
@@ -97,15 +108,26 @@ export default function ObjectiveForm() {
         PERSONNEL: "INDIVIDUAL",
       };
 
+      const inputData: any = {
+        title: objectiveName.trim(),
+        description: objectiveDescription.trim() || undefined,
+        type: objectiveType,
+        level: levelMap[objectiveType],
+        strategicPeriodId: strategicPeriodValue,
+        organizationId: organizationId,
+        strategicPlanId: activeStrategicPlan.strategicPlanId,
+        strategicPillarId: selectedPillarId || undefined,
+      };
+
+      // CRITICAL: Only set assigneeType for non-corporate objectives
+      // Corporate objectives are organization-wide and not "assigned"
+      // Valid assigneeType values: DIVISION, DEPARTMENT, PERSONNEL (NOT CORPORATE)
+      if (objectiveType !== "CORPORATE") {
+        inputData.assigneeType = objectiveType;
+      }
+
       const created = await createObjective({
-        input: {
-          title: objectiveName.trim(),
-          type: objectiveType,
-          level: levelMap[objectiveType],
-          strategicPeriodId: strategicPeriodValue,
-          organizationId: organizationId,
-          strategicPlanId: activeStrategicPlan.strategicPlanId,
-        },
+        input: inputData,
       });
 
       // Auto-approve corporate-level objectives immediately after creation
@@ -141,6 +163,62 @@ export default function ObjectiveForm() {
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
         {/* Content Container */}
         <div className="flex-1 space-y-6 pb-6">
+          {/* Strategic Plan Info */}
+          {plansLoading ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-w-xl">
+              <p className="text-sm text-gray-600">Loading strategic plan...</p>
+            </div>
+          ) : activeStrategicPlan ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-xl">
+              <p className="text-sm text-green-800">
+                <strong>Active Strategic Plan:</strong> {activeStrategicPlan.title}
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                Organization: {activeStrategicPlan.organization.name}
+              </p>
+            </div>
+          ) : (
+            <Alert className="bg-red-50 border-red-200 max-w-xl">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                <strong>Warning:</strong> No active strategic plan found. Please contact your administrator to create one.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Strategic Pillar Selection */}
+          <div>
+            <Label className="block font-medium mb-2">
+              Strategic Pillar <span className="text-gray-500 text-sm">(Optional)</span>
+            </Label>
+            <Select
+              value={selectedPillarId}
+              onValueChange={(val) => setSelectedPillarId(val)}
+              disabled={!activeStrategicPlan || pillarsLoading}
+            >
+              <SelectTrigger className="max-w-xl">
+                <SelectValue placeholder={
+                  pillarsLoading 
+                    ? "Loading pillars..." 
+                    : strategicPillars.length === 0 
+                    ? "No pillars available" 
+                    : "Select a strategic pillar"
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (No pillar)</SelectItem>
+                {strategicPillars.map((pillar) => (
+                  <SelectItem key={pillar.strategicPillarId} value={pillar.strategicPillarId}>
+                    {pillar.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Link this objective to a strategic pillar from the active plan
+            </p>
+          </div>
+
           {/* Objective Name */}
           <div>
             <Label className="block font-medium mb-2">Objective Name *</Label>
@@ -150,6 +228,20 @@ export default function ObjectiveForm() {
               onChange={(e) => setObjectiveName(e.target.value)}
               required
               className="max-w-xl"
+            />
+          </div>
+
+          {/* Objective Description */}
+          <div>
+            <Label className="block font-medium mb-2">
+              Description <span className="text-gray-500 text-sm">(Optional)</span>
+            </Label>
+            <Textarea
+              placeholder="Enter objective description"
+              value={objectiveDescription}
+              onChange={(e) => setObjectiveDescription(e.target.value)}
+              className="max-w-xl"
+              rows={3}
             />
           </div>
 
@@ -211,28 +303,6 @@ export default function ObjectiveForm() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Strategic Plan Info */}
-          {plansLoading ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-w-xl">
-              <p className="text-sm text-gray-600">Loading strategic plan...</p>
-            </div>
-          ) : activeStrategicPlan ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-xl">
-              <p className="text-sm text-green-800">
-                <strong>Strategic Plan:</strong> {activeStrategicPlan.title}
-              </p>
-              <p className="text-xs text-green-700 mt-1">
-                Organization: {activeStrategicPlan.organization.name}
-              </p>
-            </div>
-          ) : (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-xl">
-              <p className="text-sm text-red-800">
-                <strong>Warning:</strong> No active strategic plan found. Please contact your administrator to create one.
-              </p>
-            </div>
-          )}
 
           {/* Note about KPIs */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-xl">

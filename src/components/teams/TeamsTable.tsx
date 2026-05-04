@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
 import { type Team, useTeamMutations } from "@/hooks/teams/useTeams";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,7 +94,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
     try {
       await createTeam({
         ...form,
-        organizationId: "1",
+        organizationId: getOrganizationId(),
         departmentId: form.departmentId && form.departmentId !== "none" ? form.departmentId : undefined,
         teamLeadUserId: form.teamLeadUserId && form.teamLeadUserId !== "none" ? form.teamLeadUserId : undefined,
       });
@@ -114,7 +115,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
         description: form.description || undefined,
         departmentId: form.departmentId && form.departmentId !== "none" ? form.departmentId : undefined,
         teamLeadUserId: form.teamLeadUserId && form.teamLeadUserId !== "none" ? form.teamLeadUserId : undefined,
-        organizationId: "1",
+        organizationId: getOrganizationId(),
       });
       resetForm();
       setEditTeam(null);

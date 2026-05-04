@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
 import { type Position, usePositionMutations } from "@/hooks/positions/usePositions";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +68,7 @@ export default function PositionTable({ positions, loading }: PositionTableProps
     try {
       await createPosition({
         ...form,
-        organizationId: "1",
+        organizationId: getOrganizationId(),
         description: form.description || undefined,
         grade: form.grade || undefined,
       });

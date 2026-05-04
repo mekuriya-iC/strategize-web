@@ -30,7 +30,7 @@ export const GET_AGGREGATE_PERFORMANCE_RESULTS = gql`
           email
           picture
           title
-          department {
+          departments {
             departmentId
             name
           }
@@ -76,7 +76,7 @@ export const GET_AGGREGATE_PERFORMANCE_RESULT = gql`
         email
         picture
         title
-        department {
+        departments {
           departmentId
           name
         }

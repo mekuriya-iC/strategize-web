@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +55,7 @@ export default function CreateInitiativeDialog({
     try {
       await createInitiative({
         ...form,
-        organizationId: "1",
+        organizationId: getOrganizationId(),
         ownerUserId: user?.employeeId,
         startDate: form.startDate || undefined,
         dueDate: form.dueDate || undefined,

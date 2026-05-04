@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import { useStrategicPlans, useStrategicPlanMutations } from "@/hooks/strategicPlans/useStrategicPlans";
+import { useAuthStore } from "@/stores";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Target, Search, Plus, Eye, MoreVertical } from "lucide-react";
+import { Target, Search, Plus, Eye, MoreVertical, Edit, Trash, Power, PowerOff, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -21,29 +23,96 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getOrganizationId } from "@/lib/constants/organization";
+import { toast } from "sonner";
 
 export default function StrategicPlansPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
   const [search, setSearch] = useState("");
   const { strategicPlans, meta, loading } = useStrategicPlans(page, limit, search);
+  const { 
+    createStrategicPlan, 
+    removeStrategicPlan, 
+    activateStrategicPlan, 
+    deactivateStrategicPlan 
+  } = useStrategicPlanMutations();
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", startDate: "", endDate: "" });
-  const { createStrategicPlan } = useStrategicPlanMutations();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+
+  const activePlan = strategicPlans.find(plan => plan.isActive);
+  const hasActivePlan = !!activePlan;
 
   const handleCreate = async () => {
+    if (hasActivePlan) {
+      toast.error("Cannot create a new strategic plan while an active plan exists. Please deactivate the current plan first.");
+      return;
+    }
+
     try {
       await createStrategicPlan({ 
         ...form, 
-        organizationId: "00000000-0000-0000-0000-000000000001" 
+        organizationId: getOrganizationId(),
+        isActive: true // New plan becomes active automatically
       });
       setCreateOpen(false);
       setForm({ title: "", description: "", startDate: "", endDate: "" });
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleActivate = async (strategicPlanId: string) => {
+    if (hasActivePlan && activePlan.strategicPlanId !== strategicPlanId) {
+      toast.error("Another strategic plan is already active. Please deactivate it first.");
+      return;
+    }
+    try {
+      await activateStrategicPlan(strategicPlanId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeactivate = async (strategicPlanId: string) => {
+    try {
+      await deactivateStrategicPlan(strategicPlanId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!planToDelete) return;
+    try {
+      await removeStrategicPlan(planToDelete);
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openDeleteDialog = (strategicPlanId: string) => {
+    setPlanToDelete(strategicPlanId);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -64,11 +133,25 @@ export default function StrategicPlansPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+        <Button 
+          onClick={() => setCreateOpen(true)} 
+          className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+          disabled={hasActivePlan}
+        >
           <Plus className="w-4 h-4" />
           Create Plan
         </Button>
       </div>
+
+      {hasActivePlan && (
+        <Alert className="bg-green-50 border-green-200">
+          <AlertCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>{activePlan.title}</strong> is currently the active strategic plan. 
+            {isSuperAdmin && " You can deactivate it to create a new plan."}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
@@ -134,6 +217,37 @@ export default function StrategicPlansPage() {
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
+                        {isSuperAdmin && (
+                          <>
+                            <DropdownMenuSeparator />
+                            {plan.isActive ? (
+                              <DropdownMenuItem onClick={() => handleDeactivate(plan.strategicPlanId)}>
+                                <PowerOff className="w-4 h-4 mr-2" />
+                                Deactivate
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem 
+                                onClick={() => handleActivate(plan.strategicPlanId)}
+                                disabled={hasActivePlan}
+                              >
+                                <Power className="w-4 h-4 mr-2" />
+                                Activate
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => router.push(`/dashboard/strategic-plans/${plan.strategicPlanId}/edit`)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => openDeleteDialog(plan.strategicPlanId)}
+                              className="text-red-600"
+                            >
+                              <Trash className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -144,12 +258,23 @@ export default function StrategicPlansPage() {
         </Table>
       </div>
 
+      {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Strategic Plan</DialogTitle>
-            <DialogDescription>Define a new high-level strategic period or plan.</DialogDescription>
+            <DialogDescription>
+              Define a new high-level strategic period or plan. This will become the active plan.
+            </DialogDescription>
           </DialogHeader>
+          {hasActivePlan && (
+            <Alert className="bg-yellow-50 border-yellow-200">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                An active strategic plan already exists. Please deactivate it before creating a new one.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Plan Title</label>
@@ -169,12 +294,35 @@ export default function StrategicPlansPage() {
                 <Input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
               </div>
             </div>
-            <Button className="w-full mt-4" onClick={handleCreate} disabled={!form.title || !form.startDate || !form.endDate}>
+            <Button 
+              className="w-full mt-4" 
+              onClick={handleCreate} 
+              disabled={!form.title || !form.startDate || !form.endDate || hasActivePlan}
+            >
               Create Plan
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the strategic plan
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

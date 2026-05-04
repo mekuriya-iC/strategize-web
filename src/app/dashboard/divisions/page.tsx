@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useQuery } from "@apollo/client";
+import { getOrganizationId } from "@/lib/constants/organization";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import DivisionTable from "@/components/divisions/DivisionTable";
@@ -218,7 +219,7 @@ const DivisionsPage = () => {
         input: {
           name: divisionName.trim(),
           headUserId: divisionManager,
-          organizationId: "1", // TODO: Get from context
+          organizationId: getOrganizationId(),
         },
       });
 

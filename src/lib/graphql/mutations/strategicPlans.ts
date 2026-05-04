@@ -53,3 +53,29 @@ export const REMOVE_STRATEGIC_PILLAR = gql`
     }
   }
 `;
+
+export const ACTIVATE_STRATEGIC_PLAN = gql`
+  mutation ActivateStrategicPlan($strategicPlanId: ID!) {
+    updateStrategicPlan(updateStrategicPlanInput: {
+      strategicPlanId: $strategicPlanId
+      isActive: true
+    }) {
+      strategicPlanId
+      title
+      isActive
+    }
+  }
+`;
+
+export const DEACTIVATE_STRATEGIC_PLAN = gql`
+  mutation DeactivateStrategicPlan($strategicPlanId: ID!) {
+    updateStrategicPlan(updateStrategicPlanInput: {
+      strategicPlanId: $strategicPlanId
+      isActive: false
+    }) {
+      strategicPlanId
+      title
+      isActive
+    }
+  }
+`;

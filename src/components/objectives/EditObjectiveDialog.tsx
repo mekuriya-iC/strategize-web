@@ -92,7 +92,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
       const updateInput = {
         objectiveId: objective.objectiveId,
         title: objectiveName.trim(), // Backend uses 'title' not 'name'
-        type: normalizedType,
+        // Note: type is not updatable in UpdateObjectiveInput
         status: isNonCorporateUser ? objective.status : objectiveStatus,
         strategicPeriodId: isNonCorporateUser
           ? objective.strategicPeriod?.strategicPeriodId || ""
@@ -163,7 +163,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                   onValueChange={(value: ObjectiveType) =>
                     setObjectiveType(value)
                   }
-                  disabled={loading}
+                  disabled={true} // Type cannot be changed after creation
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Type" />
@@ -175,6 +175,9 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                     <SelectItem value="PERSONNEL">Personal</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Type cannot be changed after creation
+                </p>
               </div>
 
               <div>

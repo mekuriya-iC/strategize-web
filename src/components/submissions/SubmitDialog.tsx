@@ -58,7 +58,7 @@ export default function SubmitDialog({
     e.preventDefault();
 
     // Validation before submission
-    if (!itemId || !itemName || !objectiveType) {
+    if (!itemId || !itemName) {
       console.error("❌ Missing required submission data:", {
         itemId,
         itemName,
@@ -67,6 +67,13 @@ export default function SubmitDialog({
       });
       toast.error("Missing required data. Please refresh and try again.");
       return;
+    }
+
+    // Validate objectiveType - if missing, try to infer or use default
+    let validObjectiveType = objectiveType;
+    if (!validObjectiveType) {
+      console.warn("⚠️ objectiveType is missing, using PERSONNEL as default");
+      validObjectiveType = "PERSONNEL";
     }
 
     // Check authentication before submitting
@@ -119,9 +126,9 @@ export default function SubmitDialog({
 
     // Map ObjectiveType to SubmissionLevel
     const submissionLevel: SubmissionLevel =
-      objectiveType === "PERSONNEL"
+      validObjectiveType === "PERSONNEL"
         ? "PERSONNEL"
-        : objectiveType === "DEPARTMENT"
+        : validObjectiveType === "DEPARTMENT"
           ? "DEPARTMENT"
           : "DIVISION"; // CORPORATE, DIVISION -> DIVISION level
 

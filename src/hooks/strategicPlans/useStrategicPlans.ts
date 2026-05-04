@@ -7,7 +7,9 @@ import {
   REMOVE_STRATEGIC_PLAN,
   CREATE_STRATEGIC_PILLAR,
   UPDATE_STRATEGIC_PILLAR,
-  REMOVE_STRATEGIC_PILLAR
+  REMOVE_STRATEGIC_PILLAR,
+  ACTIVATE_STRATEGIC_PLAN,
+  DEACTIVATE_STRATEGIC_PLAN,
 } from '@/lib/graphql/mutations/strategicPlans';
 
 export interface StrategicPlan {
@@ -119,6 +121,18 @@ export const useStrategicPlanMutations = () => {
     refetchQueries: [GET_STRATEGIC_PILLARS, GET_STRATEGIC_PLAN],
   });
 
+  const [activateStrategicPlan] = useMutation(ACTIVATE_STRATEGIC_PLAN, {
+    onCompleted: () => toast.success('Strategic Plan activated successfully'),
+    onError: (error) => toast.error(`Failed to activate plan: ${error.message}`),
+    refetchQueries: [GET_STRATEGIC_PLANS, GET_STRATEGIC_PLAN],
+  });
+
+  const [deactivateStrategicPlan] = useMutation(DEACTIVATE_STRATEGIC_PLAN, {
+    onCompleted: () => toast.success('Strategic Plan deactivated successfully'),
+    onError: (error) => toast.error(`Failed to deactivate plan: ${error.message}`),
+    refetchQueries: [GET_STRATEGIC_PLANS, GET_STRATEGIC_PLAN],
+  });
+
   return {
     createStrategicPlan: async (input: any) => {
       const { data } = await createStrategicPlan({ variables: { input } });
@@ -143,6 +157,14 @@ export const useStrategicPlanMutations = () => {
     removeStrategicPillar: async (strategicPillarId: string) => {
       const { data } = await removeStrategicPillar({ variables: { strategicPillarId } });
       return data?.removeStrategicPillar;
+    },
+    activateStrategicPlan: async (strategicPlanId: string) => {
+      const { data } = await activateStrategicPlan({ variables: { strategicPlanId } });
+      return data?.updateStrategicPlan;
+    },
+    deactivateStrategicPlan: async (strategicPlanId: string) => {
+      const { data } = await deactivateStrategicPlan({ variables: { strategicPlanId } });
+      return data?.updateStrategicPlan;
     },
   };
 };

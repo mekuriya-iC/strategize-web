@@ -27,6 +27,7 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 import { Building2 } from "lucide-react";
+import ObjectiveAssignmentDebug from "@/components/debug/ObjectiveAssignmentDebug";
 
 export default function ObjectivesApprovalTable() {
   const router = useRouter();
@@ -283,33 +284,57 @@ export default function ObjectivesApprovalTable() {
     // First, handle role-based scope filtering with strict hierarchical alignment
     if (guards.isEmployee) {
       filtered = filtered.filter((obj) => {
-        if (obj.type === "PERSONNEL") return obj.assigneeId === user?.employeeId;
-        if (obj.type === "DEPARTMENT") return !obj.parent; // Show context
+        // Show objectives explicitly assigned to this employee
+        if (obj.type === "PERSONNEL" && obj.assigneeType === "PERSONNEL") {
+          return obj.assigneeId === user?.employeeId;
+        }
+        // Show parent department objectives for context
+        if (obj.type === "DEPARTMENT") return !obj.parent;
         return false;
       });
     } else if (guards.isManager) {
       const myDeptIds = scope?.managedDepartmentIds || [];
       filtered = filtered.filter((obj) => {
-        if (obj.type === "DEPARTMENT") return myDeptIds.includes(obj.assigneeId || "");
-        if (obj.type === "PERSONNEL") {
-          // Trace parent - must belong to manager's departments
-          const parentObj = objectives.find(o => o.objectiveId === obj.parent?.objectiveId);
-          return parentObj && parentObj.type === "DEPARTMENT" && myDeptIds.includes(parentObj.assigneeId || "");
+        // Show objectives explicitly assigned to manager's departments
+        // TEMPORARY: Also show if assigneeType=DEPARTMENT even if type is wrong
+        if (obj.assigneeType === "DEPARTMENT" && myDeptIds.includes(obj.assigneeId || "")) {
+          return true;  // Show if assigned to my department, regardless of type
         }
-        if (obj.type === "DIVISION") return !obj.parent; // Context
+        
+        // Original logic: type must also be DEPARTMENT
+        if (obj.type === "DEPARTMENT" && obj.assigneeType === "DEPARTMENT") {
+          return myDeptIds.includes(obj.assigneeId || "");
+        }
+        
+        // Show personnel objectives that are children of manager's department objectives
+        if (obj.type === "PERSONNEL") {
+          const parentObj = objectives.find(o => o.objectiveId === obj.parent?.objectiveId);
+          return parentObj && 
+                 parentObj.assigneeType === "DEPARTMENT" &&
+                 myDeptIds.includes(parentObj.assigneeId || "");
+        }
+        // Show parent division objectives for context
+        if (obj.type === "DIVISION") return !obj.parent;
         return false;
       });
     } else if (guards.isDirector) {
       const myDivIds = scope?.managedDivisionIds || [];
       filtered = filtered.filter((obj) => {
-        if (obj.type === "DIVISION") return myDivIds.includes(obj.assigneeId || "");
+        // Show objectives explicitly assigned to director's divisions
+        if (obj.type === "DIVISION" && obj.assigneeType === "DIVISION") {
+          return myDivIds.includes(obj.assigneeId || "");
+        }
 
-        // trace recursive parentage
+        // trace recursive parentage for department and personnel objectives
         const isDescendantOfMyDiv = (currentObj: Objective): boolean => {
           if (!currentObj.parent) return false;
           const parentObj = objectives.find(o => o.objectiveId === currentObj.parent?.objectiveId);
           if (!parentObj) return false;
-          if (parentObj.type === "DIVISION" && myDivIds.includes(parentObj.assigneeId || "")) return true;
+          if (parentObj.type === "DIVISION" && 
+              parentObj.assigneeType === "DIVISION" && 
+              myDivIds.includes(parentObj.assigneeId || "")) {
+            return true;
+          }
           return isDescendantOfMyDiv(parentObj);
         };
 
@@ -317,7 +342,8 @@ export default function ObjectivesApprovalTable() {
           return isDescendantOfMyDiv(obj);
         }
 
-        if (obj.type === "CORPORATE") return !obj.parent; // Context
+        // Show parent corporate objectives for context
+        if (obj.type === "CORPORATE") return !obj.parent;
         return false;
       });
     } else {
@@ -604,73 +630,116 @@ export default function ObjectivesApprovalTable() {
 
       {/* Debug Info Card for Directors/Managers */}
       {(guards.isDirector || guards.isManager) && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-purple-900 mb-2">
-            {guards.isDirector ? "Division Manager" : "Department Manager"} - Debug Info
-          </h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="font-medium text-purple-800">User Role:</p>
-              <p className="text-purple-700">{user?.role}</p>
-            </div>
-            <div>
-              <p className="font-medium text-purple-800">User ID:</p>
-              <p className="text-purple-700">{user?.employeeId}</p>
-            </div>
-            {guards.isDirector && (
-              <>
-                <div>
-                  <p className="font-medium text-purple-800">Managed Division IDs:</p>
-                  <p className="text-purple-700">
-                    {scope?.managedDivisionIds?.length ?
-                      scope.managedDivisionIds.join(", ") :
-                      "⚠️ EMPTY - This is why you see no objectives!"}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-purple-800">Division Objectives Assigned to Me:</p>
-                  <p className="text-purple-700">
-                    {objectives.filter(o =>
-                      o.type === "DIVISION" &&
-                      o.assigneeId &&
-                      scope?.managedDivisionIds?.includes(o.assigneeId)
-                    ).length}
-                  </p>
-                </div>
-              </>
-            )}
-            {guards.isManager && (
-              <>
-                <div>
-                  <p className="font-medium text-purple-800">Managed Department IDs:</p>
-                  <p className="text-purple-700">
-                    {scope?.managedDepartmentIds?.length ?
-                      scope.managedDepartmentIds.join(", ") :
-                      "⚠️ EMPTY - This is why you see no objectives!"}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-purple-800">Department Objectives Assigned to Me:</p>
-                  <p className="text-purple-700">
-                    {objectives.filter(o =>
-                      o.type === "DEPARTMENT" &&
-                      o.assigneeId &&
-                      scope?.managedDepartmentIds?.includes(o.assigneeId)
-                    ).length}
-                  </p>
-                </div>
-              </>
-            )}
-            <div className="col-span-2">
-              <p className="font-medium text-purple-800">Total Objectives in Database:</p>
-              <p className="text-purple-700">{objectives.length}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="font-medium text-purple-800">Filtered Objectives (What you see):</p>
-              <p className="text-purple-700">{filteredObjectives.length}</p>
+        <>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-purple-900 mb-2">
+              {guards.isDirector ? "Division Manager" : "Department Manager"} - Debug Info
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-medium text-purple-800">User Role:</p>
+                <p className="text-purple-700">{user?.role}</p>
+              </div>
+              <div>
+                <p className="font-medium text-purple-800">User ID:</p>
+                <p className="text-purple-700">{user?.employeeId}</p>
+              </div>
+              {guards.isDirector && (
+                <>
+                  <div>
+                    <p className="font-medium text-purple-800">Managed Division IDs:</p>
+                    <p className="text-purple-700">
+                      {scope?.managedDivisionIds?.length ?
+                        scope.managedDivisionIds.join(", ") :
+                        "⚠️ EMPTY - This is why you see no objectives!"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-purple-800">Division Objectives Assigned to Me:</p>
+                    <p className="text-purple-700">
+                      {objectives.filter(o =>
+                        o.type === "DIVISION" &&
+                        o.assigneeType === "DIVISION" &&
+                        o.assigneeId &&
+                        scope?.managedDivisionIds?.includes(o.assigneeId)
+                      ).length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-purple-800">All Division Objectives (any assigneeType):</p>
+                    <p className="text-purple-700">
+                      {objectives.filter(o => o.type === "DIVISION").length}
+                    </p>
+                  </div>
+                </>
+              )}
+              {guards.isManager && (
+                <>
+                  <div>
+                    <p className="font-medium text-purple-800">Managed Department IDs:</p>
+                    <p className="text-purple-700">
+                      {scope?.managedDepartmentIds?.length ?
+                        scope.managedDepartmentIds.join(", ") :
+                        "⚠️ EMPTY - This is why you see no objectives!"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-purple-800">Department Objectives Assigned to Me:</p>
+                    <p className="text-purple-700">
+                      {objectives.filter(o =>
+                        o.type === "DEPARTMENT" &&
+                        o.assigneeType === "DEPARTMENT" &&
+                        o.assigneeId &&
+                        scope?.managedDepartmentIds?.includes(o.assigneeId)
+                      ).length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-purple-800">All Department Objectives (any assigneeType):</p>
+                    <p className="text-purple-700">
+                      {objectives.filter(o => o.type === "DEPARTMENT").length}
+                    </p>
+                  </div>
+                </>
+              )}
+              <div className="col-span-2">
+                <p className="font-medium text-purple-800">Total Objectives in Database:</p>
+                <p className="text-purple-700">{objectives.length}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="font-medium text-purple-800">Objectives with Matching Type & AssigneeType:</p>
+                <p className="text-purple-700">
+                  {guards.isDirector && objectives.filter(o => 
+                    o.type === "DIVISION" && o.assigneeType === "DIVISION"
+                  ).length}
+                  {guards.isManager && objectives.filter(o => 
+                    o.type === "DEPARTMENT" && o.assigneeType === "DEPARTMENT"
+                  ).length}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <p className="font-medium text-purple-800">Filtered Objectives (What you see):</p>
+                <p className="text-purple-700">{filteredObjectives.length}</p>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Detailed Assignment Debug */}
+          {process.env.NODE_ENV === "development" && (
+            <details className="bg-gray-50 border border-gray-200 rounded-lg p-4" open>
+              <summary className="cursor-pointer font-semibold text-gray-900 mb-2">
+                🔍 Detailed Objective Assignment Data (Click to collapse)
+              </summary>
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  This shows every objective in the database and why you can or cannot see it.
+                  Check the "Should I see this?" field for each objective.
+                </p>
+                <ObjectiveAssignmentDebug />
+              </div>
+            </details>
+          )}
+        </>
       )}
 
       {/* Filter Bar */}

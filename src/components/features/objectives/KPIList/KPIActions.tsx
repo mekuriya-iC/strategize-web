@@ -130,7 +130,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
                         <SubmitDialog
                             itemId={kpi.kpiId}
                             itemName={kpi.name}
-                            objectiveType={(kpi.objective?.type || currentObjectiveType || "DEPARTMENT") as any}
+                            objectiveType={(kpi.objective?.type || currentObjectiveType || "PERSONNEL") as any}
                             itemType="kpi"
                             onSubmitSuccess={onRefresh}
                         >

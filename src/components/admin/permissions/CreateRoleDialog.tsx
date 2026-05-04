@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,7 +54,7 @@ export default function CreateRoleDialog({
         code: code.trim().toUpperCase(),
         description: description.trim() || undefined,
         parentRoleId: parentRoleId && parentRoleId !== "none" ? parentRoleId : undefined,
-        organizationId: "1", // TODO: Get from context
+        organizationId: getOrganizationId(),
       });
       
       // Reset form

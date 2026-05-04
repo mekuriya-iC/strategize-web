@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import { GET_STRATEGIC_PLANS } from "@/lib/graphql/queries/strategic-plans";
+import { GET_STRATEGIC_PLANS } from "@/lib/graphql/queries/strategicPlans";
 
 export interface StrategicPlan {
   strategicPlanId: string;

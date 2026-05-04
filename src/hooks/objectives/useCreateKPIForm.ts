@@ -147,9 +147,18 @@ export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }
                 frequency: "QUARTERLY", // Default to QUARTERLY
                 measurementUnit: "NUMBER", // Default to NUMBER
                 organizationId: organizationId, // Required by backend
-                targetValue: targets.length > 0 ? Math.max(...targets.map(t => t.target)) : 0, // Calculate from targets
+                targetValue: annualValue, // Use the annual target value directly
                 targets: targets,
             };
+
+            console.log("🎯 Creating KPI with input:", {
+                name: input.name,
+                targetValue: input.targetValue,
+                baseline: input.baseline,
+                weight: input.weight,
+                targetsCount: targets.length,
+                targets: targets,
+            });
 
             const createdKpi = await createKpi({ input });
 

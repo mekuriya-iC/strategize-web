@@ -157,7 +157,13 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
             )}
 
             <TableCell className="px-6 py-4 w-16" onClick={(e) => e.stopPropagation()}>
-                <KPIActions kpi={kpi} onEdit={onEdit} onRefresh={onRefresh} allKpis={allKpis} />
+                <KPIActions 
+                    kpi={kpi} 
+                    onEdit={onEdit} 
+                    onRefresh={onRefresh} 
+                    allKpis={allKpis}
+                    currentObjectiveType={currentObjectiveType}
+                />
             </TableCell>
         </TableRow>
     );

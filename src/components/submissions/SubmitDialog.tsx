@@ -97,10 +97,14 @@ export default function SubmitDialog({
         return;
       }
 
-      if (kpiData.status !== "NOT_SUBMITTED" && kpiData.status !== "REJECTED") {
+      // SUPER_ADMIN and ADMIN can submit/approve KPIs in any state
+      const isAdminUser = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+      
+      if (!isAdminUser && kpiData.status !== "NOT_SUBMITTED" && kpiData.status !== "REJECTED") {
         console.error("❌ KPI is not in a submittable state:", {
           kpiId: kpiData.kpiId,
           status: kpiData.status,
+          userRole: user?.role,
         });
         toast.error(
           "This KPI cannot be submitted. It may already be submitted or approved."
@@ -108,7 +112,7 @@ export default function SubmitDialog({
         return;
       }
 
-      // KPI validation passed for ${kpiData.kpiId}: ${kpiData.name}
+      // KPI validation passed for ${kpiData.kpiId}: ${kpiData.name} (User: ${user?.role})
     }
 
     setIsSubmitting(true);
@@ -141,7 +145,7 @@ export default function SubmitDialog({
       // Submission data being sent: ${submissionType} for ${itemType}
       // KPI Submission Type Verification: expected ${itemType === "kpi" ? "KPI" : "OBJECTIVE"}, actual ${submissionData.type}
       // Item details: ${itemId} - ${itemName} (${objectiveType})
-      // User context: ${user ? user.fullName : 'Not authenticated'}
+      // User context: ${user ? user.fullName : 'Not authenticated'} (${user?.role || 'No role'})
 
       const result = await handleSmartSubmission({
         submissionType: submissionType,
@@ -150,17 +154,22 @@ export default function SubmitDialog({
         reason: reason.trim() || "Submitting for approval",
         client:
           client as unknown as import("@/utils/smartSubmission").ApolloClient,
+        userRole: user?.role, // Pass user role for auto-approval logic
       });
 
-      // Submission successful: ${result?.data?.submissionId} (${result?.data?.type})
+      // Check if it was auto-approved
+      const wasAutoApproved = result?.data?.autoApproved === true;
 
-      // Note: handleSmartSubmission already updates the KPI status to PENDING
-      // No need for additional status update here
+      if (wasAutoApproved) {
+        toast.success(
+          `${itemType === "objective" ? "Objective" : "KPI"} auto-approved! (${user?.role})`
+        );
+      } else {
+        toast.success(
+          `${itemType === "objective" ? "Objective" : "KPI"} submitted successfully!`
+        );
+      }
 
-      toast.success(
-        `${itemType === "objective" ? "Objective" : "KPI"
-        } submitted successfully!`
-      );
       setOpen(false);
       setReason(""); // Reset form
       onSubmitSuccess?.();

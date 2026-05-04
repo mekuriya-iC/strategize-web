@@ -6,15 +6,18 @@ import {
   CREATE_KPI_UPDATE,
   UPDATE_KPI_PROGRESS,
   APPROVE_KPI_UPDATE,
-  ASSIGN_KPI_TO_EMPLOYEE,
-  ASSIGN_KPI_TO_DEPARTMENT,
-  ASSIGN_KPI_TO_DIVISION,
+  CREATE_KPI_ASSIGNMENT_EMPLOYEE,
+  CREATE_KPI_ASSIGNMENT_DEPARTMENT,
+  CREATE_KPI_ASSIGNMENT_DIVISION,
   REMOVE_KPI_ASSIGNMENT_EMPLOYEE,
   REMOVE_KPI_ASSIGNMENT_DEPARTMENT,
   REMOVE_KPI_ASSIGNMENT_DIVISION,
   UPDATE_KPI_STATUS,
   TOGGLE_KPI_ACTIVE,
   CREATE_SHARED_KPI,
+  CREATE_SHARED_KPI_PARTICIPANT,
+  UPDATE_SHARED_KPI_PARTICIPANT,
+  REMOVE_SHARED_KPI_PARTICIPANT,
 } from "@/lib/graphql/mutations/kpis";
 import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
 import {
@@ -98,7 +101,7 @@ export const useKPIMutations = () => {
     });
 
   const [assignKpiToEmployee, { loading: assignEmployeeLoading, error: assignEmployeeError }] =
-    useMutation(ASSIGN_KPI_TO_EMPLOYEE, {
+    useMutation(CREATE_KPI_ASSIGNMENT_EMPLOYEE, {
       onCompleted: () => {
         invalidateAfterMutation.kpi();
       },
@@ -108,7 +111,7 @@ export const useKPIMutations = () => {
     });
 
   const [assignKpiToDepartment, { loading: assignDepartmentLoading, error: assignDepartmentError }] =
-    useMutation(ASSIGN_KPI_TO_DEPARTMENT, {
+    useMutation(CREATE_KPI_ASSIGNMENT_DEPARTMENT, {
       onCompleted: () => {
         invalidateAfterMutation.kpi();
       },
@@ -118,7 +121,7 @@ export const useKPIMutations = () => {
     });
 
   const [assignKpiToDivision, { loading: assignDivisionLoading, error: assignDivisionError }] =
-    useMutation(ASSIGN_KPI_TO_DIVISION, {
+    useMutation(CREATE_KPI_ASSIGNMENT_DIVISION, {
       onCompleted: () => {
         invalidateAfterMutation.kpi();
       },
@@ -179,6 +182,36 @@ export const useKPIMutations = () => {
 
   const [createSharedKpi, { loading: createSharedLoading, error: createSharedError }] =
     useMutation(CREATE_SHARED_KPI, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [createSharedKpiParticipant, { loading: createParticipantLoading, error: createParticipantError }] =
+    useMutation(CREATE_SHARED_KPI_PARTICIPANT, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [updateSharedKpiParticipant, { loading: updateParticipantLoading, error: updateParticipantError }] =
+    useMutation(UPDATE_SHARED_KPI_PARTICIPANT, {
+      onCompleted: () => {
+        invalidateAfterMutation.kpi();
+      },
+      refetchQueries: [
+        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      ],
+    });
+
+  const [removeSharedKpiParticipant, { loading: removeParticipantLoading, error: removeParticipantError }] =
+    useMutation(REMOVE_SHARED_KPI_PARTICIPANT, {
       onCompleted: () => {
         invalidateAfterMutation.kpi();
       },
@@ -337,6 +370,36 @@ export const useKPIMutations = () => {
     }
   };
 
+  const handleCreateSharedKpiParticipant = async (variables: any) => {
+    try {
+      const result = await createSharedKpiParticipant({ variables });
+      return result.data?.createSharedKpiParticipant;
+    } catch (error) {
+      console.error("Error creating shared KPI participant:", error);
+      throw error;
+    }
+  };
+
+  const handleUpdateSharedKpiParticipant = async (variables: any) => {
+    try {
+      const result = await updateSharedKpiParticipant({ variables });
+      return result.data?.updateSharedKpiParticipant;
+    } catch (error) {
+      console.error("Error updating shared KPI participant:", error);
+      throw error;
+    }
+  };
+
+  const handleRemoveSharedKpiParticipant = async (variables: any) => {
+    try {
+      const result = await removeSharedKpiParticipant({ variables });
+      return result.data?.removeSharedKpiParticipant;
+    } catch (error) {
+      console.error("Error removing shared KPI participant:", error);
+      throw error;
+    }
+  };
+
   return {
     createKpi: handleCreateKpi,
     updateKpi: handleUpdateKpi,
@@ -353,15 +416,20 @@ export const useKPIMutations = () => {
     updateKpiStatus: handleUpdateKpiStatus,
     toggleKpiActive: handleToggleKpiActive,
     createSharedKpi: handleCreateSharedKpi,
+    createSharedKpiParticipant: handleCreateSharedKpiParticipant,
+    updateSharedKpiParticipant: handleUpdateSharedKpiParticipant,
+    removeSharedKpiParticipant: handleRemoveSharedKpiParticipant,
     loading: createLoading || updateLoading || deleteLoading || createUpdateLoading || 
              updateProgressLoading || approveLoading || assignEmployeeLoading || 
              assignDepartmentLoading || assignDivisionLoading || removeEmployeeLoading || 
              removeDepartmentLoading || removeDivisionLoading || statusLoading || 
-             toggleLoading || createSharedLoading,
+             toggleLoading || createSharedLoading || createParticipantLoading || 
+             updateParticipantLoading || removeParticipantLoading,
     error: createError || updateError || deleteError || createUpdateError || 
            updateProgressError || approveError || assignEmployeeError || 
            assignDepartmentError || assignDivisionError || removeEmployeeError || 
            removeDepartmentError || removeDivisionError || statusError || 
-           toggleError || createSharedError,
+           toggleError || createSharedError || createParticipantError || 
+           updateParticipantError || removeParticipantError,
   };
 };

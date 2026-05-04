@@ -5,18 +5,24 @@ export const GET_STRATEGIC_PLANS = gql`
     strategicPlans(page: $page, limit: $limit, search: $search) {
       items {
         strategicPlanId
-        name
+        title
         description
         startDate
         endDate
-        status
-        organizationId
+        isActive
+        version
+        createdAt
+        organization {
+          organizationId
+          name
+        }
       }
       meta {
         currentPage
         totalPages
         totalItems
         itemsPerPage
+        itemCount
       }
     }
   }
@@ -26,17 +32,16 @@ export const GET_STRATEGIC_PLAN = gql`
   query GetStrategicPlan($strategicPlanId: ID!) {
     strategicPlan(strategicPlanId: $strategicPlanId) {
       strategicPlanId
-      name
+      title
       description
       startDate
       endDate
-      status
-      organizationId
-      pillars {
-        strategicPillarId
+      isActive
+      version
+      createdAt
+      organization {
+        organizationId
         name
-        description
-        status
       }
     }
   }
@@ -49,10 +54,10 @@ export const GET_STRATEGIC_PILLARS = gql`
         strategicPillarId
         name
         description
-        status
+        createdAt
         strategicPlan {
           strategicPlanId
-          name
+          title
         }
       }
       meta {
@@ -60,6 +65,7 @@ export const GET_STRATEGIC_PILLARS = gql`
         totalPages
         totalItems
         itemsPerPage
+        itemCount
       }
     }
   }

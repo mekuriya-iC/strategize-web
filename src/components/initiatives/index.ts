@@ -4,3 +4,6 @@ export { default as CreateInitiativeDialog } from './CreateInitiativeDialog';
 export { default as EditInitiativeDialog } from './EditInitiativeDialog';
 export { default as DeleteInitiativeDialog } from './DeleteInitiativeDialog';
 export { default as ActivityTable } from './ActivityTable';
+export { default as InitiativeProgressTracker } from './InitiativeProgressTracker';
+export { default as InitiativeTimeline } from './InitiativeTimeline';
+export { default as LinkedObjectiveCard } from './LinkedObjectiveCard';

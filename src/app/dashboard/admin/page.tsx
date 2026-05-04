@@ -127,12 +127,12 @@ export default function AdminPanelPage() {
         <Button
           variant="outline"
           className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-          onClick={() => router.push("/dashboard/admin")}
+          onClick={() => router.push("/dashboard/admin/system-config")}
         >
           <Settings className="w-6 h-6 text-purple-600" />
           <div className="text-center">
-            <div className="font-medium">System Settings</div>
-            <div className="text-xs text-gray-500">Configure system</div>
+            <div className="font-medium">System Configuration</div>
+            <div className="text-xs text-gray-500">Configure system settings</div>
           </div>
         </Button>
 

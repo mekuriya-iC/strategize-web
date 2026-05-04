@@ -13,7 +13,7 @@ import EmptyState from "@/components/departments/EmptyState";
 import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS, GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import { GET_STRATEGIC_PLANS } from "@/lib/graphql/queries/strategic-plans";
+import { GET_STRATEGIC_PLANS } from "@/lib/graphql/queries/strategicPlans";
 import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {

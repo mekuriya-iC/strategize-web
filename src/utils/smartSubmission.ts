@@ -54,14 +54,101 @@ export async function handleSmartSubmission({
   submissionData,
   reason,
   client,
+  userRole,
 }: {
   submissionType: "KPI" | "OBJECTIVE";
   itemId: string;
   submissionData: SubmissionData;
   reason: string;
   client: ApolloClient;
+  userRole?: string;
 }) {
   try {
+    // Check if user is SUPER_ADMIN or ADMIN for auto-approval
+    const shouldAutoApprove = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+    
+    submissionLogger.debug("Submission initiated", {
+      submissionType,
+      itemId,
+      userRole,
+      shouldAutoApprove,
+    });
+
+    // If SUPER_ADMIN or ADMIN, directly approve the item without creating submission
+    if (shouldAutoApprove) {
+      submissionLogger.debug("Auto-approving for SUPER_ADMIN/ADMIN");
+
+      // Update the item status directly to APPROVED
+      if (submissionType === "OBJECTIVE") {
+        try {
+          await client.mutate({
+            mutation: UPDATE_OBJECTIVE,
+            variables: {
+              input: {
+                objectiveId: itemId,
+                status: "APPROVED",
+              },
+            },
+            fetchPolicy: "network-only",
+            refetchQueries: [
+              { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
+              { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
+              { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
+              { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
+              { query: GET_OBJECTIVE, variables: { objectiveId: itemId } },
+            ],
+          });
+          submissionLogger.debug("Objective auto-approved by SUPER_ADMIN/ADMIN");
+          
+          return {
+            data: {
+              autoApproved: true,
+              type: submissionType,
+              itemId,
+            },
+          };
+        } catch (error) {
+          submissionLogger.error("Failed to auto-approve objective:", error);
+          throw error;
+        }
+      }
+
+      if (submissionType === "KPI") {
+        try {
+          await client.mutate({
+            mutation: UPDATE_KPI,
+            variables: {
+              input: {
+                kpiId: itemId,
+                status: "APPROVED",
+              },
+            },
+            fetchPolicy: "network-only",
+            refetchQueries: [
+              { query: GET_KPIS, variables: { page: 1, limit: 10 } },
+              { query: GET_KPIS, variables: { page: 1, limit: 20 } },
+              { query: GET_KPIS, variables: { page: 1, limit: 50 } },
+              { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+              { query: GET_KPI, variables: { kpiId: itemId } },
+            ],
+          });
+          submissionLogger.debug("KPI auto-approved by SUPER_ADMIN/ADMIN");
+          
+          return {
+            data: {
+              autoApproved: true,
+              type: submissionType,
+              itemId,
+            },
+          };
+        } catch (error) {
+          submissionLogger.error("Failed to auto-approve KPI:", error);
+          throw error;
+        }
+      }
+    }
+
+    // For non-admin users, proceed with normal submission workflow
     // 1. Fetch existing submissions using the SAME queries as the objectives page
     const submissionTypes = ["DIVISION", "DEPARTMENT", "PERSONNEL"];
     const allSubmissions: Submission[] = [];

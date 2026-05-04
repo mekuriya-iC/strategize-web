@@ -2,10 +2,17 @@
 
 import { use } from "react";
 import { useInitiative, useActivities } from "@/hooks/initiatives/useInitiatives";
-import { ActivityTable, InitiativeStatusBadge } from "@/components/initiatives";
+import {
+  ActivityTable,
+  InitiativeStatusBadge,
+  InitiativeProgressTracker,
+  InitiativeTimeline,
+  LinkedObjectiveCard,
+} from "@/components/initiatives";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, User, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Calendar, User, Clock, Target, BarChart3, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface InitiativeDetailPageProps {
@@ -112,14 +119,69 @@ export default function InitiativeDetailPage({ params }: InitiativeDetailPagePro
         </div>
       </div>
 
-      {/* Activities */}
-      <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-        <ActivityTable
-          activities={activities}
-          initiativeId={id}
-          loading={actLoading}
-        />
-      </div>
+      {/* Tabbed Content */}
+      <Tabs defaultValue="activities" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="activities" className="gap-2">
+            <Target className="h-4 w-4" />
+            <span className="hidden sm:inline">Activities</span>
+          </TabsTrigger>
+          <TabsTrigger value="progress" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Progress</span>
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="gap-2">
+            <CalendarDays className="h-4 w-4" />
+            <span className="hidden sm:inline">Timeline</span>
+          </TabsTrigger>
+          <TabsTrigger value="objective" className="gap-2">
+            <Target className="h-4 w-4" />
+            <span className="hidden sm:inline">Objective</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Activities Tab */}
+        <TabsContent value="activities" className="space-y-6">
+          <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <ActivityTable
+              activities={activities}
+              initiativeId={id}
+              loading={actLoading}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Progress Tab */}
+        <TabsContent value="progress" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <InitiativeProgressTracker
+                activities={activities}
+                currentProgress={initiative.completionPercentage}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <LinkedObjectiveCard />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Timeline Tab */}
+        <TabsContent value="timeline" className="space-y-6">
+          <InitiativeTimeline
+            activities={activities}
+            initiativeStartDate={initiative.startDate}
+            initiativeDueDate={initiative.dueDate}
+          />
+        </TabsContent>
+
+        {/* Objective Tab */}
+        <TabsContent value="objective" className="space-y-6">
+          <div className="max-w-2xl">
+            <LinkedObjectiveCard />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

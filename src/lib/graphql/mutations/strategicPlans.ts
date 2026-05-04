@@ -4,8 +4,8 @@ export const CREATE_STRATEGIC_PLAN = gql`
   mutation CreateStrategicPlan($input: CreateStrategicPlanInput!) {
     createStrategicPlan(createStrategicPlanInput: $input) {
       strategicPlanId
-      name
-      status
+      title
+      isActive
     }
   }
 `;
@@ -14,8 +14,8 @@ export const UPDATE_STRATEGIC_PLAN = gql`
   mutation UpdateStrategicPlan($input: UpdateStrategicPlanInput!) {
     updateStrategicPlan(updateStrategicPlanInput: $input) {
       strategicPlanId
-      name
-      status
+      title
+      isActive
     }
   }
 `;
@@ -33,7 +33,6 @@ export const CREATE_STRATEGIC_PILLAR = gql`
     createStrategicPillar(createStrategicPillarInput: $input) {
       strategicPillarId
       name
-      status
     }
   }
 `;
@@ -43,7 +42,6 @@ export const UPDATE_STRATEGIC_PILLAR = gql`
     updateStrategicPillar(updateStrategicPillarInput: $input) {
       strategicPillarId
       name
-      status
     }
   }
 `;

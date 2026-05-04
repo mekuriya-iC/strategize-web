@@ -21,9 +21,10 @@ interface KPIActionsProps {
     allKpis: Kpi[]; // Added to track assignment
     onEdit: (id: string) => void;
     onRefresh: () => void;
+    currentObjectiveType?: string; // Fallback for objective type
 }
 
-const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh }) => {
+const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh, currentObjectiveType }) => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showAssignDialog, setShowAssignDialog] = useState(false);
 
@@ -129,7 +130,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
                         <SubmitDialog
                             itemId={kpi.kpiId}
                             itemName={kpi.name}
-                            objectiveType={(kpi.objective?.type as any) || "DEPARTMENT"}
+                            objectiveType={(kpi.objective?.type || currentObjectiveType || "DEPARTMENT") as any}
                             itemType="kpi"
                             onSubmitSuccess={onRefresh}
                         >

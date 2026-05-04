@@ -12,12 +12,17 @@ import {
 
 export interface StrategicPlan {
   strategicPlanId: string;
-  name: string;
+  title: string;
   description?: string;
   startDate: string;
   endDate: string;
-  status: string;
-  organizationId: string;
+  isActive: boolean;
+  version?: string;
+  createdAt: string;
+  organization: {
+    organizationId: string;
+    name: string;
+  };
   pillars?: StrategicPillar[];
 }
 
@@ -25,10 +30,10 @@ export interface StrategicPillar {
   strategicPillarId: string;
   name: string;
   description?: string;
-  status: string;
+  createdAt: string;
   strategicPlan?: {
     strategicPlanId: string;
-    name: string;
+    title: string;
   };
 }
 

@@ -30,13 +30,17 @@ export default function StrategicPlansPage() {
   const router = useRouter();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", startDate: "", endDate: "", status: "DRAFT" });
+  const [form, setForm] = useState({ title: "", description: "", startDate: "", endDate: "" });
   const { createStrategicPlan } = useStrategicPlanMutations();
 
   const handleCreate = async () => {
     try {
-      await createStrategicPlan({ ...form, organizationId: "1" });
+      await createStrategicPlan({ 
+        ...form, 
+        organizationId: "00000000-0000-0000-0000-000000000001" 
+      });
       setCreateOpen(false);
+      setForm({ title: "", description: "", startDate: "", endDate: "" });
     } catch (e) {
       console.error(e);
     }
@@ -105,7 +109,7 @@ export default function StrategicPlansPage() {
               strategicPlans.map((plan) => (
                 <TableRow key={plan.strategicPlanId} className="hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer" onClick={() => router.push(`/dashboard/strategic-plans/${plan.strategicPlanId}`)}>
                   <TableCell>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{plan.name}</div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100">{plan.title}</div>
                     {plan.description && (
                       <div className="text-sm text-gray-500 line-clamp-1">{plan.description}</div>
                     )}
@@ -114,8 +118,8 @@ export default function StrategicPlansPage() {
                     {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={plan.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-700'}>
-                      {plan.status}
+                    <Badge variant="outline" className={plan.isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}>
+                      {plan.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -148,8 +152,8 @@ export default function StrategicPlansPage() {
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Vision 2030" />
+              <label className="text-sm font-medium">Plan Title</label>
+              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Vision 2030" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Description</label>
@@ -165,7 +169,7 @@ export default function StrategicPlansPage() {
                 <Input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
               </div>
             </div>
-            <Button className="w-full mt-4" onClick={handleCreate} disabled={!form.name || !form.startDate || !form.endDate}>
+            <Button className="w-full mt-4" onClick={handleCreate} disabled={!form.title || !form.startDate || !form.endDate}>
               Create Plan
             </Button>
           </div>

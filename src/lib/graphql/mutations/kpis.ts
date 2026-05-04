@@ -150,10 +150,10 @@ export const APPROVE_KPI_UPDATE = gql`
   }
 `;
 
-// Assign KPI to employee
-export const ASSIGN_KPI_TO_EMPLOYEE = gql`
-  mutation AssignKpiToEmployee($input: AssignKpiToEmployeeInput!) {
-    assignKpiToEmployee(assignKpiToEmployeeInput: $input) {
+// Create KPI assignment mutations
+export const CREATE_KPI_ASSIGNMENT_EMPLOYEE = gql`
+  mutation CreateKpiAssignmentEmployee($input: CreateKpiAssignmentEmployeeInput!) {
+    createKpiAssignmentEmployee(createKpiAssignmentEmployeeInput: $input) {
       kpiAssignmentEmployeeId
       targetValue
       weight
@@ -180,10 +180,9 @@ export const ASSIGN_KPI_TO_EMPLOYEE = gql`
   }
 `;
 
-// Assign KPI to department
-export const ASSIGN_KPI_TO_DEPARTMENT = gql`
-  mutation AssignKpiToDepartment($input: AssignKpiToDepartmentInput!) {
-    assignKpiToDepartment(assignKpiToDepartmentInput: $input) {
+export const CREATE_KPI_ASSIGNMENT_DEPARTMENT = gql`
+  mutation CreateKpiAssignmentDepartment($input: CreateKpiAssignmentDepartmentInput!) {
+    createKpiAssignmentDepartment(createKpiAssignmentDepartmentInput: $input) {
       kpiAssignmentDepartmentId
       targetValue
       weight
@@ -209,10 +208,9 @@ export const ASSIGN_KPI_TO_DEPARTMENT = gql`
   }
 `;
 
-// Assign KPI to division
-export const ASSIGN_KPI_TO_DIVISION = gql`
-  mutation AssignKpiToDivision($input: AssignKpiToDivisionInput!) {
-    assignKpiToDivision(assignKpiToDivisionInput: $input) {
+export const CREATE_KPI_ASSIGNMENT_DIVISION = gql`
+  mutation CreateKpiAssignmentDivision($input: CreateKpiAssignmentDivisionInput!) {
+    createKpiAssignmentDivision(createKpiAssignmentDivisionInput: $input) {
       kpiAssignmentDivisionId
       targetValue
       weight
@@ -237,6 +235,11 @@ export const ASSIGN_KPI_TO_DIVISION = gql`
     }
   }
 `;
+
+// Aliases for backward compatibility
+export const ASSIGN_KPI_TO_EMPLOYEE = CREATE_KPI_ASSIGNMENT_EMPLOYEE;
+export const ASSIGN_KPI_TO_DEPARTMENT = CREATE_KPI_ASSIGNMENT_DEPARTMENT;
+export const ASSIGN_KPI_TO_DIVISION = CREATE_KPI_ASSIGNMENT_DIVISION;
 
 // Remove KPI assignment from employee
 export const REMOVE_KPI_ASSIGNMENT_EMPLOYEE = gql`
@@ -315,6 +318,53 @@ export const CREATE_SHARED_KPI = gql`
         employeeId
         fullName
       }
+    }
+  }
+`;
+
+
+// Shared KPI Participants
+export const CREATE_SHARED_KPI_PARTICIPANT = gql`
+  mutation CreateSharedKpiParticipant($input: CreateSharedKpiParticipantInput!) {
+    createSharedKpiParticipant(createSharedKpiParticipantInput: $input) {
+      sharedKpiParticipantId
+      contributionWeight
+      createdAt
+      kpi {
+        kpiId
+        name
+      }
+      participant {
+        employeeId
+        fullName
+        email
+      }
+      assignedBy {
+        employeeId
+        fullName
+      }
+      strategicPeriod {
+        strategicPeriodId
+        name
+      }
+    }
+  }
+`;
+
+export const UPDATE_SHARED_KPI_PARTICIPANT = gql`
+  mutation UpdateSharedKpiParticipant($input: UpdateSharedKpiParticipantInput!) {
+    updateSharedKpiParticipant(updateSharedKpiParticipantInput: $input) {
+      sharedKpiParticipantId
+      contributionWeight
+      updatedAt
+    }
+  }
+`;
+
+export const REMOVE_SHARED_KPI_PARTICIPANT = gql`
+  mutation RemoveSharedKpiParticipant($sharedKpiParticipantId: ID!) {
+    removeSharedKpiParticipant(sharedKpiParticipantId: $sharedKpiParticipantId) {
+      sharedKpiParticipantId
     }
   }
 `;

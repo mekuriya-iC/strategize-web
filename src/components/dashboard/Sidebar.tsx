@@ -211,6 +211,55 @@ const navLinks: NavLink[] = [
     ),
   },
   {
+    label: "Teams",
+    href: "/dashboard/teams",
+    permission: "nav:employees",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M13 7C13 8.65685 11.6569 10 10 10C8.34315 10 7 8.65685 7 7C7 5.34315 8.34315 4 10 4C11.6569 4 13 5.34315 13 7Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M5 16C5 13.7909 6.79086 12 9 12H11C13.2091 12 15 13.7909 15 16"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M16 10C16 11.1046 15.1046 12 14 12C12.8954 12 12 11.1046 12 10C12 8.89543 12.8954 8 14 8C15.1046 8 16 8.89543 16 10Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M17 16C17 14.3431 15.6569 13 14 13H13.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M8 10C8 11.1046 7.10457 12 6 12C4.89543 12 4 11.1046 4 10C4 8.89543 4.89543 8 6 8C7.10457 8 8 8.89543 8 10Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M3 16C3 14.3431 4.34315 13 6 13H6.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
     label: "Check-In/Out",
     href: "/dashboard/checkin",
     permission: "nav:checkin",
@@ -283,6 +332,50 @@ const navLinks: NavLink[] = [
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: "Performance",
+    href: "/dashboard/performance",
+    permission: "nav:reports",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M3 17V11M10 17V7M17 17V3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle
+          cx="3"
+          cy="11"
+          r="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <circle
+          cx="10"
+          cy="7"
+          r="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <circle
+          cx="17"
+          cy="3"
+          r="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
         />
       </svg>
     ),

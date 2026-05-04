@@ -458,18 +458,35 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
         // they can be handled here, but for now we focus on the strategic period.
       }
 
+      // Calculate targetValue from targets or annual target
+      const calculatedTargetValue = isCorporate 
+        ? (parseFloat(annualTarget) || 0)
+        : targets.length > 0 
+          ? Math.max(...targets.map(t => t.target))
+          : 0;
+
       // Create the update input with only the fields that are allowed by UpdateKpiInput
       const updateInput: UpdateKpiInput = {
         kpiId: kpi.kpiId,
         name: formData.name,
         baseline: parseFloat(formData.baseline) || 0,
         weight: parseFloat(formData.weight) || 0,
+        targetValue: calculatedTargetValue, // Add targetValue
         // Only include optional fields if they have values
         ...(formData.status && { status: formData.status }),
         ...(formData.unitType && { unitType: formData.unitType }),
         // Only include targets if we have any
         ...(targets.length > 0 && { targets })
       };
+
+      console.log("🎯 Updating KPI with input:", {
+        kpiId: updateInput.kpiId,
+        name: updateInput.name,
+        targetValue: updateInput.targetValue,
+        baseline: updateInput.baseline,
+        weight: updateInput.weight,
+        targetsCount: targets.length,
+      });
 
       // Call the updateKpi mutation with the correct input structure
       await updateKpi({ input: updateInput });

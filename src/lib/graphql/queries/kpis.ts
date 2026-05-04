@@ -48,6 +48,8 @@ export const GET_KPIS = gql`
           objectiveId
           title
           level
+          status
+          type
         }
         createdBy {
           employeeId
@@ -216,6 +218,8 @@ export const GET_MY_KPIS = gql`
           objectiveId
           title
           level
+          status
+          type
         }
         targets {
           timeline
@@ -421,6 +425,55 @@ export const GET_KPI_ASSIGNMENTS_DIVISION = gql`
         division {
           divisionId
           name
+        }
+        assignedBy {
+          employeeId
+          fullName
+        }
+        strategicPeriod {
+          strategicPeriodId
+          name
+        }
+      }
+      meta {
+        currentPage
+        totalPages
+        totalItems
+        itemsPerPage
+        itemCount
+      }
+    }
+  }
+`;
+
+
+// Get shared KPI participants
+export const GET_SHARED_KPI_PARTICIPANTS = gql`
+  query GetSharedKpiParticipants(
+    $kpiId: ID!
+    $page: Int!
+    $limit: Int!
+    $strategicPeriodId: ID
+  ) {
+    sharedKpiParticipants(
+      kpiId: $kpiId
+      page: $page
+      limit: $limit
+      strategicPeriodId: $strategicPeriodId
+    ) {
+      items {
+        sharedKpiParticipantId
+        contributionWeight
+        createdAt
+        kpi {
+          kpiId
+          name
+        }
+        participant {
+          employeeId
+          fullName
+          email
+          title
         }
         assignedBy {
           employeeId

@@ -72,7 +72,7 @@ export default function AdminSetup() {
   }, {});
 
   const handleDeleteCompetency = async (competencyId: string, competencyName: string) => {
-    toast((t) => (
+    toast.custom((t) => (
       <div className="flex flex-col gap-3">
         <div>
           <p className="font-semibold">Delete Competency</p>
@@ -139,7 +139,7 @@ export default function AdminSetup() {
       return;
     }
 
-    toast((t) => (
+    toast.custom((t) => (
       <div className="flex flex-col gap-3">
         <div>
           <p className="font-semibold">Delete Core Competency</p>
@@ -225,7 +225,7 @@ export default function AdminSetup() {
   };
 
   const handleDeleteIndicator = async (indicatorId: string, description: string) => {
-    toast((t) => (
+    toast.custom((t) => (
       <div className="flex flex-col gap-3">
         <div>
           <p className="font-semibold">Delete Indicator</p>

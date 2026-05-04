@@ -78,3 +78,19 @@ export const GET_NOTIFICATION = gql`
     }
   }
 `;
+
+// Get unread count
+export const GET_UNREAD_COUNT = gql`
+  query GetUnreadCount($recipientUserId: ID!) {
+    notifications(
+      page: 1
+      limit: 1
+      recipientUserId: $recipientUserId
+      status: UNREAD
+    ) {
+      meta {
+        totalItems
+      }
+    }
+  }
+`;

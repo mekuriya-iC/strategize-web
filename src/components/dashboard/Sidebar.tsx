@@ -58,6 +58,36 @@ const navLinks: NavLink[] = [
     ),
   },
   {
+    label: "Strategic Plans",
+    href: "/dashboard/strategic-plans",
+    permission: "nav:dashboard",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M9 3L16 10L9 17"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M16 10H3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     label: "Objectives",
     href: "/dashboard/objectives",
     permission: "nav:objectives",
@@ -69,6 +99,73 @@ const navLinks: NavLink[] = [
         height={20}
         className="sidebar-icon-filter"
       />
+    ),
+  },
+  {
+    label: "Initiatives",
+    href: "/dashboard/initiatives",
+    permission: "nav:objectives",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M10 2L10 18M10 2L6 6M10 2L14 6"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M4 10H16"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: "Positions",
+    href: "/dashboard/positions",
+    permission: "nav:dashboard",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <rect
+          x="3"
+          y="4"
+          width="14"
+          height="12"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M7 9H13M7 12H10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <circle
+          cx="10"
+          cy="4"
+          r="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      </svg>
     ),
   },
   {
@@ -230,6 +327,43 @@ const navLinks: NavLink[] = [
         height={20}
         className="sidebar-icon-filter"
       />
+    ),
+  },
+  {
+    label: "System Logs",
+    href: "/dashboard/admin/logs",
+    permission: "nav:admin",
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-current"
+      >
+        <path
+          d="M9 5H7C5.89543 5 5 5.89543 5 7V15C5 16.1046 5.89543 17 7 17H13C14.1046 17 15 16.1046 15 15V13"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9 5C9 3.89543 9.89543 3 11 3C12.1046 3 13 3.89543 13 5C13 6.1046 12.1046 7 11 7C9.89543 7 9 6.1046 9 5Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8 11H12M8 14H10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     ),
   },
   {

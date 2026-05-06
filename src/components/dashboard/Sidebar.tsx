@@ -7,6 +7,8 @@ import { usePermissions } from "@/hooks/permissions/usePermissions";
 import StrategySelector from "./StrategySelector";
 import Image from "next/image";
 import type { Permission } from "@/lib/rbac/permissions";
+import { useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface NavLink {
   label: string;
@@ -15,7 +17,15 @@ interface NavLink {
   permission: Permission;
 }
 
-const navLinks: NavLink[] = [
+interface NavCategory {
+  label: string;
+  icon: React.ReactNode;
+  permission: Permission;
+  links: NavLink[];
+}
+
+// Standalone links (not in categories)
+const standaloneLinks: NavLink[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -30,467 +40,326 @@ const navLinks: NavLink[] = [
       />
     ),
   },
+];
+
+// Categorized navigation
+const navCategories: NavCategory[] = [
   {
-    label: "Structure",
-    href: "/dashboard/structure",
+    label: "Strategy",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-current">
+        <path d="M9 3L16 10L9 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M16 10H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
     permission: "nav:dashboard",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M3 6C3 4.89543 3.89543 4 5 4H15C16.1046 4 17 4.89543 17 6V14C17 15.1046 16.1046 16 15 16H5C3.89543 16 3 15.1046 3 14V6Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M6 8H14M6 11H11"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
+    links: [
+      {
+        label: "Strategic Plans",
+        href: "/dashboard/strategic-plans",
+        permission: "nav:dashboard",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M9 3L16 10L9 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ),
+      },
+      {
+        label: "Objectives",
+        href: "/dashboard/objectives",
+        permission: "nav:objectives",
+        icon: (
+          <Image src="/images/dashboard/sidebar/objective.png" alt="objective" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "Initiatives",
+        href: "/dashboard/initiatives",
+        permission: "nav:objectives",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M10 2L10 18M10 2L6 6M10 2L14 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ),
+      },
+    ],
   },
   {
-    label: "Strategic Plans",
-    href: "/dashboard/strategic-plans",
+    label: "Organization",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-current">
+        <path d="M3 6C3 4.89543 3.89543 4 5 4H15C16.1046 4 17 4.89543 17 6V14C17 15.1046 16.1046 16 15 16H5C3.89543 16 3 15.1046 3 14V6Z" stroke="currentColor" strokeWidth="1.5"/>
+      </svg>
+    ),
     permission: "nav:dashboard",
+    links: [
+      {
+        label: "Structure",
+        href: "/dashboard/structure",
+        permission: "nav:dashboard",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M3 6C3 4.89543 3.89543 4 5 4H15C16.1046 4 17 4.89543 17 6V14C17 15.1046 16.1046 16 15 16H5C3.89543 16 3 15.1046 3 14V6Z" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+        ),
+      },
+      {
+        label: "Divisions",
+        href: "/dashboard/divisions",
+        permission: "nav:divisions",
+        icon: (
+          <Image src="/images/dashboard/sidebar/divisions.png" alt="division" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "Departments",
+        href: "/dashboard/departments",
+        permission: "nav:departments",
+        icon: (
+          <Image src="/images/dashboard/sidebar/departments.png" alt="department" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "Positions",
+        href: "/dashboard/positions",
+        permission: "nav:dashboard",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+        ),
+      },
+    ],
+  },
+  {
+    label: "People",
     icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M9 3L16 10L9 17"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M16 10H3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-current">
+        <path d="M13 7C13 8.65685 11.6569 10 10 10C8.34315 10 7 8.65685 7 7C7 5.34315 8.34315 4 10 4C11.6569 4 13 5.34315 13 7Z" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M5 16C5 13.7909 6.79086 12 9 12H11C13.2091 12 15 13.7909 15 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
-  },
-  {
-    label: "Objectives",
-    href: "/dashboard/objectives",
-    permission: "nav:objectives",
-    icon: (
-      <Image
-        src="/images/dashboard/sidebar/objective.png"
-        alt="objective"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "Initiatives",
-    href: "/dashboard/initiatives",
-    permission: "nav:objectives",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M10 2L10 18M10 2L6 6M10 2L14 6"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M4 10H16"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: "Positions",
-    href: "/dashboard/positions",
-    permission: "nav:dashboard",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <rect
-          x="3"
-          y="4"
-          width="14"
-          height="12"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M7 9H13M7 12H10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <circle
-          cx="10"
-          cy="4"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: "Divisions",
-    href: "/dashboard/divisions",
-    permission: "nav:divisions",
-    icon: (
-      <Image
-        src="/images/dashboard/sidebar/divisions.png"
-        alt="division"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "Departments",
-    href: "/dashboard/departments",
-    permission: "nav:departments",
-    icon: (
-      <Image
-        src="/images/dashboard/sidebar/departments.png"
-        alt="department"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "Employees",
-    href: "/dashboard/employees",
     permission: "nav:employees",
-    icon: (
-      <Image
-        src="/images/dashboard/sidebar/employees.png"
-        alt="employee"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "Teams",
-    href: "/dashboard/teams",
-    permission: "nav:employees",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M13 7C13 8.65685 11.6569 10 10 10C8.34315 10 7 8.65685 7 7C7 5.34315 8.34315 4 10 4C11.6569 4 13 5.34315 13 7Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M5 16C5 13.7909 6.79086 12 9 12H11C13.2091 12 15 13.7909 15 16"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16 10C16 11.1046 15.1046 12 14 12C12.8954 12 12 11.1046 12 10C12 8.89543 12.8954 8 14 8C15.1046 8 16 8.89543 16 10Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M17 16C17 14.3431 15.6569 13 14 13H13.5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M8 10C8 11.1046 7.10457 12 6 12C4.89543 12 4 11.1046 4 10C4 8.89543 4.89543 8 6 8C7.10457 8 8 8.89543 8 10Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M3 16C3 14.3431 4.34315 13 6 13H6.5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: "Check-In/Out",
-    href: "/dashboard/checkin",
-    permission: "nav:checkin",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M10 6V10L13 13"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: "Logbook",
-    href: "/dashboard/logbook",
-    permission: "nav:logbook",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M7 6H13M7 10H13M7 14H10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: "Evaluate",
-    href: "/dashboard/evaluations",
-    permission: "nav:dashboard",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15.5L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
+    links: [
+      {
+        label: "Employees",
+        href: "/dashboard/employees",
+        permission: "nav:employees",
+        icon: (
+          <Image src="/images/dashboard/sidebar/employees.png" alt="employee" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "Teams",
+        href: "/dashboard/teams",
+        permission: "nav:employees",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M13 7C13 8.65685 11.6569 10 10 10C8.34315 10 7 8.65685 7 7C7 5.34315 8.34315 4 10 4C11.6569 4 13 5.34315 13 7Z" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+        ),
+      },
+    ],
   },
   {
     label: "Performance",
-    href: "/dashboard/performance",
-    permission: "nav:reports",
     icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M3 17V11M10 17V7M17 17V3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle
-          cx="3"
-          cy="11"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <circle
-          cx="10"
-          cy="7"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <circle
-          cx="17"
-          cy="3"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-current">
+        <path d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15.5L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
       </svg>
     ),
+    permission: "nav:dashboard",
+    links: [
+      {
+        label: "Check-In/Out",
+        href: "/dashboard/checkin",
+        permission: "nav:checkin",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+        ),
+      },
+      {
+        label: "Logbook",
+        href: "/dashboard/logbook",
+        permission: "nav:logbook",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4Z" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+        ),
+      },
+      {
+        label: "Evaluate",
+        href: "/dashboard/evaluations",
+        permission: "nav:dashboard",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15.5L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+          </svg>
+        ),
+      },
+      {
+        label: "Performance",
+        href: "/dashboard/performance",
+        permission: "nav:reports",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M3 17V11M10 17V7M17 17V3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ),
+      },
+    ],
   },
   {
     label: "Reports",
-    href: "/dashboard/reports",
-    permission: "nav:reports",
     icon: (
-      <Image
-        src="/images/dashboard/sidebar/reports.png"
-        alt="report"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "Approvals",
-    href: "/dashboard/approvals",
-    permission: "nav:approvals",
-    icon: (
-      <Image
-        src="/images/dashboard/sidebar/approvals.png"
-        alt="approval"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "Admin Panel",
-    href: "/dashboard/admin",
-    permission: "nav:admin",
-    icon: (
-      <Image
-        src="/images/dashboard/sidebar/admin-panel.png"
-        alt="admin"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
-    ),
-  },
-  {
-    label: "System Logs",
-    href: "/dashboard/admin/logs",
-    permission: "nav:admin",
-    icon: (
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="text-current"
-      >
-        <path
-          d="M9 5H7C5.89543 5 5 5.89543 5 7V15C5 16.1046 5.89543 17 7 17H13C14.1046 17 15 16.1046 15 15V13"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M9 5C9 3.89543 9.89543 3 11 3C12.1046 3 13 3.89543 13 5C13 6.1046 12.1046 7 11 7C9.89543 7 9 6.1046 9 5Z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M8 11H12M8 14H10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-current">
+        <path d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4Z" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M7 6H13M7 10H13M7 14H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
+    permission: "nav:reports",
+    links: [
+      {
+        label: "Reports",
+        href: "/dashboard/reports",
+        permission: "nav:reports",
+        icon: (
+          <Image src="/images/dashboard/sidebar/reports.png" alt="report" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "Approvals",
+        href: "/dashboard/approvals",
+        permission: "nav:approvals",
+        icon: (
+          <Image src="/images/dashboard/sidebar/approvals.png" alt="approval" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+    ],
   },
   {
-    label: "Settings",
-    href: "/dashboard/settings",
-    permission: "nav:settings",
+    label: "Administration",
     icon: (
-      <Image
-        src="/images/dashboard/sidebar/settings.png"
-        alt="settings"
-        width={20}
-        height={20}
-        className="sidebar-icon-filter"
-      />
+      <Image src="/images/dashboard/sidebar/admin-panel.png" alt="admin" width={20} height={20} className="sidebar-icon-filter"/>
     ),
+    permission: "nav:admin",
+    links: [
+      {
+        label: "Admin Panel",
+        href: "/dashboard/admin",
+        permission: "nav:admin",
+        icon: (
+          <Image src="/images/dashboard/sidebar/admin-panel.png" alt="admin" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "System Logs",
+        href: "/dashboard/admin/logs",
+        permission: "nav:admin",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M9 5H7C5.89543 5 5 5.89543 5 7V15C5 16.1046 5.89543 17 7 17H13C14.1046 17 15 16.1046 15 15V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ),
+      },
+      {
+        label: "Settings",
+        href: "/dashboard/settings",
+        permission: "nav:settings",
+        icon: (
+          <Image src="/images/dashboard/sidebar/settings.png" alt="settings" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+    ],
   },
-  
 ];
+
+function CollapsibleCategory({ category, open: sidebarOpen, onLinkClick }: { category: NavCategory; open: boolean; onLinkClick?: () => void }) {
+  const pathname = usePathname();
+  const { can } = usePermissions();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Filter links based on permissions
+  const filteredLinks = category.links.filter((link) => can(link.permission));
+  
+  if (filteredLinks.length === 0) return null;
+
+  // Check if any link in this category is active
+  const isCategoryActive = filteredLinks.some((link) => {
+    if (link.href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(link.href);
+  });
+
+  const isLinkActive = (linkHref: string) => {
+    if (linkHref === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(linkHref);
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`
+          w-full flex items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800
+          ${sidebarOpen ? "gap-3 px-3 py-2 justify-between" : "gap-0 px-2 py-2 justify-center"}
+          ${isCategoryActive ? "bg-[rgba(56,56,236,0.1)] text-[#3838EC] dark:bg-[#212123] dark:text-blue-400" : "text-gray-700 dark:text-gray-300"}
+        `}
+        title={!sidebarOpen ? category.label : undefined}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">{category.icon}</div>
+          {sidebarOpen && <span>{category.label}</span>}
+        </div>
+        {sidebarOpen && (
+          <div className="flex-shrink-0">
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </div>
+        )}
+      </button>
+      
+      {sidebarOpen && isExpanded && (
+        <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+          {filteredLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`
+                flex items-center gap-2 px-3 py-1.5 rounded-lg font-normal transition-colors text-sm hover:bg-[#F4F6FA] dark:hover:bg-gray-800
+                ${isLinkActive(link.href)
+                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white font-medium"
+                  : "text-gray-600 dark:text-gray-400"
+                }
+              `}
+              onClick={onLinkClick}
+            >
+              {link.icon}
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen: open, closeSidebar } = useUIStore();
   const { can } = usePermissions();
 
-  // Filter navigation links based on user permissions
-  const filteredNavLinks = navLinks.filter((link) => can(link.permission));
+  // Filter standalone links based on permissions
+  const filteredStandaloneLinks = standaloneLinks.filter((link) => can(link.permission));
+  
+  // Filter categories based on permissions
+  const filteredCategories = navCategories.filter((category) => 
+    can(category.permission) && category.links.some((link) => can(link.permission))
+  );
 
-  // Helper function to determine if a navigation link is active
   const isLinkActive = (linkHref: string) => {
-    // Exact match for dashboard home
-    if (linkHref === "/dashboard") {
-      return pathname === "/dashboard";
-    }
-    // For other links, check if pathname starts with the link href
+    if (linkHref === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(linkHref);
   };
 
@@ -516,13 +385,13 @@ export default function Sidebar() {
           lg:hidden
         `}
       >
-        {/* Mobile/Tablet sidebar content */}
         <div className="overflow-y-auto">
           <div className="mb-10 pl-2">
             <Logo width={140} height={32} />
           </div>
           <nav className="flex flex-col gap-2">
-            {filteredNavLinks.map((link) => (
+            {/* Standalone links */}
+            {filteredStandaloneLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -536,6 +405,16 @@ export default function Sidebar() {
                 {link.label}
               </Link>
             ))}
+            
+            {/* Categorized links */}
+            {filteredCategories.map((category) => (
+              <CollapsibleCategory
+                key={category.label}
+                category={category}
+                open={true}
+                onLinkClick={closeSidebar}
+              />
+            ))}
           </nav>
         </div>
         <div className="flex flex-col gap-4 mt-10 md:mt-14">
@@ -548,7 +427,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Desktop sidebar - responsive to toggle state */}
+      {/* Desktop sidebar */}
       <aside
         className={`
           hidden lg:flex lg:flex-col lg:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800 py-6
@@ -556,7 +435,6 @@ export default function Sidebar() {
           ${open ? "lg:w-64 px-4" : "lg:w-16 px-2"}
         `}
       >
-        {/* Top section: Logo and nav */}
         <div className="flex-1 overflow-y-auto">
           <div
             className={`mb-10 transition-all duration-300 ${open ? "pl-2" : "pl-0"
@@ -571,7 +449,8 @@ export default function Sidebar() {
             )}
           </div>
           <nav className="flex flex-col gap-2">
-            {filteredNavLinks.map((link) => (
+            {/* Standalone links */}
+            {filteredStandaloneLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -594,9 +473,17 @@ export default function Sidebar() {
                 </span>
               </Link>
             ))}
+            
+            {/* Categorized links */}
+            {filteredCategories.map((category) => (
+              <CollapsibleCategory
+                key={category.label}
+                category={category}
+                open={open}
+              />
+            ))}
           </nav>
         </div>
-        {/* Bottom section: Strategy selector and powered by */}
         <div
           className={`flex flex-col gap-4 mt-6 transition-all duration-300 ${open ? "" : "items-center"
             }`}

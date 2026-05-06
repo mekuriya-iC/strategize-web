@@ -1,0 +1,1221 @@
+{
+  "config": {
+    "configFile": "/Users/egnumagelana/Documents/GitHub/strategize-web/playwright.config.ts",
+    "rootDir": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 5
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 5,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "objectives-workflow.spec.ts",
+      "file": "objectives-workflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Complete Objectives Workflow",
+          "file": "objectives-workflow.spec.ts",
+          "line": 25,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Part 1: SUPER_ADMIN Creates Corporate Objective",
+              "file": "objectives-workflow.spec.ts",
+              "line": 60,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should create corporate objective with auto-approval",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "timedOut",
+                          "duration": 30074,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.superAdminPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:75:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:39:59.497Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-a70d0-bjective-with-auto-approval-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-a70d0-bjective-with-auto-approval-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-d7a7c47d8606592bb6ea",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 61,
+                  "column": 9
+                },
+                {
+                  "title": "should add KPI to corporate objective with auto-approval",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "timedOut",
+                          "duration": 30074,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.superAdminPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:75:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:39:59.517Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-184e1-bjective-with-auto-approval-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-184e1-bjective-with-auto-approval-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-8b5ac3a95d3189e21c72",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 89,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Part 2: SUPER_ADMIN Assigns to Department",
+              "file": "objectives-workflow.spec.ts",
+              "line": 104,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should assign KPI to Software Engineering department",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 2,
+                          "status": "timedOut",
+                          "duration": 30075,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.superAdminPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:75:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:39:59.495Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-6c0fa-ware-Engineering-department-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-6c0fa-ware-Engineering-department-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-aaf85e715d22f63308b3",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 105,
+                  "column": 9
+                },
+                {
+                  "title": "should see assigned objective in department tab",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 3,
+                          "status": "timedOut",
+                          "duration": 30075,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.superAdminPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:75:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:39:59.495Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-872ed-objective-in-department-tab-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-872ed-objective-in-department-tab-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-b84c01aa12b37330b469",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 121,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Part 3: MANAGER Views Department Objectives",
+              "file": "objectives-workflow.spec.ts",
+              "line": 133,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should see assigned objectives as manager",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 4,
+                          "parallelIndex": 4,
+                          "status": "timedOut",
+                          "duration": 30075,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:39:59.497Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-f260b-igned-objectives-as-manager-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-f260b-igned-objectives-as-manager-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-f4f8c3b69556639661b9",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 134,
+                  "column": 9
+                },
+                {
+                  "title": "should see correct department in debug panel",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 6,
+                          "parallelIndex": 4,
+                          "status": "timedOut",
+                          "duration": 30051,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:40:30.016Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-d257c-t-department-in-debug-panel-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-d257c-t-department-in-debug-panel-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-6b398eb3d3604525651b",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 148,
+                  "column": 9
+                },
+                {
+                  "title": "should not see objectives from other departments",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 5,
+                          "parallelIndex": 3,
+                          "status": "timedOut",
+                          "duration": 30079,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:40:29.979Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-1c1ef-ives-from-other-departments-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-1c1ef-ives-from-other-departments-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-1ee420a90038323c7ee0",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 162,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Part 4: MANAGER Creates Department Objective",
+              "file": "objectives-workflow.spec.ts",
+              "line": 178,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should create department objective",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 7,
+                          "parallelIndex": 2,
+                          "status": "timedOut",
+                          "duration": 30079,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:40:29.981Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-54b64-create-department-objective-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-54b64-create-department-objective-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-5f23eeab6ce8ed4ec39b",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 179,
+                  "column": 9
+                },
+                {
+                  "title": "should add KPI to department objective",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 8,
+                          "parallelIndex": 1,
+                          "status": "timedOut",
+                          "duration": 30079,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:40:29.966Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-86c26-KPI-to-department-objective-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-86c26-KPI-to-department-objective-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-be5ee9a0f8361e6df4e6",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 190,
+                  "column": 9
+                },
+                {
+                  "title": "department objective should require approval",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 9,
+                          "parallelIndex": 0,
+                          "status": "timedOut",
+                          "duration": 30078,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:40:29.970Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-adb73-ive-should-require-approval-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-adb73-ive-should-require-approval-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-fbaa2660a77f5936d3e8",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 204,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Part 5: Status Change Functionality",
+              "file": "objectives-workflow.spec.ts",
+              "line": 217,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "SUPER_ADMIN can manually change objective status",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 10,
+                          "parallelIndex": 3,
+                          "status": "timedOut",
+                          "duration": 30075,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.superAdminPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:75:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:41:00.440Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-b3a39-lly-change-objective-status-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-b3a39-lly-change-objective-status-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-f9d2616c91955b3074d8",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 218,
+                  "column": 9
+                },
+                {
+                  "title": "MANAGER should not see Change Status option",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 11,
+                          "parallelIndex": 2,
+                          "status": "timedOut",
+                          "duration": 30072,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:41:00.452Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-60917-ot-see-Change-Status-option-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-60917-ot-see-Change-Status-option-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-1d3a2c827362dd4c8c22",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 232,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Part 6: Permission Checks",
+              "file": "objectives-workflow.spec.ts",
+              "line": 248,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "MANAGER should only see employees from their department",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 13,
+                          "parallelIndex": 0,
+                          "status": "timedOut",
+                          "duration": 30071,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:41:00.443Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-30c8c-oyees-from-their-department-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-30c8c-oyees-from-their-department-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-e61ddc5029331ba1b94a",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 249,
+                  "column": 9
+                },
+                {
+                  "title": "should not have notification null recipient errors",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 12,
+                          "parallelIndex": 1,
+                          "status": "timedOut",
+                          "duration": 30071,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"managerPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.managerPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:83:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:41:00.444Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-31dae-ation-null-recipient-errors-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-31dae-ation-null-recipient-errors-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-4a4ae9b99405cb116cd0",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 285,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Part 7: Delete Functionality",
+              "file": "objectives-workflow.spec.ts",
+              "line": 308,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should actually delete objective",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 14,
+                          "parallelIndex": 4,
+                          "status": "timedOut",
+                          "duration": 30074,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"superAdminPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts",
+                                "column": 14,
+                                "line": 38
+                              },
+                              "message": "Error: page.click: Test ended.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]:has-text(\"Login\")')\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shadow-xs hover:bg-primar…>Login</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n\n   at fixtures/auth.ts:38\n\n  36 |   \n  37 |   // Click login button - use modern approach with waitForURL\n> 38 |   await page.click('button[type=\"submit\"]:has-text(\"Login\")');\n     |              ^\n  39 |   \n  40 |   // Wait for redirect away from auth page (could go to dashboard or organization-template)\n  41 |   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n    at login (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:38:14)\n    at Object.superAdminPage (/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/fixtures/auth.ts:75:5)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-05-06T12:41:00.470Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-fb007-d-actually-delete-objective-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/objectives-workflow-Comple-fb007-d-actually-delete-objective-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "16bf5a405b70baeb8730-300c74ddfd52a8fd9c9e",
+                  "file": "objectives-workflow.spec.ts",
+                  "line": 309,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "test-login.spec.ts",
+      "file": "test-login.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Login Test",
+          "file": "test-login.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should login as SUPER_ADMIN",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 15,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 30277,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/test-login.spec.ts",
+                            "column": 16,
+                            "line": 29
+                          },
+                          "message": "Error: page.waitForURL: Test timeout of 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n\n  27 |     \n  28 |     // Wait for redirect (should go away from /auth)\n> 29 |     await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n     |                ^\n  30 |     \n  31 |     console.log(`Redirected to: ${page.url()}`);\n  32 |     \n    at /Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/test-login.spec.ts:29:16"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "Testing login with email: admin@example.com\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-06T12:41:30.865Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/test-login-Login-Test-should-login-as-SUPER-ADMIN-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/test-login-Login-Test-should-login-as-SUPER-ADMIN-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/test-login-Login-Test-should-login-as-SUPER-ADMIN-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "f6ee8b3a8ea197e09fe3-b7812cf06ec2690005bf",
+              "file": "test-login.spec.ts",
+              "line": 9,
+              "column": 7
+            },
+            {
+              "title": "should login as MANAGER",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 16,
+                      "parallelIndex": 4,
+                      "status": "timedOut",
+                      "duration": 30287,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/test-login.spec.ts",
+                            "column": 16,
+                            "line": 57
+                          },
+                          "message": "Error: page.waitForURL: Test timeout of 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n\n  55 |     \n  56 |     // Wait for redirect\n> 57 |     await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 30000 });\n     |                ^\n  58 |     \n  59 |     console.log(`Redirected to: ${page.url()}`);\n  60 |     \n    at /Users/egnumagelana/Documents/GitHub/strategize-web/tests/e2e/test-login.spec.ts:57:16"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "Testing login with email: david.kim@example.com\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-06T12:41:30.864Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/test-login-Login-Test-should-login-as-MANAGER-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/test-login-Login-Test-should-login-as-MANAGER-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/egnumagelana/Documents/GitHub/strategize-web/test-results/test-login-Login-Test-should-login-as-MANAGER-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "f6ee8b3a8ea197e09fe3-b035e95674fea3e98621",
+              "file": "test-login.spec.ts",
+              "line": 37,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-06T12:39:47.863Z",
+    "duration": 133371.689,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 17,
+    "flaky": 0
+  }
+}

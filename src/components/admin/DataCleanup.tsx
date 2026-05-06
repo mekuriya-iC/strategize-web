@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import FixAssignmentData from "./FixAssignmentData";
 
 export default function DataCleanup() {
   const [isLoading, setIsLoading] = useState(false);
@@ -68,63 +69,69 @@ export default function DataCleanup() {
   }
 
   return (
-    <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="w-6 h-6 text-orange-600 mt-1" />
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-orange-900 mb-2">
-            🧹 Database Cleanup Required
-          </h3>
-          <p className="text-sm text-orange-700 mb-4">
-            The backend schema has been updated with new parent-child
-            relationships. To ensure compatibility, we need to delete all
-            existing objectives and KPIs and start fresh with the new structure.
-          </p>
+    <div className="space-y-6">
+      {/* Fix Assignment Data Tool */}
+      <FixAssignmentData />
 
-          <div className="bg-orange-100 border border-orange-300 rounded-md p-3 mb-4">
-            <h4 className="font-medium text-orange-900 mb-1">
-              ⚠️ This will delete:
-            </h4>
-            <ul className="text-sm text-orange-800 list-disc list-inside space-y-1">
-              <li>All existing KPIs</li>
-              <li>
-                All existing objectives (some may remain if referenced by
-                submissions)
-              </li>
-              <li>All assignment relationships</li>
-            </ul>
+      {/* Original Cleanup Tool */}
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-6 h-6 text-orange-600 mt-1" />
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-orange-900 mb-2">
+              🧹 Database Cleanup Required
+            </h3>
+            <p className="text-sm text-orange-700 mb-4">
+              The backend schema has been updated with new parent-child
+              relationships. To ensure compatibility, we need to delete all
+              existing objectives and KPIs and start fresh with the new structure.
+            </p>
+
+            <div className="bg-orange-100 border border-orange-300 rounded-md p-3 mb-4">
+              <h4 className="font-medium text-orange-900 mb-1">
+                ⚠️ This will delete:
+              </h4>
+              <ul className="text-sm text-orange-800 list-disc list-inside space-y-1">
+                <li>All existing KPIs</li>
+                <li>
+                  All existing objectives (some may remain if referenced by
+                  submissions)
+                </li>
+                <li>All assignment relationships</li>
+              </ul>
+            </div>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isLoading ? "Cleaning up..." : "Start Cleanup"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>⚠️ Confirm Data Cleanup</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action will permanently delete ALL existing objectives
+                    and KPIs from the database. This cannot be undone.
+                    <br />
+                    <br />
+                    Are you sure you want to proceed with the cleanup?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCleanup}>
+                    Yes, Delete Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                disabled={isLoading}
-                className="flex items-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                {isLoading ? "Cleaning up..." : "Start Cleanup"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>⚠️ Confirm Data Cleanup</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action will permanently delete ALL existing objectives
-                  and KPIs from the database. This cannot be undone.
-                  <br />
-                  <br />
-                  Are you sure you want to proceed with the cleanup?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleCleanup}>
-                  Yes, Delete Everything
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
     </div>

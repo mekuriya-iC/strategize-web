@@ -24,6 +24,7 @@ import EditObjectiveDialog from "@/components/objectives/EditObjectiveDialog";
 import DeleteObjectiveDialog from "@/components/objectives/DeleteObjectiveDialog";
 import AddKPIDialog from "@/components/objectives/AddKPIDialog";
 import ObjectiveWithKPIsSubmitDialog from "@/components/submissions/ObjectiveWithKPIsSubmitDialog";
+import ChangeObjectiveStatusDialog from "@/components/objectives/ChangeObjectiveStatusDialog";
 
 interface ObjectiveActionsProps {
     objective: Objective;
@@ -46,6 +47,7 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showAddKPIDialog, setShowAddKPIDialog] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+    const [showStatusDialog, setShowStatusDialog] = useState(false);
 
     const { role } = usePermissions();
 
@@ -118,6 +120,14 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
                         </DropdownMenuItem>
                     )}
 
+                    {/* Status Change - Only for ADMIN/SUPER_ADMIN */}
+                    {(role === "ADMIN" || role === "SUPER_ADMIN") && (
+                        <DropdownMenuItem onClick={() => setShowStatusDialog(true)} className="cursor-pointer text-purple-600">
+                            <ShieldAlert className="mr-2 h-4 w-4" />
+                            <span>Change Status</span>
+                        </DropdownMenuItem>
+                    )}
+
                     <DropdownMenuSeparator />
 
                     {!isReadOnly ? (
@@ -185,6 +195,15 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
                 objectiveType={objective.type}
                 associatedKPIs={objectiveKPIs}
                 onSubmitSuccess={onEditSuccess}
+            />
+
+            <ChangeObjectiveStatusDialog
+                open={showStatusDialog}
+                onOpenChange={setShowStatusDialog}
+                objectiveId={objective.objectiveId}
+                objectiveName={objective.title || objective.name || "Unnamed Objective"}
+                currentStatus={objective.status}
+                onSuccess={onEditSuccess}
             />
         </>
     );

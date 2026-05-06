@@ -27,6 +27,7 @@ import {
   CREATE_KPI_ASSIGNMENT_DEPARTMENT,
   CREATE_KPI_ASSIGNMENT_DIVISION,
 } from "@/lib/graphql/mutations/kpis";
+import { useAuthStore } from "@/stores";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
@@ -56,10 +57,18 @@ export default function KpiAssignmentDialog({
   const [targetValue, setTargetValue] = useState(kpi.targetValue.toString());
   const [weight, setWeight] = useState("100");
 
-  // Fetch employees
+  // Fetch employees - filter by department for non-admins
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
-    variables: { page: 1, limit: 1000 },
-    skip: assignmentType !== "EMPLOYEE",
+    variables: { 
+      page: 1, 
+      limit: 1000,
+      // Only admins can see all employees, others see department employees
+      ...(isAdmin ? {} : { departmentId: user?.department?.departmentId })
+    },
+    skip: assignmentType !== "EMPLOYEE" || (!isAdmin && !user?.department?.departmentId),
   });
 
   // Fetch departments

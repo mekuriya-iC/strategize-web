@@ -126,28 +126,41 @@ export default function ObjectiveForm() {
         inputData.assigneeType = objectiveType;
       }
 
+      console.log("🎯 Creating objective with input:", inputData);
+
       const created = await createObjective({
         input: inputData,
       });
 
+      console.log("✅ Objective created:", created);
+
       // Auto-approve corporate-level objectives immediately after creation
       if (objectiveType === "CORPORATE" && created?.objectiveId) {
-        await updateObjective({
-          input: {
-            objectiveId: created.objectiveId,
-            status: "APPROVED",
-          },
-        });
+        try {
+          console.log("🔄 Auto-approving corporate objective:", created.objectiveId);
+          
+          const updated = await updateObjective({
+            input: {
+              objectiveId: created.objectiveId,
+              status: "APPROVED",
+            },
+          });
+          
+          console.log("✅ Objective auto-approved:", updated);
+          toast.success("Objective created and auto-approved");
+        } catch (approvalError) {
+          console.error("❌ Failed to auto-approve objective:", approvalError);
+          toast.warning("Objective created but auto-approval failed. Please approve manually.");
+        }
+      } else {
+        toast.success("Objective created successfully!");
       }
-
-      toast.success(
-        objectiveType === "CORPORATE"
-          ? "Objective created and auto-approved"
-          : "Objective created successfully!"
-      );
+      
+      // Wait a bit for backend to process before redirecting
+      await new Promise(resolve => setTimeout(resolve, 300));
       router.push("/dashboard/objectives");
     } catch (error) {
-      console.error("Error creating objective:", error);
+      console.error("❌ Error creating objective:", error);
       toast.error("Failed to create objective. Please try again.");
     } finally {
       setIsSubmitting(false);

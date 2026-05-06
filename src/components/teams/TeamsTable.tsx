@@ -52,6 +52,7 @@ import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { MoreHorizontal, Pencil, Trash2, Eye, Users, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
+import { useAuthStore } from "@/stores";
 
 interface TeamsTableProps {
   teams: Team[];
@@ -80,8 +81,15 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
   const departments = deptsData?.departments?.items || [];
 
   // Fetch employees for team lead dropdown
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   const { data: empsData } = useQuery(GET_EMPLOYEES, {
-    variables: { page: 1, limit: 200 },
+    variables: { 
+      page: 1, 
+      limit: 200,
+      ...(isAdmin ? {} : { departmentId: user?.department?.departmentId })
+    },
   });
   const employees = empsData?.employees?.items || [];
 

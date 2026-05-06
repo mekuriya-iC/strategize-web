@@ -22,10 +22,6 @@ export const CREATE_OBJECTIVE = gql`
       order
       dueDate
       createdAt
-      strategicPeriod {
-        strategicPeriodId
-        name
-      }
       createdBy {
         employeeId
         fullName
@@ -55,10 +51,6 @@ export const UPDATE_OBJECTIVE = gql`
       order
       dueDate
       updatedAt
-      strategicPeriod {
-        strategicPeriodId
-        name
-      }
       parent {
         objectiveId
         title

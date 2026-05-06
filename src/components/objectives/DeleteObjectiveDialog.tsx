@@ -41,7 +41,7 @@ const DeleteObjectiveDialog: React.FC<DeleteObjectiveDialogProps> = ({
     }
 
     try {
-      await deleteObjective({ id: objectiveId });
+      await deleteObjective({ objectiveId });
       toast.success("Objective deleted successfully");
       setOpen(false);
       onDeleteSuccess?.();

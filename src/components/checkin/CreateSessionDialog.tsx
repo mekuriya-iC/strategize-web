@@ -50,8 +50,13 @@ export default function CreateSessionDialog({
 
   // Get all employees (only for admins)
   const { data: employeesData, loading: employeesLoading } = useQuery(GET_EMPLOYEES, {
-    variables: { page: 1, limit: 1000 },
-    skip: !isAdmin, // Only query if user is admin
+    variables: { 
+      page: 1, 
+      limit: 1000,
+      // Filter by department for non-admins
+      ...(isAdmin ? {} : { departmentId: currentUser?.department?.departmentId })
+    },
+    skip: !isAdmin && !currentUser?.department?.departmentId,
     fetchPolicy: 'cache-and-network',
   });
 

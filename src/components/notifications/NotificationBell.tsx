@@ -33,7 +33,10 @@ export function NotificationBell() {
 
   const [updateNotification] = useMutation(UPDATE_NOTIFICATION);
 
-  const notifications = data?.notifications?.items || [];
+  // Filter out notifications with null recipients
+  const notifications = (data?.notifications?.items || []).filter(
+    (n) => n.recipient != null
+  );
   const unreadCount = notifications.length;
 
   const handleMarkAsRead = async (notificationId: string) => {

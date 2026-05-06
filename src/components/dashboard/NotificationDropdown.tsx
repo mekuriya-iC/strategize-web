@@ -31,7 +31,10 @@ export default function NotificationDropdown() {
 
   const [updateNotification] = useMutation(UPDATE_NOTIFICATION);
 
-  const notifications = data?.notifications?.items || [];
+  // Filter out notifications with null recipients
+  const notifications = (data?.notifications?.items || []).filter(
+    (n: any) => n.recipient != null
+  );
   const unreadCount = notifications.filter((n: any) => n.status === "UNREAD").length;
 
   const markAllAsRead = async (e: React.MouseEvent) => {

@@ -55,11 +55,10 @@ export default function ObjectiveForm() {
   const [strategicPeriodValue, setStrategicPeriodValue] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Only CORPORATE objectives can be created directly
+  // Division/Department/Personnel objectives are created through cascade/assignment
   const objectiveTypes: { value: ObjectiveType; label: string }[] = [
     { value: "CORPORATE", label: "Corporate" },
-    { value: "DIVISION", label: "Division" },
-    { value: "DEPARTMENT", label: "Department" },
-    { value: "PERSONNEL", label: "Personnel" },
   ];
 
   useEffect(() => {
@@ -264,9 +263,10 @@ export default function ObjectiveForm() {
             <Select
               value={objectiveType}
               onValueChange={(val) => setObjectiveType(val as ObjectiveType)}
+              disabled={true}  // Always disabled - only CORPORATE can be created
             >
               <SelectTrigger className="max-w-xl">
-                <SelectValue placeholder="Select objective type" />
+                <SelectValue placeholder="Corporate (Only type available)" />
               </SelectTrigger>
               <SelectContent>
                 {objectiveTypes.map((type) => (
@@ -276,6 +276,9 @@ export default function ObjectiveForm() {
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Only Corporate objectives can be created directly. Division, Department, and Personnel objectives are created through the cascade/assignment process.
+            </p>
           </div>
 
           {/* Strategic Period */}

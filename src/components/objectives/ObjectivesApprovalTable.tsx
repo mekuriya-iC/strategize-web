@@ -27,7 +27,6 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 import { Building2 } from "lucide-react";
-import ObjectiveAssignmentDebug from "@/components/debug/ObjectiveAssignmentDebug";
 
 export default function ObjectivesApprovalTable() {
   const router = useRouter();
@@ -56,26 +55,6 @@ export default function ObjectivesApprovalTable() {
   // Use RBAC permissions
   const { guards, objectives: objectivePermissions, scope } = usePermissions();
 
-  // Set default tab based on role once
-  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
-  React.useEffect(() => {
-    if (hasSetDefaultTab) return;
-
-    if (guards.isDirector) {
-      setActiveTab("division");
-      setHasSetDefaultTab(true);
-    } else if (guards.isManager) {
-      setActiveTab("department");
-      setHasSetDefaultTab(true);
-    } else if (guards.isEmployee) {
-      setActiveTab("personnel");
-      setHasSetDefaultTab(true);
-    } else if (isCorporateRole) {
-      setActiveTab("corporate");
-      setHasSetDefaultTab(true);
-    }
-  }, [guards, isCorporateRole, hasSetDefaultTab]);
-
   // Determine the assigneeId based on the user role and selected organizational unit
   const getAssigneeId = (): string | undefined => {
     if (guards.isManager && selectedUnit) {
@@ -99,15 +78,51 @@ export default function ObjectivesApprovalTable() {
     if (searchTerm) {
       vars.search = searchTerm;
     }
-    if (assigneeId) {
+    // For managers/directors, use selectedUnit to filter objectives at the API level
+    if ((guards.isManager || guards.isDirector) && selectedUnit) {
+      vars.assigneeId = selectedUnit.id;
+    } else if (assigneeId) {
       vars.assigneeId = assigneeId;
     }
     return vars;
-  }, [assigneeId, searchTerm]);
+  }, [assigneeId, searchTerm, guards.isManager, guards.isDirector, selectedUnit]);
 
   // Fetch a large set and paginate client-side for predictable counts
   const { objectives, loading, error, /* meta, */ refetch } =
     useObjectives(objectivesQueryVars);
+
+  // Set default tab based on role once - MUST be after objectives are fetched
+  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
+  React.useEffect(() => {
+    if (hasSetDefaultTab || loading) return; // Wait for objectives to load
+
+    if (guards.isDirector) {
+      setActiveTab("division");
+      setHasSetDefaultTab(true);
+    } else if (guards.isManager) {
+      // For managers, check if they have division or department objectives
+      // Default to division if they have division objectives, otherwise department
+      const hasDivisionObjectives = objectives.some(o => 
+        o.assigneeType === "DIVISION" && 
+        o.assigneeId && 
+        selectedUnit?.type === "division" && 
+        selectedUnit.id === o.assigneeId
+      );
+      
+      if (hasDivisionObjectives) {
+        setActiveTab("division");
+      } else {
+        setActiveTab("department");
+      }
+      setHasSetDefaultTab(true);
+    } else if (guards.isEmployee) {
+      setActiveTab("personnel");
+      setHasSetDefaultTab(true);
+    } else if (isCorporateRole) {
+      setActiveTab("corporate");
+      setHasSetDefaultTab(true);
+    }
+  }, [guards, isCorporateRole, hasSetDefaultTab, objectives, selectedUnit, loading]);
 
   // Fetch a broad set of objectives for lookup (to resolve parent KPI names in expanded rows)
   // This avoids missing parent corporate objectives when the view is scoped to a unit
@@ -281,6 +296,26 @@ export default function ObjectivesApprovalTable() {
     // Starting objectives filtering
     let filtered = objectives;
 
+    // Filter out objectives with NULL assigneeId (broken data)
+    // Only show objectives that have proper assignment data
+    filtered = filtered.filter((obj) => {
+      // Corporate objectives without assignment are OK (top-level)
+      if (obj.type === "CORPORATE" && !obj.assigneeType && !obj.assigneeId) {
+        return true;
+      }
+      
+      // For ADMIN/SUPER_ADMIN: Show all objectives, even unassigned ones
+      if (guards.isAdmin || guards.isSuperAdmin) {
+        return true;
+      }
+      
+      // For other roles: Filter out objectives with assigneeType but no assigneeId
+      if (obj.assigneeType && !obj.assigneeId) {
+        return false; // Broken data - has type but no ID
+      }
+      return true;
+    });
+
     // First, handle role-based scope filtering with strict hierarchical alignment
     if (guards.isEmployee) {
       filtered = filtered.filter((obj) => {
@@ -294,16 +329,43 @@ export default function ObjectivesApprovalTable() {
       });
     } else if (guards.isManager) {
       const myDeptIds = scope?.managedDepartmentIds || [];
+      
+      // Build set of division IDs the manager can access
+      const myDivisionIds = new Set<string>();
+      
+      // 1. Get divisions from manager's departments
+      if (departmentsData?.departments?.items) {
+        departmentsData.departments.items.forEach((dept: any) => {
+          if (myDeptIds.includes(dept.departmentId) && dept.division?.divisionId) {
+            myDivisionIds.add(dept.division.divisionId);
+          }
+        });
+      }
+      
+      // 2. Include the currently selected unit (division or department's division)
+      if (selectedUnit) {
+        if (selectedUnit.type === "division") {
+          myDivisionIds.add(selectedUnit.id);
+        } else if (selectedUnit.type === "department") {
+          // Find the division this department belongs to
+          const dept = departmentsData?.departments?.items?.find(
+            (d: any) => d.departmentId === selectedUnit.id
+          );
+          if (dept?.division?.divisionId) {
+            myDivisionIds.add(dept.division.divisionId);
+          }
+        }
+      }
+      
       filtered = filtered.filter((obj) => {
         // Show objectives explicitly assigned to manager's departments
-        // TEMPORARY: Also show if assigneeType=DEPARTMENT even if type is wrong
         if (obj.assigneeType === "DEPARTMENT" && myDeptIds.includes(obj.assigneeId || "")) {
-          return true;  // Show if assigned to my department, regardless of type
+          return true;
         }
         
-        // Original logic: type must also be DEPARTMENT
-        if (obj.type === "DEPARTMENT" && obj.assigneeType === "DEPARTMENT") {
-          return myDeptIds.includes(obj.assigneeId || "");
+        // Show objectives assigned to manager's accessible divisions
+        if (obj.assigneeType === "DIVISION" && obj.assigneeId && myDivisionIds.has(obj.assigneeId)) {
+          return true;
         }
         
         // Show personnel objectives that are children of manager's department objectives
@@ -313,8 +375,11 @@ export default function ObjectivesApprovalTable() {
                  parentObj.assigneeType === "DEPARTMENT" &&
                  myDeptIds.includes(parentObj.assigneeId || "");
         }
-        // Show parent division objectives for context
-        if (obj.type === "DIVISION") return !obj.parent;
+        
+        // Show parent division/corporate objectives for context (top-level only)
+        if (obj.type === "DIVISION" || obj.type === "CORPORATE") {
+          return !obj.parent;
+        }
         return false;
       });
     } else if (guards.isDirector) {
@@ -628,118 +693,16 @@ export default function ObjectivesApprovalTable() {
         </div>
       )}
 
-      {/* Debug Info Card for Directors/Managers */}
-      {(guards.isDirector || guards.isManager) && (
-        <>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <h2 className="text-lg font-semibold text-purple-900 mb-2">
-              {guards.isDirector ? "Division Manager" : "Department Manager"} - Debug Info
-            </h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="font-medium text-purple-800">User Role:</p>
-                <p className="text-purple-700">{user?.role}</p>
-              </div>
-              <div>
-                <p className="font-medium text-purple-800">User ID:</p>
-                <p className="text-purple-700">{user?.employeeId}</p>
-              </div>
-              {guards.isDirector && (
-                <>
-                  <div>
-                    <p className="font-medium text-purple-800">Managed Division IDs:</p>
-                    <p className="text-purple-700">
-                      {scope?.managedDivisionIds?.length ?
-                        scope.managedDivisionIds.join(", ") :
-                        "⚠️ EMPTY - This is why you see no objectives!"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-purple-800">Division Objectives Assigned to Me:</p>
-                    <p className="text-purple-700">
-                      {objectives.filter(o =>
-                        o.type === "DIVISION" &&
-                        o.assigneeType === "DIVISION" &&
-                        o.assigneeId &&
-                        scope?.managedDivisionIds?.includes(o.assigneeId)
-                      ).length}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-purple-800">All Division Objectives (any assigneeType):</p>
-                    <p className="text-purple-700">
-                      {objectives.filter(o => o.type === "DIVISION").length}
-                    </p>
-                  </div>
-                </>
-              )}
-              {guards.isManager && (
-                <>
-                  <div>
-                    <p className="font-medium text-purple-800">Managed Department IDs:</p>
-                    <p className="text-purple-700">
-                      {scope?.managedDepartmentIds?.length ?
-                        scope.managedDepartmentIds.join(", ") :
-                        "⚠️ EMPTY - This is why you see no objectives!"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-purple-800">Department Objectives Assigned to Me:</p>
-                    <p className="text-purple-700">
-                      {objectives.filter(o =>
-                        o.type === "DEPARTMENT" &&
-                        o.assigneeType === "DEPARTMENT" &&
-                        o.assigneeId &&
-                        scope?.managedDepartmentIds?.includes(o.assigneeId)
-                      ).length}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-purple-800">All Department Objectives (any assigneeType):</p>
-                    <p className="text-purple-700">
-                      {objectives.filter(o => o.type === "DEPARTMENT").length}
-                    </p>
-                  </div>
-                </>
-              )}
-              <div className="col-span-2">
-                <p className="font-medium text-purple-800">Total Objectives in Database:</p>
-                <p className="text-purple-700">{objectives.length}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="font-medium text-purple-800">Objectives with Matching Type & AssigneeType:</p>
-                <p className="text-purple-700">
-                  {guards.isDirector && objectives.filter(o => 
-                    o.type === "DIVISION" && o.assigneeType === "DIVISION"
-                  ).length}
-                  {guards.isManager && objectives.filter(o => 
-                    o.type === "DEPARTMENT" && o.assigneeType === "DEPARTMENT"
-                  ).length}
-                </p>
-              </div>
-              <div className="col-span-2">
-                <p className="font-medium text-purple-800">Filtered Objectives (What you see):</p>
-                <p className="text-purple-700">{filteredObjectives.length}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Detailed Assignment Debug */}
-          {process.env.NODE_ENV === "development" && (
-            <details className="bg-gray-50 border border-gray-200 rounded-lg p-4" open>
-              <summary className="cursor-pointer font-semibold text-gray-900 mb-2">
-                🔍 Detailed Objective Assignment Data (Click to collapse)
-              </summary>
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  This shows every objective in the database and why you can or cannot see it.
-                  Check the "Should I see this?" field for each objective.
-                </p>
-                <ObjectiveAssignmentDebug />
-              </div>
-            </details>
-          )}
-        </>
+      {/* Error message for managers/directors with no access */}
+      {(guards.isDirector || guards.isManager) && 
+       !selectedUnit && 
+       filteredObjectives.length === 0 && 
+       !loading && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm text-yellow-800">
+            <strong>No organizational unit selected.</strong> Please select a {guards.isDirector ? 'division' : 'department'} from the dropdown above to view objectives.
+          </p>
+        </div>
       )}
 
       {/* Filter Bar */}

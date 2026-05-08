@@ -29,12 +29,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [updateObjective, { loading: updateLoading, error: updateError }] =
@@ -42,12 +37,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [deleteObjective, { loading: deleteLoading, error: deleteError }] =
@@ -56,12 +46,7 @@ export const useObjectiveMutations = () => {
         invalidateAfterMutation.objective();
         invalidateAfterMutation.submission();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [approveObjective, { loading: approveLoading, error: approveError }] =
@@ -69,9 +54,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [rejectObjective, { loading: rejectLoading, error: rejectError }] =
@@ -79,9 +62,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [cascadeObjective, { loading: cascadeLoading, error: cascadeError }] =
@@ -89,9 +70,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [assignObjective, { loading: assignLoading, error: assignError }] =
@@ -99,9 +78,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const [updateObjectiveStatus, { loading: statusLoading, error: statusError }] =
@@ -109,9 +86,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: [
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: "active", // Refetch all active objective queries
     });
 
   const handleCreateObjective = async (

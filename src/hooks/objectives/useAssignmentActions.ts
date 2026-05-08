@@ -113,15 +113,13 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
 
                     if (created?.objectiveId) {
                         targetObjectiveId = created.objectiveId;
-                        // Fix up name and type (Legacy requirement)
-                        const correctType = getAssigneeObjectiveType(sourceObjective.type, assignment.assigneeType);
+                        // Fix up name (type is set at creation and cannot be changed)
                         const typeLabel = assignment.assigneeType === "DIVISION" ? "Division" : assignment.assigneeType === "DEPARTMENT" ? "Department" : "Personnel";
                         const placeholderName = `Please add ${typeLabel} objective name`;
 
                         await updateObjective({
                             input: {
                                 objectiveId: created.objectiveId,
-                                type: correctType,
                                 title: placeholderName,
                             }
                         });

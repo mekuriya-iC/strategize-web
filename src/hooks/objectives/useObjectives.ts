@@ -20,7 +20,7 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
       limit: 10,
       ...variables,
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only", // Changed to always fetch fresh data
   });
 
   return {

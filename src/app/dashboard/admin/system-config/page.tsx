@@ -66,7 +66,8 @@ const TIMEZONES = [
 
 export default function SystemConfigPage() {
   const { user } = useAuth();
-  const organizationId = user?.organization?.organizationId || "";
+  // TODO: Get organizationId from proper source when organization field is added to Employee type
+  const organizationId = "";
 
   const { configuration, loading, refetch } = useSystemConfigurationByOrg(organizationId);
   const { createConfiguration, updateConfiguration, loading: mutationLoading } =

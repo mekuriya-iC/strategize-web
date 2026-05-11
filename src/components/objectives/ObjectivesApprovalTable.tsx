@@ -78,18 +78,41 @@ export default function ObjectivesApprovalTable() {
     if (searchTerm) {
       vars.search = searchTerm;
     }
-    // For managers/directors, use selectedUnit to filter objectives at the API level
-    if ((guards.isManager || guards.isDirector) && selectedUnit) {
-      vars.assigneeId = selectedUnit.id;
-    } else if (assigneeId) {
+    // Only filter at API level for employees (personnel)
+    // Managers, Directors, and Admins fetch all objectives and filter on frontend
+    // This allows them to see hierarchical objectives (parent + children)
+    if (guards.isEmployee && assigneeId) {
       vars.assigneeId = assigneeId;
     }
+    
+    console.log('🔍 [ObjectivesQuery] Query variables', {
+      vars,
+      userRole: user?.role,
+      guards: guards,
+      assigneeId: assigneeId
+    });
+    
     return vars;
-  }, [assigneeId, searchTerm, guards.isManager, guards.isDirector, selectedUnit]);
+  }, [assigneeId, searchTerm, guards.isEmployee]);
 
   // Fetch a large set and paginate client-side for predictable counts
   const { objectives, loading, error, /* meta, */ refetch } =
     useObjectives(objectivesQueryVars);
+
+  console.log('🔍 [ObjectivesQuery] API Response', {
+    count: objectives.length,
+    loading,
+    error: error?.message,
+    objectives: objectives.map(o => ({
+      id: o.objectiveId,
+      title: o.title,
+      type: o.type,
+      assigneeType: o.assigneeType,
+      assigneeId: o.assigneeId,
+      periodId: o.strategicPeriod?.strategicPeriodId,
+      periodName: o.strategicPeriod?.name
+    }))
+  });
 
   // Set default tab based on role once - MUST be after objectives are fetched
   const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
@@ -180,10 +203,10 @@ export default function ObjectivesApprovalTable() {
     skip: !showTabs
   });
 
-  // Fetch Employees for names lookup
+  // Fetch Employees for names lookup - Only for admins (backend restricts this)
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
-    skip: !showTabs
+    skip: !showTabs || !(guards.isAdmin || guards.isSuperAdmin)  // Skip for non-admins
   });
 
   // Build names lookup map
@@ -293,6 +316,15 @@ export default function ObjectivesApprovalTable() {
 
   // Filter objectives based on status and user role
   const filteredObjectives = useMemo(() => {
+    console.log('🔍 [ObjectivesFilter] Starting filtering process', {
+      totalObjectives: objectives.length,
+      userRole: user?.role,
+      selectedUnit: selectedUnit,
+      selectedPeriod: selectedPeriod,
+      guards: guards,
+      scope: scope
+    });
+    
     // Starting objectives filtering
     let filtered = objectives;
 
@@ -316,8 +348,20 @@ export default function ObjectivesApprovalTable() {
       return true;
     });
 
+    console.log('🔍 [ObjectivesFilter] After NULL assigneeId filter', {
+      count: filtered.length,
+      objectives: filtered.map(o => ({
+        id: o.objectiveId,
+        title: o.title,
+        type: o.type,
+        assigneeType: o.assigneeType,
+        assigneeId: o.assigneeId
+      }))
+    });
+
     // First, handle role-based scope filtering with strict hierarchical alignment
     if (guards.isEmployee) {
+      console.log('🔍 [ObjectivesFilter] Applying EMPLOYEE filter');
       filtered = filtered.filter((obj) => {
         // Show objectives explicitly assigned to this employee
         if (obj.type === "PERSONNEL" && obj.assigneeType === "PERSONNEL") {
@@ -328,6 +372,11 @@ export default function ObjectivesApprovalTable() {
         return false;
       });
     } else if (guards.isManager) {
+      console.log('🔍 [ObjectivesFilter] Applying MANAGER filter', {
+        managedDepartmentIds: scope?.managedDepartmentIds,
+        selectedUnit: selectedUnit
+      });
+      
       const myDeptIds = scope?.managedDepartmentIds || [];
       
       // Build set of division IDs the manager can access
@@ -357,32 +406,46 @@ export default function ObjectivesApprovalTable() {
         }
       }
       
+      console.log('🔍 [ObjectivesFilter] Manager accessible divisions', {
+        myDivisionIds: Array.from(myDivisionIds),
+        myDeptIds: myDeptIds
+      });
+      
       filtered = filtered.filter((obj) => {
         // Show objectives explicitly assigned to manager's departments
         if (obj.assigneeType === "DEPARTMENT" && myDeptIds.includes(obj.assigneeId || "")) {
+          console.log('✅ [ObjectivesFilter] DEPARTMENT match', obj.title);
           return true;
         }
         
         // Show objectives assigned to manager's accessible divisions
         if (obj.assigneeType === "DIVISION" && obj.assigneeId && myDivisionIds.has(obj.assigneeId)) {
+          console.log('✅ [ObjectivesFilter] DIVISION match', obj.title);
           return true;
         }
         
         // Show personnel objectives that are children of manager's department objectives
         if (obj.type === "PERSONNEL") {
           const parentObj = objectives.find(o => o.objectiveId === obj.parent?.objectiveId);
-          return parentObj && 
+          const match = parentObj && 
                  parentObj.assigneeType === "DEPARTMENT" &&
                  myDeptIds.includes(parentObj.assigneeId || "");
+          if (match) console.log('✅ [ObjectivesFilter] PERSONNEL match', obj.title);
+          return match;
         }
         
         // Show parent division/corporate objectives for context (top-level only)
         if (obj.type === "DIVISION" || obj.type === "CORPORATE") {
-          return !obj.parent;
+          const match = !obj.parent;
+          if (match) console.log('✅ [ObjectivesFilter] CONTEXT match', obj.title);
+          return match;
         }
+        
+        console.log('❌ [ObjectivesFilter] No match', obj.title, obj.type, obj.assigneeType);
         return false;
       });
     } else if (guards.isDirector) {
+      console.log('🔍 [ObjectivesFilter] Applying DIRECTOR filter');
       const myDivIds = scope?.managedDivisionIds || [];
       filtered = filtered.filter((obj) => {
         // Show objectives explicitly assigned to director's divisions
@@ -412,8 +475,14 @@ export default function ObjectivesApprovalTable() {
         return false;
       });
     } else {
+      console.log('🔍 [ObjectivesFilter] ADMIN/SUPER_ADMIN - no role filter applied');
       // ADMIN/SUPER_ADMIN see everything
     }
+
+    console.log('🔍 [ObjectivesFilter] After role-based filter', {
+      count: filtered.length,
+      objectives: filtered.map(o => ({ id: o.objectiveId, title: o.title }))
+    });
 
     // Apply search filter
     if (searchTerm) {
@@ -422,20 +491,50 @@ export default function ObjectivesApprovalTable() {
         (obj) =>
           obj.title?.toLowerCase().includes(term)
       );
+      console.log('🔍 [ObjectivesFilter] After search filter', { count: filtered.length, searchTerm });
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
       const mapped = statusFilter.toUpperCase() as any;
       filtered = filtered.filter((obj) => obj.status === mapped);
+      console.log('🔍 [ObjectivesFilter] After status filter', { count: filtered.length, statusFilter });
     }
 
-    // Apply strategic period filter
+    // Apply strategic period filter - ONLY if a period is explicitly selected
+    // This allows users to see all objectives when no period filter is active
     if (selectedPeriod) {
+      console.log('🔍 [ObjectivesFilter] Applying strategic period filter', {
+        selectedPeriodId: selectedPeriod.strategicPeriodId,
+        objectivesBeforeFilter: filtered.map(o => ({
+          id: o.objectiveId,
+          title: o.title,
+          periodId: o.strategicPeriod?.strategicPeriodId,
+          periodName: o.strategicPeriod?.name
+        }))
+      });
+      
       filtered = filtered.filter(
-        (obj) => obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId
+        (obj) => {
+          const match = obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId;
+          if (!match) {
+            console.log('❌ [ObjectivesFilter] Period mismatch', {
+              objective: obj.title,
+              objectivePeriod: obj.strategicPeriod?.strategicPeriodId,
+              selectedPeriod: selectedPeriod.strategicPeriodId
+            });
+          }
+          return match;
+        }
       );
+      
+      console.log('🔍 [ObjectivesFilter] After strategic period filter', { count: filtered.length });
     }
+
+    console.log('🔍 [ObjectivesFilter] FINAL RESULT', {
+      count: filtered.length,
+      objectives: filtered.map(o => ({ id: o.objectiveId, title: o.title }))
+    });
 
     return filtered;
   }, [objectives, statusFilter, searchTerm, guards, user?.employeeId, scope, selectedPeriod]);

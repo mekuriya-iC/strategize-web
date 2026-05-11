@@ -49,9 +49,9 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
         variables: {
             page: 1,
             limit: 1000,
-            search: isAdmin ? (searchTerm || undefined) : undefined
+            search: searchTerm || undefined
         },
-        skip: !isAdmin || !shouldFetchPersonnel,
+        skip: !isAdmin || !shouldFetchPersonnel, // Skip if not admin or not fetching personnel
         fetchPolicy: "cache-first",
     });
 

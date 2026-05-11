@@ -390,9 +390,9 @@ enum TaskStatus {
 }
 
 input AssignObjectiveInput {
-  assigneeId: ID
+  assigneeId: ID!
   assigneeType: AssigneeType!
-  assignerId: ID
+  assignerId: ID!
   kpis: [ID!]!
   objectiveId: ID!
 }
@@ -466,9 +466,10 @@ input CreateAuditLogInput {
 
 input CreateCheckinoutSessionInput {
   employeeUserId: ID!
-  organizationId: ID!
+  organizationId: ID
   strategicPeriodId: ID!
   supervisorUserId: ID!
+  title: String
   weekEndDate: String!
   weekStartDate: String!
 }
@@ -921,6 +922,7 @@ input UpdateCheckinoutSessionInput {
   supervisorComment: String
   supervisorReviewAt: DateTime
   supervisorUserId: ID
+  title: String
   weekEndDate: String
   weekStartDate: String
 }
@@ -1411,6 +1413,7 @@ type AuditLog {
 type AuthPayload {
   accessToken: String!
   employee: Employee!
+  refreshToken: String!
 }
 
 type CheckinoutSession {
@@ -1425,6 +1428,7 @@ type CheckinoutSession {
   supervisor: Employee!
   supervisorComment: String
   supervisorReviewAt: DateTime
+  title: String
   updatedAt: DateTime!
   weekEndDate: String!
   weekStartDate: String!
@@ -2032,6 +2036,10 @@ type Position {
   updatedAt: DateTime!
 }
 
+type RefreshTokenPayload {
+  accessToken: String!
+}
+
 type Role {
   code: String!
   createdAt: DateTime!
@@ -2345,6 +2353,7 @@ type Mutation {
   createUserSession(createUserSessionInput: CreateUserSessionInput!): UserSession!
   loginEmployee(loginInput: LoginEmployeeInput!): AuthPayload!
   markAllNotificationsRead(recipientUserId: ID!): Boolean!
+  refreshToken(refreshToken: String!): RefreshTokenPayload!
   removeActivity(activityId: ID!): Activity!
   removeAggregatePerformanceResult(aggregatePerformanceResultId: ID!): AggregatePerformanceResult!
   removeApprovalWorkflow(approvalWorkflowId: ID!): ApprovalWorkflow!

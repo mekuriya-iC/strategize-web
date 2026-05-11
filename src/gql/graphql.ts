@@ -204,9 +204,9 @@ export type AssessmentResponse = {
 };
 
 export type AssignObjectiveInput = {
-  assigneeId?: InputMaybe<Scalars['ID']['input']>;
+  assigneeId: Scalars['ID']['input'];
   assigneeType: AssigneeType;
-  assignerId?: InputMaybe<Scalars['ID']['input']>;
+  assignerId: Scalars['ID']['input'];
   kpis: Array<Scalars['ID']['input']>;
   objectiveId: Scalars['ID']['input'];
 };
@@ -244,6 +244,7 @@ export type AuditLog = {
 export type AuthPayload = {
   accessToken: Scalars['String']['output'];
   employee: Employee;
+  refreshToken: Scalars['String']['output'];
 };
 
 export enum CascadeStatus {
@@ -266,6 +267,7 @@ export type CheckinoutSession = {
   supervisor: Employee;
   supervisorComment?: Maybe<Scalars['String']['output']>;
   supervisorReviewAt?: Maybe<Scalars['DateTime']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   weekEndDate: Scalars['String']['output'];
   weekStartDate: Scalars['String']['output'];
@@ -422,9 +424,10 @@ export type CreateAuditLogInput = {
 
 export type CreateCheckinoutSessionInput = {
   employeeUserId: Scalars['ID']['input'];
-  organizationId: Scalars['ID']['input'];
+  organizationId?: InputMaybe<Scalars['ID']['input']>;
   strategicPeriodId: Scalars['ID']['input'];
   supervisorUserId: Scalars['ID']['input'];
+  title?: InputMaybe<Scalars['String']['input']>;
   weekEndDate: Scalars['String']['input'];
   weekStartDate: Scalars['String']['input'];
 };
@@ -1179,6 +1182,7 @@ export type Mutation = {
   createUserSession: UserSession;
   loginEmployee: AuthPayload;
   markAllNotificationsRead: Scalars['Boolean']['output'];
+  refreshToken: RefreshTokenPayload;
   removeActivity: Activity;
   removeAggregatePerformanceResult: AggregatePerformanceResult;
   removeApprovalWorkflow: ApprovalWorkflow;
@@ -1517,6 +1521,11 @@ export type MutationLoginEmployeeArgs = {
 
 export type MutationMarkAllNotificationsReadArgs = {
   recipientUserId: Scalars['ID']['input'];
+};
+
+
+export type MutationRefreshTokenArgs = {
+  refreshToken: Scalars['String']['input'];
 };
 
 
@@ -3065,6 +3074,10 @@ export type QueryUserSessionsArgs = {
   userId?: InputMaybe<Scalars['ID']['input']>;
 };
 
+export type RefreshTokenPayload = {
+  accessToken: Scalars['String']['output'];
+};
+
 export type Role = {
   code: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
@@ -3313,6 +3326,7 @@ export type UpdateCheckinoutSessionInput = {
   supervisorComment?: InputMaybe<Scalars['String']['input']>;
   supervisorReviewAt?: InputMaybe<Scalars['DateTime']['input']>;
   supervisorUserId?: InputMaybe<Scalars['ID']['input']>;
+  title?: InputMaybe<Scalars['String']['input']>;
   weekEndDate?: InputMaybe<Scalars['String']['input']>;
   weekStartDate?: InputMaybe<Scalars['String']['input']>;
 };

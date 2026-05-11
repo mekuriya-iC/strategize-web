@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { AccessDenied } from "@/components/auth/RequirePermission";
 import { useActivityLogs, useAuditLogs } from "@/hooks/logs/useLogs";
 import {
   Table,
@@ -25,6 +28,31 @@ import { Shield, Activity, Eye, ChevronLeft, ChevronRight, CheckCircle2, XCircle
 
 export default function LogsPage() {
   const [activeTab, setActiveTab] = useState("activity");
+  const router = useRouter();
+  const { can, isLoading } = usePermissions();
+
+  if (isLoading) {
+    return (
+      <div className="p-8 animate-pulse space-y-4">
+        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-800 rounded" />
+        <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded" />
+      </div>
+    );
+  }
+
+  if (!can("admin:view_audit_logs")) {
+    return (
+      <AccessDenied
+        title="Access Denied"
+        message="You do not have permission to view system logs. This area is restricted to administrators only."
+        action={
+          <Button variant="outline" onClick={() => router.push("/dashboard")}>
+            Go to Dashboard
+          </Button>
+        }
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

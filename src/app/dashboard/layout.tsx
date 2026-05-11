@@ -12,6 +12,7 @@ import { useUIStore, useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useAutoSelectStrategicPeriod } from "@/hooks/objectives/useAutoSelectStrategicPeriod";
+import { useObjectiveSetupGuard } from "@/hooks/objectives/useObjectiveSetupGuard";
 
 // Component to sync Apollo user data with Zustand store
 function AuthSync() {
@@ -54,6 +55,12 @@ function StrategicPeriodInitializer() {
   return null;
 }
 
+// Guard: redirect admins to objective setup if no objectives exist yet
+function ObjectiveSetupGuard() {
+  useObjectiveSetupGuard();
+  return null;
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -67,6 +74,8 @@ export default function DashboardLayout({
       <UIInitializer />
       {/* Auto-select strategic period */}
       <StrategicPeriodInitializer />
+      {/* Redirect admins to objective setup if no objectives exist */}
+      <ObjectiveSetupGuard />
 
       <DepartmentSelectionProvider>
         <div className="flex h-screen bg-gray-50 dark:bg-[#09090b] overflow-hidden">

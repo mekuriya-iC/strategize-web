@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,9 +176,15 @@ export default function AssessmentFormPage() {
     }
   }, [responsesData]);
 
-  const handleIndicatorCountChange = (competencyId: string, count: number) => {
-    setIndicatorCounts(prev => ({ ...prev, [competencyId]: count }));
-  };
+  const handleIndicatorCountChange = useCallback((competencyId: string, count: number) => {
+    setIndicatorCounts(prev => {
+      // Only update if the count has changed to prevent infinite loops
+      if (prev[competencyId] === count) {
+        return prev;
+      }
+      return { ...prev, [competencyId]: count };
+    });
+  }, []);
 
   const handleRatingChange = (indicatorId: string, rating: number) => {
     setResponses(prev => ({

@@ -251,8 +251,10 @@ export const useAnalytics = (
 
     // Admin/Super Admin should only see CORPORATE objectives and their KPIs at the landing dashboard
     // unless they have a specific unit selected (which we assume happens in other views or via selectedUnit)
+    // NOTE: Using assigneeType instead of type since backend returns type as null
+    // Corporate objectives have no assigneeType and no assigneeId
     const filteredObjectivesByRole = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && !selectedUnit
-      ? allObjectivesRaw.filter(obj => obj.type === 'CORPORATE')
+      ? allObjectivesRaw.filter(obj => !obj.assigneeType && !obj.assigneeId)
       : allObjectivesRaw;
 
     // Filter by Annual Timeline

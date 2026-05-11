@@ -162,11 +162,6 @@ export const GET_ASSESSMENT_RESPONSES = gql`
           description
           ratingScaleMin
           ratingScaleMax
-          competency {
-            competencyId
-            name
-            description
-          }
         }
         assessment {
           competencyAssessmentId

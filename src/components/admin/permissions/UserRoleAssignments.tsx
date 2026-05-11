@@ -79,12 +79,21 @@ export default function UserRoleAssignments() {
     currentPage,
     ITEMS_PER_PAGE
   );
-  const { roles } = useRoles(1, 100);
+  const { roles, loading: rolesLoading, error: rolesError } = useRoles(1, 100);
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
   });
 
   const employees = employeesData?.employees?.items || [];
+
+  // Debug logging
+  console.log('🔐 [UserRoleAssignments] Data fetched:', {
+    rolesCount: roles?.length || 0,
+    rolesLoading,
+    rolesError: rolesError?.message,
+    roles: roles?.map(r => ({ id: r.roleId, name: r.name })),
+    employeesCount: employees?.length || 0
+  });
 
   // Filter assignments
   const filteredAssignments = useMemo(() => {

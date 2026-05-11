@@ -55,6 +55,14 @@ export default function AssignRoleDialog({
 
   const { assignRoleToUser } = usePermissionMutations();
 
+  // Debug logging
+  console.log('🔐 [AssignRoleDialog] Props received:', {
+    employeesCount: employees?.length || 0,
+    rolesCount: roles?.length || 0,
+    employees: employees?.map(e => ({ id: e.employeeId, name: e.fullName })),
+    roles: roles?.map(r => ({ id: r.roleId, name: r.name }))
+  });
+
   const handleSubmit = async () => {
     if (!selectedUserId || !selectedRoleId) return;
 
@@ -99,6 +107,18 @@ export default function AssignRoleDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Show warning if no roles available */}
+          {roles.length === 0 && (
+            <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
+                No Roles Available
+              </h4>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                No roles have been created yet. Please create roles in the Roles Management section before assigning them to users.
+              </p>
+            </div>
+          )}
+
           {/* User Selection */}
           <div className="space-y-2">
             <Label htmlFor="user">Select User</Label>
@@ -127,14 +147,22 @@ export default function AssignRoleDialog({
                 <SelectValue placeholder="Choose a role..." />
               </SelectTrigger>
               <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role.roleId} value={role.roleId}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{role.name}</span>
-                      <span className="text-xs text-gray-500">{role.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
+                {roles.length === 0 ? (
+                  <div className="px-2 py-3 text-sm text-gray-500 text-center">
+                    No roles available
+                  </div>
+                ) : (
+                  roles.map((role) => (
+                    <SelectItem key={role.roleId} value={role.roleId}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{role.name}</span>
+                        {role.description && (
+                          <span className="text-xs text-gray-500">{role.description}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

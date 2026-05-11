@@ -131,7 +131,7 @@ export default function ChartsSection() {
     };
 
     return { barData, donutData };
-  }, [objectivesData, annualTimeline, user?.role]);
+  }, [objectivesData, annualTimeline, user?.role, selectedPeriod]);
 
   if (loading) {
     return (

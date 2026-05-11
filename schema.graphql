@@ -454,6 +454,12 @@ input CreateAssessmentResponseInput {
   rating: Int!
 }
 
+input CreateAssignmentInput {
+  employeeId: ID!
+  nodeId: ID!
+  organizationId: ID!
+}
+
 input CreateAuditLogInput {
   action: AuditAction!
   entityId: ID
@@ -674,6 +680,13 @@ input CreateLogbookEntryInput {
   strategicPeriodId: ID!
 }
 
+input CreateNodeTypeInput {
+  color: String
+  icon: String
+  name: String!
+  organizationId: ID!
+}
+
 input CreateNotificationInput {
   message: String!
   notificationType: NotificationType!
@@ -800,6 +813,7 @@ input CreateStrategicPillarInput {
 input CreateStrategicPlanInput {
   description: String
   endDate: String!
+  isActive: Boolean
   organizationId: ID!
   startDate: String!
   title: String!
@@ -868,6 +882,17 @@ input KpiTargetInput {
 input LoginEmployeeInput {
   email: String!
   password: String!
+}
+
+input OrgChartNodeInput {
+  children: [OrgChartNodeInput!]!
+  color: String
+  id: ID!
+  level: Int!
+  name: String!
+  nodeTypeId: ID
+  parentId: ID
+  subtitle: String
 }
 
 input UpdateActivityInput {
@@ -1147,6 +1172,14 @@ input UpdateLogbookEntryInput {
   risksIssues: String
   strategicPeriodId: ID
   submittedAt: DateTime
+}
+
+input UpdateNodeTypeInput {
+  color: String
+  icon: String
+  name: String
+  nodeTypeId: ID!
+  organizationId: ID
 }
 
 input UpdateNotificationInput {
@@ -1540,12 +1573,24 @@ type Employee {
   email: String!
   employeeId: ID!
   fullName: String!
+  managedDepartmentIds: [ID!]
   phoneNumber: String!
   picture: String!
   role: EmployeeRole!
   startDate: String!
   status: EmployeeStatus!
   title: String!
+  updatedAt: DateTime!
+}
+
+type EmployeeNodeAssignment {
+  assignmentId: ID!
+  createdAt: DateTime!
+  employee: Employee!
+  employeeId: ID!
+  node: StructureNode!
+  nodeId: ID!
+  organizationId: String!
   updatedAt: DateTime!
 }
 
@@ -1711,6 +1756,24 @@ type LogbookEntry {
   updatedAt: DateTime!
 }
 
+type MigrationResult {
+  assignmentsCreated: Int!
+  edgesCreated: Int!
+  nodesCreated: Int!
+}
+
+type NodeType {
+  color: String
+  createdAt: DateTime!
+  icon: String
+  isBuiltIn: Boolean!
+  isDeleted: Boolean!
+  name: String!
+  nodeTypeId: ID!
+  organizationId: String!
+  updatedAt: DateTime!
+}
+
 type Notification {
   createdAt: DateTime!
   message: String!
@@ -1749,6 +1812,19 @@ type Objective {
   type: ObjectiveType
   updatedAt: DateTime!
   weight: Float
+}
+
+type OrgChartNodeObject {
+  children: [OrgChartNodeObject!]!
+  color: String
+  employees: [Employee!]!
+  id: ID!
+  level: Int!
+  name: String!
+  nodeType: NodeType
+  nodeTypeId: ID
+  parentId: ID
+  subtitle: String
 }
 
 type Organization {
@@ -2036,6 +2112,11 @@ type Position {
   updatedAt: DateTime!
 }
 
+type ReassignResult {
+  movedCount: Int!
+  targetNodeId: ID!
+}
+
 type RefreshTokenPayload {
   accessToken: String!
 }
@@ -2122,6 +2203,28 @@ type StrategicPlan {
   title: String!
   updatedAt: DateTime!
   version: String
+}
+
+type StructureNode {
+  color: String
+  createdAt: DateTime!
+  isDeleted: Boolean!
+  legacyId: String
+  level: Int!
+  name: String!
+  nodeId: ID!
+  nodeType: NodeType
+  nodeTypeId: ID
+  organizationId: String!
+  subtitle: String
+  updatedAt: DateTime!
+}
+
+type StructureTemplate {
+  createdAt: DateTime!
+  isBuiltIn: Boolean!
+  name: String!
+  templateId: ID!
 }
 
 type Submission {
@@ -2218,6 +2321,7 @@ type Query {
   approvalWorkflows(action: ApprovalAction, entityId: ID, entityType: String, limit: Int!, organizationId: ID, page: Int!): PaginatedApprovalWorkflows!
   assessmentResponse(assessmentResponseId: ID!): AssessmentResponse!
   assessmentResponses(assessmentId: ID, limit: Int!, page: Int!): PaginatedAssessmentResponses!
+  assignmentsByNode(nodeId: ID!): [EmployeeNodeAssignment!]!
   auditLog(auditLogId: ID!): AuditLog!
   auditLogs(action: AuditAction, entityType: String, limit: Int!, organizationId: ID, page: Int!, userId: ID): PaginatedAuditLogs!
   checkinoutSession(checkinoutSessionId: ID!): CheckinoutSession!
@@ -2246,6 +2350,7 @@ type Query {
   evaluationWeightConfigs(evaluationCycleId: ID, limit: Int!, page: Int!): PaginatedEvaluationWeightConfigs!
   fileAttachment(fileAttachmentId: ID!): FileAttachment!
   fileAttachments(limit: Int!, organizationId: ID, page: Int!, relatedEntityId: ID, relatedEntityType: String): PaginatedFileAttachments!
+  getOrgChart(organizationId: ID!): [OrgChartNodeObject!]!
   initiative(initiativeId: ID!): Initiative!
   initiatives(limit: Int!, organizationId: ID, page: Int!, search: String, status: InitiativeStatus, strategicObjectiveId: ID): PaginatedInitiatives!
   kpi(kpiId: ID!): Kpi!
@@ -2258,9 +2363,11 @@ type Query {
   kpiUpdate(kpiUpdateId: ID!): KpiUpdate!
   kpiUpdates(kpiId: ID, limit: Int!, page: Int!, reportedByUserId: ID, strategicPeriodId: ID): PaginatedKpiUpdates!
   kpis(limit: Int!, organizationId: ID, page: Int!, search: String, strategicObjectiveId: ID): PaginatedKpis!
+  listTemplates: [StructureTemplate!]!
   logbookEntries(entryStatus: LogbookEntryStatus, limit: Int!, ownerUserId: ID, page: Int!, strategicPeriodId: ID): PaginatedLogbookEntries!
   logbookEntry(logbookEntryId: ID!): LogbookEntry!
   me: Employee!
+  nodeTypes(organizationId: ID!): [NodeType!]!
   notification(notificationId: ID!): Notification!
   notifications(limit: Int!, organizationId: ID, page: Int!, recipientUserId: ID, status: NotificationStatus): PaginatedNotifications!
   objective(objectiveId: ID!): Objective!
@@ -2304,6 +2411,8 @@ type Query {
 
 type Mutation {
   addEmployeeToDepartment(departmentId: ID!, employeeId: ID!): Department!
+  applyTemplate(force: Boolean!, organizationId: ID!, templateId: ID!): [OrgChartNodeObject!]!
+  assignEmployee(createAssignmentInput: CreateAssignmentInput!): EmployeeNodeAssignment!
   assignObjective(assignObjectiveInput: AssignObjectiveInput!): Objective!
   createActivity(createActivityInput: CreateActivityInput!): Activity!
   createActivityLog(createActivityLogInput: CreateActivityLogInput!): ActivityLog!
@@ -2331,6 +2440,7 @@ type Mutation {
   createKpiAssignmentEmployee(createKpiAssignmentEmployeeInput: CreateKpiAssignmentEmployeeInput!): KpiAssignmentEmployee!
   createKpiUpdate(createKpiUpdateInput: CreateKpiUpdateInput!): KpiUpdate!
   createLogbookEntry(createLogbookEntryInput: CreateLogbookEntryInput!): LogbookEntry!
+  createNodeType(createNodeTypeInput: CreateNodeTypeInput!): NodeType!
   createNotification(createNotificationInput: CreateNotificationInput!): Notification!
   createObjective(createObjectiveInput: CreateObjectiveInput!): Objective!
   createOrganization(createOrganizationInput: CreateOrganizationInput!): Organization!
@@ -2351,8 +2461,10 @@ type Mutation {
   createUserPermissionOverride(createUserPermissionOverrideInput: CreateUserPermissionOverrideInput!): UserPermissionOverride!
   createUserRoleAssignment(createUserRoleAssignmentInput: CreateUserRoleAssignmentInput!): UserRoleAssignment!
   createUserSession(createUserSessionInput: CreateUserSessionInput!): UserSession!
+  deleteStructureNode(nodeId: ID!): StructureNode!
   loginEmployee(loginInput: LoginEmployeeInput!): AuthPayload!
   markAllNotificationsRead(recipientUserId: ID!): Boolean!
+  reassignEmployees(sourceNodeId: ID!, targetNodeId: ID!): ReassignResult!
   refreshToken(refreshToken: String!): RefreshTokenPayload!
   removeActivity(activityId: ID!): Activity!
   removeAggregatePerformanceResult(aggregatePerformanceResultId: ID!): AggregatePerformanceResult!
@@ -2379,6 +2491,7 @@ type Mutation {
   removeKpiAssignmentEmployee(kpiAssignmentEmployeeId: ID!): KpiAssignmentEmployee!
   removeKpiUpdate(kpiUpdateId: ID!): KpiUpdate!
   removeLogbookEntry(logbookEntryId: ID!): LogbookEntry!
+  removeNodeType(nodeTypeId: ID!): NodeType!
   removeNotification(notificationId: ID!): Notification!
   removeObjective(objectiveId: ID!): Objective!
   removeOrganization(organizationId: ID!): Organization!
@@ -2398,6 +2511,9 @@ type Mutation {
   removeUserRoleAssignment(userRoleAssignmentId: ID!): UserRoleAssignment!
   removeUserSession(userSessionId: ID!): UserSession!
   revokeUserSession(userSessionId: ID!): UserSession!
+  runOrgStructureMigration(organizationId: ID!): MigrationResult!
+  saveOrgChart(nodes: [OrgChartNodeInput!]!, organizationId: ID!): [OrgChartNodeObject!]!
+  unassignEmployee(assignmentId: ID!): EmployeeNodeAssignment!
   updateActivity(updateActivityInput: UpdateActivityInput!): Activity!
   updateAggregatePerformanceResult(updateAggregatePerformanceResultInput: UpdateAggregatePerformanceResultInput!): AggregatePerformanceResult!
   updateApprovalWorkflow(updateApprovalWorkflowInput: UpdateApprovalWorkflowInput!): ApprovalWorkflow!
@@ -2423,6 +2539,7 @@ type Mutation {
   updateKpiUpdate(updateKpiUpdateInput: UpdateKpiUpdateInput!): KpiUpdate!
   updateKpis(updateKpiInputs: [UpdateKpiInput!]!): [Kpi!]!
   updateLogbookEntry(updateLogbookEntryInput: UpdateLogbookEntryInput!): LogbookEntry!
+  updateNodeType(updateNodeTypeInput: UpdateNodeTypeInput!): NodeType!
   updateNotification(updateNotificationInput: UpdateNotificationInput!): Notification!
   updateObjective(updateObjectiveInput: UpdateObjectiveInput!): Objective!
   updateObjectives(updateObjectiveInputs: [UpdateObjectiveInput!]!): [Objective!]!

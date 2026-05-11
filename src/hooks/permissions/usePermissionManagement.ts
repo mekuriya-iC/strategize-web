@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@apollo/client';
 import { toast } from 'sonner';
+import { useOrganizationId } from '@/hooks/useOrganizationId';
 import {
   GET_PERMISSION_DEFINITIONS,
   GET_ROLES,
@@ -126,6 +127,7 @@ export const useUserPermissionOverrides = (userId: string, page = 1, limit = 50)
 
 // Permission Management Mutations Hook
 export const usePermissionMutations = () => {
+  const organizationId = useOrganizationId();
   const [createRole] = useMutation(CREATE_ROLE, {
     onCompleted: () => {
       toast.success('Role created successfully');
@@ -237,7 +239,7 @@ export const usePermissionMutations = () => {
             roleId,
             isPrimary,
             expiresAt,
-            organizationId: '1', // TODO: Get from context
+            organizationId,
           },
         },
       });
@@ -265,7 +267,7 @@ export const usePermissionMutations = () => {
             isGranted,
             reason,
             expiresAt,
-            organizationId: '1', // TODO: Get from context
+            organizationId,
           },
         },
       });

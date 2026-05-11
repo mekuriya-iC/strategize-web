@@ -9,6 +9,8 @@ interface OrganizationTemplateCardProps {
   description: string;
   onClick?: () => void;
   selected?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
 }
 
 export default function OrganizationTemplateCard({
@@ -17,9 +19,11 @@ export default function OrganizationTemplateCard({
   description,
   onClick,
   selected = false,
+  loading = false,
+  disabled = false,
 }: OrganizationTemplateCardProps) {
   return (
-    <div onClick={onClick} className="cursor-pointer">
+    <div onClick={!disabled && !loading ? onClick : undefined} className={`cursor-pointer ${disabled ? "opacity-50 pointer-events-none" : ""}`}>
       <Card
         className={`bg-white dark:bg-[#18181b] border-0 rounded-2xl shadow-sm hover:shadow-md flex flex-col items-center p-6 md:p-8 transition-all duration-200 relative ${
           selected ? "ring-2 ring-primary" : ""
@@ -44,11 +48,17 @@ export default function OrganizationTemplateCard({
       <Button
         onClick={(e) => {
           e.stopPropagation();
-          onClick?.();
+          if (!disabled && !loading) onClick?.();
         }}
+        disabled={disabled || loading}
         className="w-full bg-primary hover:bg-primary/90 text-white font-medium rounded-lg py-2.5 transition-colors"
       >
-        Choose
+        {loading ? (
+          <span className="flex items-center gap-2">
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Creating...
+          </span>
+        ) : "Choose"}
       </Button>
     </Card>
     </div>

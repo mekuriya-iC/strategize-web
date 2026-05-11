@@ -34,12 +34,12 @@ export const REFRESH_TOKEN = gql`
   }
 `;
 
-// Logout mutation (for when backend implements it)
-export const LOGOUT_EMPLOYEE = gql`
-  mutation LogoutEmployee {
-    logoutEmployee {
-      success
-      message
-    }
-  }
-`;
+// Logout mutation — not yet implemented in the API, kept for future use
+// export const LOGOUT_EMPLOYEE = gql`
+//   mutation LogoutEmployee {
+//     logoutEmployee {
+//       success
+//       message
+//     }
+//   }
+// `;

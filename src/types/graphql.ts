@@ -106,6 +106,7 @@ export interface UpdateDepartmentInput {
 // GraphQL Response Types
 export interface Employee {
   employeeId: string;
+  organizationId?: string;
   email: string;
   fullName: string;
   phoneNumber: string;

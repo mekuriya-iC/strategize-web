@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import { useQuery } from "@apollo/client";
-import { getOrganizationId } from "@/lib/constants/organization";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import DivisionTable from "@/components/divisions/DivisionTable";
@@ -17,6 +16,7 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
 import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { useOrganizationId } from "@/hooks/useOrganizationId";
 import type {
   PaginatedDivisions,
   PaginatedEmployees,
@@ -37,6 +37,7 @@ const DivisionsPage = () => {
   // Get permissions to check if user can access employees
   const { guards } = usePermissions();
   const canAccessEmployees = guards.isAdmin || guards.isSuperAdmin;
+  const organizationId = useOrganizationId();
 
   // GraphQL queries
   const {
@@ -219,7 +220,7 @@ const DivisionsPage = () => {
         input: {
           name: divisionName.trim(),
           headUserId: divisionManager,
-          organizationId: getOrganizationId(),
+          organizationId,
         },
       });
 

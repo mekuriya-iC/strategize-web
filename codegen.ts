@@ -28,7 +28,7 @@ const getSchemaSource = () => {
 const config: CodegenConfig = {
   overwrite: true,
   schema: getSchemaSource(),
-  documents: ["src/graphql/**/*.ts", "!src/graphql/fragments/**/*.ts"],
+  documents: ["src/lib/graphql/**/*.ts"],
   generates: {
     "./src/gql/": {
       preset: "client",

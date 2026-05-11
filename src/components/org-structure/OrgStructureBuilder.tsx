@@ -6,6 +6,8 @@ import OrgNode from "./OrgNode";
 import AddNodeDialog from "./AddNodeDialog";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useOrgChartMutations } from "@/hooks/orgChart/useOrgChartMutations";
+import type { OrgChartNodeInput } from "@/hooks/orgChart/useOrgChartMutations";
 
 interface OrgNodeData {
   id: string;
@@ -21,8 +23,22 @@ interface OrgStructureBuilderProps {
   topEntityName: string;
 }
 
+/** Recursively map local OrgNodeData to the API input shape */
+function toInput(node: OrgNodeData): OrgChartNodeInput {
+  return {
+    id: node.id,
+    name: node.name,
+    subtitle: node.subtitle,
+    color: node.color,
+    level: node.level,
+    parentId: node.parentId,
+    children: node.children.map(toInput),
+  };
+}
+
 export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuilderProps) {
   const router = useRouter();
+  const { saveOrgChart, loading: saving } = useOrgChartMutations();
   const [zoom, setZoom] = useState(100);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
@@ -43,20 +59,28 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
 
   const handleAddNode = (name: string, subtitle: string) => {
     if (!selectedParentId) {
-      console.error("No parent selected");
       toast.error("No parent node selected");
       return;
     }
 
-    // Adding node with parentId: ${selectedParentId}
+    // Find the parent's level so we can set the child's level correctly
+    const findLevel = (node: OrgNodeData): number => {
+      if (node.id === selectedParentId) return node.level;
+      for (const child of node.children) {
+        const found = findLevel(child);
+        if (found >= 0) return found;
+      }
+      return -1;
+    };
+    const parentLevel = findLevel(orgStructure);
 
-    const colors = ["#8B5CF6", "#EC4899", "#F43F5E"];
+    const colors = ["#8B5CF6", "#EC4899", "#F43F5E", "#EF4444"];
     const newNode: OrgNodeData = {
       id: `node-${Date.now()}`,
       name,
       subtitle,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      level: 1,
+      color: colors[Math.min(parentLevel, colors.length - 1)],
+      level: parentLevel + 1,
       parentId: selectedParentId,
       children: [],
     };
@@ -104,12 +128,15 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
     toast.success("Node deleted");
   };
 
-  const handleSave = () => {
-    // Save the org structure
-    sessionStorage.setItem("orgStructure", JSON.stringify(orgStructure));
-    toast.success("Organization structure saved!");
-    router.push("/strategy-period");
-    console.log(orgStructure);
+  const handleSave = async () => {
+    try {
+      await saveOrgChart([toInput(orgStructure)]);
+      sessionStorage.setItem("orgStructure", JSON.stringify(orgStructure));
+      toast.success("Organization structure saved!");
+      router.push("/strategy-period");
+    } catch {
+      // error already toasted by the hook
+    }
   };
 
   const renderNode = (node: OrgNodeData): React.ReactNode => {
@@ -222,9 +249,15 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
 
           <Button
             onClick={handleSave}
+            disabled={saving}
             className="bg-primary hover:bg-primary/90 text-white px-8"
           >
-            Save
+            {saving ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </span>
+            ) : "Save"}
           </Button>
         </div>
 

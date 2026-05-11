@@ -3,6 +3,9 @@ import OrganizationTemplateCard from "./OrganizationTemplateCard";
 import { useRouter } from "next/navigation";
 import { Network, Building2, Grid3x3 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { useOrgChartMutations } from "@/hooks/orgChart/useOrgChartMutations";
+import { TEMPLATE_NODES } from "@/lib/orgChart/templateNodes";
 
 const templates = [
   {
@@ -27,16 +30,29 @@ const templates = [
 
 export default function OrganizationTemplateGrid() {
   const router = useRouter();
+  const { saveOrgChart, loading } = useOrgChartMutations();
+  const [savingId, setSavingId] = useState<string | null>(null);
 
-  const handleTemplateSelect = (templateId: string) => {
-    // Store the selected template in sessionStorage
-    sessionStorage.setItem("selectedOrgTemplate", templateId);
-    
-    const selectedTemplate = templates.find(t => t.id === templateId);
-    toast.success(`${selectedTemplate?.title} template selected!`);
-    
-    // Navigate to strategy period selection
-    router.push("/strategy-period");
+  const handleTemplateSelect = async (templateId: string) => {
+    const selectedTemplate = templates.find((t) => t.id === templateId);
+    const rootNode = TEMPLATE_NODES[templateId];
+
+    if (!rootNode) {
+      toast.error("Template not found");
+      return;
+    }
+
+    setSavingId(templateId);
+    try {
+      await saveOrgChart([rootNode]);
+      sessionStorage.setItem("selectedOrgTemplate", templateId);
+      toast.success(`${selectedTemplate?.title} structure created`);
+      router.push("/strategy-period");
+    } catch {
+      // error already toasted by the hook
+    } finally {
+      setSavingId(null);
+    }
   };
 
   return (
@@ -48,6 +64,8 @@ export default function OrganizationTemplateGrid() {
             icon={template.icon}
             title={template.title}
             description={template.description}
+            loading={savingId === template.id}
+            disabled={loading && savingId !== template.id}
             onClick={() => handleTemplateSelect(template.id)}
           />
         ))}

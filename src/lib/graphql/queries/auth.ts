@@ -10,6 +10,7 @@ export const GET_ME = gql`
   query GetMe {
     me {
       employeeId
+      organizationId
       fullName
       email
       role

@@ -16,6 +16,7 @@ import { GET_STRATEGIC_PERIODS } from '@/lib/graphql/queries/strategic-periods';
 import { GET_CHECKINOUT_SESSIONS } from '@/lib/graphql/queries/checkins';
 import { CREATE_CHECKINOUT_SESSION } from '@/lib/graphql/mutations/checkins';
 import { GET_ME } from '@/lib/graphql/queries/auth';
+import { useOrganizationId } from '@/hooks/useOrganizationId';
 import { toast } from 'sonner';
 
 interface CreateSessionDialogProps {
@@ -37,6 +38,8 @@ export default function CreateSessionDialog({
   const [weekEndDate, setWeekEndDate] = useState('');
   const [sprintTitle, setSprintTitle] = useState('');
   const [creating, setCreating] = useState(false);
+
+  const organizationId = useOrganizationId();
 
   // Get current user to check role
   const { data: userData } = useQuery(GET_ME);
@@ -276,15 +279,13 @@ export default function CreateSessionDialog({
           const result = await createSession({
             variables: {
               input: {
-                title: sprintTitle || undefined, // Only send if not empty
+                title: sprintTitle || undefined,
                 employeeUserId: employeeId,
                 supervisorUserId: currentUserId,
                 strategicPeriodId,
                 weekStartDate,
                 weekEndDate,
-                // TODO: Get actual organizationId from backend or user context
-                // Using a placeholder UUID for now - backend should handle this
-                organizationId: '00000000-0000-0000-0000-000000000001',
+                organizationId,
               },
             },
           });

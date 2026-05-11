@@ -79,7 +79,7 @@ export default function UserRoleAssignments() {
     currentPage,
     ITEMS_PER_PAGE
   );
-  const { roles, loading: rolesLoading, error: rolesError } = useRoles(1, 100);
+  const { roles, loading: rolesLoading, error: rolesError, meta: rolesMeta } = useRoles(1, 100);
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
   });
@@ -91,9 +91,15 @@ export default function UserRoleAssignments() {
     rolesCount: roles?.length || 0,
     rolesLoading,
     rolesError: rolesError?.message,
-    roles: roles?.map(r => ({ id: r.roleId, name: r.name })),
+    rolesMeta,
+    roles: roles?.map(r => ({ id: r.roleId, name: r.name, code: r.code })),
     employeesCount: employees?.length || 0
   });
+
+  // Show error if roles failed to load
+  if (rolesError) {
+    console.error('🔐 [UserRoleAssignments] Error loading roles:', rolesError);
+  }
 
   // Filter assignments
   const filteredAssignments = useMemo(() => {
@@ -187,6 +193,21 @@ export default function UserRoleAssignments() {
 
   return (
     <div className="space-y-6">
+      {/* Show error if roles failed to load */}
+      {rolesError && (
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-2">
+            Error Loading Roles
+          </h4>
+          <p className="text-sm text-red-700 dark:text-red-400">
+            {rolesError.message}
+          </p>
+          <p className="text-xs text-red-600 dark:text-red-500 mt-2">
+            Please check the browser console for more details.
+          </p>
+        </div>
+      )}
+
       {/* Header and Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

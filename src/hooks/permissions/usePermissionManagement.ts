@@ -38,8 +38,15 @@ export const usePermissionDefinitions = (page = 1, limit = 50, search = '') => {
 // Roles Hook
 export const useRoles = (page = 1, limit = 50, search = '') => {
   const { data, loading, error, refetch } = useQuery(GET_ROLES, {
-    variables: { page, limit, search },
+    variables: { page, limit, search: search || undefined },
     fetchPolicy: 'cache-and-network',
+  });
+
+  console.log('🔐 [useRoles] Query result:', {
+    data,
+    loading,
+    error: error?.message,
+    variables: { page, limit, search: search || undefined }
   });
 
   return {

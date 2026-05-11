@@ -6,7 +6,7 @@ import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { useStrategicPeriodStore, useAuthStore } from "@/stores";
 
 export default function ChartsSection() {
-  const { annualTimeline } = useStrategicPeriodStore();
+  const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
   const user = useAuthStore((state) => state.user);
 
   // Fetch objectives with KPIs
@@ -19,10 +19,34 @@ export default function ChartsSection() {
   const chartData = useMemo(() => {
     const objectives = objectivesData?.objectives?.items || [];
     
-    // Filter by role - admins see only CORPORATE objectives on dashboard
-    const filteredByRole = (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')
-      ? objectives.filter(obj => obj.type === 'CORPORATE')
+    console.log('📊 [Charts] Processing chart data', {
+      totalObjectives: objectives.length,
+      userRole: user?.role,
+      annualTimeline,
+      selectedPeriodId: selectedPeriod?.strategicPeriodId
+    });
+    
+    // First, filter by strategic period if one is selected
+    const filteredByPeriod = selectedPeriod
+      ? objectives.filter(obj => obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId)
       : objectives;
+
+    console.log('📊 [Charts] After period filter', {
+      count: filteredByPeriod.length,
+      selectedPeriod: selectedPeriod?.name
+    });
+    
+    // Filter by role - admins see only CORPORATE objectives on dashboard
+    // NOTE: Using assigneeType instead of type since backend returns type as null
+    // Corporate objectives have no assigneeType and no assigneeId
+    const filteredByRole = (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')
+      ? filteredByPeriod.filter(obj => !obj.assigneeType && !obj.assigneeId)
+      : filteredByPeriod;
+
+    console.log('📊 [Charts] After role filter', {
+      count: filteredByRole.length,
+      objectives: filteredByRole.map(o => ({ title: o.title, kpisCount: o.kpis?.length || 0 }))
+    });
 
     // Filter by timeline if selected
     const filteredObjectives = annualTimeline
@@ -35,7 +59,13 @@ export default function ChartsSection() {
         )
       : filteredByRole;
 
+    console.log('📊 [Charts] After timeline filter', {
+      count: filteredObjectives.length,
+      annualTimeline
+    });
+
     // Count KPIs by month (for bar chart)
+    // Since KPIs don't have createdAt, we'll use objective createdAt or distribute evenly
     const kpisByMonth: Record<string, number> = {
       Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0,
       Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: 0, Dec: 0
@@ -46,9 +76,9 @@ export default function ChartsSection() {
 
     filteredObjectives.forEach(obj => {
       obj.kpis?.forEach((kpi: any) => {
-        // Count by month based on creation date
-        if (kpi.createdAt) {
-          const month = new Date(kpi.createdAt).toLocaleString('en', { month: 'short' });
+        // Count by month based on objective creation date (since KPIs don't have createdAt)
+        if (obj.createdAt) {
+          const month = new Date(obj.createdAt).toLocaleString('en', { month: 'short' });
           if (kpisByMonth[month] !== undefined) {
             kpisByMonth[month]++;
           }
@@ -59,6 +89,9 @@ export default function ChartsSection() {
         kpisByCategory[category] = (kpisByCategory[category] || 0) + 1;
       });
     });
+
+    console.log('📊 [Charts] KPIs by month', kpisByMonth);
+    console.log('📊 [Charts] KPIs by category', kpisByCategory);
 
     // Prepare bar chart data
     const barData = {

@@ -62,12 +62,13 @@ interface UseAnalyticsOptions {
   selectedUnit?: { id: string; type: "division" | "department" } | null;
   userRole?: string;
   annualTimeline?: string | null;
+  selectedPeriodId?: string | null;
 }
 
 export const useAnalytics = (
   options: UseAnalyticsOptions = {}
 ): AnalyticsStats => {
-  const { selectedUnit, userRole, annualTimeline } = options;
+  const { selectedUnit, userRole, annualTimeline, selectedPeriodId } = options;
 
   // Check if user has permission for global data queries
   const canAccessGlobalData =
@@ -246,16 +247,46 @@ export const useAnalytics = (
         : selectedUnit?.type === "division"
           ? (scopedDivisionData?.division?.departments?.reduce((acc: number, dept: any) => acc + (dept.employees?.length || 0), 0) || 0)
           : 0;
-    // 4. Filtering Objectives & KPIs based on Role (Corporate filter) and Timeline
+    // 4. Filtering Objectives & KPIs based on Role (Corporate filter), Strategic Period, and Timeline
     const allObjectivesRaw = objectivesData?.objectives?.items || [];
+
+    console.log('📊 [Analytics] Processing objectives', {
+      totalObjectives: allObjectivesRaw.length,
+      selectedPeriodId,
+      userRole,
+      selectedUnit,
+      annualTimeline
+    });
+
+    // First, filter by strategic period if one is selected
+    const filteredByPeriod = selectedPeriodId
+      ? allObjectivesRaw.filter(obj => obj.strategicPeriod?.strategicPeriodId === selectedPeriodId)
+      : allObjectivesRaw;
+
+    console.log('📊 [Analytics] After period filter', {
+      count: filteredByPeriod.length,
+      objectives: filteredByPeriod.map(o => ({ 
+        title: o.title, 
+        periodId: o.strategicPeriod?.strategicPeriodId 
+      }))
+    });
 
     // Admin/Super Admin should only see CORPORATE objectives and their KPIs at the landing dashboard
     // unless they have a specific unit selected (which we assume happens in other views or via selectedUnit)
     // NOTE: Using assigneeType instead of type since backend returns type as null
     // Corporate objectives have no assigneeType and no assigneeId
     const filteredObjectivesByRole = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && !selectedUnit
-      ? allObjectivesRaw.filter(obj => !obj.assigneeType && !obj.assigneeId)
-      : allObjectivesRaw;
+      ? filteredByPeriod.filter(obj => !obj.assigneeType && !obj.assigneeId)
+      : filteredByPeriod;
+
+    console.log('📊 [Analytics] After role filter', {
+      count: filteredObjectivesByRole.length,
+      objectives: filteredObjectivesByRole.map(o => ({ 
+        title: o.title, 
+        assigneeType: o.assigneeType,
+        assigneeId: o.assigneeId 
+      }))
+    });
 
     // Filter by Annual Timeline
     const filteredObjectivesByTimeline = annualTimeline
@@ -265,6 +296,11 @@ export const useAnalytics = (
         )
       )
       : filteredObjectivesByRole;
+
+    console.log('📊 [Analytics] After timeline filter', {
+      count: filteredObjectivesByTimeline.length,
+      annualTimeline
+    });
 
     const objectivesCount = filteredObjectivesByTimeline.length;
 
@@ -398,6 +434,13 @@ export const useAnalytics = (
     selectedUnit,
     canAccessGlobalData,
     annualTimeline,
+    selectedPeriodId,
+    scopedDivisionData,
+    scopedDepartmentData,
+    scopedDivisionLoading,
+    scopedDepartmentLoading,
+    scopedDivisionError,
+    scopedDepartmentError,
   ]);
 
   return analytics;

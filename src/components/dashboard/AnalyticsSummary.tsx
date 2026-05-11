@@ -31,7 +31,7 @@ export default function AnalyticsSummary() {
   const user = useAuthStore((state) => state.user);
   const { departmentNames } = useUserDepartments();
   const { selected: selectedDepartment } = useDepartmentSelection();
-  const { annualTimeline } = useStrategicPeriodStore();
+  const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
 
   // Normalize selected unit shape for analytics hook
   const roleSelectedUnit =
@@ -46,6 +46,7 @@ export default function AnalyticsSummary() {
     selectedUnit: roleSelectedUnit,
     userRole: user?.role,
     annualTimeline,
+    selectedPeriodId: selectedPeriod?.strategicPeriodId,
   });
 
   const getAnalyticsData = (): AnalyticsData[] => {

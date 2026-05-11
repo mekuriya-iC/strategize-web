@@ -18,5 +18,15 @@ export const EmployeesFragment = gql`
     startDate
     createdAt
     updatedAt
+    user {
+      userId
+    }
+    supervisor {
+      employeeId
+      fullName
+      user {
+        userId
+      }
+    }
   }
 `;

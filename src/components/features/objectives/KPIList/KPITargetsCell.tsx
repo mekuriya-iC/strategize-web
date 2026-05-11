@@ -18,7 +18,7 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
     currentObjectiveType,
     allKpis,
 }) => {
-    if (kpi.targets.length === 0) return <span>No targets</span>;
+    if (!kpi.targets || kpi.targets.length === 0) return <span>No targets</span>;
 
     if (kpi.status !== "APPROVED") {
         const { years, totals } = getYearlyTotals(kpi.targets, kpi);

@@ -53,14 +53,14 @@ export default function AssignEvaluatorsDialog({
   });
 
   const employees = employeesData?.employees?.items || [];
-  const selectedEmployee = employees.find((e: any) => e.userId === selectedEmployeeId);
+  const selectedEmployee = employees.find((e: any) => e.employeeId === selectedEmployeeId);
 
   // Initialize assignments when employees load
   useEffect(() => {
     if (employees.length > 0 && Object.keys(assignments).length === 0) {
       const initialAssignments: Record<string, EmployeeAssignment> = {};
       employees.forEach((emp: any) => {
-        initialAssignments[emp.userId] = {
+        initialAssignments[emp.employeeId] = {
           employee: emp,
           assignSelf: true, // Default: everyone does self-assessment
           assignSupervisor: !!emp.supervisor, // Assign supervisor if exists
@@ -72,22 +72,22 @@ export default function AssignEvaluatorsDialog({
     }
   }, [employees, assignments]);
 
-  const handleToggleSelf = (userId: string) => {
+  const handleToggleSelf = (employeeId: string) => {
     setAssignments(prev => ({
       ...prev,
-      [userId]: {
-        ...prev[userId],
-        assignSelf: !prev[userId].assignSelf,
+      [employeeId]: {
+        ...prev[employeeId],
+        assignSelf: !prev[employeeId].assignSelf,
       },
     }));
   };
 
-  const handleToggleSupervisor = (userId: string) => {
+  const handleToggleSupervisor = (employeeId: string) => {
     setAssignments(prev => ({
       ...prev,
-      [userId]: {
-        ...prev[userId],
-        assignSupervisor: !prev[userId].assignSupervisor,
+      [employeeId]: {
+        ...prev[employeeId],
+        assignSupervisor: !prev[employeeId].assignSupervisor,
       },
     }));
   };
@@ -134,41 +134,55 @@ export default function AssignEvaluatorsDialog({
     try {
       for (const [evaluateeId, assignment] of Object.entries(assignments)) {
         const assessmentsToCreate: Array<{
-          evaluatorId: string;
+          evaluatorUserId: string;
           relationType: EvaluationRelationType;
         }> = [];
+
+        // Get the user IDs for evaluatee
+        const evaluateeUserId = assignment.employee.user?.userId;
+        if (!evaluateeUserId) {
+          console.error(`Employee ${evaluateeId} has no user account`);
+          errorCount++;
+          continue;
+        }
 
         // Self assessment
         if (assignment.assignSelf) {
           assessmentsToCreate.push({
-            evaluatorId: evaluateeId,
+            evaluatorUserId: evaluateeUserId,
             relationType: EvaluationRelationType.SELF,
           });
         }
 
         // Supervisor assessment
-        if (assignment.assignSupervisor && assignment.employee.supervisor) {
+        if (assignment.assignSupervisor && assignment.employee.supervisor?.user?.userId) {
           assessmentsToCreate.push({
-            evaluatorId: assignment.employee.supervisor.userId,
+            evaluatorUserId: assignment.employee.supervisor.user.userId,
             relationType: EvaluationRelationType.SUPERVISOR,
           });
         }
 
         // Peer assessments
-        assignment.peers.forEach(peerId => {
-          assessmentsToCreate.push({
-            evaluatorId: peerId,
-            relationType: EvaluationRelationType.PEER,
-          });
-        });
+        for (const peerId of assignment.peers) {
+          const peerEmployee = employees.find((e: any) => e.employeeId === peerId);
+          if (peerEmployee?.user?.userId) {
+            assessmentsToCreate.push({
+              evaluatorUserId: peerEmployee.user.userId,
+              relationType: EvaluationRelationType.PEER,
+            });
+          }
+        }
 
         // Subordinate assessments
-        assignment.subordinates.forEach(subordinateId => {
-          assessmentsToCreate.push({
-            evaluatorId: subordinateId,
-            relationType: EvaluationRelationType.SUBORDINATE,
-          });
-        });
+        for (const subordinateId of assignment.subordinates) {
+          const subordinateEmployee = employees.find((e: any) => e.employeeId === subordinateId);
+          if (subordinateEmployee?.user?.userId) {
+            assessmentsToCreate.push({
+              evaluatorUserId: subordinateEmployee.user.userId,
+              relationType: EvaluationRelationType.SUBORDINATE,
+            });
+          }
+        }
 
         // Create all assessments for this employee
         for (const assessment of assessmentsToCreate) {
@@ -176,8 +190,8 @@ export default function AssignEvaluatorsDialog({
             await createAssessment({
               variables: {
                 createCompetencyAssessmentInput: {
-                  evaluateeUserId: evaluateeId,
-                  evaluatorUserId: assessment.evaluatorId,
+                  evaluateeUserId: evaluateeUserId,
+                  evaluatorUserId: assessment.evaluatorUserId,
                   evaluationCycleId,
                   relationType: assessment.relationType,
                 },
@@ -217,8 +231,8 @@ export default function AssignEvaluatorsDialog({
     }, 0);
   };
 
-  const getEmployeeAssignmentCount = (userId: string) => {
-    const assignment = assignments[userId];
+  const getEmployeeAssignmentCount = (employeeId: string) => {
+    const assignment = assignments[employeeId];
     if (!assignment) return 0;
     
     let count = 0;
@@ -274,7 +288,7 @@ export default function AssignEvaluatorsDialog({
             {/* Employee List */}
             <ScrollArea className="h-[400px] border rounded-lg">
               {employeesLoading ? (
-                <div className="flex items-center justify-center h-full">
+                <div key="loading" className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
                     <p className="mt-2 text-sm text-gray-600">Loading employees...</p>
@@ -283,14 +297,14 @@ export default function AssignEvaluatorsDialog({
               ) : (
                 <div className="divide-y">
                   {employees.map((employee: any) => {
-                    const assignmentCount = getEmployeeAssignmentCount(employee.userId);
+                    const assignmentCount = getEmployeeAssignmentCount(employee.employeeId);
                     
                     return (
                       <div
-                        key={employee.userId}
+                        key={employee.employeeId}
                         className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                         onClick={() => {
-                          setSelectedEmployeeId(employee.userId);
+                          setSelectedEmployeeId(employee.employeeId);
                           setStep('assign');
                         }}
                       >
@@ -396,16 +410,16 @@ export default function AssignEvaluatorsDialog({
                   <Label className="text-base font-semibold">Peer Assessments</Label>
                   <div className="space-y-2">
                     {employees
-                      .filter((e: any) => e.userId !== selectedEmployeeId)
+                      .filter((e: any) => e.employeeId !== selectedEmployeeId)
                       .map((peer: any) => (
-                        <div key={peer.userId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                        <div key={peer.employeeId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
                           <Checkbox
-                            id={`peer-${peer.userId}`}
-                            checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.peers?.includes(peer.userId) || false) : false}
-                            onCheckedChange={() => selectedEmployeeId && handleTogglePeer(selectedEmployeeId, peer.userId)}
+                            id={`peer-${peer.employeeId}`}
+                            checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.peers?.includes(peer.employeeId) || false) : false}
+                            onCheckedChange={() => selectedEmployeeId && handleTogglePeer(selectedEmployeeId, peer.employeeId)}
                           />
                           <label
-                            htmlFor={`peer-${peer.userId}`}
+                            htmlFor={`peer-${peer.employeeId}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                           >
                             {peer.fullName}
@@ -421,23 +435,23 @@ export default function AssignEvaluatorsDialog({
                   <p className="text-xs text-gray-500">Select direct reports to provide upward feedback</p>
                   <div className="space-y-2">
                     {employees
-                      .filter((e: any) => e.supervisor?.userId === selectedEmployeeId)
+                      .filter((e: any) => e.supervisor?.employeeId === selectedEmployeeId)
                       .map((subordinate: any) => (
-                        <div key={subordinate.userId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                        <div key={subordinate.employeeId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
                           <Checkbox
-                            id={`subordinate-${subordinate.userId}`}
-                            checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.subordinates?.includes(subordinate.userId) || false) : false}
-                            onCheckedChange={() => selectedEmployeeId && handleToggleSubordinate(selectedEmployeeId, subordinate.userId)}
+                            id={`subordinate-${subordinate.employeeId}`}
+                            checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.subordinates?.includes(subordinate.employeeId) || false) : false}
+                            onCheckedChange={() => selectedEmployeeId && handleToggleSubordinate(selectedEmployeeId, subordinate.employeeId)}
                           />
                           <label
-                            htmlFor={`subordinate-${subordinate.userId}`}
+                            htmlFor={`subordinate-${subordinate.employeeId}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                           >
                             {subordinate.fullName}
                           </label>
                         </div>
                       ))}
-                    {employees.filter((e: any) => e.supervisor?.userId === selectedEmployeeId).length === 0 && (
+                    {employees.filter((e: any) => e.supervisor?.employeeId === selectedEmployeeId).length === 0 && (
                       <p className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
                         No direct reports
                       </p>

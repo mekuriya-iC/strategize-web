@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import React from "react";
 import { getOrganizationId } from "@/lib/constants/organization";
 import { type Position, usePositionMutations } from "@/hooks/positions/usePositions";
 import { Button } from "@/components/ui/button";
@@ -122,45 +123,64 @@ export default function PositionTable({ positions, loading }: PositionTableProps
     submitLabel: string;
     isLoading: boolean;
     onCancel: () => void;
-  }) => (
-    <form onSubmit={onSubmit} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label>Title *</Label>
-        <Input
-          placeholder="e.g. Software Engineer, HR Manager"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Grade</Label>
-        <Input
-          placeholder="e.g. L3, Senior, Band 7"
-          value={form.grade}
-          onChange={(e) => setForm({ ...form, grade: e.target.value })}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Description</Label>
-        <Textarea
-          placeholder="Describe the position..."
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          rows={3}
-        />
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading || !form.title}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {submitLabel}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
+  }) => {
+    // Local state to prevent re-renders from parent
+    const [localForm, setLocalForm] = useState(form);
+
+    // Sync with parent form when dialog opens
+    React.useEffect(() => {
+      setLocalForm(form);
+    }, []);
+
+    const handleLocalSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      // Update parent form before submitting
+      setForm(localForm);
+      // Use setTimeout to ensure state is updated
+      setTimeout(() => onSubmit(e), 0);
+    };
+
+    return (
+      <form onSubmit={handleLocalSubmit} className="space-y-4 mt-2">
+        <div className="space-y-2">
+          <Label>Title *</Label>
+          <Input
+            placeholder="e.g. Software Engineer, HR Manager"
+            value={localForm.title}
+            onChange={(e) => setLocalForm({ ...localForm, title: e.target.value })}
+            required
+            autoFocus
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Grade</Label>
+          <Input
+            placeholder="e.g. L3, Senior, Band 7"
+            value={localForm.grade}
+            onChange={(e) => setLocalForm({ ...localForm, grade: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Description</Label>
+          <Textarea
+            placeholder="Describe the position..."
+            value={localForm.description}
+            onChange={(e) => setLocalForm({ ...localForm, description: e.target.value })}
+            rows={3}
+          />
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading || !localForm.title}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitLabel}
+          </Button>
+        </DialogFooter>
+      </form>
+    );
+  };
 
   if (loading) {
     return (

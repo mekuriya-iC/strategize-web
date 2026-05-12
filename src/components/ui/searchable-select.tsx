@@ -29,6 +29,8 @@ interface SearchableSelectProps {
   className?: string;
   /** Show a clear button when a value is selected */
   clearable?: boolean;
+  /** Custom content to render before options (e.g., "+ New" buttons) */
+  customContent?: React.ReactNode;
 }
 
 /**
@@ -53,6 +55,7 @@ export function SearchableSelect({
   disabled = false,
   className,
   clearable = false,
+  customContent,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -120,7 +123,7 @@ export function SearchableSelect({
       </PopoverTrigger>
 
       <PopoverContent
-        className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[200px]"
+        className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[200px] z-[100] pointer-events-auto"
         align="start"
         sideOffset={4}
       >
@@ -146,7 +149,12 @@ export function SearchableSelect({
         </div>
 
         {/* Options list */}
-        <div className="max-h-60 overflow-y-auto py-1">
+        <div className="max-h-60 overflow-y-auto py-1 pointer-events-auto">
+          {customContent && (
+            <div className="border-b pb-1 mb-1 relative z-10 pointer-events-auto">
+              {customContent}
+            </div>
+          )}
           {filtered.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               {emptyMessage}
@@ -157,9 +165,14 @@ export function SearchableSelect({
                 key={option.value}
                 type="button"
                 disabled={option.disabled}
-                onClick={() => !option.disabled && handleSelect(option.value)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (!option.disabled) {
+                    handleSelect(option.value);
+                  }
+                }}
                 className={cn(
-                  "w-full flex items-start gap-2 px-3 py-2 text-sm text-left transition-colors",
+                  "w-full flex items-start gap-2 px-3 py-2 text-sm text-left transition-colors pointer-events-auto",
                   "hover:bg-accent hover:text-accent-foreground",
                   "disabled:pointer-events-none disabled:opacity-50",
                   option.value === value && "bg-accent/50"

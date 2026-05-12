@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
+import { parseGraphQLError } from "@/lib/utils/error-messages";
+import { toast } from "sonner";
 
 interface DeleteDivisionDialogProps {
   children: React.ReactNode;
@@ -30,21 +32,15 @@ const DeleteDivisionDialog: React.FC<DeleteDivisionDialogProps> = ({
       await removeDivision({
         id: String(divisionId),
       });
+      toast.success("Division deleted successfully");
       setOpen(false);
       onDeleteSuccess?.();
     } catch (error) {
-      console.error("Error deleting division:", error);
-
-      // Check if it's a foreign key constraint error
-      if (
-        error instanceof Error &&
-        (error.message?.includes("foreign key constraint") ||
-          error.message?.includes("FK_") ||
-          error.message?.includes("Department"))
-      ) {
-        // The mutation hook will show the error toast, but we can add more specific handling here if needed
-        // For now, just keep the dialog open so user can see the error
-      }
+      const errorMessage = parseGraphQLError(error);
+      toast.error("Failed to delete division", {
+        description: errorMessage,
+      });
+      // Keep dialog open so user can see the error and try again
     }
   };
 

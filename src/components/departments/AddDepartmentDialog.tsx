@@ -1,4 +1,6 @@
 import React from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +15,9 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 
 interface AddDepartmentDialogProps {
   open: boolean;
@@ -51,6 +54,10 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
   onSubmit,
   loading = false,
 }) => {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   const handleMemberToggle = (memberId: string) => {
     setDepartmentMembers(
       departmentMembers.includes(memberId)
@@ -103,25 +110,39 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Department Manager
                 </label>
-                <Select
+                <SearchableSelect
                   value={departmentManager}
                   onValueChange={setDepartmentManager}
+                  placeholder="Select Manager"
+                  searchPlaceholder="Search managers..."
+                  emptyMessage={managers.length === 0 && !isAdmin ? "No managers available. Contact an admin to add employees." : "No managers found"}
                   disabled={loading}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Manager" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {managers.map((manager) => (
-                      <SelectItem
-                        key={manager.employeeId}
-                        value={manager.employeeId}
-                      >
-                        {manager.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={managers.map((manager) => ({
+                    value: manager.employeeId,
+                    label: manager.fullName,
+                  }))}
+                  customContent={
+                    managers.length === 0 && isAdmin ? (
+                      <div className="px-2 py-1.5 pointer-events-auto">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-primary hover:text-primary hover:bg-primary/10 pointer-events-auto"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onOpenChange(false);
+                            router.push("/dashboard/employees?action=add");
+                          }}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          New Manager
+                        </Button>
+                      </div>
+                    ) : undefined
+                  }
+                />
               </div>
             </div>
 
@@ -133,25 +154,40 @@ const AddDepartmentDialog: React.FC<AddDepartmentDialogProps> = ({
                   (Optional)
                 </span>
               </label>
-              <Select
+              <SearchableSelect
                 value={selectedDivision}
                 onValueChange={setSelectedDivision}
+                placeholder="Select Division (Optional)"
+                searchPlaceholder="Search divisions..."
+                emptyMessage={divisions.length === 0 && !isAdmin ? "No divisions available. Contact an admin to create one." : "No divisions found"}
                 disabled={loading}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Division (Optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {divisions.map((division) => (
-                    <SelectItem
-                      key={division.divisionId}
-                      value={division.divisionId}
-                    >
-                      {division.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                clearable
+                options={divisions.map((division) => ({
+                  value: division.divisionId,
+                  label: division.name,
+                }))}
+                customContent={
+                  divisions.length === 0 && isAdmin ? (
+                    <div className="px-2 py-1.5 pointer-events-auto">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-primary hover:text-primary hover:bg-primary/10 pointer-events-auto"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onOpenChange(false);
+                          router.push("/dashboard/divisions?action=add");
+                        }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Division
+                      </Button>
+                    </div>
+                  ) : undefined
+                }
+              />
             </div>
 
             {/* Member(s) */}

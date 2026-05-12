@@ -19,8 +19,9 @@ import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { ObjectiveType } from "@/types/graphql";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export default function ObjectiveForm() {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function ObjectiveForm() {
   // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
   const isCorporateUser =
     user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   const [selectedPillarId, setSelectedPillarId] = useState<string>("");
   const [objectiveName, setObjectiveName] = useState("");
@@ -203,32 +205,52 @@ export default function ObjectiveForm() {
             <Label className="block font-medium mb-2">
               Strategic Pillar <span className="text-gray-500 text-sm">(Optional)</span>
             </Label>
-            <Select
-              value={selectedPillarId}
-              onValueChange={(val) => setSelectedPillarId(val)}
+            <SearchableSelect
+              value={selectedPillarId === "none" ? "" : selectedPillarId}
+              onValueChange={(val) => setSelectedPillarId(val || "none")}
+              placeholder={
+                pillarsLoading 
+                  ? "Loading pillars..." 
+                  : strategicPillars.length === 0 
+                  ? "No pillars available" 
+                  : "Select a strategic pillar"
+              }
+              searchPlaceholder="Search pillars..."
+              emptyMessage={strategicPillars.length === 0 && !isAdmin ? "No pillars available. Contact an admin to create one." : "No pillars found"}
               disabled={!activeStrategicPlan || pillarsLoading}
-            >
-              <SelectTrigger className="max-w-xl">
-                <SelectValue placeholder={
-                  pillarsLoading 
-                    ? "Loading pillars..." 
-                    : strategicPillars.length === 0 
-                    ? "No pillars available" 
-                    : "Select a strategic pillar"
-                } />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None (No pillar)</SelectItem>
-                {strategicPillars.map((pillar) => (
-                  <SelectItem key={pillar.strategicPillarId} value={pillar.strategicPillarId}>
-                    {pillar.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">
-              Link this objective to a strategic pillar from the active plan
-            </p>
+              className="max-w-xl"
+              clearable
+              options={strategicPillars.map((pillar) => ({
+                value: pillar.strategicPillarId,
+                label: pillar.name,
+                description: pillar.description || undefined,
+              }))}
+              customContent={
+                strategicPillars.length === 0 && isAdmin && activeStrategicPlan ? (
+                  <div className="px-2 py-1.5 pointer-events-auto">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-primary hover:text-primary hover:bg-primary/10 pointer-events-auto"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        router.push(`/dashboard/strategic-plans/${activeStrategicPlan.strategicPlanId}`);
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Pillar
+                    </Button>
+                  </div>
+                ) : undefined
+              }
+            />
+            {strategicPillars.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Link this objective to a strategic pillar from the active plan
+              </p>
+            )}
           </div>
 
           {/* Objective Name */}

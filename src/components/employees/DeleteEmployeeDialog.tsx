@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
+import { parseGraphQLError } from "@/lib/utils/error-messages";
 
 interface DeleteEmployeeDialogProps {
   children: React.ReactNode;
@@ -42,11 +43,9 @@ const DeleteEmployeeDialog: React.FC<DeleteEmployeeDialogProps> = ({
       });
       setOpen(false);
     } else {
+      const errorMessage = parseGraphQLError(result.error);
       toast.error("Failed to delete employee", {
-        description:
-          typeof result.error === "string"
-            ? result.error
-            : "Please try again later.",
+        description: errorMessage,
       });
     }
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { getOrganizationId } from "@/lib/constants/organization";
 import { type Team, useTeamMutations } from "@/hooks/teams/useTeams";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ import { MoreHorizontal, Pencil, Trash2, Eye, Users, Plus, Loader2 } from "lucid
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
 import { useAuthStore } from "@/stores";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface TeamsTableProps {
   teams: Team[];
@@ -169,76 +171,131 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
     submitLabel: string;
     isLoading: boolean;
     onCancel: () => void;
-  }) => (
-    <form onSubmit={onSubmit} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label>Team Name *</Label>
-        <Input
-          placeholder="e.g. Engineering Team, Sales Team"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
-      </div>
+  }) => {
+    // Local state to prevent re-renders from parent
+    const [localForm, setLocalForm] = React.useState(form);
 
-      <div className="space-y-2">
-        <Label>Department</Label>
-        <Select value={form.departmentId} onValueChange={(v) => setForm({ ...form, departmentId: v })}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select department (optional)" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No Department</SelectItem>
-            {departments.map((dept: any) => (
-              <SelectItem key={dept.departmentId} value={dept.departmentId}>
-                {dept.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    // Sync with parent form when dialog opens
+    React.useEffect(() => {
+      setLocalForm(form);
+    }, []);
 
-      <div className="space-y-2">
-        <Label>Team Lead</Label>
-        <Select
-          value={form.teamLeadUserId}
-          onValueChange={(v) => setForm({ ...form, teamLeadUserId: v })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select team lead (optional)" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No Team Lead</SelectItem>
-            {employees.map((emp: any) => (
-              <SelectItem key={emp.employeeId} value={emp.employeeId}>
-                {emp.fullName} {emp.title && `- ${emp.title}`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    const handleLocalSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      // Update parent form before submitting
+      setForm(localForm);
+      // Use setTimeout to ensure state is updated
+      setTimeout(() => onSubmit(e), 0);
+    };
 
-      <div className="space-y-2">
-        <Label>Description</Label>
-        <Textarea
-          placeholder="Describe the team's purpose and responsibilities..."
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          rows={3}
-        />
-      </div>
+    return (
+      <form onSubmit={handleLocalSubmit} className="space-y-4 mt-2">
+        <div className="space-y-2">
+          <Label>Team Name *</Label>
+          <Input
+            placeholder="e.g. Engineering Team, Sales Team"
+            value={localForm.name}
+            onChange={(e) => setLocalForm({ ...localForm, name: e.target.value })}
+            required
+            autoFocus
+          />
+        </div>
 
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading || !form.name}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {submitLabel}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
+        <div className="space-y-2">
+          <Label>Department</Label>
+          <SearchableSelect
+            value={localForm.departmentId === "none" ? "" : localForm.departmentId}
+            onValueChange={(v) => setLocalForm({ ...localForm, departmentId: v || "none" })}
+            placeholder="Select department (optional)"
+            searchPlaceholder="Search departments..."
+            emptyMessage={departments.length === 0 && !isAdmin ? "No departments available. Contact an admin to create one." : "No departments found"}
+            options={departments.map((dept: any) => ({
+              value: dept.departmentId,
+              label: dept.name,
+            }))}
+            clearable
+            customContent={
+              departments.length === 0 && isAdmin ? (
+                <div className="px-2 py-1.5 pointer-events-auto">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-primary hover:text-primary hover:bg-primary/10 pointer-events-auto"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push("/dashboard/structure?tab=departments&action=add");
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Department
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Team Lead</Label>
+          <SearchableSelect
+            value={localForm.teamLeadUserId === "none" ? "" : localForm.teamLeadUserId}
+            onValueChange={(v) => setLocalForm({ ...localForm, teamLeadUserId: v || "none" })}
+            placeholder="Select team lead (optional)"
+            searchPlaceholder="Search employees..."
+            emptyMessage={employees.length === 0 && !isAdmin ? "No employees available. Contact an admin to add employees." : "No employees found"}
+            options={employees.map((emp: any) => ({
+              value: emp.employeeId,
+              label: emp.fullName,
+              description: emp.title || undefined,
+            }))}
+            clearable
+            customContent={
+              employees.length === 0 && isAdmin ? (
+                <div className="px-2 py-1.5 pointer-events-auto">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-primary hover:text-primary hover:bg-primary/10 pointer-events-auto"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push("/dashboard/employees?action=add");
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Employee
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Description</Label>
+          <Textarea
+            placeholder="Describe the team's purpose and responsibilities..."
+            value={localForm.description}
+            onChange={(e) => setLocalForm({ ...localForm, description: e.target.value })}
+            rows={3}
+          />
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading || !localForm.name}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitLabel}
+          </Button>
+        </DialogFooter>
+      </form>
+    );
+  };
 
   if (loading) {
     return (

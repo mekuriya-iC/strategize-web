@@ -120,6 +120,26 @@ export const useCompetencyPositionAssignments = (variables: {
 
 export const usePositionMutations = () => {
   const [createPositionMutation, { loading: createLoading }] = useMutation(CREATE_POSITION, {
+    update: (cache, { data }) => {
+      if (data?.createPosition) {
+        cache.modify({
+          fields: {
+            positions(existingPositions = null) {
+              if (!existingPositions) return existingPositions;
+              const items = existingPositions.items || [];
+              return {
+                ...existingPositions,
+                items: [data.createPosition, ...items],
+                meta: {
+                  ...existingPositions.meta,
+                  totalItems: (existingPositions.meta?.totalItems || 0) + 1,
+                },
+              };
+            },
+          },
+        });
+      }
+    },
     onCompleted: (data) => {
       toast.success('Position created successfully!', {
         description: `"${data.createPosition.title}" has been created.`,
@@ -128,11 +148,30 @@ export const usePositionMutations = () => {
     onError: (error) => {
       toast.error('Failed to create position', { description: error.message });
     },
-    refetchQueries: [{ query: GET_POSITIONS, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 
   const [updatePositionMutation, { loading: updateLoading }] = useMutation(UPDATE_POSITION, {
+    update: (cache, { data }) => {
+      if (data?.updatePosition) {
+        const updated = data.updatePosition;
+        cache.modify({
+          fields: {
+            positions(existingPositions = null, { readField }) {
+              if (!existingPositions) return existingPositions;
+              const items = existingPositions.items || [];
+              return {
+                ...existingPositions,
+                items: items.map((item: any) =>
+                  readField('positionId', item) === updated.positionId ? updated : item
+                ),
+              };
+            },
+          },
+        });
+      }
+    },
     onCompleted: (data) => {
       toast.success('Position updated successfully!', {
         description: `"${data.updatePosition.title}" has been updated.`,
@@ -141,20 +180,47 @@ export const usePositionMutations = () => {
     onError: (error) => {
       toast.error('Failed to update position', { description: error.message });
     },
-    refetchQueries: [{ query: GET_POSITIONS, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 
   const [removePositionMutation, { loading: removeLoading }] = useMutation(REMOVE_POSITION, {
+    update: (cache, { data }, { variables }) => {
+      if (variables?.positionId) {
+        const deletedId = variables.positionId;
+        cache.modify({
+          fields: {
+            positions(existingPositions = null, { readField }) {
+              if (!existingPositions) return existingPositions;
+              const items = existingPositions.items || [];
+              return {
+                ...existingPositions,
+                items: items.filter(
+                  (item: any) => readField('positionId', item) !== deletedId
+                ),
+                meta: {
+                  ...existingPositions.meta,
+                  totalItems: Math.max(0, (existingPositions.meta?.totalItems || 0) - 1),
+                },
+              };
+            },
+          },
+        });
+        
+        // Also evict the specific position from cache
+        cache.evict({ id: cache.identify({ __typename: 'Position', positionId: deletedId }) });
+        cache.gc();
+      }
+    },
     onCompleted: (data) => {
       toast.success('Position deleted successfully!', {
-        description: `"${data.removePosition.title}" has been removed.`,
+        description: data?.removePosition?.title ? `"${data.removePosition.title}" has been removed.` : 'Position has been removed.',
       });
     },
     onError: (error) => {
       toast.error('Failed to delete position', { description: error.message });
     },
-    refetchQueries: [{ query: GET_POSITIONS, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 

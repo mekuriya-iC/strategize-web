@@ -79,6 +79,26 @@ export const useTeam = (teamId: string) => {
 
 export const useTeamMutations = () => {
   const [createTeamMutation, { loading: createLoading }] = useMutation(CREATE_TEAM, {
+    update: (cache, { data }) => {
+      if (data?.createTeam) {
+        cache.modify({
+          fields: {
+            teams(existingTeams = null) {
+              if (!existingTeams) return existingTeams;
+              const items = existingTeams.items || [];
+              return {
+                ...existingTeams,
+                items: [data.createTeam, ...items],
+                meta: {
+                  ...existingTeams.meta,
+                  totalItems: (existingTeams.meta?.totalItems || 0) + 1,
+                },
+              };
+            },
+          },
+        });
+      }
+    },
     onCompleted: (data) => {
       toast.success('Team created successfully!', {
         description: `"${data.createTeam.name}" has been created.`,
@@ -87,11 +107,30 @@ export const useTeamMutations = () => {
     onError: (error) => {
       toast.error('Failed to create team', { description: error.message });
     },
-    refetchQueries: [{ query: GET_TEAMS, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 
   const [updateTeamMutation, { loading: updateLoading }] = useMutation(UPDATE_TEAM, {
+    update: (cache, { data }) => {
+      if (data?.updateTeam) {
+        const updated = data.updateTeam;
+        cache.modify({
+          fields: {
+            teams(existingTeams = null, { readField }) {
+              if (!existingTeams) return existingTeams;
+              const items = existingTeams.items || [];
+              return {
+                ...existingTeams,
+                items: items.map((item: any) =>
+                  readField('teamId', item) === updated.teamId ? updated : item
+                ),
+              };
+            },
+          },
+        });
+      }
+    },
     onCompleted: (data) => {
       toast.success('Team updated successfully!', {
         description: `"${data.updateTeam.name}" has been updated.`,
@@ -100,20 +139,45 @@ export const useTeamMutations = () => {
     onError: (error) => {
       toast.error('Failed to update team', { description: error.message });
     },
-    refetchQueries: [{ query: GET_TEAMS, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 
   const [removeTeamMutation, { loading: removeLoading }] = useMutation(REMOVE_TEAM, {
+    update: (cache, { data }, { variables }) => {
+      if (variables?.teamId) {
+        const deletedId = variables.teamId;
+        cache.modify({
+          fields: {
+            teams(existingTeams = null, { readField }) {
+              if (!existingTeams) return existingTeams;
+              const items = existingTeams.items || [];
+              return {
+                ...existingTeams,
+                items: items.filter((item: any) => readField('teamId', item) !== deletedId),
+                meta: {
+                  ...existingTeams.meta,
+                  totalItems: Math.max(0, (existingTeams.meta?.totalItems || 0) - 1),
+                },
+              };
+            },
+          },
+        });
+        
+        // Also evict the specific team from cache
+        cache.evict({ id: cache.identify({ __typename: 'Team', teamId: deletedId }) });
+        cache.gc();
+      }
+    },
     onCompleted: (data) => {
       toast.success('Team deleted successfully!', {
-        description: `"${data.removeTeam.name}" has been removed.`,
+        description: data?.removeTeam?.name ? `"${data.removeTeam.name}" has been removed.` : 'Team has been removed.',
       });
     },
     onError: (error) => {
       toast.error('Failed to delete team', { description: error.message });
     },
-    refetchQueries: [{ query: GET_TEAMS, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 

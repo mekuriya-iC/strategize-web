@@ -24,6 +24,26 @@ export const useDepartmentMutations = () => {
   const [createDepartmentMutation, { loading: createLoading }] = useMutation(
     CREATE_DEPARTMENT,
     {
+      update: (cache, { data }) => {
+        if (data?.createDepartment) {
+          cache.modify({
+            fields: {
+              departments(existingDepartments = null) {
+                if (!existingDepartments) return existingDepartments;
+                const items = existingDepartments.items || [];
+                return {
+                  ...existingDepartments,
+                  items: [data.createDepartment, ...items],
+                  meta: {
+                    ...existingDepartments.meta,
+                    totalItems: (existingDepartments.meta?.totalItems || 0) + 1,
+                  },
+                };
+              },
+            },
+          });
+        }
+      },
       onCompleted: (data) => {
         toast.success("Department created successfully!", {
           description: `${data.createDepartment.name} has been added to the system.`,
@@ -34,12 +54,7 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: [
-        { query: GET_DEPARTMENTS },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 10 } },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
-      ],
+      refetchQueries: 'active',
       awaitRefetchQueries: true,
     }
   );
@@ -47,6 +62,25 @@ export const useDepartmentMutations = () => {
   const [updateDepartmentMutation, { loading: updateLoading }] = useMutation(
     UPDATE_DEPARTMENT,
     {
+      update: (cache, { data }) => {
+        if (data?.updateDepartment) {
+          const updated = data.updateDepartment;
+          cache.modify({
+            fields: {
+              departments(existingDepartments = null, { readField }) {
+                if (!existingDepartments) return existingDepartments;
+                const items = existingDepartments.items || [];
+                return {
+                  ...existingDepartments,
+                  items: items.map((item: any) =>
+                    readField('departmentId', item) === updated.departmentId ? updated : item
+                  ),
+                };
+              },
+            },
+          });
+        }
+      },
       onCompleted: (data) => {
         toast.success("Department updated successfully!", {
           description: `${data.updateDepartment.name} has been updated.`,
@@ -57,11 +91,7 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: [
-        { query: GET_DEPARTMENTS },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
-      ],
+      refetchQueries: 'active',
       awaitRefetchQueries: true,
     }
   );
@@ -69,9 +99,36 @@ export const useDepartmentMutations = () => {
   const [removeDepartmentMutation, { loading: removeLoading }] = useMutation(
     REMOVE_DEPARTMENT,
     {
+      update: (cache, { data }, { variables }) => {
+        if (variables?.departmentId || data?.removeDepartment) {
+          const deletedId = variables?.departmentId || data?.removeDepartment?.departmentId;
+          if (deletedId) {
+            cache.modify({
+              fields: {
+                departments(existingDepartments = null, { readField }) {
+                  if (!existingDepartments) return existingDepartments;
+                  const items = existingDepartments.items || [];
+                  return {
+                    ...existingDepartments,
+                    items: items.filter((item: any) => readField('departmentId', item) !== deletedId),
+                    meta: {
+                      ...existingDepartments.meta,
+                      totalItems: Math.max(0, (existingDepartments.meta?.totalItems || 0) - 1),
+                    },
+                  };
+                },
+              },
+            });
+            
+            // Also evict the specific department from cache
+            cache.evict({ id: cache.identify({ __typename: 'Department', departmentId: deletedId }) });
+            cache.gc();
+          }
+        }
+      },
       onCompleted: (data) => {
         toast.success("Department deleted successfully!", {
-          description: `${data.removeDepartment.name} has been removed from the system.`,
+          description: data?.removeDepartment?.name ? `${data.removeDepartment.name} has been removed from the system.` : 'Department has been removed.',
         });
       },
       onError: (error) => {
@@ -79,42 +136,8 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: [
-        { query: GET_DEPARTMENTS },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 1000 } },
-        { query: GET_DEPARTMENTS, variables: { page: 1, limit: 100 } },
-      ],
+      refetchQueries: 'active',
       awaitRefetchQueries: true,
-      update: (cache, { data }) => {
-        if (data?.removeDepartment) {
-          const existingDepartments = cache.readQuery<{
-            departments: PaginatedDepartments;
-          }>({
-            query: GET_DEPARTMENTS,
-            variables: { page: 1, limit: 10 },
-          });
-
-          if (existingDepartments) {
-            cache.writeQuery({
-              query: GET_DEPARTMENTS,
-              variables: { page: 1, limit: 10 },
-              data: {
-                departments: {
-                  ...existingDepartments.departments,
-                  items: existingDepartments.departments.items.filter(
-                    (department) =>
-                      department.departmentId !== data.removeDepartment.departmentId
-                  ),
-                  meta: {
-                    ...existingDepartments.departments.meta,
-                    totalItems: existingDepartments.departments.meta.totalItems - 1,
-                  },
-                },
-              },
-            });
-          }
-        }
-      },
     }
   );
 

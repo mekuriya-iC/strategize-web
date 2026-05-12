@@ -19,6 +19,26 @@ export const useDivisionMutations = () => {
   const [createDivisionMutation, { loading: createLoading }] = useMutation(
     CREATE_DIVISION,
     {
+      update: (cache, { data }) => {
+        if (data?.createDivision) {
+          cache.modify({
+            fields: {
+              divisions(existingDivisions = null) {
+                if (!existingDivisions) return existingDivisions;
+                const items = existingDivisions.items || [];
+                return {
+                  ...existingDivisions,
+                  items: [data.createDivision, ...items],
+                  meta: {
+                    ...existingDivisions.meta,
+                    totalItems: (existingDivisions.meta?.totalItems || 0) + 1,
+                  },
+                };
+              },
+            },
+          });
+        }
+      },
       onCompleted: (data) => {
         toast.success("Division created successfully!", {
           description: `${data.createDivision.name} has been added to the system.`,
@@ -30,11 +50,7 @@ export const useDivisionMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: [
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
-      ],
+      refetchQueries: 'active',
       awaitRefetchQueries: true,
     }
   );
@@ -42,6 +58,25 @@ export const useDivisionMutations = () => {
   const [updateDivisionMutation, { loading: updateLoading }] = useMutation(
     UPDATE_DIVISION,
     {
+      update: (cache, { data }) => {
+        if (data?.updateDivision) {
+          const updated = data.updateDivision;
+          cache.modify({
+            fields: {
+              divisions(existingDivisions = null, { readField }) {
+                if (!existingDivisions) return existingDivisions;
+                const items = existingDivisions.items || [];
+                return {
+                  ...existingDivisions,
+                  items: items.map((item: any) =>
+                    readField('divisionId', item) === updated.divisionId ? updated : item
+                  ),
+                };
+              },
+            },
+          });
+        }
+      },
       onCompleted: (data) => {
         toast.success("Division updated successfully!", {
           description: `${data.updateDivision.name} has been updated.`,
@@ -52,11 +87,7 @@ export const useDivisionMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: [
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
-      ],
+      refetchQueries: 'active',
       awaitRefetchQueries: true,
     }
   );
@@ -64,9 +95,36 @@ export const useDivisionMutations = () => {
   const [removeDivisionMutation, { loading: removeLoading }] = useMutation(
     REMOVE_DIVISION,
     {
+      update: (cache, { data }, { variables }) => {
+        if (variables?.divisionId || data?.removeDivision) {
+          const deletedId = variables?.divisionId || data?.removeDivision?.divisionId;
+          if (deletedId) {
+            cache.modify({
+              fields: {
+                divisions(existingDivisions = null, { readField }) {
+                  if (!existingDivisions) return existingDivisions;
+                  const items = existingDivisions.items || [];
+                  return {
+                    ...existingDivisions,
+                    items: items.filter((item: any) => readField('divisionId', item) !== deletedId),
+                    meta: {
+                      ...existingDivisions.meta,
+                      totalItems: Math.max(0, (existingDivisions.meta?.totalItems || 0) - 1),
+                    },
+                  };
+                },
+              },
+            });
+            
+            // Also evict the specific division from cache
+            cache.evict({ id: cache.identify({ __typename: 'Division', divisionId: deletedId }) });
+            cache.gc();
+          }
+        }
+      },
       onCompleted: (data) => {
         toast.success("Division deleted successfully!", {
-          description: `${data.removeDivision.name} has been removed from the system.`,
+          description: data?.removeDivision?.name ? `${data.removeDivision.name} has been removed from the system.` : 'Division has been removed.',
         });
       },
       onError: (error) => {
@@ -85,11 +143,7 @@ export const useDivisionMutations = () => {
           description: errorMessage,
         });
       },
-      refetchQueries: [
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 10 } },
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 1000 } },
-        { query: GET_DIVISIONS, variables: { page: 1, limit: 100 } },
-      ],
+      refetchQueries: 'active',
       awaitRefetchQueries: true,
     }
   );

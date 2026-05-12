@@ -290,11 +290,13 @@ function CollapsibleCategory({ category, open: sidebarOpen, onLinkClick }: { cat
   // Check if any link in this category is active
   const isCategoryActive = filteredLinks.some((link) => {
     if (link.href === "/dashboard") return pathname === "/dashboard";
+    if (link.href === "/dashboard/admin") return pathname === "/dashboard/admin";
     return pathname.startsWith(link.href);
   });
 
   const isLinkActive = (linkHref: string) => {
     if (linkHref === "/dashboard") return pathname === "/dashboard";
+    if (linkHref === "/dashboard/admin") return pathname === "/dashboard/admin";
     return pathname.startsWith(linkHref);
   };
 
@@ -360,6 +362,7 @@ export default function Sidebar() {
 
   const isLinkActive = (linkHref: string) => {
     if (linkHref === "/dashboard") return pathname === "/dashboard";
+    if (linkHref === "/dashboard/admin") return pathname === "/dashboard/admin";
     return pathname.startsWith(linkHref);
   };
 

@@ -9,6 +9,9 @@ import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useApolloClient } from "@apollo/client";
+import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
+import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { toast } from "sonner";
 
 type MessageType = "expired" | "logout" | "info" | null;
@@ -19,7 +22,9 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: MessageType }>({ text: "", type: null });
+  const [checkingSetup, setCheckingSetup] = useState(false);
   const { login, loading } = useAuth();
+  const apolloClient = useApolloClient();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -64,9 +69,43 @@ export default function LoginForm() {
         // Role-based routing after login
         const userRole = result.user?.role;
         
-        // Only ADMIN and SUPER_ADMIN see organization structure flow
+        // Only ADMIN and SUPER_ADMIN need to check organization setup
         if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-          router.push("/organization-template");
+          setCheckingSetup(true);
+          
+          try {
+            // Check if organization has periods and objectives
+            const [periodsResult, objectivesResult] = await Promise.all([
+              apolloClient.query({
+                query: GET_STRATEGIC_PERIODS,
+                variables: { page: 1, limit: 1 },
+                fetchPolicy: "network-only",
+              }),
+              apolloClient.query({
+                query: GET_OBJECTIVES,
+                variables: { page: 1, limit: 1 },
+                fetchPolicy: "network-only",
+              }),
+            ]);
+
+            const hasPeriods = (periodsResult.data?.strategicPeriods?.meta?.totalItems ?? 0) > 0;
+            const hasObjectives = (objectivesResult.data?.objectives?.meta?.totalItems ?? 0) > 0;
+            const isSetupComplete = hasPeriods && hasObjectives;
+
+            // If organization already has periods and objectives, go to dashboard
+            if (isSetupComplete) {
+              router.push("/dashboard");
+            } else {
+              // Otherwise, go through the setup flow
+              router.push("/organization-template");
+            }
+          } catch (error) {
+            // If there's an error checking setup, default to organization template
+            console.error("Error checking organization setup:", error);
+            router.push("/organization-template");
+          } finally {
+            setCheckingSetup(false);
+          }
         } else {
           // All other roles (NORMAL, COORDINATOR, MANAGER, DIRECTOR) go directly to dashboard
           // The dashboard will auto-select the current strategic period
@@ -201,10 +240,10 @@ export default function LoginForm() {
       {/* Login Button */}
       <Button
         type="submit"
-        disabled={loading || !email || !password}
+        disabled={loading || checkingSetup || !email || !password}
         className="w-full bg-primary text-white py-6 font-sans cursor-pointer disabled:opacity-50"
       >
-        {loading ? "Logging in..." : "Login"}
+        {loading ? "Logging in..." : checkingSetup ? "Checking setup..." : "Login"}
       </Button>
     </form>
   );

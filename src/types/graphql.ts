@@ -277,23 +277,34 @@ export interface RemoveEmployeeFromDepartmentMutationVariables {
 // Strategic Period Types
 export interface StrategicPeriod {
   strategicPeriodId: string;
+  name: string;
   startDate: string;
-  length: number;
   endDate: string;
+  periodType?: string;
+  status?: string;
+  openedAt?: string;
+  closedAt?: string;
+  length: number;
   createdBy: Employee | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateStrategicPeriodInput {
+  strategicPlanId: string;
+  organizationId: string;
+  name: string;
+  periodType: string;
   startDate: string;
-  length: number;
+  endDate: string;
 }
 
 export interface UpdateStrategicPeriodInput {
   strategicPeriodId: string;
+  name?: string;
+  periodType?: string;
   startDate?: string;
-  length?: number;
+  endDate?: string;
 }
 
 export interface PaginatedStrategicPeriods {
@@ -471,6 +482,7 @@ export interface UpdateKpiInput {
   name?: string;
   baseline?: number; // Float in GraphQL schema
   weight?: number; // Float in GraphQL schema - accepts decimal values
+  targetValue?: number; // Target value for the KPI
   unitType?: KpiUnitType;
   status?: KpiStatus;
   targetStatus?: KpiTargetStatus;
@@ -562,7 +574,7 @@ export interface UpdateObjectiveMutationVariables {
 }
 
 export interface RemoveObjectiveMutationVariables {
-  id: string;
+  objectiveId: string;
 }
 
 // Alias for backward compatibility

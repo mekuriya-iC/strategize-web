@@ -21,6 +21,8 @@ interface ObjectiveFilterBarProps {
   selectedCount: number;
   onAddObjective: () => void;
   showAddButton?: boolean;
+  /** The currently active tab — button is only shown on the "corporate" tab */
+  activeTab?: string;
 }
 
 const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
@@ -30,10 +32,14 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
   onStatusFilterChange,
   onClearFilters,
   showAddButton = true,
+  activeTab,
 }) => {
   const hasActiveFilters = searchTerm || statusFilter !== "all";
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
+  // Only show the Add Objective button on the Corporate tab
+  const isCorporateTab = !activeTab || activeTab === "corporate";
 
   return (
     <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -81,8 +87,8 @@ const ObjectiveFilterBar: React.FC<ObjectiveFilterBarProps> = ({
         )}
       </div>
 
-      {/* Add Objective Button */}
-      {showAddButton && isAdmin && <AddObjectiveButton />}
+      {/* Add Objective Button — only on Corporate tab */}
+      {showAddButton && isAdmin && isCorporateTab && <AddObjectiveButton />}
     </div>
   );
 };

@@ -10,13 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,6 +24,8 @@ import { CalendarIcon, Shield, UserCheck, UserX } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePermissionMutations } from "@/hooks/permissions/usePermissionManagement";
+import { parseGraphQLError } from "@/utils/errorParsing";
+import { toast } from "sonner";
 
 interface CreatePermissionOverrideDialogProps {
   open: boolean;
@@ -68,7 +64,7 @@ export default function CreatePermissionOverrideDialog({
         reason.trim(),
         hasExpiration && expirationDate ? expirationDate.toISOString() : undefined
       );
-      
+
       // Reset form
       setSelectedUserId("");
       setSelectedPermissionId("");
@@ -76,17 +72,34 @@ export default function CreatePermissionOverrideDialog({
       setReason("");
       setHasExpiration(false);
       setExpirationDate(undefined);
-      
+
       onSuccess();
     } catch (error) {
       console.error("Failed to create permission override:", error);
+      const { title, description } = parseGraphQLError(error, "permission override");
+      toast.error(title, { description });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const selectedEmployee = employees.find(emp => emp.employeeId === selectedUserId);
-  const selectedPermission = permissions.find(perm => perm.permissionDefinitionId === selectedPermissionId);
+  const selectedEmployee = employees.find((emp) => emp.employeeId === selectedUserId);
+  const selectedPermission = permissions.find(
+    (perm) => perm.permissionDefinitionId === selectedPermissionId
+  );
+
+  // Build SearchableSelect option lists
+  const employeeOptions = employees.map((emp) => ({
+    value: emp.employeeId,
+    label: emp.fullName,
+    description: emp.email,
+  }));
+
+  const permissionOptions = permissions.map((perm) => ({
+    value: perm.permissionDefinitionId,
+    label: perm.label,
+    description: `${perm.module} • ${perm.action} • ${perm.scope}`,
+  }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,44 +117,28 @@ export default function CreatePermissionOverrideDialog({
         <div className="space-y-4">
           {/* User Selection */}
           <div className="space-y-2">
-            <Label htmlFor="user">Select User</Label>
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a user..." />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((employee) => (
-                  <SelectItem key={employee.employeeId} value={employee.employeeId}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{employee.fullName}</span>
-                      <span className="text-xs text-gray-500">{employee.email}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Select User</Label>
+            <SearchableSelect
+              options={employeeOptions}
+              value={selectedUserId}
+              onValueChange={setSelectedUserId}
+              placeholder="Choose a user..."
+              searchPlaceholder="Search by name or email..."
+              clearable
+            />
           </div>
 
           {/* Permission Selection */}
           <div className="space-y-2">
-            <Label htmlFor="permission">Select Permission</Label>
-            <Select value={selectedPermissionId} onValueChange={setSelectedPermissionId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a permission..." />
-              </SelectTrigger>
-              <SelectContent>
-                {permissions.map((permission) => (
-                  <SelectItem key={permission.permissionDefinitionId} value={permission.permissionDefinitionId}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{permission.label}</span>
-                      <span className="text-xs text-gray-500">
-                        {permission.module} • {permission.action} • {permission.scope}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Select Permission</Label>
+            <SearchableSelect
+              options={permissionOptions}
+              value={selectedPermissionId}
+              onValueChange={setSelectedPermissionId}
+              placeholder="Choose a permission..."
+              searchPlaceholder="Search by name, module or action..."
+              clearable
+            />
           </div>
 
           {/* Override Type */}
@@ -240,27 +237,36 @@ export default function CreatePermissionOverrideDialog({
 
           {/* Override Summary */}
           {selectedEmployee && selectedPermission && reason.trim() && (
-            <div className={`border rounded-lg p-3 ${
-              isGranted 
-                ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
-                : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
-            }`}>
-              <h4 className={`text-sm font-medium mb-2 ${
-                isGranted 
-                  ? "text-green-800 dark:text-green-300"
-                  : "text-red-800 dark:text-red-300"
-              }`}>
+            <div
+              className={`border rounded-lg p-3 ${
+                isGranted
+                  ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+                  : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+              }`}
+            >
+              <h4
+                className={`text-sm font-medium mb-2 ${
+                  isGranted
+                    ? "text-green-800 dark:text-green-300"
+                    : "text-red-800 dark:text-red-300"
+                }`}
+              >
                 Override Summary
               </h4>
-              <div className={`text-sm space-y-1 ${
-                isGranted 
-                  ? "text-green-700 dark:text-green-400"
-                  : "text-red-700 dark:text-red-400"
-              }`}>
+              <div
+                className={`text-sm space-y-1 ${
+                  isGranted
+                    ? "text-green-700 dark:text-green-400"
+                    : "text-red-700 dark:text-red-400"
+                }`}
+              >
                 <p><strong>User:</strong> {selectedEmployee.fullName}</p>
                 <p><strong>Permission:</strong> {selectedPermission.label}</p>
                 <p><strong>Action:</strong> {isGranted ? "Grant" : "Deny"} permission</p>
-                <p><strong>Expires:</strong> {hasExpiration && expirationDate ? format(expirationDate, "PPP") : "Never"}</p>
+                <p>
+                  <strong>Expires:</strong>{" "}
+                  {hasExpiration && expirationDate ? format(expirationDate, "PPP") : "Never"}
+                </p>
                 <p><strong>Reason:</strong> {reason}</p>
               </div>
             </div>
@@ -277,7 +283,9 @@ export default function CreatePermissionOverrideDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedUserId || !selectedPermissionId || !reason.trim() || isSubmitting}
+            disabled={
+              !selectedUserId || !selectedPermissionId || !reason.trim() || isSubmitting
+            }
             className={isGranted ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
           >
             {isSubmitting ? "Creating..." : `${isGranted ? "Grant" : "Deny"} Permission`}

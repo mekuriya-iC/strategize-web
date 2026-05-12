@@ -161,7 +161,7 @@ export default function InitiativeDetailPage({ params }: InitiativeDetailPagePro
               />
             </div>
             <div className="lg:col-span-1">
-              <LinkedObjectiveCard objectiveId={initiative.objective?.objectiveId} />
+              <LinkedObjectiveCard objectiveId={initiative.strategicObjectiveId} />
             </div>
           </div>
         </TabsContent>
@@ -178,7 +178,7 @@ export default function InitiativeDetailPage({ params }: InitiativeDetailPagePro
         {/* Objective Tab */}
         <TabsContent value="objective" className="space-y-6">
           <div className="max-w-2xl">
-            <LinkedObjectiveCard objectiveId={initiative.objective?.objectiveId} />
+            <LinkedObjectiveCard objectiveId={initiative.strategicObjectiveId} />
           </div>
         </TabsContent>
       </Tabs>

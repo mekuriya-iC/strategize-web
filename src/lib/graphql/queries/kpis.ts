@@ -293,7 +293,8 @@ export const GET_KPI_UPDATES = gql`
   }
 `;
 
-// Get KPI assignments (for departments/divisions/employees)
+// Get KPI assignments for an employee
+// Backend: kpiAssignmentsEmployee(userId: ID, kpiId: ID, strategicPeriodId: ID, page, limit)
 export const GET_KPI_ASSIGNMENTS_EMPLOYEE = gql`
   query GetKpiAssignmentsEmployee(
     $employeeId: ID!
@@ -302,7 +303,7 @@ export const GET_KPI_ASSIGNMENTS_EMPLOYEE = gql`
     $limit: Int
   ) {
     kpiAssignmentsEmployee(
-      employeeId: $employeeId
+      userId: $employeeId
       strategicPeriodId: $strategicPeriodId
       page: $page
       limit: $limit

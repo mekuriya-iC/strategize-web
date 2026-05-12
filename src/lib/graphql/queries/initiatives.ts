@@ -71,6 +71,7 @@ export const GET_INITIATIVE = gql`
       isDeleted
       createdAt
       updatedAt
+      strategicObjectiveId
       owner {
         employeeId
         fullName

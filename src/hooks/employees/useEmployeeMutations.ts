@@ -6,30 +6,30 @@ import {
   UPDATE_EMPLOYEE,
   REMOVE_EMPLOYEE,
 } from "@/lib/graphql/mutations/employees";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { CreateEmployeeInput, UpdateEmployeeInput } from "@/types/graphql";
+import { invalidateAfterMutation } from "@/stores/cacheStore";
 import logger from "@/lib/logger";
 
 const empLogger = logger.createChild("Employee");
 
 export const useEmployeeMutations = () => {
-  // Create Employee Mutation
+  // ── Create ──────────────────────────────────────────────────────────────────
   const [
     createEmployeeMutation,
     { loading: createLoading, error: createError },
   ] = useMutation(CREATE_EMPLOYEE, {
+    // Optimistically prepend to the list, then refetch to get server-confirmed data
     update: (cache, { data }) => {
       if (data?.createEmployee) {
-        const newEmployee = data.createEmployee;
-
         cache.modify({
           fields: {
             employees(existingEmployees = null) {
               if (!existingEmployees) return existingEmployees;
-
               const items = existingEmployees.items || [];
               return {
                 ...existingEmployees,
-                items: [newEmployee, ...items],
+                items: [data.createEmployee, ...items],
                 meta: {
                   ...existingEmployees.meta,
                   totalItems: (existingEmployees.meta?.totalItems || 0) + 1,
@@ -40,64 +40,64 @@ export const useEmployeeMutations = () => {
         });
       }
     },
+    // Refetch all active employee queries so every table/list reflects the change
+    refetchQueries: "active",
+    onCompleted: () => {
+      invalidateAfterMutation.employee();
+    },
   });
 
-  // Update Employee Mutation
+  // ── Update ──────────────────────────────────────────────────────────────────
   const [
     updateEmployeeMutation,
     { loading: updateLoading, error: updateError },
   ] = useMutation(UPDATE_EMPLOYEE, {
     update: (cache, { data }) => {
       if (data?.updateEmployee) {
-        const updatedEmployee = data.updateEmployee;
-
+        const updated = data.updateEmployee;
         cache.modify({
           fields: {
             employees(existingEmployees = null, { readField }) {
               if (!existingEmployees) return existingEmployees;
-
               const items = existingEmployees.items || [];
-              const updatedItems = items.map((item: Reference) => {
-                const employeeId = readField("employeeId", item);
-                return employeeId === updatedEmployee.employeeId
-                  ? updatedEmployee
-                  : item;
-              });
-
               return {
                 ...existingEmployees,
-                items: updatedItems,
+                items: items.map((item: Reference) =>
+                  readField("employeeId", item) === updated.employeeId
+                    ? updated
+                    : item
+                ),
               };
             },
           },
         });
       }
     },
+    refetchQueries: "active",
+    onCompleted: () => {
+      invalidateAfterMutation.employee();
+    },
   });
 
-  // Remove Employee Mutation
+  // ── Remove ──────────────────────────────────────────────────────────────────
   const [
     removeEmployeeMutation,
     { loading: removeLoading, error: removeError },
   ] = useMutation(REMOVE_EMPLOYEE, {
     update: (cache, { data }, { variables }) => {
-      if (data?.removeEmployee && variables?.id) {
-        const deletedEmployeeId = variables.id;
-
+      if (data?.removeEmployee && variables?.employeeId) {
+        const deletedId = variables.employeeId;
         cache.modify({
           fields: {
             employees(existingEmployees = null, { readField }) {
               if (!existingEmployees) return existingEmployees;
-
               const items = existingEmployees.items || [];
-              const filteredItems = items.filter((item: Reference) => {
-                const employeeId = readField("employeeId", item);
-                return employeeId !== deletedEmployeeId;
-              });
-
               return {
                 ...existingEmployees,
-                items: filteredItems,
+                items: items.filter(
+                  (item: Reference) =>
+                    readField("employeeId", item) !== deletedId
+                ),
                 meta: {
                   ...existingEmployees.meta,
                   totalItems: Math.max(
@@ -111,13 +111,18 @@ export const useEmployeeMutations = () => {
         });
       }
     },
+    refetchQueries: "active",
+    onCompleted: () => {
+      invalidateAfterMutation.employee();
+    },
   });
 
-  // Create Employee Function
+  // ── Public API ──────────────────────────────────────────────────────────────
+
   const createEmployee = async (input: CreateEmployeeInput) => {
     try {
       const { data } = await createEmployeeMutation({
-        variables: { input },
+        variables: { createEmployeeInput: input },
       });
       return { success: true, employee: data?.createEmployee };
     } catch (error) {
@@ -126,11 +131,10 @@ export const useEmployeeMutations = () => {
     }
   };
 
-  // Update Employee Function
   const updateEmployee = async (input: UpdateEmployeeInput) => {
     try {
       const { data } = await updateEmployeeMutation({
-        variables: { input },
+        variables: { updateEmployeeInput: input },
       });
       return { success: true, employee: data?.updateEmployee };
     } catch (error) {
@@ -139,11 +143,10 @@ export const useEmployeeMutations = () => {
     }
   };
 
-  // Remove Employee Function
   const removeEmployee = async (employeeId: string) => {
     try {
       const { data } = await removeEmployeeMutation({
-        variables: { id: employeeId },
+        variables: { employeeId },
       });
       return {
         success: true,

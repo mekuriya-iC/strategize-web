@@ -21,6 +21,7 @@ import { Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { uploadFile, validateImageFile } from "@/utils/fileUpload";
+import { parseGraphQLError } from "@/utils/errorParsing";
 import {
   UpdateEmployeeInput,
   EmployeeRole,
@@ -31,6 +32,8 @@ import {
 interface EditEmployeeDialogProps {
   children: React.ReactNode;
   employee: Employee;
+  /** Optional callback — called after a successful update so the parent can refetch */
+  onSuccess?: () => void;
 }
 
 interface FormData {
@@ -57,81 +60,12 @@ interface FormErrors {
   title?: string;
 }
 
-// Helper function to parse GraphQL errors and provide user-friendly messages
-const parseGraphQLError = (
-  error: unknown
-): { title: string; description: string } => {
-  // Convert error to string for analysis
-  const errorMessage =
-    (error instanceof Error ? error.message : error?.toString()) || "";
-
-  // Check for duplicate key constraint violations
-  if (errorMessage.includes("duplicate key value violates unique constraint")) {
-    if (
-      errorMessage.includes("email") ||
-      errorMessage.toLowerCase().includes("uq_")
-    ) {
-      return {
-        title: "Email Already Exists",
-        description:
-          "This email address is already registered. Please use a different email address.",
-      };
-    }
-    if (errorMessage.includes("phone")) {
-      return {
-        title: "Phone Number Already Exists",
-        description:
-          "This phone number is already registered. Please use a different phone number.",
-      };
-    }
-    return {
-      title: "Duplicate Information",
-      description:
-        "Some of the information you entered already exists in the system. Please check your entries.",
-    };
-  }
-
-  // Check for validation errors
-  if (errorMessage.includes("validation") || errorMessage.includes("invalid")) {
-    return {
-      title: "Invalid Information",
-      description:
-        "Please check your entries and make sure all information is valid.",
-    };
-  }
-
-  // Check for network errors
-  if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
-    return {
-      title: "Connection Error",
-      description:
-        "Unable to connect to the server. Please check your internet connection and try again.",
-    };
-  }
-
-  // Check for authorization errors
-  if (
-    errorMessage.includes("unauthorized") ||
-    errorMessage.includes("forbidden")
-  ) {
-    return {
-      title: "Permission Denied",
-      description:
-        "You don't have permission to perform this action. Please contact your administrator.",
-    };
-  }
-
-  // Default error message
-  return {
-    title: "Failed to Update Employee",
-    description:
-      "Something went wrong while updating the employee. Please try again later.",
-  };
-};
+// parseGraphQLError is imported from @/utils/errorParsing
 
 const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
   children,
   employee,
+  onSuccess,
 }) => {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -317,15 +251,13 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
 
     if (result.success) {
       setOpen(false);
-
-      // Show success message
       toast.success("Employee updated successfully!", {
         description: `${formData.fullName} has been updated.`,
       });
+      onSuccess?.();
     } else {
-      // Handle error with descriptive messages
       console.error("Failed to update employee:", result.error);
-      const errorInfo = parseGraphQLError(result.error);
+      const errorInfo = parseGraphQLError(result.error, "employee");
       toast.error(errorInfo.title, {
         description: errorInfo.description,
       });

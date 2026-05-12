@@ -101,38 +101,23 @@ export default function StrategicPeriodsManager({
   };
 
   const handleDelete = async (periodId: string, periodName: string) => {
-    toast(
-      <div className="flex flex-col gap-3">
-        <p className="font-medium">Delete Strategic Period?</p>
-        <p className="text-sm text-gray-600">
-          Are you sure you want to delete <strong>{periodName}</strong>? This action cannot be undone.
-        </p>
-        <div className="flex gap-2 justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => toast.dismiss()}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={async () => {
-              toast.dismiss();
-              await removeStrategicPeriod(periodId);
-              refetch();
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      </div>,
-      {
-        position: "top-center",
-        duration: 10000,
-      }
-    );
+    const toastId = toast(`Delete "${periodName}"?`, {
+      description: "This action cannot be undone.",
+      position: "top-center",
+      duration: 10000,
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          toast.dismiss(toastId);
+          await removeStrategicPeriod(periodId);
+          refetch();
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => toast.dismiss(toastId),
+      },
+    });
   };
 
   const handleUpdateStatus = async (periodId: string, newStatus: string) => {

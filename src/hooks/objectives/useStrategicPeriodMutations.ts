@@ -3,8 +3,8 @@ import {
   CREATE_STRATEGIC_PERIOD,
   UPDATE_STRATEGIC_PERIOD,
   REMOVE_STRATEGIC_PERIOD,
-} from "@/lib/graphql/mutations/strategic-periods";
-import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategic-periods";
+} from "@/lib/graphql/mutations/strategicPeriods";
+import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import {
   CreateStrategicPeriodMutationVariables,
   UpdateStrategicPeriodMutationVariables,

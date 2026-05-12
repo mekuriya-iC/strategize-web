@@ -26,11 +26,12 @@ export const GET_EMPLOYEES = GETEMPLOYEES;
 export const GET_EMPLOYEES_COUNT = GETEMPLOYEES;
 
 /**
- * Query to fetch single employees
+ * Query to fetch single employee by ID
+ * Backend: employee(employeeId: ID!)
  */
 export const GET_EMPLOYEES_BY_ID = gql`
-  query GetEmployeesById($id: ID!) {
-    employee(id: $id) {
+  query GetEmployeesById($employeeId: ID!) {
+    employee(employeeId: $employeeId) {
       ...EmployeesFragment
     }
   }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
-import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategic-periods";
+import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import ObjectiveHierarchyView from "@/components/objectives/ObjectiveHierarchyView";
 import { Button } from "@/components/ui/button";
 import {

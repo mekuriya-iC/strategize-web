@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Building2, Users, User } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
@@ -32,6 +33,7 @@ import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { toast } from "sonner";
+import { parseGraphQLError } from "@/utils/errorParsing";
 
 interface KpiAssignmentDialogProps {
   kpi: {
@@ -86,12 +88,14 @@ export default function KpiAssignmentDialog({
   const [createEmployeeAssignment, { loading: loadingEmployee }] = useMutation(
     CREATE_KPI_ASSIGNMENT_EMPLOYEE,
     {
+      refetchQueries: "active",
       onCompleted: () => {
-        toast.success(`✅ KPI assigned to employee successfully`);
+        toast.success("KPI assigned to employee successfully");
         handleClose();
       },
       onError: (error) => {
-        toast.error(`Failed to assign KPI: ${error.message}`);
+        const { title, description } = parseGraphQLError(error, "KPI assignment");
+        toast.error(title, { description });
       },
     }
   );
@@ -99,12 +103,14 @@ export default function KpiAssignmentDialog({
   const [createDepartmentAssignment, { loading: loadingDepartment }] = useMutation(
     CREATE_KPI_ASSIGNMENT_DEPARTMENT,
     {
+      refetchQueries: "active",
       onCompleted: () => {
-        toast.success(`✅ KPI assigned to department successfully`);
+        toast.success("KPI assigned to department successfully");
         handleClose();
       },
       onError: (error) => {
-        toast.error(`Failed to assign KPI: ${error.message}`);
+        const { title, description } = parseGraphQLError(error, "KPI assignment");
+        toast.error(title, { description });
       },
     }
   );
@@ -112,12 +118,14 @@ export default function KpiAssignmentDialog({
   const [createDivisionAssignment, { loading: loadingDivision }] = useMutation(
     CREATE_KPI_ASSIGNMENT_DIVISION,
     {
+      refetchQueries: "active",
       onCompleted: () => {
-        toast.success(`✅ KPI assigned to division successfully`);
+        toast.success("KPI assigned to division successfully");
         handleClose();
       },
       onError: (error) => {
-        toast.error(`Failed to assign KPI: ${error.message}`);
+        const { title, description } = parseGraphQLError(error, "KPI assignment");
+        toast.error(title, { description });
       },
     }
   );
@@ -275,31 +283,30 @@ export default function KpiAssignmentDialog({
               {getAssignmentIcon()}
               Select {assignmentType.charAt(0) + assignmentType.slice(1).toLowerCase()}
             </Label>
-            <Select value={selectedId} onValueChange={setSelectedId}>
-              <SelectTrigger>
-                <SelectValue placeholder={`Select ${assignmentType.toLowerCase()}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {assignmentType === "EMPLOYEE" &&
-                  employees.map((emp: any) => (
-                    <SelectItem key={emp.employeeId} value={emp.employeeId}>
-                      {emp.fullName} - {emp.email}
-                    </SelectItem>
-                  ))}
-                {assignmentType === "DEPARTMENT" &&
-                  departments.map((dept: any) => (
-                    <SelectItem key={dept.departmentId} value={dept.departmentId}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                {assignmentType === "DIVISION" &&
-                  divisions.map((div: any) => (
-                    <SelectItem key={div.divisionId} value={div.divisionId}>
-                      {div.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={
+                assignmentType === "EMPLOYEE"
+                  ? employees.map((emp: any) => ({
+                      value: emp.employeeId,
+                      label: emp.fullName,
+                      description: emp.email,
+                    }))
+                  : assignmentType === "DEPARTMENT"
+                  ? departments.map((dept: any) => ({
+                      value: dept.departmentId,
+                      label: dept.name,
+                    }))
+                  : divisions.map((div: any) => ({
+                      value: div.divisionId,
+                      label: div.name,
+                    }))
+              }
+              value={selectedId}
+              onValueChange={setSelectedId}
+              placeholder={`Select ${assignmentType.toLowerCase()}`}
+              searchPlaceholder={`Search ${assignmentType.toLowerCase()}...`}
+              clearable
+            />
           </div>
 
           {/* Target Value */}

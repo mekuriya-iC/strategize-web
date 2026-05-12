@@ -16,10 +16,6 @@ export const CREATE_STRATEGIC_PERIOD = gql`
       periodType
       status
       createdAt
-      createdBy {
-        employeeId
-        fullName
-      }
     }
   }
 `;

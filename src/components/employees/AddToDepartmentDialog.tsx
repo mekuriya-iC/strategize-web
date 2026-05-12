@@ -15,6 +15,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@apollo/client";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
@@ -22,6 +23,7 @@ import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutatio
 import type { PaginatedDepartments, Department } from "@/types/graphql";
 import { Building2, AlertCircle, Info } from "lucide-react";
 import { toast } from "sonner";
+import { parseGraphQLError } from "@/utils/errorParsing";
 
 interface AddToDepartmentDialogProps {
   children: React.ReactNode;

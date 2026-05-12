@@ -82,7 +82,12 @@ export default function StrategyPeriodGrid() {
   const handlePeriodSelect = (period: StrategicPeriod) => {
     // Update store (which also syncs to sessionStorage)
     setSelectedPeriod(period);
-    router.push("/dashboard");
+    // Admins go to create their first strategic objective before the dashboard
+    if (isAdmin) {
+      router.push("/setup/objectives");
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   const handlePeriodDelete = async (period: StrategicPeriod) => {

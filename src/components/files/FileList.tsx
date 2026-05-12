@@ -213,11 +213,10 @@ export default function FileList({
                 {/* Uploader Info */}
                 <div className="flex items-center gap-2 mt-2">
                   <UserAvatar
-                    user={{
-                      fullName: file.uploadedBy.fullName,
-                      picture: file.uploadedBy.picture,
-                    }}
-                    size="xs"
+                    src={file.uploadedBy.picture}
+                    alt={file.uploadedBy.fullName}
+                    fallbackText={file.uploadedBy.fullName}
+                    size="sm"
                   />
                   <span className="text-xs text-gray-600 dark:text-gray-400">
                     Uploaded by <strong>{file.uploadedBy.fullName}</strong> on{" "}

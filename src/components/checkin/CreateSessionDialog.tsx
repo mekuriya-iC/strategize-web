@@ -12,7 +12,7 @@ import { Calendar, Users } from 'lucide-react';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_EMPLOYEES } from '@/lib/graphql/queries/employees';
 import { GET_DEPARTMENTS } from '@/lib/graphql/queries/departments';
-import { GET_STRATEGIC_PERIODS } from '@/lib/graphql/queries/strategic-periods';
+import { GET_STRATEGIC_PERIODS } from '@/lib/graphql/queries/strategicPeriods';
 import { GET_CHECKINOUT_SESSIONS } from '@/lib/graphql/queries/checkins';
 import { CREATE_CHECKINOUT_SESSION } from '@/lib/graphql/mutations/checkins';
 import { GET_ME } from '@/lib/graphql/queries/auth';

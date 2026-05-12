@@ -1,5 +1,5 @@
 import { useQuery } from '@apollo/client';
-import { GET_STRATEGIC_PERIODS, GET_STRATEGIC_PERIOD } from '@/lib/graphql/queries/strategic-periods';
+import { GET_STRATEGIC_PERIODS, GET_STRATEGIC_PERIOD } from '@/lib/graphql/queries/strategicPeriods';
 import { 
   StrategicPeriodsQueryVariables, 
   StrategicPeriodQueryVariables,

@@ -904,6 +904,7 @@ export default function ObjectivesApprovalTable() {
         onClearFilters={handleClearFilters}
         onAddObjective={handleAddObjective}
         showAddButton={objectivePermissions.creatableTypes.length > 0}
+        activeTab={activeTab}
       />
 
       {/* Summary */}

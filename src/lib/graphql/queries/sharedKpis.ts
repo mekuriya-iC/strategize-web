@@ -27,9 +27,8 @@ export const GET_SHARED_KPI_PARTICIPANTS = gql`
           name
           description
           targetValue
-          currentValue
-          progress
-          unit
+          measurementUnit
+          unitType
         }
         participant {
           employeeId
@@ -71,9 +70,8 @@ export const GET_SHARED_KPI_PARTICIPANT = gql`
         name
         description
         targetValue
-        currentValue
-        progress
-        unit
+        measurementUnit
+        unitType
         status
       }
       participant {

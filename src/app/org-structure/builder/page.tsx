@@ -63,7 +63,12 @@ export default function OrgStructureBuilderPage() {
 
           {/* User Avatar */}
           <div className="flex items-center gap-2 ml-1 md:ml-2">
-            <UserAvatar className="h-8 w-8 md:h-9 md:w-9" />
+            <UserAvatar 
+              src={user?.picture}
+              alt={user?.fullName || "User"}
+              fallbackText={user?.fullName}
+              className="h-8 w-8 md:h-9 md:w-9" 
+            />
             {/* User Info - Hidden on mobile and tablets, visible on Large screens */}
             <div className="hidden lg:flex flex-col">
               <span className="text-sm font-medium text-[#11181C] dark:text-gray-100 leading-none">

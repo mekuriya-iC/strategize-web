@@ -20,6 +20,7 @@ import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { Objective, ObjectiveType, ObjectiveStatus } from "@/types/graphql";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores";
+import { parseGraphQLError } from "@/utils/errorParsing";
 
 interface EditObjectiveDialogProps {
   children?: React.ReactNode;
@@ -108,7 +109,8 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
       onEditSuccess?.();
     } catch (error) {
       console.error("Failed to update objective:", error);
-      toast.error("Failed to update objective");
+      const { title, description } = parseGraphQLError(error, "objective");
+      toast.error(title, { description });
     }
   };
 

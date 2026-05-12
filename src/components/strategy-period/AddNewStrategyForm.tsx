@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -10,108 +11,206 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { useRouter } from "next/navigation";
-import { useStrategicPeriodMutations } from "@/hooks/objectives/useStrategicPeriodMutations";
+import { useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useStrategicPeriodMutations } from "@/hooks/strategic-periods/useStrategicPeriods";
 import { toast } from "sonner";
-import { useStrategicPeriodStore } from "@/stores";
+import { useAuthStore, useStrategicPeriodStore } from "@/stores";
+import { useMutation } from "@apollo/client";
+import { CREATE_STRATEGIC_PLAN } from "@/lib/graphql/mutations/strategicPlans";
+
+const GET_ORGANIZATIONS = gql`
+  query GetOrganizationsForPeriodSetup {
+    organizations(page: 1, limit: 1) {
+      items {
+        organizationId
+        name
+      }
+    }
+  }
+`;
+
+const PERIOD_TYPES = [
+  { value: "ANNUAL", label: "Annual" },
+  { value: "SEMI_ANNUAL", label: "Semi-Annual" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "CUSTOM", label: "Custom" },
+];
 
 export default function AddNewStrategyForm() {
   const router = useRouter();
-  const { createStrategicPeriod, loading, error } =
-    useStrategicPeriodMutations();
+  const userOrgId = useAuthStore((s) => s.user?.organizationId ?? "");
   const { setSelectedPeriod } = useStrategicPeriodStore();
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [timeline, setTimeline] = useState<string>("3");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { createStrategicPeriod } = useStrategicPeriodMutations();
+
+  // Call the mutation directly (no success toast — plan creation is invisible to the user)
+  const [createPlanMutation] = useMutation(CREATE_STRATEGIC_PLAN);
+
+  // Fallback: fetch org if not on the user object (super admins)
+  const { data: orgData, loading: orgLoading } = useQuery(GET_ORGANIZATIONS, {
+    skip: !!userOrgId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const organizationId =
+    userOrgId || orgData?.organizations?.items?.[0]?.organizationId || "";
+
+  const [form, setForm] = useState({
+    name: "",
+    startDate: "",
+    endDate: "",
+    periodType: "ANNUAL",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!date) {
-      toast.error("Please select a start date");
+    if (!form.name.trim()) {
+      toast.error("Please enter a period name");
+      return;
+    }
+    if (!form.startDate || !form.endDate) {
+      toast.error("Please select start and end dates");
+      return;
+    }
+    if (form.endDate <= form.startDate) {
+      toast.error("End date must be after start date");
+      return;
+    }
+    if (!organizationId) {
+      toast.error("Organization not found. Please contact your administrator.");
       return;
     }
 
-    setIsSubmitting(true);
-
+    setSubmitting(true);
     try {
-      const startDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-      const length = parseFloat(timeline);
-
-      const newPeriod = await createStrategicPeriod({
-        input: {
-          startDate,
-          length,
+      // Step 1: silently create a strategic plan to satisfy the backend requirement.
+      // The user never sees this — the period name is used as the plan title.
+      const { data: planData } = await createPlanMutation({
+        variables: {
+          input: {
+            title: form.name.trim(),
+            startDate: form.startDate,
+            endDate: form.endDate,
+            organizationId,
+            isActive: true,
+          },
         },
       });
+      const plan = planData?.createStrategicPlan;
 
-      toast.success("Strategic period created successfully!");
-
-      // Update store with the newly created period and redirect to list page
-      if (newPeriod) {
-        setSelectedPeriod(newPeriod);
+      if (!plan?.strategicPlanId) {
+        toast.error("Failed to initialize strategy. Please try again.");
+        return;
       }
+
+      // Step 2: create the strategic period under that plan
+      const period = await createStrategicPeriod({
+        name: form.name.trim(),
+        startDate: form.startDate,
+        endDate: form.endDate,
+        periodType: form.periodType,
+        strategicPlanId: plan.strategicPlanId,
+        organizationId,
+      });
+
+      if (period) {
+        setSelectedPeriod(period);
+      }
+
       router.push("/strategy-period");
-    } catch (err) {
-      console.error("Error creating strategic period:", err);
-      toast.error("Failed to create strategic period. Please try again.");
+    } catch {
+      // errors already toasted by the hooks
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
+
+  if (orgLoading) {
+    return (
+      <div className="w-full max-w-sm text-center text-sm text-gray-500">
+        Loading your account details...
+      </div>
+    );
+  }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm flex flex-col gap-6 items-center"
+      className="w-full max-w-sm flex flex-col gap-5"
     >
-      <div className="w-full">
-        <Label className="mb-2 block">Select Start Date</Label>
-        <div className="w-full">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={setDate}
-            className="w-full rounded-md border"
-            disabled={(date) => {
-              const minDate = new Date(2000, 0, 1); // January 1, 2000
-              const today = new Date();
-              today.setHours(0, 0, 0, 0); // Reset time part for accurate date comparison
-              return date < minDate || date > today;
-            }}
-          />
-        </div>
+      {/* Period Name */}
+      <div>
+        <Label className="mb-2 block">
+          Period Name <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          placeholder="e.g. FY 2026-2027"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+        />
       </div>
-      <div className="w-full">
-        <Label className="mb-2 block">Duration (Years)</Label>
-        <Select value={timeline} onValueChange={setTimeline}>
+
+      {/* Period Type */}
+      <div>
+        <Label className="mb-2 block">
+          Period Type <span className="text-red-500">*</span>
+        </Label>
+        <Select
+          value={form.periodType}
+          onValueChange={(v) => setForm({ ...form, periodType: v })}
+        >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select duration" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">1 Year</SelectItem>
-            <SelectItem value="2">2 Years</SelectItem>
-            <SelectItem value="3">3 Years</SelectItem>
-            <SelectItem value="5">5 Years</SelectItem>
-            <SelectItem value="10">10 Years</SelectItem>
+            {PERIOD_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>
+                {t.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {error && (
-        <div className="w-full text-red-500 text-sm text-center">
-          {error.message ||
-            "An error occurred while creating the strategic period"}
+      {/* Dates */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="mb-2 block">
+            Start Date <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+            required
+          />
         </div>
-      )}
+        <div>
+          <Label className="mb-2 block">
+            End Date <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            type="date"
+            value={form.endDate}
+            min={form.startDate}
+            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+            required
+          />
+        </div>
+      </div>
 
       <Button
         type="submit"
-        disabled={loading || isSubmitting || !date}
-        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white text-lg font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={submitting}
+        className="w-full bg-[#3838EC] hover:bg-[#2e2ed6] text-white text-base font-semibold mt-2"
       >
-        {loading || isSubmitting ? "Creating..." : "+ Add"}
+        {submitting ? "Creating Period..." : "Add Period"}
       </Button>
     </form>
   );

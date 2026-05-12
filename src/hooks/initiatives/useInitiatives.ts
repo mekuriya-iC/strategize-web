@@ -36,6 +36,8 @@ export interface Initiative {
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
+  /** ID of the linked strategic objective (if any) */
+  strategicObjectiveId?: string;
   owner?: InitiativeOwner;
   createdBy: {
     employeeId: string;

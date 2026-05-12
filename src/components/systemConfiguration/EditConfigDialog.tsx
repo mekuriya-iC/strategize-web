@@ -45,10 +45,11 @@ export default function EditConfigDialog({
 
   useEffect(() => {
     if (config) {
-      setConfigKey(config.configKey);
-      setConfigValue(config.configValue);
-      setDescription(config.description || "");
-      setIsActive(config.isActive);
+      const cfg = config as any;
+      setConfigKey(cfg.configKey);
+      setConfigValue(cfg.configValue);
+      setDescription(cfg.description || "");
+      setIsActive(cfg.isActive);
     }
   }, [config]);
 

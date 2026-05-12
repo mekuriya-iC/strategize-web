@@ -179,10 +179,9 @@ export default function SharedKpiParticipants({
                   className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors"
                 >
                   <UserAvatar
-                    user={{
-                      fullName: participant.participant.fullName,
-                      picture: participant.participant.picture,
-                    }}
+                    src={participant.participant.picture}
+                    alt={participant.participant.fullName}
+                    fallbackText={participant.participant.fullName}
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">

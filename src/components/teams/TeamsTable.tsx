@@ -343,11 +343,10 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
                     {team.teamLead ? (
                       <div className="flex items-center gap-2">
                         <UserAvatar
-                          user={{
-                            fullName: team.teamLead.fullName,
-                            picture: team.teamLead.picture,
-                          }}
-                          size="xs"
+                          src={team.teamLead.picture}
+                          alt={team.teamLead.fullName}
+                          fallbackText={team.teamLead.fullName}
+                          size="sm"
                         />
                         <span className="text-sm text-gray-900 dark:text-gray-100">
                           {team.teamLead.fullName}

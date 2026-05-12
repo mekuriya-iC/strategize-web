@@ -59,29 +59,29 @@ export default function DepartmentReport({ onExport }: DepartmentReportProps) {
   const employeesByDept = departments.map((dept: any) => ({
     name: dept.name,
     employees: employees.filter((emp: any) => emp.department?.departmentId === dept.departmentId).length,
-  })).sort((a, b) => b.employees - a.employees);
+  })).sort((a: any, b: any) => b.employees - a.employees);
 
   // Employees by division
   const employeesByDiv = divisions.map((div: any) => ({
     name: div.name,
     employees: employees.filter((emp: any) => emp.division?.divisionId === div.divisionId).length,
-  })).sort((a, b) => b.employees - a.employees);
+  })).sort((a: any, b: any) => b.employees - a.employees);
 
   const maxEmployees = Math.max(
-    ...employeesByDept.map(d => d.employees),
-    ...employeesByDiv.map(d => d.employees),
+    ...employeesByDept.map((d: any) => d.employees),
+    ...employeesByDiv.map((d: any) => d.employees),
     1
   );
 
   // Department size distribution
   const deptSizeDistribution = [
-    { name: "Small (1-10)", value: employeesByDept.filter(d => d.employees <= 10).length, color: COLORS[0] },
-    { name: "Medium (11-30)", value: employeesByDept.filter(d => d.employees > 10 && d.employees <= 30).length, color: COLORS[1] },
-    { name: "Large (31-50)", value: employeesByDept.filter(d => d.employees > 30 && d.employees <= 50).length, color: COLORS[2] },
-    { name: "Very Large (50+)", value: employeesByDept.filter(d => d.employees > 50).length, color: COLORS[3] },
-  ].filter(item => item.value > 0);
+    { name: "Small (1-10)", value: employeesByDept.filter((d: any) => d.employees <= 10).length, color: COLORS[0] },
+    { name: "Medium (11-30)", value: employeesByDept.filter((d: any) => d.employees > 10 && d.employees <= 30).length, color: COLORS[1] },
+    { name: "Large (31-50)", value: employeesByDept.filter((d: any) => d.employees > 30 && d.employees <= 50).length, color: COLORS[2] },
+    { name: "Very Large (50+)", value: employeesByDept.filter((d: any) => d.employees > 50).length, color: COLORS[3] },
+  ].filter((item: any) => item.value > 0);
 
-  const totalDeptSize = deptSizeDistribution.reduce((sum, item) => sum + item.value, 0);
+  const totalDeptSize = deptSizeDistribution.reduce((sum: number, item: any) => sum + item.value, 0);
 
   const handleExport = () => {
     const reportData = {
@@ -184,7 +184,7 @@ export default function DepartmentReport({ onExport }: DepartmentReportProps) {
           <CardContent>
             {(viewType === "department" ? employeesByDept : employeesByDiv).length > 0 ? (
               <div className="space-y-3">
-                {(viewType === "department" ? employeesByDept : employeesByDiv).slice(0, 15).map((item, index) => {
+                {(viewType === "department" ? employeesByDept : employeesByDiv).slice(0, 15).map((item: any, index: number) => {
                   const percentage = (item.employees / maxEmployees) * 100;
                   return (
                     <div key={index} className="space-y-1">
@@ -276,7 +276,7 @@ export default function DepartmentReport({ onExport }: DepartmentReportProps) {
                 </tr>
               </thead>
               <tbody>
-                {(viewType === "department" ? employeesByDept : employeesByDiv).map((item, idx) => (
+                {(viewType === "department" ? employeesByDept : employeesByDiv).map((item: any, idx: number) => (
                   <tr key={idx} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900/30">
                     <td className="py-3 px-4">{item.name}</td>
                     <td className="text-right py-3 px-4">{item.employees}</td>

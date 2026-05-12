@@ -133,10 +133,9 @@ export default function TeamDetailPage({ params }: TeamDetailPageProps) {
           <CardContent>
             <div className="flex items-center gap-4">
               <UserAvatar
-                user={{
-                  fullName: team.teamLead.fullName,
-                  picture: team.teamLead.picture,
-                }}
+                src={team.teamLead.picture}
+                alt={team.teamLead.fullName}
+                fallbackText={team.teamLead.fullName}
                 size="lg"
               />
               <div>
@@ -189,10 +188,9 @@ export default function TeamDetailPage({ params }: TeamDetailPageProps) {
                   onClick={() => router.push(`/dashboard/employees/${member.employeeId}`)}
                 >
                   <UserAvatar
-                    user={{
-                      fullName: member.fullName,
-                      picture: member.picture,
-                    }}
+                    src={member.picture}
+                    alt={member.fullName}
+                    fallbackText={member.fullName}
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">

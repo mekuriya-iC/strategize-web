@@ -115,7 +115,7 @@ export default function ObjectiveForm() {
         strategicPeriodId: strategicPeriodValue,
         organizationId: organizationId,
         strategicPlanId: activeStrategicPlan.strategicPlanId,
-        strategicPillarId: selectedPillarId || undefined,
+        strategicPillarId: (selectedPillarId && selectedPillarId !== "none") ? selectedPillarId : undefined,
       };
 
       // CRITICAL: Only set assigneeType for non-corporate objectives
@@ -157,7 +157,7 @@ export default function ObjectiveForm() {
       
       // Wait a bit for backend to process before redirecting
       await new Promise(resolve => setTimeout(resolve, 300));
-      router.push("/dashboard/objectives");
+      router.push("/dashboard");
     } catch (error) {
       console.error("❌ Error creating objective:", error);
       toast.error("Failed to create objective. Please try again.");

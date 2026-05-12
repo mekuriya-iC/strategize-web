@@ -35,7 +35,7 @@ export function NotificationBell() {
 
   // Filter out notifications with null recipients
   const notifications = (data?.notifications?.items || []).filter(
-    (n) => n.recipient != null
+    (n: any) => n.recipient != null
   );
   const unreadCount = notifications.length;
 

@@ -185,10 +185,8 @@ export default function PerformancePage() {
                     #{index + 1}
                   </div>
                   <UserAvatar
-                    user={{
-                      fullName: result.user.fullName,
-                      picture: result.user.picture,
-                    }}
+                    src={result.user.picture}
+                    alt={result.user.fullName}
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">
@@ -239,10 +237,9 @@ export default function PerformancePage() {
                   className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800"
                 >
                   <UserAvatar
-                    user={{
-                      fullName: result.user.fullName,
-                      picture: result.user.picture,
-                    }}
+                    src={result.user.picture}
+                    alt={result.user.fullName}
+                    fallbackText={result.user.fullName}
                     size="md"
                   />
                   <div className="flex-1 min-w-0">

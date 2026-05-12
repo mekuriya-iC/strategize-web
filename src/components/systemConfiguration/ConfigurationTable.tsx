@@ -39,13 +39,13 @@ export default function ConfigurationTable({
   const [search, setSearch] = useState("");
 
   const filteredConfigs = configurations.filter(
-    (config) =>
-      config.configKey.toLowerCase().includes(search.toLowerCase()) ||
-      config.configValue.toLowerCase().includes(search.toLowerCase()) ||
+    (config: any) =>
+      config.configKey?.toLowerCase().includes(search.toLowerCase()) ||
+      config.configValue?.toLowerCase().includes(search.toLowerCase()) ||
       config.description?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = (config: SystemConfiguration) => {
+  const handleDelete = (config: any) => {
     toast(
       <div className="flex flex-col gap-2">
         <p className="font-semibold">Delete Configuration?</p>
@@ -119,7 +119,7 @@ export default function ConfigurationTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredConfigs.map((config) => (
+              filteredConfigs.map((config: any) => (
                 <TableRow key={config.systemConfigurationId}>
                   <TableCell className="font-mono text-sm font-medium">
                     {config.configKey}

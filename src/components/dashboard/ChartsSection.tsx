@@ -4,6 +4,7 @@ import ChartCard from "./ChartCard";
 import { useQuery } from "@apollo/client";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { useStrategicPeriodStore, useAuthStore } from "@/stores";
+import { Objective } from "@/types/graphql";
 
 export default function ChartsSection() {
   const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
@@ -28,7 +29,7 @@ export default function ChartsSection() {
     
     // First, filter by strategic period if one is selected
     const filteredByPeriod = selectedPeriod
-      ? objectives.filter(obj => obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId)
+      ? objectives.filter((obj: Objective) => obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId)
       : objectives;
 
     console.log('📊 [Charts] After period filter', {
@@ -40,17 +41,17 @@ export default function ChartsSection() {
     // NOTE: Using assigneeType instead of type since backend returns type as null
     // Corporate objectives have no assigneeType and no assigneeId
     const filteredByRole = (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')
-      ? filteredByPeriod.filter(obj => !obj.assigneeType && !obj.assigneeId)
+      ? filteredByPeriod.filter((obj: Objective) => !obj.assigneeType && !obj.assigneeId)
       : filteredByPeriod;
 
     console.log('📊 [Charts] After role filter', {
       count: filteredByRole.length,
-      objectives: filteredByRole.map(o => ({ title: o.title, kpisCount: o.kpis?.length || 0 }))
+      objectives: filteredByRole.map((o: Objective) => ({ title: o.title, kpisCount: o.kpis?.length || 0 }))
     });
 
     // Filter by timeline if selected
     const filteredObjectives = annualTimeline
-      ? filteredByRole.filter(obj =>
+      ? filteredByRole.filter((obj: Objective) =>
           obj.kpis?.some((kpi: any) =>
             kpi.targets?.some((t: any) => 
               t.timeline === annualTimeline || t.timeline.startsWith(`${annualTimeline}-`)
@@ -74,7 +75,7 @@ export default function ChartsSection() {
     // Count KPIs by category (for donut chart)
     const kpisByCategory: Record<string, number> = {};
 
-    filteredObjectives.forEach(obj => {
+    filteredObjectives.forEach((obj: Objective) => {
       obj.kpis?.forEach((kpi: any) => {
         // Count by month based on objective creation date (since KPIs don't have createdAt)
         if (obj.createdAt) {

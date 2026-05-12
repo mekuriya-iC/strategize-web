@@ -92,7 +92,7 @@ export default function UserRoleAssignments() {
     rolesLoading,
     rolesError: rolesError?.message,
     rolesMeta,
-    roles: roles?.map(r => ({ id: r.roleId, name: r.name, code: r.code })),
+    roles: roles?.map((r: any) => ({ id: r.roleId, name: r.name, code: r.code })),
     employeesCount: employees?.length || 0
   });
 

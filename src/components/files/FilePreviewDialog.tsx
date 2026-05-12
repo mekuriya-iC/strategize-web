@@ -148,10 +148,9 @@ export default function FilePreviewDialog({
         <div className="border-t pt-4 space-y-3">
           <div className="flex items-center gap-3">
             <UserAvatar
-              user={{
-                fullName: file.uploadedBy.fullName,
-                picture: file.uploadedBy.picture,
-              }}
+              src={file.uploadedBy.picture}
+              alt={file.uploadedBy.fullName}
+              fallbackText={file.uploadedBy.fullName}
               size="sm"
             />
             <div>

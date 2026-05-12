@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useObjectiveMutations } from "@/hooks/objectives/useObjectiveMutations";
+import { parseGraphQLError } from "@/utils/errorParsing";
 
 interface DeleteObjectiveDialogProps {
   children?: React.ReactNode;
@@ -47,7 +48,8 @@ const DeleteObjectiveDialog: React.FC<DeleteObjectiveDialogProps> = ({
       onDeleteSuccess?.();
     } catch (error) {
       console.error("Failed to delete objective:", error);
-      // Error toast is handled by mutation hook if needed
+      const { title, description } = parseGraphQLError(error, "objective");
+      toast.error(title, { description });
     }
   };
 

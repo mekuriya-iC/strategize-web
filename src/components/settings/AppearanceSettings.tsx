@@ -80,25 +80,25 @@ export default function AppearanceSettings() {
   if (!mounted) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Theme Selection */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 mobile-heading">
             <Palette className="h-5 w-5" />
             Theme
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="mobile-text">
             Choose your preferred color scheme
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             {themeOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleThemeChange(option.value)}
-                className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center gap-2 sm:gap-3 mobile-card rounded-xl border-2 transition-all ${
                   currentTheme === option.value
                     ? "border-[#3838EC] dark:border-[#5b5bf7] bg-[#3838EC]/5 dark:bg-[#5b5bf7]/10"
                     : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -115,7 +115,7 @@ export default function AppearanceSettings() {
                   }`}
                 >
                   <div
-                    className={`h-3 ${
+                    className={`h-2 sm:h-3 ${
                       option.value === "dark"
                         ? "bg-gray-800"
                         : option.value === "light"
@@ -123,9 +123,9 @@ export default function AppearanceSettings() {
                         : "bg-gradient-to-r from-gray-100 to-gray-800"
                     }`}
                   />
-                  <div className="p-2">
+                  <div className="p-1.5 sm:p-2">
                     <div
-                      className={`h-2 w-16 rounded ${
+                      className={`h-1.5 sm:h-2 w-12 sm:w-16 rounded ${
                         option.value === "dark"
                           ? "bg-gray-700"
                           : option.value === "light"
@@ -134,7 +134,7 @@ export default function AppearanceSettings() {
                       }`}
                     />
                     <div
-                      className={`h-1.5 w-12 rounded mt-1 ${
+                      className={`h-1 sm:h-1.5 w-8 sm:w-12 rounded mt-1 ${
                         option.value === "dark"
                           ? "bg-gray-600"
                           : option.value === "light"
@@ -155,7 +155,7 @@ export default function AppearanceSettings() {
                     {option.icon}
                   </span>
                   <span
-                    className={`text-sm font-medium ${
+                    className={`mobile-text font-medium ${
                       currentTheme === option.value
                         ? "text-[#3838EC] dark:text-[#5b5bf7]"
                         : "text-gray-700 dark:text-gray-300"
@@ -173,18 +173,18 @@ export default function AppearanceSettings() {
       {/* Accent Color */}
       <Card>
         <CardHeader>
-          <CardTitle>Accent Color</CardTitle>
-          <CardDescription>
+          <CardTitle className="mobile-heading">Accent Color</CardTitle>
+          <CardDescription className="mobile-text">
             Choose the primary color used throughout the app
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {accentColors.map((color) => (
               <button
                 key={color.value}
                 onClick={() => setAccentColor(color.value)}
-                className={`group relative w-12 h-12 rounded-full transition-transform hover:scale-110 ${
+                className={`group relative w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-transform hover:scale-110 ${
                   accentColor === color.value
                     ? "ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-500 dark:ring-offset-gray-900"
                     : ""
@@ -194,7 +194,7 @@ export default function AppearanceSettings() {
               >
                 {accentColor === color.value && (
                   <svg
-                    className="absolute inset-0 m-auto w-6 h-6 text-white"
+                    className="absolute inset-0 m-auto w-5 h-5 sm:w-6 sm:h-6 text-white"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -210,7 +210,7 @@ export default function AppearanceSettings() {
               </button>
             ))}
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+          <p className="mobile-text text-gray-500 dark:text-gray-400 mt-4">
             Selected: <span className="font-medium">{accentColors.find((c) => c.value === accentColor)?.name}</span>
           </p>
         </CardContent>
@@ -218,16 +218,17 @@ export default function AppearanceSettings() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
           {isSaving ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-              Saving...
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
+              <span className="hidden sm:inline">Saving...</span>
             </>
           ) : (
             <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Appearance
+              <Save className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Save Appearance</span>
+              <span className="sm:hidden">Save</span>
             </>
           )}
         </Button>

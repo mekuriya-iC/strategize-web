@@ -55,18 +55,18 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center flex-shrink-0">
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="mobile-heading font-bold text-gray-900 dark:text-gray-100">
                 System Logs
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              <p className="mobile-text text-gray-600 dark:text-gray-400 mt-0.5">
                 Monitor system activity and audit trails
               </p>
             </div>
@@ -75,14 +75,16 @@ export default function LogsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="activity" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Activity Logs
+            <span className="hidden sm:inline">Activity Logs</span>
+            <span className="sm:hidden">Activity</span>
           </TabsTrigger>
           <TabsTrigger value="audit" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Audit Trail
+            <span className="hidden sm:inline">Audit Trail</span>
+            <span className="sm:hidden">Audit</span>
           </TabsTrigger>
         </TabsList>
 
@@ -121,10 +123,10 @@ function ActivityLogsTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter Status" />
           </SelectTrigger>
           <SelectContent>
@@ -135,16 +137,16 @@ function ActivityLogsTab() {
         </Select>
       </div>
 
-      <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 table-container">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 dark:bg-gray-900/50">
               <TableHead className="w-[50px]"></TableHead>
               <TableHead>Event Summary</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Module</TableHead>
-              <TableHead>IP Address</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead className="hidden md:table-cell">User</TableHead>
+              <TableHead className="hidden lg:table-cell">Module</TableHead>
+              <TableHead className="hidden xl:table-cell">IP Address</TableHead>
+              <TableHead className="hidden sm:table-cell">Date</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -179,18 +181,18 @@ function ActivityLogsTab() {
                       <div className="text-xs text-gray-500 mt-0.5">{log.entityLabel}</div>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                  <TableCell className="text-sm text-gray-600 dark:text-gray-400 hidden md:table-cell">
                     {log.userEmail || "System/Anonymous"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     <Badge variant="outline" className="font-normal text-xs bg-gray-50 dark:bg-gray-800">
                       {log.module}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500 font-mono text-xs">
+                  <TableCell className="text-sm text-gray-500 font-mono text-xs hidden xl:table-cell">
                     {log.ipAddress}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-sm text-gray-500 hidden sm:table-cell">
                     {formatDate(log.createdAt)}
                   </TableCell>
                   <TableCell>
@@ -206,27 +208,31 @@ function ActivityLogsTab() {
       </div>
 
       {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="mobile-text text-gray-500">
             Showing {(meta.currentPage - 1) * meta.itemsPerPage + 1} to{" "}
             {Math.min(meta.currentPage * meta.itemsPerPage, meta.totalItems)} of {meta.totalItems} entries
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
+              className="flex-1 sm:flex-none"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              <ChevronLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Previous</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
               disabled={page === meta.totalPages}
+              className="flex-1 sm:flex-none"
             >
-              Next <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 sm:ml-1" />
             </Button>
           </div>
         </div>
@@ -329,10 +335,10 @@ function AuditLogsTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter Action" />
           </SelectTrigger>
           <SelectContent>
@@ -346,15 +352,15 @@ function AuditLogsTab() {
         </Select>
       </div>
 
-      <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 table-container">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 dark:bg-gray-900/50">
               <TableHead>Action</TableHead>
-              <TableHead>Entity Type</TableHead>
-              <TableHead>Entity ID</TableHead>
-              <TableHead>IP Address</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead className="hidden md:table-cell">Entity Type</TableHead>
+              <TableHead className="hidden lg:table-cell">Entity ID</TableHead>
+              <TableHead className="hidden xl:table-cell">IP Address</TableHead>
+              <TableHead className="hidden sm:table-cell">Date</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -379,16 +385,16 @@ function AuditLogsTab() {
                       {log.action}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-medium text-gray-900 dark:text-gray-100">
+                  <TableCell className="font-medium text-gray-900 dark:text-gray-100 hidden md:table-cell">
                     {log.entityType || "—"}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600 dark:text-gray-400 font-mono text-xs">
+                  <TableCell className="text-sm text-gray-600 dark:text-gray-400 font-mono text-xs hidden lg:table-cell">
                     {log.entityId || "—"}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500 font-mono text-xs">
+                  <TableCell className="text-sm text-gray-500 font-mono text-xs hidden xl:table-cell">
                     {log.ipAddress || "—"}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-sm text-gray-500 hidden sm:table-cell">
                     {formatDate(log.createdAt)}
                   </TableCell>
                   <TableCell>
@@ -404,27 +410,31 @@ function AuditLogsTab() {
       </div>
 
       {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="mobile-text text-gray-500">
             Showing {(meta.currentPage - 1) * meta.itemsPerPage + 1} to{" "}
             {Math.min(meta.currentPage * meta.itemsPerPage, meta.totalItems)} of {meta.totalItems} entries
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
+              className="flex-1 sm:flex-none"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              <ChevronLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Previous</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
               disabled={page === meta.totalPages}
+              className="flex-1 sm:flex-none"
             >
-              Next <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 sm:ml-1" />
             </Button>
           </div>
         </div>

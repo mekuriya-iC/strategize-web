@@ -7,8 +7,8 @@ import { gql } from '@apollo/client';
 
 // Get all competencies with pagination
 export const GET_COMPETENCIES = gql`
-  query GetCompetencies($page: Int!, $limit: Int!, $search: String) {
-    competencies(page: $page, limit: $limit, search: $search) {
+  query GetCompetencies($page: Int!, $limit: Int!, $search: String, $organizationId: ID) {
+    competencies(page: $page, limit: $limit, search: $search, organizationId: $organizationId) {
       items {
         competencyId
         name
@@ -52,8 +52,8 @@ export const GET_COMPETENCY = gql`
 
 // Get all core competencies
 export const GET_CORE_COMPETENCIES = gql`
-  query GetCoreCompetencies($page: Int!, $limit: Int!) {
-    coreCompetencies(page: $page, limit: $limit) {
+  query GetCoreCompetencies($page: Int!, $limit: Int!, $organizationId: ID) {
+    coreCompetencies(page: $page, limit: $limit, organizationId: $organizationId) {
       items {
         coreCompetencyId
         name

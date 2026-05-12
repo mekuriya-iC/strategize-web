@@ -3,7 +3,7 @@ import ChartsSection from "@/components/dashboard/ChartsSection";
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 overflow-y-auto ">
+    <div className="space-y-6">
       <AnalyticsSummary />
       <ChartsSection />
     </div>

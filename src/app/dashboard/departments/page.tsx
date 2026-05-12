@@ -298,14 +298,14 @@ const DepartmentsPage = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Header and Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
+          <h1 className="mobile-heading text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
             Departments
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="mobile-text text-gray-500 dark:text-gray-400 mt-1">
             {isAdmin ? "Manage organization-wide departments" : guards.isDirector ? "Manage departments in your division" : "Manage your department"}
           </p>
         </div>
@@ -314,7 +314,7 @@ const DepartmentsPage = () => {
       {/* Only show filter bar and actions when there's data or loading */}
       {(loading || error || departments.length > 0) && (
         <>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
             <DepartmentFilterBar
               onSearchChange={handleSearchChange}
               onFilterChange={handleFilterChange}
@@ -324,14 +324,15 @@ const DepartmentsPage = () => {
             />
             {/* Only show Add Department button for admins */}
             {canAccessEmployees && (
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center justify-end sm:justify-start">
                 <Button
-                  className="ml-2"
+                  className="w-full sm:w-auto"
                   onClick={handleAddDepartment}
                   disabled={loading}
                 >
-                  <Plus width={16} height={16} />
-                  Add Department
+                  <Plus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add Department</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </div>
             )}
@@ -339,16 +340,16 @@ const DepartmentsPage = () => {
 
           {/* Results Summary */}
           {(searchTerm || filterStatus !== "all") && (
-            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>
+            <div className="flex items-center justify-between mobile-text text-gray-600 dark:text-gray-400">
+              <span className="truncate">
                 Showing {departments.length} of {totalItems} departments
                 {searchTerm && (
-                  <span className="ml-1">
+                  <span className="ml-1 hidden sm:inline">
                     matching &quot;{searchTerm}&quot;
                   </span>
                 )}
                 {filterStatus !== "all" && (
-                  <span className="ml-1">
+                  <span className="ml-1 hidden sm:inline">
                     with status &quot;{filterStatus.replace("_", " ")}&quot;
                   </span>
                 )}
@@ -360,8 +361,8 @@ const DepartmentsPage = () => {
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg mobile-card">
+          <p className="mobile-text text-red-600">
             Error loading departments: {error.message}
           </p>
           <Button
@@ -380,14 +381,14 @@ const DepartmentsPage = () => {
         canAccessEmployees ? (
           <EmptyState onAddDepartment={handleAddDepartment} />
         ) : (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+          <div className="mobile-card text-center text-gray-500 dark:text-gray-400">
             No departments found.
           </div>
         )
       ) : (
         <>
           {/* Table */}
-          <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+          <div className="dark:bg-muted rounded-lg border table-container">
             <DepartmentTable
               departments={departments}
               readOnly={!canAccessEmployees}

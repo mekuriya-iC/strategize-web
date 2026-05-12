@@ -168,7 +168,7 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to create initiative', { description: error.message });
     },
-    refetchQueries: [{ query: GET_INITIATIVES, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 
@@ -181,7 +181,7 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to update initiative', { description: error.message });
     },
-    refetchQueries: [{ query: GET_INITIATIVES, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 
@@ -194,7 +194,7 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to delete initiative', { description: error.message });
     },
-    refetchQueries: [{ query: GET_INITIATIVES, variables: { page: 1, limit: 20 } }],
+    refetchQueries: 'active',
     awaitRefetchQueries: true,
   });
 

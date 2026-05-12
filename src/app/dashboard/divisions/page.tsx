@@ -313,10 +313,10 @@ const DivisionsPage = () => {
   const totalPages = divisionsData?.divisions.meta.totalPages || 0;
 
   return (
-    <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Header and Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <h1 className="mobile-heading text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
           Divisions
         </h1>
       </div>
@@ -326,7 +326,7 @@ const DivisionsPage = () => {
         divisionsError ||
         transformedDivisions.length > 0) && (
           <>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <DivisionFilterBar
                 onSearchChange={handleSearchChange}
                 onFilterChange={handleFilterChange}
@@ -336,14 +336,15 @@ const DivisionsPage = () => {
               />
               {/* Only show Add Division button for admins */}
               {canAccessEmployees && (
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center justify-end sm:justify-start">
                   <Button
-                    className="ml-2"
+                    className="w-full sm:w-auto"
                     onClick={handleAddDivision}
                     disabled={loading}
                   >
-                    <Plus width={16} height={16} />
-                    Add Division
+                    <Plus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Division</span>
+                    <span className="sm:hidden">Add</span>
                   </Button>
                 </div>
               )}
@@ -351,11 +352,11 @@ const DivisionsPage = () => {
 
             {/* Results Summary */}
             {(searchTerm || filterType !== "all") && (
-              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                <span>
+              <div className="flex items-center justify-between mobile-text text-gray-600 dark:text-gray-400">
+                <span className="truncate">
                   Showing {transformedDivisions.length} of {totalItems} divisions
                   {searchTerm && (
-                    <span className="ml-1">
+                    <span className="ml-1 hidden sm:inline">
                       matching &quot;{searchTerm}&quot;
                     </span>
                   )}
@@ -372,14 +373,14 @@ const DivisionsPage = () => {
         canAccessEmployees ? (
           <EmptyState onAddDivision={handleAddDivision} />
         ) : (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+          <div className="mobile-card text-center text-gray-500 dark:text-gray-400">
             No divisions found.
           </div>
         )
       ) : (
         <>
           {/* Table */}
-          <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+          <div className="dark:bg-muted rounded-lg border table-container">
             <DivisionTable
               divisions={transformedDivisions}
               loading={loading}

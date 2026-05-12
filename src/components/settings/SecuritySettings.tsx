@@ -89,23 +89,23 @@ export default function SecuritySettings() {
   const passwordStrength = getPasswordStrength(passwordForm.newPassword);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Change Password */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 mobile-heading">
             <Key className="h-5 w-5" />
             Change Password
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="mobile-text">
             Update your password to keep your account secure
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Security Notice */}
-          <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-start gap-3 mobile-card bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-800 dark:text-amber-300">
+            <div className="mobile-text text-amber-800 dark:text-amber-300">
               <p className="font-medium">Important</p>
               <p>
                 After changing your password, you will need to use the new
@@ -266,11 +266,12 @@ export default function SecuritySettings() {
                 passwordForm.newPassword !== passwordForm.confirmPassword ||
                 passwordForm.newPassword.length < 8
               }
+              className="w-full sm:w-auto"
             >
               {updateLoading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                  Changing...
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
+                  <span className="hidden sm:inline">Changing...</span>
                 </>
               ) : (
                 "Change Password"
@@ -283,38 +284,38 @@ export default function SecuritySettings() {
       {/* Security Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 mobile-heading">
             <Shield className="h-5 w-5" />
             Security Status
           </CardTitle>
-          <CardDescription>Overview of your account security</CardDescription>
+          <CardDescription className="mobile-text">Overview of your account security</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex items-center justify-between mobile-card bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-full">
+                <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-full flex-shrink-0">
                   <Shield className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-green-900 dark:text-green-300">
+                  <p className="font-medium text-green-900 dark:text-green-300 mobile-text">
                     Account Protected
                   </p>
-                  <p className="text-sm text-green-700 dark:text-green-400">
+                  <p className="text-xs sm:text-sm text-green-700 dark:text-green-400">
                     Your account is secured with a password
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mobile-card bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
+                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full flex-shrink-0">
                   <Clock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Password Security</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="font-medium text-gray-900 dark:text-gray-100 mobile-text">Password Security</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     We recommend changing your password every 90 days
                   </p>
                 </div>

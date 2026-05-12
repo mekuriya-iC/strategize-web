@@ -97,17 +97,17 @@ export default function NotificationSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 mobile-heading">
           <Bell className="h-5 w-5" />
           Notification Preferences
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="mobile-text">
           Choose how and when you want to be notified
         </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Channel Headers */}
-        <div className="flex items-center justify-end gap-8 mb-4 pr-4">
+        <div className="hidden sm:flex items-center justify-end gap-8 mb-4 pr-4">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
             <Mail className="h-4 w-4" />
             Email
@@ -119,27 +119,28 @@ export default function NotificationSettings() {
         </div>
 
         {/* Notification Items */}
-        <div className="space-y-1">
+        <div className="flex flex-col gap-2 sm:gap-1">
           {settings.map((setting, index) => (
             <div
               key={setting.id}
-              className={`flex items-center justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+              className={`flex flex-col sm:flex-row sm:items-center justify-between mobile-card rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
                 index % 2 === 0 ? "bg-gray-50/50 dark:bg-gray-800/30" : ""
               }`}
             >
-              <div className="flex-1 pr-4">
+              <div className="flex-1 sm:pr-4 mb-3 sm:mb-0">
                 <Label
                   htmlFor={`${setting.id}-email`}
-                  className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer"
+                  className="mobile-text font-medium text-gray-900 dark:text-gray-100 cursor-pointer"
                 >
                   {setting.label}
                 </Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   {setting.description}
                 </p>
               </div>
-              <div className="flex items-center gap-12">
-                <div className="flex items-center justify-center w-8">
+              <div className="flex items-center gap-6 sm:gap-12">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-400 sm:hidden" />
                   <Checkbox
                     id={`${setting.id}-email`}
                     checked={setting.email}
@@ -147,8 +148,10 @@ export default function NotificationSettings() {
                       handleToggle(setting.id, "email", checked as boolean)
                     }
                   />
+                  <span className="text-sm text-gray-600 dark:text-gray-400 sm:hidden">Email</span>
                 </div>
-                <div className="flex items-center justify-center w-8">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-gray-400 sm:hidden" />
                   <Checkbox
                     id={`${setting.id}-push`}
                     checked={setting.push}
@@ -156,6 +159,7 @@ export default function NotificationSettings() {
                       handleToggle(setting.id, "push", checked as boolean)
                     }
                   />
+                  <span className="text-sm text-gray-600 dark:text-gray-400 sm:hidden">Push</span>
                 </div>
               </div>
             </div>
@@ -163,7 +167,7 @@ export default function NotificationSettings() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -173,6 +177,7 @@ export default function NotificationSettings() {
                   prev.map((s) => ({ ...s, email: true, push: true }))
                 )
               }
+              className="flex-1 sm:flex-none"
             >
               Enable All
             </Button>
@@ -184,20 +189,22 @@ export default function NotificationSettings() {
                   prev.map((s) => ({ ...s, email: false, push: false }))
                 )
               }
+              className="flex-1 sm:flex-none"
             >
               Disable All
             </Button>
           </div>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
             {isSaving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                Saving...
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
+                <span className="hidden sm:inline">Saving...</span>
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Preferences
+                <Save className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Save Preferences</span>
+                <span className="sm:hidden">Save</span>
               </>
             )}
           </Button>

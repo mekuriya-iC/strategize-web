@@ -6,8 +6,8 @@ import { EmployeesFragment } from '../fragments/-employees';
  * Supports pagination and filtering
  */
 export const GETEMPLOYEES = gql`
-  query GetEmployees($page: Int, $limit: Int, $search: String) {
-    employees(page: $page, limit: $limit, search: $search) {
+  query GetEmployees($page: Int, $limit: Int, $search: String, $organizationId: ID) {
+    employees(page: $page, limit: $limit, search: $search, organizationId: $organizationId) {
       items {
         ...EmployeesFragment
       }

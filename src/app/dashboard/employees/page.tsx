@@ -17,6 +17,7 @@ import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { AccessDenied } from "@/components/auth/RequirePermission";
 import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores";
 import {
   PaginatedDivisions,
   Division as GraphQLDivision,
@@ -47,12 +48,17 @@ const EmployeesPage = () => {
   const isManagement = guards.isDirector || guards.isManager;
   const isAdmin = guards.isAdmin || guards.isSuperAdmin;
 
+  // Get organizationId from auth store for filtering
+  const user = useAuthStore((state) => state.user);
+  const organizationId = user?.organizationId;
+
   // Global query - Skip for non-admins as the backend restricts it to ADMIN/SUPER_ADMIN
   const { data, loading, error } = useQuery(GET_EMPLOYEES, {
     variables: {
       page: currentPage,
       limit: itemsPerPage,
       search: searchTerm || undefined,
+      organizationId: organizationId || undefined,
     },
     errorPolicy: "all",
     skip: !isAdmin || !employeePermissions.canView(),
@@ -251,14 +257,14 @@ const EmployeesPage = () => {
   const canAddEmployee = employeePermissions.canCreate();
 
   return (
-    <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Header and Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-4xl text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
+          <h1 className="mobile-heading text-[#3F3F46] dark:text-gray-100 font-bold tracking-tight">
             Employees
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="mobile-text text-gray-500 dark:text-gray-400 mt-1">
             {isAdmin ? "Manage organization-wide employees" : guards.isDirector ? "Manage employees in your division" : "Manage employees in your department"}
           </p>
         </div>
@@ -268,7 +274,7 @@ const EmployeesPage = () => {
       {/* Always show search and filter controls, except when there are truly no employees */}
       {!(filteredEmployees.length === 0 && !searchTerm && !loading && !error) && (
         <>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
             <EmployeeFilterBar
               onSearchChange={handleSearchChange}
               onFilterChange={handleFilterChange}
@@ -278,12 +284,13 @@ const EmployeesPage = () => {
               sortValue={sortOrder}
               disabled={loading}
             />
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center justify-end sm:justify-start">
               {canAddEmployee && (
                 <AddEmployeeDialog>
-                  <Button className="ml-2 bg-[#3838EC] hover:bg-[#2828DC]">
-                    <Plus width={16} height={16} />
-                    Add Employee
+                  <Button className="bg-[#3838EC] hover:bg-[#2828DC] w-full sm:w-auto">
+                    <Plus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Employee</span>
+                    <span className="sm:hidden">Add</span>
                   </Button>
                 </AddEmployeeDialog>
               )}
@@ -316,22 +323,22 @@ const EmployeesPage = () => {
 
           {/* Results Summary */}
           {(searchTerm || filterStatus !== "all" || sortOrder !== "none") && (
-            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>
+            <div className="flex items-center justify-between mobile-text text-gray-600 dark:text-gray-400">
+              <span className="truncate">
                 Showing {filteredEmployees.length} of {rawEmployees.length}{" "}
                 employees
                 {searchTerm && (
-                  <span className="ml-1">
+                  <span className="ml-1 hidden sm:inline">
                     matching &quot;{searchTerm}&quot;
                   </span>
                 )}
                 {filterStatus !== "all" && (
-                  <span className="ml-1">
+                  <span className="ml-1 hidden sm:inline">
                     with status &quot;{filterStatus}&quot;
                   </span>
                 )}
                 {sortOrder !== "none" && (
-                  <span className="ml-1">
+                  <span className="ml-1 hidden sm:inline">
                     sorted {sortOrder === "asc" ? "A to Z" : "Z to A"}
                   </span>
                 )}
@@ -343,36 +350,36 @@ const EmployeesPage = () => {
 
       {/* Empty State or Table */}
       {!loading && !error && rawEmployees.length === 0 && !searchTerm ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[60vh] text-center px-4">
           <Image
             src="/images/dashboard/objective-empty.png"
             alt="No employees"
             width={320}
             height={240}
-            className="mb-12"
+            className="mb-8 sm:mb-12 w-48 sm:w-80 h-auto"
             priority
           />
           {rawEmployees.length === 0 && !loading && !isAdmin && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold text-amber-600 dark:text-amber-400 mb-4 max-w-xl">
+            <div className="space-y-3 sm:space-y-4">
+              <h2 className="text-xl sm:text-2xl font-semibold text-amber-600 dark:text-amber-400 mb-3 sm:mb-4 max-w-xl px-4">
                 No Employees Found
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md text-lg">
+              <p className="mobile-text text-gray-500 dark:text-gray-400 mb-6 sm:mb-8 max-w-md px-4">
                 You might not have any employees assigned to your {guards.isDirector ? "division" : "department"} yet.
               </p>
             </div>
           )}
           {isAdmin && (
             <>
-              <h2 className="text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-4 max-w-xl">
+              <h2 className="text-xl sm:text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-3 sm:mb-4 max-w-xl px-4">
                 It seems you don&apos;t have added any employees yet
               </h2>
-              <p className="text-[#BABABA] dark:text-gray-400 mb-8 md:mb-12 text-lg max-w-sm">
+              <p className="mobile-text text-[#BABABA] dark:text-gray-400 mb-6 sm:mb-8 sm:mb-12 max-w-sm px-4">
                 Start building your team by adding employees.
               </p>
               {canAddEmployee && (
                 <AddEmployeeDialog>
-                  <Button className="px-6 py-3 text-base bg-[#3838EC] hover:bg-[#3838EC]/90 text-white rounded-md font-medium transition-colors cursor-pointer">
+                  <Button className="px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-[#3838EC] hover:bg-[#3838EC]/90 text-white rounded-md font-medium transition-colors cursor-pointer w-full sm:w-auto max-w-xs">
                     <Plus className="w-4 h-4 mr-1" /> Add Employee
                   </Button>
                 </AddEmployeeDialog>
@@ -383,7 +390,7 @@ const EmployeesPage = () => {
       ) : (
         <>
           {/* Table */}
-          <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+          <div className="dark:bg-muted rounded-lg border table-container">
             <EmployeeTable
               employees={filteredEmployees}
               loading={loading}

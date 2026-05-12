@@ -25,6 +25,16 @@ export interface Team {
     picture?: string;
     title?: string;
   };
+  members?: {
+    teamMemberId: string;
+    employee: {
+      employeeId: string;
+      fullName: string;
+      email?: string;
+      picture?: string;
+      title?: string;
+    };
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -188,9 +198,11 @@ export const useTeamMutations = () => {
       description?: string;
       departmentId?: string;
       teamLeadUserId?: string;
+      memberIds?: string[];
     }) => {
+      const { memberIds, ...teamInput } = input;
       const result = await createTeamMutation({
-        variables: { createTeamInput: input },
+        variables: { createTeamInput: teamInput, memberIds: memberIds?.length ? memberIds : undefined },
       });
       return result.data?.createTeam;
     },
@@ -201,11 +213,13 @@ export const useTeamMutations = () => {
       description?: string;
       departmentId?: string;
       teamLeadUserId?: string;
+      memberIds?: string[];
       isActive?: boolean;
       organizationId?: string;
     }) => {
+      const { memberIds, ...teamInput } = input;
       const result = await updateTeamMutation({
-        variables: { updateTeamInput: input },
+        variables: { updateTeamInput: teamInput, memberIds: memberIds?.length ? memberIds : undefined },
       });
       return result.data?.updateTeam;
     },

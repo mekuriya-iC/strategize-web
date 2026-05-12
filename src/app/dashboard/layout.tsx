@@ -91,7 +91,7 @@ export default function DashboardLayout({
             </SectionErrorBoundary>
 
             {/* Main content with error boundary */}
-            <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
+            <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
               <ErrorBoundary>{children}</ErrorBoundary>
             </main>
 

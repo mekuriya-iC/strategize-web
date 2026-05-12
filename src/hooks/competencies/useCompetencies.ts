@@ -30,9 +30,9 @@ import type {
   CreateCompetencyPositionAssignmentInput,
 } from '@/types/evaluation';
 
-export const useCompetencies = (page = 1, limit = 50, search = '') => {
+export const useCompetencies = (page = 1, limit = 50, search = '', organizationId?: string) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCIES, {
-    variables: { page, limit, search },
+    variables: { page, limit, search, organizationId },
     fetchPolicy: 'cache-and-network',
   });
 
@@ -60,9 +60,9 @@ export const useCompetency = (competencyId: string) => {
   };
 };
 
-export const useCoreCompetencies = (page = 1, limit = 50) => {
+export const useCoreCompetencies = (page = 1, limit = 50, organizationId?: string) => {
   const { data, loading, error, refetch } = useQuery(GET_CORE_COMPETENCIES, {
-    variables: { page, limit },
+    variables: { page, limit, organizationId },
     fetchPolicy: 'cache-and-network',
   });
 
@@ -111,64 +111,67 @@ export const useCompetencyMutations = () => {
   const [createCoreCompetency] = useMutation(CREATE_CORE_COMPETENCY, {
     onCompleted: () => toast.success('Core competency created'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_CORE_COMPETENCIES],
+    refetchQueries: 'active',
   });
 
   const [updateCoreCompetency] = useMutation(UPDATE_CORE_COMPETENCY, {
     onCompleted: () => toast.success('Core competency updated'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
+    refetchQueries: 'active',
   });
 
   const [removeCoreCompetency] = useMutation(REMOVE_CORE_COMPETENCY, {
     onCompleted: () => toast.success('Core competency removed'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_CORE_COMPETENCIES],
+    refetchQueries: 'active',
   });
 
   const [createCompetency] = useMutation(CREATE_COMPETENCY, {
     onCompleted: () => toast.success('Competency created'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_COMPETENCIES],
+    refetchQueries: 'active',
   });
 
   const [updateCompetency] = useMutation(UPDATE_COMPETENCY, {
     onCompleted: () => toast.success('Competency updated'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
+    refetchQueries: 'active',
   });
 
   const [removeCompetency] = useMutation(REMOVE_COMPETENCY, {
     onCompleted: () => toast.success('Competency removed'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_COMPETENCIES],
+    refetchQueries: 'active',
   });
 
   const [createIndicator] = useMutation(CREATE_COMPETENCY_INDICATOR, {
     onCompleted: () => toast.success('Indicator created'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_COMPETENCY_INDICATORS],
+    refetchQueries: 'active',
   });
 
   const [updateIndicator] = useMutation(UPDATE_COMPETENCY_INDICATOR, {
     onCompleted: () => toast.success('Indicator updated'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
+    refetchQueries: 'active',
   });
 
   const [removeIndicator] = useMutation(REMOVE_COMPETENCY_INDICATOR, {
     onCompleted: () => toast.success('Indicator removed'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_COMPETENCY_INDICATORS],
+    refetchQueries: 'active',
   });
 
   const [createPositionAssignment] = useMutation(CREATE_COMPETENCY_POSITION_ASSIGNMENT, {
     onCompleted: () => toast.success('Competency assigned to position'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_POSITION_COMPETENCIES],
+    refetchQueries: 'active',
   });
 
   const [removePositionAssignment] = useMutation(REMOVE_COMPETENCY_POSITION_ASSIGNMENT, {
     onCompleted: () => toast.success('Assignment removed'),
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [GET_POSITION_COMPETENCIES],
+    refetchQueries: 'active',
   });
 
   return {

@@ -54,8 +54,9 @@ export default function AdminSetup() {
   const [subordinateWeight, setSubordinateWeight] = useState(15);
 
   const { cycles, loading: cyclesLoading } = useEvaluationCycles(1, 20);
-  const { coreCompetencies, loading: coreLoading } = useCoreCompetencies(1, 50);
-  const { competencies, loading: competenciesLoading } = useCompetencies(1, 100, searchQuery);
+  const organizationId = getOrganizationId();
+  const { coreCompetencies, loading: coreLoading } = useCoreCompetencies(1, 50, organizationId);
+  const { competencies, loading: competenciesLoading } = useCompetencies(1, 100, searchQuery, organizationId);
   const { removeCompetency, removeIndicator, removeCoreCompetency } = useCompetencyMutations();
   const { createWeightConfig } = useEvaluationWeightMutations();
 

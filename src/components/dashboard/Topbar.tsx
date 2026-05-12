@@ -61,13 +61,13 @@ export default function Topbar() {
   };
 
   return (
-    <header className="sticky w-full flex items-center justify-between py-4 px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
+    <header className="sticky w-full flex items-center justify-between py-3 px-4 sm:py-4 sm:px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
       {/* Left: Breadcrumbs and filter */}
-      <div className="flex items-center gap-4">
-        <nav className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+        <nav className="flex items-center text-sm text-gray-500 dark:text-gray-400 min-w-0">
           {/* Sidebar toggle - visible on all screens */}
           <button
-            className="mr-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3838EC]"
+            className="mr-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3838EC] flex-shrink-0"
             aria-label="Toggle sidebar"
             onClick={toggleSidebar}
           >
@@ -87,48 +87,56 @@ export default function Topbar() {
               />
             )}
           </button>
-          <span className="font-medium text-gray-700 dark:text-gray-100">
+          <span className="font-medium text-gray-700 dark:text-gray-100 truncate">
             {getPageName(pathname)}
           </span>
-          {/* Strategic Period Selector - New prominent position */}
-          <StrategicPeriodSelector className="w-44 ml-4" />
-          <OrgUnitSelector />
-          <DepartmentSelector className="ml-4" />
+          {/* Strategic Period Selector - Hidden on mobile, visible on tablet+ */}
+          <div className="hidden md:block">
+            <StrategicPeriodSelector className="w-44 ml-4" />
+          </div>
+          <div className="hidden lg:block">
+            <OrgUnitSelector />
+          </div>
+          <div className="hidden lg:block">
+            <DepartmentSelector className="ml-4" />
+          </div>
         </nav>
       </div>
       {/* Right: Icons, language, user */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {/* Notification bell */}
         <NotificationDropdown />
 
         {/* Theme toggle button */}
         <button
-          className="p-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="p-2 sm:p-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
           {theme === "dark" ? (
-            <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
           ) : (
-            <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
           )}
         </button>
 
-        {/* Language selector */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 px-4 py-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <Globe className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                Eng
-              </span>
-              <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 rotate-90" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>English</DropdownMenuItem>
-            <DropdownMenuItem>French</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Language selector - Hidden on mobile */}
+        <div className="hidden sm:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <Globe className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Eng
+                </span>
+                <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 rotate-90" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>English</DropdownMenuItem>
+              <DropdownMenuItem>French</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         {/* User profile dropdown */}
         <DropdownMenu>

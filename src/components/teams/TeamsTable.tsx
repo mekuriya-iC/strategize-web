@@ -55,6 +55,7 @@ import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
 import { useAuthStore } from "@/stores";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface TeamsTableProps {
   teams: Team[];
@@ -74,6 +75,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
     description: "",
     departmentId: "none",
     teamLeadUserId: "none",
+    memberIds: [] as string[],
   });
 
   // Fetch departments for dropdown
@@ -96,7 +98,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
   const employees = empsData?.employees?.items || [];
 
   const resetForm = () =>
-    setForm({ name: "", description: "", departmentId: "none", teamLeadUserId: "none" });
+    setForm({ name: "", description: "", departmentId: "none", teamLeadUserId: "none", memberIds: [] });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +109,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
         organizationId: getOrganizationId(),
         departmentId: form.departmentId && form.departmentId !== "none" ? form.departmentId : undefined,
         teamLeadUserId: form.teamLeadUserId && form.teamLeadUserId !== "none" ? form.teamLeadUserId : undefined,
+        memberIds: form.memberIds.length > 0 ? form.memberIds : undefined,
       });
       resetForm();
       setShowCreate(false);
@@ -125,6 +128,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
         description: form.description || undefined,
         departmentId: form.departmentId && form.departmentId !== "none" ? form.departmentId : undefined,
         teamLeadUserId: form.teamLeadUserId && form.teamLeadUserId !== "none" ? form.teamLeadUserId : undefined,
+        memberIds: form.memberIds.length > 0 ? form.memberIds : undefined,
         organizationId: getOrganizationId(),
       });
       resetForm();
@@ -150,6 +154,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
       description: team.description || "",
       departmentId: team.department?.departmentId || "none",
       teamLeadUserId: team.teamLead?.employeeId || "none",
+      memberIds: team.members?.map(m => m.employee.employeeId) || [],
     });
     setEditTeam(team);
   };
@@ -275,6 +280,27 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
         </div>
 
         <div className="space-y-2">
+          <Label>Team Members</Label>
+          <MultiSelect
+            value={localForm.memberIds}
+            onValueChange={(v) => setLocalForm({ ...localForm, memberIds: v })}
+            placeholder="Select team members (optional)"
+            searchPlaceholder="Search employees..."
+            emptyMessage={employees.length === 0 && !isAdmin ? "No employees available. Contact an admin to add employees." : "No employees found"}
+            options={employees
+              .filter((emp: any) => emp.employeeId !== localForm.teamLeadUserId || localForm.teamLeadUserId === "none")
+              .map((emp: any) => ({
+                value: emp.employeeId,
+                label: emp.fullName,
+                description: emp.title || undefined,
+              }))}
+          />
+          <p className="text-xs text-muted-foreground">
+            Team lead is automatically excluded from members
+          </p>
+        </div>
+
+        <div className="space-y-2">
           <Label>Description</Label>
           <Textarea
             placeholder="Describe the team's purpose and responsibilities..."
@@ -358,6 +384,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
                 <TableHead className="font-semibold">Team Name</TableHead>
                 <TableHead className="font-semibold">Department</TableHead>
                 <TableHead className="font-semibold">Team Lead</TableHead>
+                <TableHead className="font-semibold">Members</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold">Created</TableHead>
                 <TableHead className="font-semibold w-[50px]" />
@@ -412,6 +439,13 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
                     ) : (
                       <span className="text-gray-400">No lead assigned</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {team.members?.length || 0} {team.members?.length === 1 ? 'member' : 'members'}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span

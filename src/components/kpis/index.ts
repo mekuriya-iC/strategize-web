@@ -3,6 +3,10 @@
  * Centralized exports for all KPI-related components
  */
 
+// List & CRUD
+export { default as KpisTable } from "./KpisTable";
+export { CreateKpiDialog } from "./CreateKpiDialog";
+
 // Progress Tracking
 export { default as KpiProgressDialog } from "./KpiProgressDialog";
 export { default as KpiProgressHistory } from "./KpiProgressHistory";

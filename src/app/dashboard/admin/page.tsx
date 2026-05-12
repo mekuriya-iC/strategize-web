@@ -71,20 +71,20 @@ export default function AdminPanelPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Admin Panel</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="mobile-heading font-semibold text-gray-900 dark:text-gray-100">Admin Panel</h1>
+          <p className="mobile-text text-gray-500 dark:text-gray-400 mt-1">
             Manage administrators and view system analytics
           </p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 w-full sm:w-auto">
               <Filter className="w-4 h-4" />
-              Filter
+              <span className="hidden sm:inline">Filter</span>
               <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -98,67 +98,67 @@ export default function AdminPanelPage() {
       </div>
 
       {/* Admin Features Navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Button
           variant="outline"
-          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+          className="h-20 sm:h-24 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950/30"
           onClick={() => router.push("/dashboard/admin/permissions")}
           disabled={!guards.isSuperAdmin}
         >
-          <Shield className="w-6 h-6 text-blue-600" />
+          <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
           <div className="text-center">
-            <div className="font-medium">Permissions</div>
-            <div className="text-xs text-gray-500">Manage roles & permissions</div>
+            <div className="font-medium text-sm sm:text-base">Permissions</div>
+            <div className="text-xs text-gray-500 hidden sm:block">Manage roles & permissions</div>
           </div>
         </Button>
 
         <Button
           variant="outline"
-          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-green-50 dark:hover:bg-green-950/30"
+          className="h-20 sm:h-24 flex flex-col items-center justify-center gap-2 hover:bg-green-50 dark:hover:bg-green-950/30"
           onClick={() => router.push("/dashboard/admin")}
         >
-          <Users className="w-6 h-6 text-green-600" />
+          <Users className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
           <div className="text-center">
-            <div className="font-medium">User Management</div>
-            <div className="text-xs text-gray-500">Manage admin users</div>
+            <div className="font-medium text-sm sm:text-base">User Management</div>
+            <div className="text-xs text-gray-500 hidden sm:block">Manage admin users</div>
           </div>
         </Button>
 
         <Button
           variant="outline"
-          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+          className="h-20 sm:h-24 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-950/30"
           onClick={() => router.push("/dashboard/admin/system-config")}
         >
-          <Settings className="w-6 h-6 text-purple-600" />
+          <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
           <div className="text-center">
-            <div className="font-medium">System Configuration</div>
-            <div className="text-xs text-gray-500">Configure system settings</div>
+            <div className="font-medium text-sm sm:text-base">System Configuration</div>
+            <div className="text-xs text-gray-500 hidden sm:block">Configure system settings</div>
           </div>
         </Button>
 
         <Button
           variant="outline"
-          className="h-24 flex flex-col items-center justify-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+          className="h-20 sm:h-24 flex flex-col items-center justify-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-950/30"
           onClick={() => router.push("/dashboard/admin")}
         >
-          <Database className="w-6 h-6 text-orange-600" />
+          <Database className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
           <div className="text-center">
-            <div className="font-medium">Data Management</div>
-            <div className="text-xs text-gray-500">Backup & cleanup</div>
+            <div className="font-medium text-sm sm:text-base">Data Management</div>
+            <div className="text-xs text-gray-500 hidden sm:block">Backup & cleanup</div>
           </div>
         </Button>
       </div>
 
       {/* Permission Notice */}
       {!guards.isSuperAdmin && (
-        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg mobile-card">
           <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+            <Shield className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+              <h3 className="mobile-text font-medium text-yellow-800 dark:text-yellow-300">
                 Limited Access
               </h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+              <p className="mobile-text text-yellow-700 dark:text-yellow-400 mt-1">
                 Some admin features require Super Administrator privileges. Contact your system administrator for access.
               </p>
             </div>
@@ -170,12 +170,14 @@ export default function AdminPanelPage() {
       <AdminAnalyticsCards admins={admins} loading={loading} />
 
       {/* Admin Table - Only super admins can manage other admins */}
-      <AdminTable
-        admins={admins}
-        loading={loading}
-        onRefetch={() => refetch()}
-        canManageAdmins={guards.isSuperAdmin}
-      />
+      <div className="table-container">
+        <AdminTable
+          admins={admins}
+          loading={loading}
+          onRefetch={() => refetch()}
+          canManageAdmins={guards.isSuperAdmin}
+        />
+      </div>
     </div>
   );
 }

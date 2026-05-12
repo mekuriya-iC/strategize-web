@@ -113,13 +113,13 @@ export default function ProfileSettings() {
           View and update your personal information
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-6">
         {/* Avatar Section */}
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
           <div className="relative">
-            <Avatar className="h-24 w-24">
+            <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
               <AvatarImage src={user?.picture} />
-              <AvatarFallback className="bg-[#3838EC] text-white text-2xl font-semibold">
+              <AvatarFallback className="bg-[#3838EC] text-white text-xl sm:text-2xl font-semibold">
                 {getInitials(user?.fullName, user?.email)}
               </AvatarFallback>
             </Avatar>
@@ -130,19 +130,19 @@ export default function ProfileSettings() {
               <Camera className="h-4 w-4 text-gray-600 dark:text-gray-400" />
             </button>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <div className="text-center sm:text-left">
+            <h3 className="mobile-heading font-semibold text-gray-900 dark:text-gray-100">
               {user?.fullName}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#3838EC]/10 text-[#3838EC] mt-2">
+            <p className="mobile-text text-gray-500 dark:text-gray-400">{user?.email}</p>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#3838EC]/10 text-[#3838EC] dark:bg-[#3838EC]/20 mt-2">
               {user?.role ? ROLE_LABELS[user.role] : "User"}
             </span>
           </div>
         </div>
 
         {/* Form Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-2">
             <Label htmlFor="fullName">Full Name</Label>
             <Input
@@ -152,7 +152,7 @@ export default function ProfileSettings() {
                 setFormData({ ...formData, fullName: e.target.value })
               }
               disabled={!isEditing}
-              className="disabled:bg-gray-50"
+              className="disabled:bg-gray-50 dark:disabled:bg-gray-800"
             />
           </div>
           <div className="space-y-2">
@@ -164,7 +164,7 @@ export default function ProfileSettings() {
                 setFormData({ ...formData, title: e.target.value })
               }
               disabled={!isEditing}
-              className="disabled:bg-gray-50"
+              className="disabled:bg-gray-50 dark:disabled:bg-gray-800"
               placeholder="Not set"
             />
           </div>
@@ -178,7 +178,7 @@ export default function ProfileSettings() {
                 setFormData({ ...formData, email: e.target.value })
               }
               disabled={!isEditing}
-              className="disabled:bg-gray-50"
+              className="disabled:bg-gray-50 dark:disabled:bg-gray-800"
             />
           </div>
           <div className="space-y-2">
@@ -191,7 +191,7 @@ export default function ProfileSettings() {
                 setFormData({ ...formData, phone: e.target.value })
               }
               disabled={!isEditing}
-              className="disabled:bg-gray-50"
+              className="disabled:bg-gray-50 dark:disabled:bg-gray-800"
               placeholder="Not set"
             />
           </div>
@@ -199,19 +199,19 @@ export default function ProfileSettings() {
 
         {/* Organization Info (Read-only) */}
         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+          <h4 className="mobile-text font-medium text-gray-700 dark:text-gray-300 mb-3 sm:mb-4">
             Organization Details
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="mobile-card bg-gray-50 dark:bg-gray-800 rounded-lg">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Department</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="mobile-text font-medium text-gray-900 dark:text-gray-100">
                 {user?.department?.name || "Not assigned"}
               </p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">Employee ID</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 font-mono">
+            <div className="mobile-card bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Employee ID</p>
+              <p className="mobile-text font-medium text-gray-900 dark:text-gray-100 font-mono truncate">
                 {user?.employeeId?.slice(0, 8) || "N/A"}...
               </p>
             </div>
@@ -219,33 +219,35 @@ export default function ProfileSettings() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
           {isEditing ? (
             <>
               <Button
                 variant="outline"
                 onClick={handleCancel}
                 disabled={updateLoading}
+                className="w-full sm:w-auto"
               >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
+                <X className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Cancel</span>
               </Button>
-              <Button onClick={handleSave} disabled={updateLoading}>
+              <Button onClick={handleSave} disabled={updateLoading} className="w-full sm:w-auto">
                 {updateLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Saving...
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
+                    <span className="hidden sm:inline">Saving...</span>
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                    <Save className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Save Changes</span>
+                    <span className="sm:hidden">Save</span>
                   </>
                 )}
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+            <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto">Edit Profile</Button>
           )}
         </div>
       </CardContent>

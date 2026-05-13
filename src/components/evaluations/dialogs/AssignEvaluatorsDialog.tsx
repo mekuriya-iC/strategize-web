@@ -48,6 +48,27 @@ export default function AssignEvaluatorsDialog({
     fetchPolicy: 'cache-and-network',
   });
 
+  // Fetch existing assessments for this cycle
+  const { data: existingAssessmentsData } = useQuery(GET_COMPETENCY_ASSESSMENTS, {
+    variables: { 
+      page: 1, 
+      limit: 10000, 
+      evaluationCycleId 
+    },
+    fetchPolicy: 'network-only',
+  });
+
+  const existingAssessments = existingAssessmentsData?.competencyAssessments?.items || [];
+
+  // Helper to check if assessment already exists
+  const assessmentExists = (evaluateeId: string, evaluatorId: string, relationType: string) => {
+    return existingAssessments.some((a: any) => 
+      a.evaluatee.employeeId === evaluateeId &&
+      a.evaluator.employeeId === evaluatorId &&
+      a.relationType === relationType
+    );
+  };
+
   const [createAssessment] = useMutation(CREATE_COMPETENCY_ASSESSMENT, {
     refetchQueries: [GET_COMPETENCY_ASSESSMENTS],
   });
@@ -60,17 +81,20 @@ export default function AssignEvaluatorsDialog({
     if (employees.length > 0 && Object.keys(assignments).length === 0) {
       const initialAssignments: Record<string, EmployeeAssignment> = {};
       employees.forEach((emp: any) => {
+        // Only auto-check self-assessment if it doesn't already exist
+        const selfExists = assessmentExists(emp.employeeId, emp.employeeId, EvaluationRelationType.SELF);
+        
         initialAssignments[emp.employeeId] = {
           employee: emp,
-          assignSelf: true, // Default: everyone does self-assessment
-          assignSupervisor: false, // TODO: Enable when backend adds supervisor field
+          assignSelf: !selfExists, // Only check if not already assigned
+          assignSupervisor: false,
           peers: [],
           subordinates: [],
         };
       });
       setAssignments(initialAssignments);
     }
-  }, [employees, assignments]);
+  }, [employees, assignments, existingAssessments]);
 
   const handleToggleSelf = (employeeId: string) => {
     setAssignments(prev => ({
@@ -130,6 +154,7 @@ export default function AssignEvaluatorsDialog({
     setSaving(true);
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
 
     try {
       for (const [evaluateeId, assignment] of Object.entries(assignments)) {
@@ -140,10 +165,14 @@ export default function AssignEvaluatorsDialog({
 
         // Self assessment - use employeeId as userId
         if (assignment.assignSelf) {
-          assessmentsToCreate.push({
-            evaluatorUserId: evaluateeId,
-            relationType: EvaluationRelationType.SELF,
-          });
+          if (!assessmentExists(evaluateeId, evaluateeId, EvaluationRelationType.SELF)) {
+            assessmentsToCreate.push({
+              evaluatorUserId: evaluateeId,
+              relationType: EvaluationRelationType.SELF,
+            });
+          } else {
+            skippedCount++;
+          }
         }
 
         // Supervisor assessment - need to find supervisor
@@ -155,18 +184,26 @@ export default function AssignEvaluatorsDialog({
 
         // Peer assessments
         for (const peerId of assignment.peers) {
-          assessmentsToCreate.push({
-            evaluatorUserId: peerId,
-            relationType: EvaluationRelationType.PEER,
-          });
+          if (!assessmentExists(evaluateeId, peerId, EvaluationRelationType.PEER)) {
+            assessmentsToCreate.push({
+              evaluatorUserId: peerId,
+              relationType: EvaluationRelationType.PEER,
+            });
+          } else {
+            skippedCount++;
+          }
         }
 
         // Subordinate assessments
         for (const subordinateId of assignment.subordinates) {
-          assessmentsToCreate.push({
-            evaluatorUserId: subordinateId,
-            relationType: EvaluationRelationType.SUBORDINATE,
-          });
+          if (!assessmentExists(evaluateeId, subordinateId, EvaluationRelationType.SUBORDINATE)) {
+            assessmentsToCreate.push({
+              evaluatorUserId: subordinateId,
+              relationType: EvaluationRelationType.SUBORDINATE,
+            });
+          } else {
+            skippedCount++;
+          }
         }
 
         // Create all assessments for this employee
@@ -190,14 +227,17 @@ export default function AssignEvaluatorsDialog({
         }
       }
 
-      if (errorCount === 0) {
+      if (errorCount === 0 && skippedCount === 0) {
         toast.success(`Successfully created ${successCount} assessments`);
-        onOpenChange(false);
-        setStep('select');
-        setSelectedEmployeeId(null);
+      } else if (errorCount === 0 && skippedCount > 0) {
+        toast.success(`Created ${successCount} new assessments, skipped ${skippedCount} duplicates`);
       } else {
-        toast.warning(`Created ${successCount} assessments, ${errorCount} failed`);
+        toast.warning(`Created ${successCount} assessments, ${errorCount} failed, ${skippedCount} skipped`);
       }
+      
+      onOpenChange(false);
+      setStep('select');
+      setSelectedEmployeeId(null);
     } catch (error: any) {
       toast.error(error.message || 'Failed to assign evaluators');
     } finally {
@@ -208,10 +248,30 @@ export default function AssignEvaluatorsDialog({
   const getTotalAssignments = () => {
     return Object.values(assignments).reduce((total, assignment) => {
       let count = 0;
-      if (assignment.assignSelf) count++;
-      if (assignment.assignSupervisor) count++;
-      count += assignment.peers.length;
-      count += assignment.subordinates.length;
+      const evaluateeId = assignment.employee.employeeId;
+      
+      // Only count if not already exists
+      if (assignment.assignSelf && !assessmentExists(evaluateeId, evaluateeId, EvaluationRelationType.SELF)) {
+        count++;
+      }
+      if (assignment.assignSupervisor) {
+        count++; // Supervisor not implemented yet, so won't exist
+      }
+      
+      // Count peers that don't already exist
+      assignment.peers.forEach(peerId => {
+        if (!assessmentExists(evaluateeId, peerId, EvaluationRelationType.PEER)) {
+          count++;
+        }
+      });
+      
+      // Count subordinates that don't already exist
+      assignment.subordinates.forEach(subId => {
+        if (!assessmentExists(evaluateeId, subId, EvaluationRelationType.SUBORDINATE)) {
+          count++;
+        }
+      });
+      
       return total + count;
     }, 0);
   };
@@ -221,10 +281,29 @@ export default function AssignEvaluatorsDialog({
     if (!assignment) return 0;
     
     let count = 0;
-    if (assignment.assignSelf) count++;
-    if (assignment.assignSupervisor) count++;
-    count += assignment.peers.length;
-    count += assignment.subordinates.length;
+    
+    // Only count if not already exists
+    if (assignment.assignSelf && !assessmentExists(employeeId, employeeId, EvaluationRelationType.SELF)) {
+      count++;
+    }
+    if (assignment.assignSupervisor) {
+      count++; // Supervisor not implemented yet
+    }
+    
+    // Count peers that don't already exist
+    assignment.peers.forEach(peerId => {
+      if (!assessmentExists(employeeId, peerId, EvaluationRelationType.PEER)) {
+        count++;
+      }
+    });
+    
+    // Count subordinates that don't already exist
+    assignment.subordinates.forEach(subId => {
+      if (!assessmentExists(employeeId, subId, EvaluationRelationType.SUBORDINATE)) {
+        count++;
+      }
+    });
+    
     return count;
   };
 
@@ -356,13 +435,20 @@ export default function AssignEvaluatorsDialog({
                       id={`self-${selectedEmployeeId}`}
                       checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.assignSelf || false) : false}
                       onCheckedChange={() => selectedEmployeeId && handleToggleSelf(selectedEmployeeId)}
+                      disabled={selectedEmployeeId ? assessmentExists(selectedEmployeeId, selectedEmployeeId, EvaluationRelationType.SELF) : false}
                     />
                     <label
                       htmlFor={`self-${selectedEmployeeId}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                     >
                       Assign self-assessment
                     </label>
+                    {selectedEmployeeId && assessmentExists(selectedEmployeeId, selectedEmployeeId, EvaluationRelationType.SELF) && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Already assigned
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
@@ -380,21 +466,31 @@ export default function AssignEvaluatorsDialog({
                   <div className="space-y-2">
                     {employees
                       .filter((e: any) => e.employeeId !== selectedEmployeeId)
-                      .map((peer: any) => (
-                        <div key={peer.employeeId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-                          <Checkbox
-                            id={`peer-${peer.employeeId}`}
-                            checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.peers?.includes(peer.employeeId) || false) : false}
-                            onCheckedChange={() => selectedEmployeeId && handleTogglePeer(selectedEmployeeId, peer.employeeId)}
-                          />
-                          <label
-                            htmlFor={`peer-${peer.employeeId}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                          >
-                            {peer.fullName}
-                          </label>
-                        </div>
-                      ))}
+                      .map((peer: any) => {
+                        const alreadyExists = selectedEmployeeId ? assessmentExists(selectedEmployeeId, peer.employeeId, EvaluationRelationType.PEER) : false;
+                        return (
+                          <div key={peer.employeeId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              id={`peer-${peer.employeeId}`}
+                              checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.peers?.includes(peer.employeeId) || false) : false}
+                              onCheckedChange={() => selectedEmployeeId && handleTogglePeer(selectedEmployeeId, peer.employeeId)}
+                              disabled={alreadyExists}
+                            />
+                            <label
+                              htmlFor={`peer-${peer.employeeId}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                            >
+                              {peer.fullName}
+                            </label>
+                            {alreadyExists && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Assigned
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
 

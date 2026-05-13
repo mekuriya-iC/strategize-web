@@ -262,7 +262,19 @@ export default function AdminSetup() {
                 await removeIndicator(indicatorId);
                 toast.success('Indicator deleted successfully');
               } catch (error: any) {
-                toast.error(error.message || 'Failed to delete indicator');
+                console.error('❌ [Delete Indicator Error]:', error);
+                
+                // Check for foreign key constraint error
+                if (error.message?.includes('foreign key constraint') || 
+                    error.message?.includes('FK_') ||
+                    error.message?.includes('AssessmentResponse')) {
+                  toast.error(
+                    'Cannot delete this indicator. It has been used in evaluations and has assessment responses.',
+                    { duration: 5000 }
+                  );
+                } else {
+                  toast.error(error.message || 'Failed to delete indicator');
+                }
               }
             }}
           >

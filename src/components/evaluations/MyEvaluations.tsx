@@ -127,6 +127,13 @@ export default function MyEvaluations() {
   const handleStartEvaluation = (assessmentId: string) => {
     console.log('Starting evaluation with ID:', assessmentId);
     console.log('Navigating to:', `/dashboard/evaluations/assess/${assessmentId}`);
+    
+    if (!assessmentId) {
+      alert('Error: No assessment ID provided');
+      return;
+    }
+    
+    alert(`Navigating to assessment: ${assessmentId}`);
     router.push(`/dashboard/evaluations/assess/${assessmentId}`);
   };
 

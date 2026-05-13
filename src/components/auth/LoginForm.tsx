@@ -66,7 +66,17 @@ export default function LoginForm() {
       if (redirectUrl && redirectUrl.startsWith("/")) {
         router.push(redirectUrl);
       } else {
-        // Role-based routing after login
+        // PRIORITY 1: Check if user needs onboarding (first login or password change)
+        const isFirstLogin = result.user?.isFirstLogin;
+        const mustChangePassword = result.user?.mustChangePassword;
+        
+        if (isFirstLogin || mustChangePassword) {
+          console.log("[LoginForm] User needs onboarding:", { isFirstLogin, mustChangePassword });
+          router.push("/onboarding");
+          return;
+        }
+
+        // PRIORITY 2: Role-based routing after login
         const userRole = result.user?.role;
         
         // Only ADMIN and SUPER_ADMIN need to check organization setup

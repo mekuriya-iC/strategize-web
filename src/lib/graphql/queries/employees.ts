@@ -39,3 +39,25 @@ export const GET_EMPLOYEES_BY_ID = gql`
 `;
 
 export const GET_EMPLOYEE = GET_EMPLOYEES_BY_ID;
+
+/**
+ * Query to fetch direct reports of a manager
+ * Backend: directReports(managerId: ID)
+ */
+export const GET_DIRECT_REPORTS = gql`
+  query GetDirectReports($managerId: ID) {
+    directReports(managerId: $managerId) {
+      employeeId
+      fullName
+      email
+      title
+      picture
+      status
+      role
+      departments {
+        departmentId
+        name
+      }
+    }
+  }
+`;

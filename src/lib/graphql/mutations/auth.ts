@@ -20,6 +20,8 @@ export const LOGIN_EMPLOYEE = gql`
         title
         phoneNumber
         picture
+        isFirstLogin
+        mustChangePassword
       }
     }
   }

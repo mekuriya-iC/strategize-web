@@ -66,8 +66,14 @@ export default function ObjectiveForm() {
   useEffect(() => {
     if (selected?.period) {
       setStrategicPeriodValue(selected.period.strategicPeriodId);
+    } else if (strategicPeriods.length > 0 && !strategicPeriodValue) {
+      // Auto-select the first ANNUAL period if no period is selected
+      const firstAnnualPeriod = strategicPeriods.find(p => p.periodType === 'ANNUAL');
+      if (firstAnnualPeriod) {
+        setStrategicPeriodValue(firstAnnualPeriod.strategicPeriodId);
+      }
     }
-  }, [selected]);
+  }, [selected, strategicPeriods, strategicPeriodValue]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +123,8 @@ export default function ObjectiveForm() {
         strategicPeriodId: strategicPeriodValue,
         organizationId: organizationId,
         strategicPlanId: activeStrategicPlan.strategicPlanId,
-        strategicPillarId: (selectedPillarId && selectedPillarId !== "none") ? selectedPillarId : undefined,
+        // Only include strategicPillarId if a valid pillar is selected
+        ...(selectedPillarId && selectedPillarId !== "none" && selectedPillarId !== "" ? { strategicPillarId: selectedPillarId } : {}),
       };
 
       // CRITICAL: Only set assigneeType for non-corporate objectives
@@ -134,27 +141,14 @@ export default function ObjectiveForm() {
       });
 
       console.log("✅ Objective created:", created);
-
-      // Auto-approve corporate-level objectives immediately after creation
-      if (objectiveType === "CORPORATE" && created?.objectiveId) {
-        try {
-          console.log("🔄 Auto-approving corporate objective:", created.objectiveId);
-          
-          const updated = await updateObjective({
-            input: {
-              objectiveId: created.objectiveId,
-              status: "APPROVED",
-            },
-          });
-          
-          console.log("✅ Objective auto-approved:", updated);
-          toast.success("Objective created and auto-approved");
-        } catch (approvalError) {
-          console.error("❌ Failed to auto-approve objective:", approvalError);
-          toast.warning("Objective created but auto-approval failed. Please approve manually.");
-        }
-      } else {
-        toast.success("Objective created successfully!");
+      toast.success("Objective created successfully!");
+      
+      // Clear session storage
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('strategicPlanId');
+        sessionStorage.removeItem('planStartDate');
+        sessionStorage.removeItem('planEndDate');
+        sessionStorage.removeItem('selectedOrgTemplate');
       }
       
       // Wait a bit for backend to process before redirecting

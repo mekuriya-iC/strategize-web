@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DepartmentSelectionProvider } from "@/context/DepartmentSelectionContext";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
@@ -16,16 +17,32 @@ import { useObjectiveSetupGuard } from "@/hooks/objectives/useObjectiveSetupGuar
 
 // Component to sync Apollo user data with Zustand store
 function AuthSync() {
+  const router = useRouter();
   const { data, loading } = useQuery(GET_ME);
   const { setUser, setLoading, setAuthenticated } = useAuthStore();
 
   useEffect(() => {
     setLoading(loading);
     if (data?.me) {
+      console.log('🔍 User data:', {
+        email: data.me.email,
+        role: data.me.role,
+        isFirstLogin: data.me.isFirstLogin,
+        mustChangePassword: data.me.mustChangePassword
+      });
+      
       setUser(data.me);
       setAuthenticated(true);
+      
+      // Redirect to onboarding if first login or must change password
+      if (data.me.isFirstLogin || data.me.mustChangePassword) {
+        console.log('🚀 Redirecting to onboarding...');
+        router.push('/onboarding');
+      } else {
+        console.log('✅ User has completed onboarding');
+      }
     }
-  }, [data, loading, setUser, setLoading, setAuthenticated]);
+  }, [data, loading, setUser, setLoading, setAuthenticated, router]);
 
   return null;
 }

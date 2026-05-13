@@ -47,7 +47,7 @@ export default function OrganizationTemplateGrid() {
       await saveOrgChart([rootNode]);
       sessionStorage.setItem("selectedOrgTemplate", templateId);
       toast.success(`${selectedTemplate?.title} structure created`);
-      router.push("/strategy-period");
+      router.push("/setup/strategic-plan");
     } catch {
       // error already toasted by the hook
     } finally {

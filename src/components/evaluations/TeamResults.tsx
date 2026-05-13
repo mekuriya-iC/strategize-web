@@ -7,108 +7,111 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Bell, Filter, FileDown } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useDirectReports } from '@/hooks/employees/useEmployees';
+import { useAggregatePerformanceResults } from '@/hooks/performance/usePerformance';
+import { useEvaluationCycles } from '@/hooks/evaluations/useEvaluationCycles';
+import { EvaluationCycleStatus } from '@/types/evaluation';
 
 export default function TeamResults() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const { directReports, loading: reportsLoading } = useDirectReports();
+  const { cycles } = useEvaluationCycles(1, 1, '', EvaluationCycleStatus.ACTIVE);
+  const activeCycle = cycles?.[0];
+  
+  const { results: performanceResults, loading: performanceLoading } = useAggregatePerformanceResults({
+    page: 1,
+    limit: 100,
+    strategicPeriodId: activeCycle?.strategicPeriod?.strategicPeriodId,
+  });
 
-  // Mock team data - in real app, fetch from backend
-  const teamMembers = [
-    {
-      employeeId: '1',
-      fullName: 'Abebe Bikila',
-      department: 'RAS',
-      avatar: 'AB',
+  // Match direct reports with their performance results
+  const teamMembers = directReports.map((employee: any) => {
+    const performance = performanceResults.find(
+      (r: any) => r.user.employeeId === employee.employeeId
+    );
+    
+    const initials = employee.fullName
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase();
+    
+    return {
+      employeeId: employee.employeeId,
+      fullName: employee.fullName,
+      department: employee.departments?.[0]?.name || 'N/A',
+      avatar: initials,
       scores: {
-        leadership: 3.3,
-        communication: 4.6,
-        innovation: 3.9,
-        accountability: 3.2,
-        overall: 3.8,
+        competency: performance?.competencyScore || 0,
+        individualKpi: performance?.individualKpiScore || 0,
+        sharedKpi: performance?.sharedKpiScore || 0,
+        overall: performance?.aggregateScore || 0,
       },
-      status: 'Done',
-      statusColor: 'bg-green-100 text-green-700',
-    },
-    {
-      employeeId: '2',
-      fullName: 'Hawi Desta',
-      department: 'Learning Solutions',
-      avatar: 'HD',
-      scores: {
-        leadership: 4.0,
-        communication: 3.3,
-        innovation: 4.6,
-        accountability: 3.9,
-        overall: 3.9,
-      },
-      status: 'Done',
-      statusColor: 'bg-green-100 text-green-700',
-    },
-    {
-      employeeId: '3',
-      fullName: 'Kidist Gashaw',
-      department: 'KSP',
-      avatar: 'KG',
-      scores: {
-        leadership: 4.7,
-        communication: 4.0,
-        innovation: 3.3,
-        accountability: 4.6,
-        overall: 4.2,
-      },
-      status: 'Done',
-      statusColor: 'bg-green-100 text-green-700',
-    },
-    {
-      employeeId: '4',
-      fullName: 'John Doe',
-      department: 'Corporate',
-      avatar: 'JD',
-      scores: {
-        leadership: 3.4,
-        communication: 4.7,
-        innovation: 4.0,
-        accountability: 3.3,
-        overall: 3.8,
-      },
-      status: 'Pending',
-      statusColor: 'bg-amber-100 text-amber-700',
-    },
-    {
-      employeeId: '5',
-      fullName: 'Janet Doe',
-      department: 'HR',
-      avatar: 'JD',
-      scores: {
-        leadership: 4.1,
-        communication: 3.4,
-        innovation: 4.7,
-        accountability: 4.0,
-        overall: 4.0,
-      },
-      status: 'Pending',
-      statusColor: 'bg-amber-100 text-amber-700',
-    },
-  ];
+      status: performance ? 'Done' : 'Pending',
+      statusColor: performance ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700',
+    };
+  });
 
   const filteredMembers = teamMembers.filter((member) =>
     member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Calculate team statistics
+  const completedMembers = teamMembers.filter(m => m.status === 'Done');
+  const completedCount = completedMembers.length;
+  const pendingCount = teamMembers.length - completedCount;
+  const teamAverage = completedMembers.length > 0
+    ? (completedMembers.reduce((sum, m) => sum + m.scores.overall, 0) / completedMembers.length).toFixed(2)
+    : '0.00';
+  const completionRate = teamMembers.length > 0
+    ? Math.round((completedCount / teamMembers.length) * 100)
+    : 0;
+
   const getScoreColor = (score: number) => {
     if (score >= 4.5) return 'text-green-600 font-semibold';
     if (score >= 4.0) return 'text-teal-600 font-semibold';
     if (score >= 3.5) return 'text-amber-600 font-semibold';
-    return 'text-orange-600 font-semibold';
+    if (score > 0) return 'text-orange-600 font-semibold';
+    return 'text-gray-400';
   };
+
+  const loading = reportsLoading || performanceLoading;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Loading team results...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (teamMembers.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-gray-500">No direct reports found</p>
+          <p className="text-sm text-gray-400 mt-2">
+            You don't have any team members reporting to you
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Direct reports · Q2 2025</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Direct reports · {activeCycle?.name || 'Current Cycle'}
+          </h2>
           <p className="text-sm text-gray-600 mt-1">
             {filteredMembers.length} team member{filteredMembers.length !== 1 ? 's' : ''}
           </p>
@@ -154,16 +157,13 @@ export default function TeamResults() {
                     Dept
                   </th>
                   <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Leadership
+                    Competency
                   </th>
                   <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Communication
+                    Individual KPI
                   </th>
                   <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Innovation
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Accountability
+                    Shared KPI
                   </th>
                   <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
                     Overall
@@ -179,7 +179,7 @@ export default function TeamResults() {
               <tbody className="divide-y divide-gray-100">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-gray-500">
+                    <td colSpan={8} className="py-12 text-center text-gray-500">
                       No team members found
                     </td>
                   </tr>
@@ -200,28 +200,23 @@ export default function TeamResults() {
                         {member.department}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.leadership)}>
-                          {member.scores.leadership}
+                        <span className={getScoreColor(member.scores.competency)}>
+                          {member.scores.competency > 0 ? member.scores.competency.toFixed(1) : '-'}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.communication)}>
-                          {member.scores.communication}
+                        <span className={getScoreColor(member.scores.individualKpi)}>
+                          {member.scores.individualKpi > 0 ? member.scores.individualKpi.toFixed(1) : '-'}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.innovation)}>
-                          {member.scores.innovation}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.accountability)}>
-                          {member.scores.accountability}
+                        <span className={getScoreColor(member.scores.sharedKpi)}>
+                          {member.scores.sharedKpi > 0 ? member.scores.sharedKpi.toFixed(1) : '-'}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className={`text-lg ${getScoreColor(member.scores.overall)}`}>
-                          {member.scores.overall}
+                          {member.scores.overall > 0 ? member.scores.overall.toFixed(1) : '-'}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-center">
@@ -249,7 +244,7 @@ export default function TeamResults() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Team Average</p>
-              <p className="text-3xl font-bold text-indigo-600">3.94</p>
+              <p className="text-3xl font-bold text-indigo-600">{teamAverage}</p>
             </div>
           </CardContent>
         </Card>
@@ -257,7 +252,7 @@ export default function TeamResults() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Completed</p>
-              <p className="text-3xl font-bold text-green-600">3</p>
+              <p className="text-3xl font-bold text-green-600">{completedCount}</p>
             </div>
           </CardContent>
         </Card>
@@ -265,7 +260,7 @@ export default function TeamResults() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Pending</p>
-              <p className="text-3xl font-bold text-amber-600">2</p>
+              <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
             </div>
           </CardContent>
         </Card>
@@ -273,7 +268,7 @@ export default function TeamResults() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Completion Rate</p>
-              <p className="text-3xl font-bold text-teal-600">60%</p>
+              <p className="text-3xl font-bold text-teal-600">{completionRate}%</p>
             </div>
           </CardContent>
         </Card>

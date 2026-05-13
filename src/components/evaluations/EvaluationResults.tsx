@@ -2,13 +2,18 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useCompetencyAssessments } from '@/hooks/evaluations/useCompetencyAssessment';
+import { useCompetencyAssessments, useAssessmentResponses } from '@/hooks/evaluations/useCompetencyAssessment';
 import { useEvaluationCycles } from '@/hooks/evaluations/useEvaluationCycles';
+import { useEvaluationWeightConfigs } from '@/hooks/evaluations/useEvaluationWeights';
 import { EvaluationCycleStatus, EvaluationStatus } from '@/types/evaluation';
 import { TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useApolloClient } from '@apollo/client';
+import { GET_ASSESSMENT_RESPONSES } from '@/lib/graphql/queries/evaluations';
 
 export default function EvaluationResults() {
   const { user } = useAuth();
+  const client = useApolloClient();
   const { cycles } = useEvaluationCycles(1, 1, '', EvaluationCycleStatus.ACTIVE);
   const activeCycle = cycles?.[0];
   
@@ -19,6 +24,8 @@ export default function EvaluationResults() {
     user?.employeeId
   );
 
+  const { weightConfigs } = useEvaluationWeightConfigs(activeCycle?.evaluationCycleId);
+
   // Calculate completed assessments
   const completedAssessments = assessments?.filter(
     (a: any) => a.status === EvaluationStatus.COMPLETED || a.status === EvaluationStatus.SUBMITTED
@@ -26,69 +33,144 @@ export default function EvaluationResults() {
 
   const hasResults = completedAssessments.length > 0;
 
+  const [calculatedScores, setCalculatedScores] = useState<any[]>([]);
+  const [overallScore, setOverallScore] = useState(0);
+  const [calculating, setCalculating] = useState(false);
+
+  useEffect(() => {
+    if (completedAssessments.length === 0 || !activeCycle) {
+      return;
+    }
+
+    calculateScores();
+  }, [completedAssessments.length, activeCycle?.evaluationCycleId]);
+
+  const calculateScores = async () => {
+    setCalculating(true);
+    
+    try {
+      // 1. Fetch all responses for completed assessments
+      const allResponses: any[] = [];
+      for (const assessment of completedAssessments) {
+        const { data } = await client.query({
+          query: GET_ASSESSMENT_RESPONSES,
+          variables: {
+            assessmentId: assessment.competencyAssessmentId,
+            page: 1,
+            limit: 1000,
+          },
+          fetchPolicy: 'network-only',
+        });
+        
+        allResponses.push({
+          assessment,
+          responses: data?.assessmentResponses?.items || [],
+        });
+      }
+
+      // 2. Group responses by competency and relation type
+      const scoresByCompetency: Record<string, any> = {};
+      
+      allResponses.forEach(({ assessment, responses }) => {
+        const relationType = assessment.relationType;
+        
+        responses.forEach((response: any) => {
+          const competencyId = response.indicator?.competency?.competencyId;
+          const competencyName = response.indicator?.competency?.name;
+          
+          if (!competencyId || !competencyName) return;
+          
+          if (!scoresByCompetency[competencyId]) {
+            scoresByCompetency[competencyId] = {
+              name: competencyName,
+              SELF: [],
+              PEER: [],
+              SUPERVISOR: [],
+              SUBORDINATE: [],
+            };
+          }
+          
+          scoresByCompetency[competencyId][relationType].push(response.rating);
+        });
+      });
+
+      // 3. Calculate averages
+      const average = (arr: number[]) => 
+        arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+      const competencyScores = Object.entries(scoresByCompetency).map(([id, scores]: [string, any]) => {
+        const breakdown = {
+          self: average(scores.SELF),
+          peer: average(scores.PEER),
+          supervisor: average(scores.SUPERVISOR),
+          subordinate: average(scores.SUBORDINATE),
+          weighted: 0,
+        };
+
+        return {
+          competencyId: id,
+          name: scores.name,
+          breakdown,
+          score: 0, // Will be calculated after applying weights
+        };
+      });
+
+      // 4. Apply weights
+      const weights: Record<string, number> = {
+        SELF: 20,
+        PEER: 30,
+        SUPERVISOR: 35,
+        SUBORDINATE: 15,
+      };
+
+      // If weight configs exist, use them
+      if (weightConfigs && weightConfigs.length > 0) {
+        weightConfigs.forEach((config: any) => {
+          weights[config.relationType] = config.weightPercent;
+        });
+      }
+
+      competencyScores.forEach(comp => {
+        comp.breakdown.weighted = 
+          (comp.breakdown.self * weights.SELF / 100) +
+          (comp.breakdown.peer * weights.PEER / 100) +
+          (comp.breakdown.supervisor * weights.SUPERVISOR / 100) +
+          (comp.breakdown.subordinate * weights.SUBORDINATE / 100);
+        
+        comp.score = comp.breakdown.weighted;
+      });
+
+      // 5. Calculate overall score
+      const overall = competencyScores.length > 0
+        ? average(competencyScores.map(c => c.score))
+        : 0;
+
+      // 6. Add colors for display
+      const colors = [
+        { color: 'text-indigo-600', bgColor: 'bg-indigo-50', borderColor: 'border-indigo-200' },
+        { color: 'text-teal-600', bgColor: 'bg-teal-50', borderColor: 'border-teal-200' },
+        { color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
+        { color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-200' },
+      ];
+
+      const scoresToDisplay = competencyScores.map((comp, idx) => ({
+        ...comp,
+        ...colors[idx % colors.length],
+      }));
+
+      setCalculatedScores(scoresToDisplay);
+      setOverallScore(overall);
+    } catch (error) {
+      console.error('Error calculating scores:', error);
+    } finally {
+      setCalculating(false);
+    }
+  };
+
   // Mock competency scores - in real app, calculate from assessment responses
-  const competencyScores = [
-    {
-      name: 'Leadership & Decision Making',
-      score: 4.2,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200',
-      breakdown: {
-        self: 4.2,
-        peer: 3.9,
-        supervisor: 4.5,
-        subordinate: 4.0,
-        weighted: 4.2,
-      },
-    },
-    {
-      name: 'Communication & Collaboration',
-      score: 4.0,
-      color: 'text-teal-600',
-      bgColor: 'bg-teal-50',
-      borderColor: 'border-teal-200',
-      breakdown: {
-        self: 3.8,
-        peer: 4.1,
-        supervisor: 3.7,
-        subordinate: 4.2,
-        weighted: 4.0,
-      },
-    },
-    {
-      name: 'Innovation & Problem Solving',
-      score: 3.7,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200',
-      breakdown: {
-        self: 3.5,
-        peer: 3.6,
-        supervisor: 4.0,
-        subordinate: 3.8,
-        weighted: 3.7,
-      },
-    },
-    {
-      name: 'Accountability & Integrity',
-      score: 4.5,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-      breakdown: {
-        self: 4.5,
-        peer: 4.3,
-        supervisor: 4.8,
-        subordinate: 4.4,
-        weighted: 4.5,
-      },
-    },
-  ];
+  const competencyScores = calculatedScores.length > 0 ? calculatedScores : [];
 
-  const overallScore = 4.08;
-
-  if (loading) {
+  if (loading || calculating) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -125,10 +207,20 @@ export default function EvaluationResults() {
       <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 md:p-8 border border-indigo-100">
         <div className="text-center">
           <div className="inline-flex items-baseline gap-2 mb-2">
-            <span className="text-6xl md:text-7xl font-bold text-indigo-600">{overallScore}</span>
+            <span className="text-6xl md:text-7xl font-bold text-indigo-600">{overallScore.toFixed(2)}</span>
             <span className="text-2xl text-gray-600">out of 5.0</span>
           </div>
-          <p className="text-green-600 font-medium text-lg">Exceeds Expectations</p>
+          <p className={`font-medium text-lg ${
+            overallScore >= 4.5 ? 'text-green-600' : 
+            overallScore >= 3.5 ? 'text-blue-600' : 
+            overallScore >= 2.5 ? 'text-amber-600' : 
+            'text-red-600'
+          }`}>
+            {overallScore >= 4.5 ? 'Exceeds Expectations' : 
+             overallScore >= 3.5 ? 'Meets Expectations' : 
+             overallScore >= 2.5 ? 'Needs Improvement' : 
+             'Below Expectations'}
+          </p>
         </div>
       </div>
 
@@ -253,20 +345,20 @@ export default function EvaluationResults() {
                         </span>
                       </td>
                       <td className="text-center py-3 px-2 text-gray-900">
-                        {competency.breakdown.self}
+                        {competency.breakdown.self > 0 ? competency.breakdown.self.toFixed(1) : '-'}
                       </td>
                       <td className="text-center py-3 px-2 text-gray-900">
-                        {competency.breakdown.peer}
+                        {competency.breakdown.peer > 0 ? competency.breakdown.peer.toFixed(1) : '-'}
                       </td>
                       <td className="text-center py-3 px-2 text-gray-900">
-                        {competency.breakdown.supervisor}
+                        {competency.breakdown.supervisor > 0 ? competency.breakdown.supervisor.toFixed(1) : '-'}
                       </td>
                       <td className="text-center py-3 px-2 text-gray-900">
-                        {competency.breakdown.subordinate}
+                        {competency.breakdown.subordinate > 0 ? competency.breakdown.subordinate.toFixed(1) : '-'}
                       </td>
                       <td className="text-center py-3 px-2">
                         <span className={`font-semibold ${competency.color}`}>
-                          {competency.breakdown.weighted}
+                          {competency.breakdown.weighted.toFixed(1)}
                         </span>
                       </td>
                     </tr>
@@ -274,7 +366,10 @@ export default function EvaluationResults() {
                 </tbody>
               </table>
               <p className="text-xs text-gray-500 mt-4">
-                Weights: Self 20% · Peer 30% · Sup 35% · Sub 15%
+                Weights: Self {weightConfigs?.find((w: any) => w.relationType === 'SELF')?.weightPercent || 20}% · 
+                Peer {weightConfigs?.find((w: any) => w.relationType === 'PEER')?.weightPercent || 30}% · 
+                Sup {weightConfigs?.find((w: any) => w.relationType === 'SUPERVISOR')?.weightPercent || 35}% · 
+                Sub {weightConfigs?.find((w: any) => w.relationType === 'SUBORDINATE')?.weightPercent || 15}%
               </p>
             </div>
           </CardContent>

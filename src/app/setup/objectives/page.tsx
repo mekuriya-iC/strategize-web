@@ -30,7 +30,7 @@ export default function SetupObjectivesPage() {
         <div className="w-full max-w-3xl mx-auto">
           {/* Step indicator */}
           <p className="text-sm font-medium text-[#3838EC] text-center mb-3 uppercase tracking-wide">
-            Setup — Step 3 of 3
+            Setup — Step 5 of 5
           </p>
 
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center mb-3 text-[#11181C] dark:text-gray-100">

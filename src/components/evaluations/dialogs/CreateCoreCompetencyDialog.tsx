@@ -23,7 +23,8 @@ export default function CreateCoreCompetencyDialog({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { createCoreCompetency } = useCompetencyMutations();
+  const organizationId = getOrganizationId();
+  const { createCoreCompetency } = useCompetencyMutations(organizationId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +40,6 @@ export default function CreateCoreCompetencyDialog({
       await createCoreCompetency({
         name,
         description,
-        isActive: true,
         organizationId: getOrganizationId(),
       });
 

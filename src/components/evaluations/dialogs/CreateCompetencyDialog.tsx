@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getOrganizationId } from '@/lib/constants/organization';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,16 @@ export default function CreateCompetencyDialog({
   const [selectedCoreCompetencyId, setSelectedCoreCompetencyId] = useState(coreCompetencyId || '');
   const [loading, setLoading] = useState(false);
 
-  const { coreCompetencies } = useCoreCompetencies(1, 100);
-  const { createCompetency } = useCompetencyMutations();
+  const organizationId = getOrganizationId();
+  const { coreCompetencies } = useCoreCompetencies(1, 100, organizationId);
+  const { createCompetency } = useCompetencyMutations(organizationId);
+
+  // Update selectedCoreCompetencyId when coreCompetencyId prop changes
+  useEffect(() => {
+    if (coreCompetencyId) {
+      setSelectedCoreCompetencyId(coreCompetencyId);
+    }
+  }, [coreCompetencyId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +53,6 @@ export default function CreateCompetencyDialog({
         name,
         description,
         coreCompetencyId: selectedCoreCompetencyId,
-        isActive: true,
         organizationId: getOrganizationId(),
       });
 

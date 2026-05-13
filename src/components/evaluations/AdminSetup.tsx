@@ -57,7 +57,7 @@ export default function AdminSetup() {
   const organizationId = getOrganizationId();
   const { coreCompetencies, loading: coreLoading } = useCoreCompetencies(1, 50, organizationId);
   const { competencies, loading: competenciesLoading } = useCompetencies(1, 100, searchQuery, organizationId);
-  const { removeCompetency, removeIndicator, removeCoreCompetency } = useCompetencyMutations();
+  const { removeCompetency, removeIndicator, removeCoreCompetency } = useCompetencyMutations(organizationId);
   const { createWeightConfig } = useEvaluationWeightMutations();
 
   // Group competencies by core competency
@@ -72,6 +72,16 @@ export default function AdminSetup() {
     acc[coreId].items.push(comp);
     return acc;
   }, {});
+
+  // Add core competencies that don't have any competencies yet
+  coreCompetencies?.forEach((coreComp: any) => {
+    if (!groupedCompetencies[coreComp.coreCompetencyId]) {
+      groupedCompetencies[coreComp.coreCompetencyId] = {
+        core: coreComp,
+        items: [],
+      };
+    }
+  });
 
   const handleDeleteCompetency = async (competencyId: string, competencyName: string) => {
     toast.custom((t) => (
@@ -279,14 +289,29 @@ export default function AdminSetup() {
     }
 
     try {
-      await createWeightConfig({
-        evaluationCycleId: selectedWeightCycleId,
-        selfWeight,
-        peerWeight,
-        supervisorWeight,
-        subordinateWeight,
-        organizationId: getOrganizationId(),
-      });
+      // Create 4 separate weight configs, one for each relation type
+      await Promise.all([
+        createWeightConfig({
+          evaluationCycleId: selectedWeightCycleId,
+          relationType: 'SELF',
+          weightPercent: selfWeight,
+        }),
+        createWeightConfig({
+          evaluationCycleId: selectedWeightCycleId,
+          relationType: 'PEER',
+          weightPercent: peerWeight,
+        }),
+        createWeightConfig({
+          evaluationCycleId: selectedWeightCycleId,
+          relationType: 'SUPERVISOR',
+          weightPercent: supervisorWeight,
+        }),
+        createWeightConfig({
+          evaluationCycleId: selectedWeightCycleId,
+          relationType: 'SUBORDINATE',
+          weightPercent: subordinateWeight,
+        }),
+      ]);
       toast.success('Weight configuration saved successfully');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save weights');

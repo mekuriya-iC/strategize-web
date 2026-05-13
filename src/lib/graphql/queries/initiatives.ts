@@ -72,6 +72,15 @@ export const GET_INITIATIVE = gql`
       createdAt
       updatedAt
       strategicObjectiveId
+      objective {
+        objectiveId
+        title
+        description
+        level
+        status
+        dueDate
+        weight
+      }
       owner {
         employeeId
         fullName

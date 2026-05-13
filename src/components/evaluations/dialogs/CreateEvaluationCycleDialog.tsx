@@ -49,7 +49,6 @@ export default function CreateEvaluationCycleDialog({
         description,
         startDate,
         endDate,
-        status: EvaluationCycleStatus.UPCOMING,
         organizationId: getOrganizationId(),
       });
 

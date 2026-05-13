@@ -4,8 +4,8 @@ import { gql } from '@apollo/client';
  * Team Mutations
  */
 export const CREATE_TEAM = gql`
-  mutation CreateTeam($createTeamInput: CreateTeamInput!, $memberIds: [ID!]) {
-    createTeam(createTeamInput: $createTeamInput, memberIds: $memberIds) {
+  mutation CreateTeam($createTeamInput: CreateTeamInput!) {
+    createTeam(createTeamInput: $createTeamInput) {
       teamId
       name
       description
@@ -17,15 +17,6 @@ export const CREATE_TEAM = gql`
       teamLead {
         employeeId
         fullName
-      }
-      members {
-        teamMemberId
-        employee {
-          employeeId
-          fullName
-          picture
-          title
-        }
       }
       createdAt
     }
@@ -33,8 +24,8 @@ export const CREATE_TEAM = gql`
 `;
 
 export const UPDATE_TEAM = gql`
-  mutation UpdateTeam($updateTeamInput: UpdateTeamInput!, $memberIds: [ID!]) {
-    updateTeam(updateTeamInput: $updateTeamInput, memberIds: $memberIds) {
+  mutation UpdateTeam($updateTeamInput: UpdateTeamInput!) {
+    updateTeam(updateTeamInput: $updateTeamInput) {
       teamId
       name
       description
@@ -46,15 +37,6 @@ export const UPDATE_TEAM = gql`
       teamLead {
         employeeId
         fullName
-      }
-      members {
-        teamMemberId
-        employee {
-          employeeId
-          fullName
-          picture
-          title
-        }
       }
       updatedAt
     }

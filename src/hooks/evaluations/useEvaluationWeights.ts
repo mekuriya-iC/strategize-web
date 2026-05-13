@@ -24,22 +24,25 @@ export const useEvaluationWeightConfigs = (evaluationCycleId?: string, page = 1,
 
 export const useEvaluationWeightMutations = () => {
   const [createWeightConfig] = useMutation(CREATE_EVALUATION_WEIGHT_CONFIG, {
-    onCompleted: () => {
-      toast.success('Weight configuration saved');
-    },
     onError: (error) => {
       toast.error(`Failed to save weight: ${error.message}`);
     },
-    refetchQueries: [GET_EVALUATION_WEIGHT_CONFIGS],
+    refetchQueries: [{ 
+      query: GET_EVALUATION_WEIGHT_CONFIGS,
+      variables: { page: 1, limit: 10 }
+    }],
+    awaitRefetchQueries: true,
   });
 
   const [updateWeightConfig] = useMutation(UPDATE_EVALUATION_WEIGHT_CONFIG, {
-    onCompleted: () => {
-      toast.success('Weight configuration updated');
-    },
     onError: (error) => {
       toast.error(`Failed to update weight: ${error.message}`);
     },
+    refetchQueries: [{ 
+      query: GET_EVALUATION_WEIGHT_CONFIGS,
+      variables: { page: 1, limit: 10 }
+    }],
+    awaitRefetchQueries: true,
   });
 
   return {

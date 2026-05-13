@@ -29,6 +29,11 @@ export default function MyEvaluations() {
     user?.employeeId // Get assessments where current user is the evaluator
   );
 
+  console.log('Active Cycle:', activeCycle);
+  console.log('User:', user);
+  console.log('Assessments:', assessments);
+  console.log('Loading:', loading);
+
   const getStatusBadge = (status: EvaluationStatus) => {
     const statusConfig = {
       [EvaluationStatus.NOT_STARTED]: {
@@ -120,6 +125,8 @@ export default function MyEvaluations() {
   };
 
   const handleStartEvaluation = (assessmentId: string) => {
+    console.log('Starting evaluation with ID:', assessmentId);
+    console.log('Navigating to:', `/dashboard/evaluations/assess/${assessmentId}`);
     router.push(`/dashboard/evaluations/assess/${assessmentId}`);
   };
 

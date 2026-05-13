@@ -162,56 +162,6 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
     return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const ActivityForm = ({ onSubmit, submitLabel, isLoading }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string; isLoading: boolean }) => (
-    <form onSubmit={onSubmit} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label>Title *</Label>
-        <Input placeholder="Activity title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-      </div>
-      <div className="space-y-2">
-        <Label>Description</Label>
-        <Textarea placeholder="Describe the activity..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
-      </div>
-      <div className="space-y-2">
-        <Label>Status</Label>
-        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="NOT_DONE">Not Done</SelectItem>
-            <SelectItem value="DONE">Done</SelectItem>
-            <SelectItem value="POSTPONED">Postponed</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Start Date</Label>
-          <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
-        </div>
-        <div className="space-y-2">
-          <Label>Due Date</Label>
-          <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Notes</Label>
-        <Textarea placeholder="Additional notes..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox id="milestone" checked={form.milestone} onCheckedChange={(v) => setForm({ ...form, milestone: !!v })} />
-        <Label htmlFor="milestone" className="text-sm cursor-pointer">Mark as milestone</Label>
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={() => { resetForm(); setShowCreate(false); setEditActivity(null); }}>Cancel</Button>
-        <Button type="submit" disabled={isLoading || !form.title}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {submitLabel}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -305,7 +255,53 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
             <DialogTitle>Add Activity</DialogTitle>
             <DialogDescription>Add a new activity to this initiative.</DialogDescription>
           </DialogHeader>
-          <ActivityForm onSubmit={handleCreate} submitLabel="Add Activity" isLoading={mutLoading.createActivity} />
+          <form onSubmit={handleCreate} className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label>Title *</Label>
+              <Input placeholder="Activity title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea placeholder="Describe the activity..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NOT_DONE">Not Done</SelectItem>
+                  <SelectItem value="DONE">Done</SelectItem>
+                  <SelectItem value="POSTPONED">Postponed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea placeholder="Additional notes..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="milestone-create" checked={form.milestone} onCheckedChange={(v) => setForm({ ...form, milestone: !!v })} />
+              <Label htmlFor="milestone-create" className="text-sm cursor-pointer">Mark as milestone</Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { resetForm(); setShowCreate(false); }}>Cancel</Button>
+              <Button type="submit" disabled={mutLoading.createActivity || !form.title}>
+                {mutLoading.createActivity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Activity
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -316,7 +312,53 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
             <DialogTitle>Edit Activity</DialogTitle>
             <DialogDescription>Update activity details.</DialogDescription>
           </DialogHeader>
-          <ActivityForm onSubmit={handleEdit} submitLabel="Save Changes" isLoading={mutLoading.updateActivity} />
+          <form onSubmit={handleEdit} className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label>Title *</Label>
+              <Input placeholder="Activity title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea placeholder="Describe the activity..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NOT_DONE">Not Done</SelectItem>
+                  <SelectItem value="DONE">Done</SelectItem>
+                  <SelectItem value="POSTPONED">Postponed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea placeholder="Additional notes..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="milestone-edit" checked={form.milestone} onCheckedChange={(v) => setForm({ ...form, milestone: !!v })} />
+              <Label htmlFor="milestone-edit" className="text-sm cursor-pointer">Mark as milestone</Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { resetForm(); setEditActivity(null); }}>Cancel</Button>
+              <Button type="submit" disabled={mutLoading.updateActivity || !form.title}>
+                {mutLoading.updateActivity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

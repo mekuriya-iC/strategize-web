@@ -52,33 +52,36 @@ export const useEvaluationCycle = (evaluationCycleId: string) => {
 
 export const useEvaluationCycleMutations = () => {
   const [createCycle] = useMutation(CREATE_EVALUATION_CYCLE, {
-    onCompleted: () => {
-      toast.success('Evaluation cycle created successfully');
-    },
     onError: (error) => {
       toast.error(`Failed to create cycle: ${error.message}`);
     },
-    refetchQueries: [GET_EVALUATION_CYCLES],
+    refetchQueries: [{ 
+      query: GET_EVALUATION_CYCLES,
+      variables: { page: 1, limit: 20, search: '' }
+    }],
+    awaitRefetchQueries: true,
   });
 
   const [updateCycle] = useMutation(UPDATE_EVALUATION_CYCLE, {
-    onCompleted: () => {
-      toast.success('Evaluation cycle updated successfully');
-    },
     onError: (error) => {
       toast.error(`Failed to update cycle: ${error.message}`);
     },
-    refetchQueries: [GET_EVALUATION_CYCLES],
+    refetchQueries: [{ 
+      query: GET_EVALUATION_CYCLES,
+      variables: { page: 1, limit: 20, search: '' }
+    }],
+    awaitRefetchQueries: true,
   });
 
   const [removeCycle] = useMutation(REMOVE_EVALUATION_CYCLE, {
-    onCompleted: () => {
-      toast.success('Evaluation cycle removed successfully');
-    },
     onError: (error) => {
       toast.error(`Failed to remove cycle: ${error.message}`);
     },
-    refetchQueries: [GET_EVALUATION_CYCLES],
+    refetchQueries: [{ 
+      query: GET_EVALUATION_CYCLES,
+      variables: { page: 1, limit: 20, search: '' }
+    }],
+    awaitRefetchQueries: true,
   });
 
   return {

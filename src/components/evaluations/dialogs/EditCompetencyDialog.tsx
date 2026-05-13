@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getOrganizationId } from '@/lib/constants/organization';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,8 @@ export default function EditCompetencyDialog({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { updateCompetency } = useCompetencyMutations();
+  const organizationId = getOrganizationId();
+  const { updateCompetency } = useCompetencyMutations(organizationId);
 
   useEffect(() => {
     if (competency) {

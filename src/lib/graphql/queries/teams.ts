@@ -31,15 +31,6 @@ export const GET_TEAMS = gql`
           email
           picture
         }
-        members {
-          teamMemberId
-          employee {
-            employeeId
-            fullName
-            picture
-            title
-          }
-        }
         createdAt
         updatedAt
       }
@@ -76,16 +67,6 @@ export const GET_TEAM = gql`
         email
         picture
         title
-      }
-      members {
-        teamMemberId
-        employee {
-          employeeId
-          fullName
-          email
-          picture
-          title
-        }
       }
       createdAt
       updatedAt

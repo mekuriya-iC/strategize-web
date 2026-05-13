@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getOrganizationId } from '@/lib/constants/organization';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,8 @@ export default function EditIndicatorDialog({
   const [ratingScaleMax, setRatingScaleMax] = useState(5);
   const [loading, setLoading] = useState(false);
 
-  const { updateIndicator } = useCompetencyMutations();
+  const organizationId = getOrganizationId();
+  const { updateIndicator } = useCompetencyMutations(organizationId);
 
   useEffect(() => {
     if (indicator) {

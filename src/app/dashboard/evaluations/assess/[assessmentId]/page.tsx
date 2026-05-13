@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_ASSESSMENT_RESPONSES } from '@/lib/graphql/queries/evaluations';
 import { CREATE_ASSESSMENT_RESPONSE } from '@/lib/graphql/mutations/evaluations';
+import { getOrganizationId } from '@/lib/constants/organization';
 
 // Component to fetch and display indicators for a competency
 function CompetencyIndicators({ 
@@ -39,7 +40,7 @@ function CompetencyIndicators({
 
   // Report indicator count to parent
   useEffect(() => {
-    if (indicators.length > 0 && onIndicatorCountChange) {
+    if (onIndicatorCountChange) {
       onIndicatorCountChange(competencyId, indicators.length);
     }
   }, [indicators.length, competencyId, onIndicatorCountChange]);
@@ -55,7 +56,15 @@ function CompetencyIndicators({
   }
 
   if (indicators.length === 0) {
-    return null;
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-sm font-medium text-gray-900 mb-2">{competencyName}</p>
+          <p className="text-sm text-gray-500">No indicators configured for this competency</p>
+          <p className="text-xs text-gray-400 mt-1">Please add indicators in Admin Setup → Framework</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -137,7 +146,9 @@ export default function AssessmentFormPage() {
 
   const { assessment, loading: assessmentLoading } = useCompetencyAssessment(assessmentId);
   const { updateAssessment } = useCompetencyAssessmentMutations();
-  const { competencies, loading: competenciesLoading } = useCompetencies(1, 100);
+  
+  const organizationId = getOrganizationId();
+  const { competencies, loading: competenciesLoading } = useCompetencies(1, 100, '', organizationId);
   
   // Get existing responses
   const { data: responsesData } = useQuery(GET_ASSESSMENT_RESPONSES, {

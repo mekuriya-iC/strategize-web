@@ -12,6 +12,7 @@ interface JWTPayload {
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
+  '/',
   '/auth',
   '/auth/forgot-password',
   '/auth/reset-password',

@@ -9,7 +9,7 @@ import {
   ASSIGN_OBJECTIVE,
   UPDATE_OBJECTIVE_STATUS,
 } from "@/lib/graphql/mutations/objectives";
-import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { GET_OBJECTIVES, GET_OBJECTIVE } from "@/lib/graphql/queries/objectives";
 import {
   CreateObjectiveMutationVariables,
   UpdateObjectiveMutationVariables,
@@ -23,13 +23,18 @@ import {
 import { objectiveLogger } from "@/lib/logger";
 import { invalidateAfterMutation } from "@/stores/cacheStore";
 
+const OBJECTIVES_REFETCH = [
+  { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
+  "GetObjectives",
+];
+
 export const useObjectiveMutations = () => {
   const [createObjective, { loading: createLoading, error: createError }] =
     useMutation(CREATE_OBJECTIVE, {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [updateObjective, { loading: updateLoading, error: updateError }] =
@@ -37,7 +42,17 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: (result) => {
+        const id = result.data?.updateObjective?.objectiveId;
+        const queries: Array<
+          | (typeof OBJECTIVES_REFETCH)[number]
+          | { query: typeof GET_OBJECTIVE; variables: { objectiveId: string } }
+        > = [...OBJECTIVES_REFETCH];
+        if (id) {
+          queries.push({ query: GET_OBJECTIVE, variables: { objectiveId: id } });
+        }
+        return queries;
+      },
     });
 
   const [deleteObjective, { loading: deleteLoading, error: deleteError }] =
@@ -46,7 +61,7 @@ export const useObjectiveMutations = () => {
         invalidateAfterMutation.objective();
         invalidateAfterMutation.submission();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [approveObjective, { loading: approveLoading, error: approveError }] =
@@ -54,7 +69,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [rejectObjective, { loading: rejectLoading, error: rejectError }] =
@@ -62,7 +77,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [cascadeObjective, { loading: cascadeLoading, error: cascadeError }] =
@@ -70,7 +85,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [assignObjective, { loading: assignLoading, error: assignError }] =
@@ -78,7 +93,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [updateObjectiveStatus, { loading: statusLoading, error: statusError }] =
@@ -86,7 +101,7 @@ export const useObjectiveMutations = () => {
       onCompleted: () => {
         invalidateAfterMutation.objective();
       },
-      refetchQueries: "active", // Refetch all active objective queries
+      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const handleCreateObjective = async (

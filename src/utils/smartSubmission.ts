@@ -15,6 +15,36 @@ import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
 import { UPDATE_OBJECTIVE } from "@/lib/graphql/mutations/objectives";
 import { UPDATE_KPI } from "@/lib/graphql/mutations/kpis";
 import { submissionLogger } from "@/lib/logger";
+import {
+  kpiSubmissionsQueryVariables,
+  objectiveSubmissionsQueryVariables,
+} from "@/hooks/submissions/submissionQueryVariables";
+
+const SUBMISSION_INBOX_TYPES = [
+  "CORPORATE",
+  "DIVISION",
+  "DEPARTMENT",
+  "PERSONNEL",
+] as const;
+
+function submissionInboxRefetchQueries(limit = 1000) {
+  return [
+    ...SUBMISSION_INBOX_TYPES.flatMap((type) => [
+      {
+        query: GET_SUBMISSIONS,
+        variables: { ...objectiveSubmissionsQueryVariables(type), limit },
+      },
+      {
+        query: GET_KPI_SUBMISSIONS,
+        variables: { ...kpiSubmissionsQueryVariables(type), limit },
+      },
+      {
+        query: GET_PENDING_SUBMISSIONS,
+        variables: { ...objectiveSubmissionsQueryVariables(type), limit },
+      },
+    ]),
+  ];
+}
 
 interface SubmissionData {
   [key: string]: unknown;
@@ -150,15 +180,14 @@ export async function handleSmartSubmission({
 
     // For non-admin users, proceed with normal submission workflow
     // 1. Fetch existing submissions using the SAME queries as the objectives page
-    const submissionTypes = ["DIVISION", "DEPARTMENT", "PERSONNEL"];
     const allSubmissions: Submission[] = [];
 
     // Fetch KPI submissions (same as objectives page)
-    for (const type of submissionTypes) {
+    for (const type of SUBMISSION_INBOX_TYPES) {
       try {
         const { data } = await client.query({
           query: GET_KPI_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type },
+          variables: kpiSubmissionsQueryVariables(type),
           fetchPolicy: "network-only",
         });
 
@@ -171,11 +200,11 @@ export async function handleSmartSubmission({
     }
 
     // Fetch objective submissions (GET_PENDING_SUBMISSIONS)
-    for (const type of submissionTypes) {
+    for (const type of SUBMISSION_INBOX_TYPES) {
       try {
         const { data } = await client.query({
           query: GET_PENDING_SUBMISSIONS,
-          variables: { page: 1, limit: 1000, type },
+          variables: objectiveSubmissionsQueryVariables(type),
           fetchPolicy: "network-only",
         });
 
@@ -257,24 +286,8 @@ export async function handleSmartSubmission({
         },
         fetchPolicy: "network-only",
         refetchQueries: [
-          // Refetch all submission queries that the UI uses
-          { query: GET_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DIVISION" } },
-          { query: GET_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DEPARTMENT" } },
-          { query: GET_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "PERSONNEL" } },
-          // Refetch KPI submissions queries
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DIVISION" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DEPARTMENT" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "PERSONNEL" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
-          // Refetch pending submissions queries
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DIVISION" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DEPARTMENT" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "PERSONNEL" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
+          ...submissionInboxRefetchQueries(1000),
+          ...submissionInboxRefetchQueries(10),
           // Refetch objectives and KPIs
           { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
           { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
@@ -347,36 +360,18 @@ export async function handleSmartSubmission({
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         try {
-          await client.query({
-            query: GET_PENDING_SUBMISSIONS,
-            variables: { page: 1, limit: 1000, type: "DIVISION" },
-            fetchPolicy: "network-only",
-          });
-          await client.query({
-            query: GET_PENDING_SUBMISSIONS,
-            variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
-            fetchPolicy: "network-only",
-          });
-          await client.query({
-            query: GET_PENDING_SUBMISSIONS,
-            variables: { page: 1, limit: 1000, type: "PERSONNEL" },
-            fetchPolicy: "network-only",
-          });
-          await client.query({
-            query: GET_KPI_SUBMISSIONS,
-            variables: { page: 1, limit: 1000, type: "DIVISION" },
-            fetchPolicy: "network-only",
-          });
-          await client.query({
-            query: GET_KPI_SUBMISSIONS,
-            variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
-            fetchPolicy: "network-only",
-          });
-          await client.query({
-            query: GET_KPI_SUBMISSIONS,
-            variables: { page: 1, limit: 1000, type: "PERSONNEL" },
-            fetchPolicy: "network-only",
-          });
+          for (const type of SUBMISSION_INBOX_TYPES) {
+            await client.query({
+              query: GET_PENDING_SUBMISSIONS,
+              variables: objectiveSubmissionsQueryVariables(type),
+              fetchPolicy: "network-only",
+            });
+            await client.query({
+              query: GET_KPI_SUBMISSIONS,
+              variables: kpiSubmissionsQueryVariables(type),
+              fetchPolicy: "network-only",
+            });
+          }
         } catch (cacheError) {
           submissionLogger.warn("Cache invalidation error:", cacheError);
         }
@@ -402,15 +397,7 @@ export async function handleSmartSubmission({
         variables: { input: submissionData },
         fetchPolicy: "network-only",
         refetchQueries: [
-          { query: GET_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DIVISION" } },
-          { query: GET_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DEPARTMENT" } },
-          { query: GET_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "PERSONNEL" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DIVISION" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DEPARTMENT" } },
-          { query: GET_KPI_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "PERSONNEL" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DIVISION" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "DEPARTMENT" } },
-          { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 1000, type: "PERSONNEL" } },
+          ...submissionInboxRefetchQueries(1000),
           { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
           { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
           { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },

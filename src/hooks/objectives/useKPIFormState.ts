@@ -16,6 +16,7 @@ import type {
   Kpi,
 } from "@/types/graphql";
 import { kpiLogger } from "@/lib/logger";
+import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 
 // Types
 export interface KPIFormData {
@@ -132,11 +133,12 @@ export const useKPIFormState = ({
   const isKPIApproved = kpi?.status === "APPROVED";
   const isKPIRejected = kpi?.status === "REJECTED";
   // No editing allowed if approved, except for Corporate level which can always adjust
-  const canEditStructure = !isKPIApproved || objective?.type === "CORPORATE";
-  const canEditTargets = !isKPIApproved || objective?.type === "CORPORATE";
+  const isTopLevelCorporate = usesAnnualOnlyKpiTargets(objective);
+  const canEditStructure = !isKPIApproved || !isTopLevelCorporate;
+  const canEditTargets = !isKPIApproved || !isTopLevelCorporate;
   const isInheritedKPI = Boolean(objective?.parent);
-  // Quarterly mode is now strictly required for all cascaded/assigned levels
-  const isQuarterlyMode = isInheritedKPI || objective?.type === "DIVISION" || objective?.type === "DEPARTMENT" || objective?.type === "PERSONNEL";
+  // Quarterly breakdown for all cascaded/assigned objectives (including corporate-type assignees)
+  const isQuarterlyMode = !isTopLevelCorporate || isInheritedKPI;
 
   // Default timeline calculation
   const defaultTimeline = useMemo(() => {
@@ -275,31 +277,20 @@ export const useKPIFormState = ({
     annualTimeline
   ]);
 
-  // Get cumulative weight allocation for the entire level/category
+  // Weight budget for this objective only
   const getLevelAllocation = useCallback((): { used: number; remaining: number } => {
-    if (!objective) return { used: 0, remaining: 100 };
+    if (!objective?.objectiveId) return { used: 0, remaining: 100 };
 
-    // Find all KPIs at the same level (CORPORATE, DIVISION, etc.)
-    // For non-corporate levels, we also filter by assignee to keep weights scope-specific
-    const levelKpis = (kpis || []).filter((k) => {
-      const sameType = k.objective?.type === objective.type;
-      if (!sameType) return false;
+    const objectiveKpis = (kpis || []).filter(
+      (k) =>
+        k.objective?.objectiveId === objective.objectiveId &&
+        k.status !== "REJECTED" &&
+        k.kpiId !== kpiId
+    );
 
-      // If it's not corporate, we should probably scope it by assignee (e.g. specific division)
-      if (objective.type !== "CORPORATE") {
-        return k.objective?.assigneeId === objective.assigneeId;
-      }
-      return true;
-    });
-
-    const used = levelKpis.reduce((total, k) => {
-      // Skip current KPI being edited
-      if (k.kpiId === kpiId) return total;
-      return total + (k.weight || 0);
-    }, 0);
-
+    const used = objectiveKpis.reduce((total, k) => total + (k.weight || 0), 0);
     return { used, remaining: Math.max(0, 100 - used) };
-  }, [kpis, objective, kpiId]);
+  }, [kpis, objective?.objectiveId, kpiId]);
 
   // Form handlers
   const handleInputChange = useCallback((field: string, value: string) => {

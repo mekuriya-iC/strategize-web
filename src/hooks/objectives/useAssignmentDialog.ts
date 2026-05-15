@@ -311,15 +311,25 @@ export function useAssignmentDialog({
   // Reset assigneeType based on objective type
   useEffect(() => {
     if (open) {
-      if (objective.type === "CORPORATE" && assigneeType === "PERSONNEL") {
+      const isCorpTop =
+        objective.type === "CORPORATE" &&
+        !objective.assigneeType &&
+        !objective.parent;
+      const isDivisionLevel =
+        objective.assigneeType === "DIVISION" || objective.type === "DIVISION";
+      const isDepartmentLevel =
+        objective.assigneeType === "DEPARTMENT" ||
+        objective.type === "DEPARTMENT";
+
+      if (isCorpTop && assigneeType === "PERSONNEL") {
         updateAssigneeType("DIVISION");
       } else if (
-        objective.type === "DIVISION" &&
+        isDivisionLevel &&
         (assigneeType === "DIVISION" || assigneeType === "PERSONNEL")
       ) {
         updateAssigneeType("DEPARTMENT");
       } else if (
-        objective.type === "DEPARTMENT" &&
+        isDepartmentLevel &&
         (assigneeType === "DIVISION" || assigneeType === "DEPARTMENT")
       ) {
         updateAssigneeType("PERSONNEL");

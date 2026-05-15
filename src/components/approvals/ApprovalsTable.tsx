@@ -19,6 +19,10 @@ import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { useQuery } from "@apollo/client";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_PENDING_SUBMISSIONS, GET_KPI_SUBMISSIONS } from "@/lib/graphql/queries/submissions";
+import {
+  kpiSubmissionsQueryVariables,
+  objectiveSubmissionsQueryVariables,
+} from "@/hooks/submissions/submissionQueryVariables";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import UpdateKPIForm from "../objectives/UpdateKPIForm"; // Updated import
 
@@ -62,13 +66,25 @@ export default function ApprovalsTable({ activeTab }: ApprovalsTableProps) {
   const { objectives: objectivePerms } = usePermissions();
 
   // Fetch submissions to map reasons and IDs
-  const { data: subData1 } = useQuery(GET_PENDING_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DIVISION" } });
-  const { data: subData2 } = useQuery(GET_PENDING_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DEPARTMENT" } });
-  const { data: subData3 } = useQuery(GET_PENDING_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "PERSONNEL" } });
+  const { data: subData1 } = useQuery(GET_PENDING_SUBMISSIONS, {
+    variables: objectiveSubmissionsQueryVariables("DIVISION"),
+  });
+  const { data: subData2 } = useQuery(GET_PENDING_SUBMISSIONS, {
+    variables: objectiveSubmissionsQueryVariables("DEPARTMENT"),
+  });
+  const { data: subData3 } = useQuery(GET_PENDING_SUBMISSIONS, {
+    variables: objectiveSubmissionsQueryVariables("PERSONNEL"),
+  });
 
-  const { data: kpiSubData1 } = useQuery(GET_KPI_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DIVISION" } });
-  const { data: kpiSubData2 } = useQuery(GET_KPI_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "DEPARTMENT" } });
-  const { data: kpiSubData3 } = useQuery(GET_KPI_SUBMISSIONS, { variables: { page: 1, limit: 1000, type: "PERSONNEL" } });
+  const { data: kpiSubData1 } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: kpiSubmissionsQueryVariables("DIVISION"),
+  });
+  const { data: kpiSubData2 } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: kpiSubmissionsQueryVariables("DEPARTMENT"),
+  });
+  const { data: kpiSubData3 } = useQuery(GET_KPI_SUBMISSIONS, {
+    variables: kpiSubmissionsQueryVariables("PERSONNEL"),
+  });
 
   const allPendingSubmissions = useMemo(() => {
     const subs = [

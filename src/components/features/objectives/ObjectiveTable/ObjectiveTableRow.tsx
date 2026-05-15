@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Eye, GripVertical } from "lucide-react";
 import { Objective, Kpi } from "@/types/graphql";
+import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 import ObjectiveActions from "./ObjectiveActions";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -72,14 +73,25 @@ const ObjectiveTableRow: React.FC<ObjectiveTableRowProps> = ({
     const approvedKPIs = objectiveKPIs.filter(k => k.status === "APPROVED").length;
 
     const getFirstColumnContent = () => {
-        if (objective.parent) return objective.parent.title || objective.parent.name || "Unnamed Parent Objective";
-        return objective.title || objective.name || "Please add title";
+        if (objective.parent) {
+            const parentLabel = (objective.parent.title || objective.parent.name || "").trim();
+            return parentLabel || "Unnamed Parent Objective";
+        }
+        const own = (objective.title || objective.name || "").trim();
+        return own || "Please add title";
     };
 
     const getSecondColumnContent = () => {
-        if (objective.type === "CORPORATE" && !objective.parent) return "N/A";
-        if (objective.type === "PERSONNEL") return unitNames[objective.assigneeId || ""] || objective.title || objective.name || "Unnamed Personal Objective";
-        return objective.title || objective.name || "Please add title";
+        if (usesAnnualOnlyKpiTargets(objective)) return "N/A";
+        if (objective.type === "PERSONNEL") {
+            return (
+                unitNames[objective.assigneeId || ""] ||
+                (objective.title || objective.name || "").trim() ||
+                "Unnamed Personal Objective"
+            );
+        }
+        const own = (objective.title || objective.name || "").trim();
+        return own || "Please add title";
     };
 
     const getFromText = () => {

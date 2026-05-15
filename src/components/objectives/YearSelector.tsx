@@ -66,4 +66,33 @@ export default function YearSelector({
   );
 }
 
+/** Resolve the strategic year key used for KPI target timelines. */
+export function resolveStrategicTimeline(
+  period?: Pick<StrategicPeriod, "startDate" | "endDate"> | null,
+  targets?: Array<{ timeline: string }> | null,
+  storeTimeline?: string | null
+): string {
+  if (period?.startDate && period?.endDate) {
+    const yearRanges = buildYearRanges(period as StrategicPeriod);
+    if (yearRanges.length > 0) return yearRanges[0];
+    const startYear = new Date(period.startDate).getFullYear();
+    if (!Number.isNaN(startYear)) return startYear.toString();
+  }
+
+  if (storeTimeline) return storeTimeline;
+
+  if (targets?.length) {
+    const annual = targets.find((t) => !t.timeline.includes("-Q"));
+    if (annual?.timeline) {
+      return annual.timeline.split("-")[0].trim();
+    }
+    const quarterly = targets.find((t) => t.timeline.includes("-Q"));
+    if (quarterly?.timeline) {
+      return quarterly.timeline.split("-")[0].trim();
+    }
+  }
+
+  return "";
+}
+
 export { buildYearRanges };

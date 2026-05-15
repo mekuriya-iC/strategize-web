@@ -147,6 +147,7 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                                     measurementUnit: "NUMBER", // Default to NUMBER
                                     organizationId: organizationId, // Required by backend
                                     targetValue: 0, // Will be updated with targets
+                                    status: "NOT_SUBMITTED",
                                     targets: []
                                 }
                             });

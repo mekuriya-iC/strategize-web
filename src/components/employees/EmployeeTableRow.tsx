@@ -61,7 +61,6 @@ const EmployeeTableRow = ({
       </TableCell>
       <TableCell className="px-6 py-4 text-[#11181C] dark:text-gray-100">
         <EmployeeActionsMenu
-          onView={() => {}}
           employeeName={employee.fullName}
           employeeId={employee.employeeId}
           originalEmployee={originalEmployee}

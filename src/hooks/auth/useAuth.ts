@@ -19,6 +19,7 @@ import {
   getTokenExpiryDisplay,
   setupTokenExpirationChecker,
 } from "@/lib/auth-utils";
+import { useAuthStore } from "@/stores/authStore";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -183,13 +184,20 @@ export const useAuth = () => {
           authLogger.info("Refresh token stored");
         }
 
+        const employee = data.loginEmployee.employee;
+
         // Set user data from login response
         setAuthState({
           isAuthenticated: true,
-          user: data.loginEmployee.employee,
+          user: employee,
           loading: false,
           tokenExpiresIn: getTokenExpiryDisplay(token),
         });
+
+        useAuthStore.getState().login(employee, token);
+
+        // Refetch active queries with the new session (objectives list, me, etc.)
+        await apolloClient.resetStore();
 
         authLogger.info("Login successful");
         return { success: true, user: data.loginEmployee.employee };
@@ -220,21 +228,20 @@ export const useAuth = () => {
     }
   };
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     authLogger.info("User logging out");
 
     // Remove both tokens
     removeAccessToken();
     removeRefreshToken();
 
-    // Clear Apollo cache to prevent stale data
-    apolloClient.clearStore();
+    useAuthStore.getState().logout();
 
     // Clear any session storage and set logout flag
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("selectedStrategicPeriod");
-      sessionStorage.removeItem("authMessage"); // Clear any expired session messages
-      sessionStorage.setItem("intentionalLogout", "true"); // Mark as intentional logout
+      sessionStorage.removeItem("authMessage");
+      sessionStorage.setItem("intentionalLogout", "true");
     }
 
     setAuthState({
@@ -244,7 +251,12 @@ export const useAuth = () => {
       tokenExpiresIn: null,
     });
 
-    // Redirect to auth page (no expired param since this is intentional)
+    try {
+      await apolloClient.clearStore();
+    } catch (error) {
+      authLogger.warn("Apollo clearStore during logout", error);
+    }
+
     router.push("/auth");
   }, [apolloClient, router]);
 

@@ -3,6 +3,7 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Kpi } from "@/types/graphql";
+import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 import KPITargetsCell from "./KPITargetsCell";
 import KPIActions from "./KPIActions";
 
@@ -47,13 +48,15 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
     currentObjectiveType,
 }) => {
     const getFirstColumnContent = (kpi: Kpi) => {
-        if (kpi.parent) return kpi.parent.name;
-        return kpi.name || "Please add name";
+        if (kpi.parent?.name) {
+            return kpi.parent.name.trim() || "Unnamed Parent KPI";
+        }
+        return (kpi.name || "").trim() || "Please add name";
     };
 
     const getSecondColumnContent = (kpi: Kpi) => {
-        if (kpi.objective?.type === "CORPORATE" && !kpi.parent) return "N/A";
-        return kpi.name || "Please add name";
+        if (usesAnnualOnlyKpiTargets(kpi.objective) && !kpi.parent) return "N/A";
+        return (kpi.name || "").trim() || "Please add name";
     };
 
     const getFromText = (kpi: Kpi) => {

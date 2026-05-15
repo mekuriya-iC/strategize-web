@@ -1,6 +1,10 @@
 import { useMutation } from "@apollo/client";
-import { UPDATE_SUBMISSION } from "@/lib/graphql/mutations/submissions";
 import {
+  APPROVE_OBJECTIVE_WITH_KPIS,
+  UPDATE_SUBMISSION,
+} from "@/lib/graphql/mutations/submissions";
+import {
+  GET_KPI_SUBMISSIONS,
   GET_PENDING_SUBMISSIONS,
   GET_SUBMISSIONS_BY_STATUS,
 } from "@/lib/graphql/queries/submissions";
@@ -13,6 +17,33 @@ import type {
 } from "@/types/graphql";
 import { submissionLogger } from "@/lib/logger";
 import { invalidateAfterMutation } from "@/stores/cacheStore";
+import {
+  kpiSubmissionsQueryVariables,
+  objectiveSubmissionsQueryVariables,
+} from "./submissionQueryVariables";
+
+const submissionTypes = ["CORPORATE", "DIVISION", "DEPARTMENT", "PERSONNEL"] as const;
+
+const pendingSubmissionRefetchQueries = [
+  ...submissionTypes.map((type) => ({
+    query: GET_PENDING_SUBMISSIONS,
+    variables: objectiveSubmissionsQueryVariables(type),
+  })),
+  ...submissionTypes.map((type) => ({
+    query: GET_KPI_SUBMISSIONS,
+    variables: kpiSubmissionsQueryVariables(type),
+  })),
+  ...submissionTypes.map((type) => ({
+    query: GET_SUBMISSIONS_BY_STATUS,
+    variables: objectiveSubmissionsQueryVariables(type),
+  })),
+  { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
+  { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
+  { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
+  { query: GET_KPIS, variables: { page: 1, limit: 10 } },
+  { query: GET_KPIS, variables: { page: 1, limit: 20 } },
+  { query: GET_KPIS, variables: { page: 1, limit: 50 } },
+];
 
 export const useSubmissionApprovalMutations = () => {
   const [updateSubmission, { loading: updateLoading, error: updateError }] =
@@ -21,24 +52,15 @@ export const useSubmissionApprovalMutations = () => {
         // Invalidate approval-related caches
         invalidateAfterMutation.approval();
       },
-      refetchQueries: [
-        // Refetch submissions for all types
-        { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "CORPORATE" } },
-        { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DIVISION" } },
-        { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
-        { query: GET_PENDING_SUBMISSIONS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
-        { query: GET_SUBMISSIONS_BY_STATUS, variables: { page: 1, limit: 10, type: "CORPORATE" } },
-        { query: GET_SUBMISSIONS_BY_STATUS, variables: { page: 1, limit: 10, type: "DIVISION" } },
-        { query: GET_SUBMISSIONS_BY_STATUS, variables: { page: 1, limit: 10, type: "DEPARTMENT" } },
-        { query: GET_SUBMISSIONS_BY_STATUS, variables: { page: 1, limit: 10, type: "PERSONNEL" } },
-        // Refetch objectives and KPIs
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 10 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 20 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 50 } },
-        { query: GET_KPIS, variables: { page: 1, limit: 10 } },
-        { query: GET_KPIS, variables: { page: 1, limit: 20 } },
-        { query: GET_KPIS, variables: { page: 1, limit: 50 } },
-      ],
+      refetchQueries: pendingSubmissionRefetchQueries,
+    });
+
+  const [approveObjectiveWithKpisMutation, { loading: bulkApproveLoading }] =
+    useMutation(APPROVE_OBJECTIVE_WITH_KPIS, {
+      onCompleted: () => {
+        invalidateAfterMutation.approval();
+      },
+      refetchQueries: pendingSubmissionRefetchQueries,
     });
 
   const handleApproveSubmission = async (
@@ -154,6 +176,30 @@ export const useSubmissionApprovalMutations = () => {
     }
   };
 
+  const handleApproveObjectiveWithKpis = async (
+    objectiveSubmissionId: string,
+    reason?: string,
+    kpiSubmissionIds?: string[]
+  ) => {
+    try {
+      const result = await approveObjectiveWithKpisMutation({
+        variables: {
+          input: {
+            objectiveSubmissionId,
+            reason: reason || "Approved by approver",
+            ...(kpiSubmissionIds && kpiSubmissionIds.length > 0
+              ? { kpiSubmissionIds }
+              : {}),
+          },
+        },
+      });
+      return result.data?.approveObjectiveWithKpis;
+    } catch (error) {
+      submissionLogger.error("Error bulk-approving objective with KPIs:", error);
+      throw error;
+    }
+  };
+
   const handleRejectSubmissionWithItemUpdate = async (
     submission: MinimalSubmission,
     reason?: string
@@ -171,10 +217,11 @@ export const useSubmissionApprovalMutations = () => {
   return {
     updateSubmission,
     handleApproveSubmission,
+    handleApproveObjectiveWithKpis,
     handleRejectSubmission,
     handleApproveSubmissionWithItemUpdate,
     handleRejectSubmissionWithItemUpdate,
-    loading: updateLoading,
+    loading: updateLoading || bulkApproveLoading,
     error: updateError,
   };
 };

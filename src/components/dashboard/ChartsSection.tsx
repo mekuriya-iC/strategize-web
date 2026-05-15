@@ -1,140 +1,39 @@
 "use client";
+
 import { useMemo } from "react";
 import ChartCard from "./ChartCard";
-import { useQuery } from "@apollo/client";
-import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
-import { useStrategicPeriodStore, useAuthStore } from "@/stores";
-import { Objective } from "@/types/graphql";
+import { useAuthStore, useOrgUnitStore, useStrategicPeriodStore } from "@/stores";
+import { useAnalytics } from "@/hooks/objectives/useAnalytics";
+import { buildDashboardChartData } from "@/lib/dashboard/buildDashboardChartData";
 
 export default function ChartsSection() {
-  const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
   const user = useAuthStore((state) => state.user);
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
 
-  // Fetch objectives with KPIs
-  const { data: objectivesData, loading } = useQuery(GET_OBJECTIVES, {
-    variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+  const roleSelectedUnit =
+    (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
+      ? {
+          id: selectedUnit.id,
+          type: selectedUnit.type,
+        }
+      : null;
+
+  const analytics = useAnalytics({
+    selectedUnit: roleSelectedUnit,
+    userRole: user?.role,
+    userId: user?.employeeId,
+    annualTimeline,
+    selectedPeriodId: selectedPeriod?.strategicPeriodId,
   });
 
-  // Process data for charts based on selected period
-  const chartData = useMemo(() => {
-    const objectives = objectivesData?.objectives?.items || [];
-    
-    console.log('📊 [Charts] Processing chart data', {
-      totalObjectives: objectives.length,
-      userRole: user?.role,
-      annualTimeline,
-      selectedPeriodId: selectedPeriod?.strategicPeriodId
-    });
-    
-    // First, filter by strategic period if one is selected
-    const filteredByPeriod = selectedPeriod
-      ? objectives.filter((obj: Objective) => obj.strategicPeriod?.strategicPeriodId === selectedPeriod.strategicPeriodId)
-      : objectives;
+  const chartData = useMemo(
+    () =>
+      buildDashboardChartData(analytics.filteredObjectives, annualTimeline),
+    [analytics.filteredObjectives, annualTimeline]
+  );
 
-    console.log('📊 [Charts] After period filter', {
-      count: filteredByPeriod.length,
-      selectedPeriod: selectedPeriod?.name
-    });
-    
-    // Filter by role - admins see only CORPORATE objectives on dashboard
-    // NOTE: Using assigneeType instead of type since backend returns type as null
-    // Corporate objectives have no assigneeType and no assigneeId
-    const filteredByRole = (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')
-      ? filteredByPeriod.filter((obj: Objective) => !obj.assigneeType && !obj.assigneeId)
-      : filteredByPeriod;
-
-    console.log('📊 [Charts] After role filter', {
-      count: filteredByRole.length,
-      objectives: filteredByRole.map((o: Objective) => ({ title: o.title, kpisCount: o.kpis?.length || 0 }))
-    });
-
-    // Filter by timeline if selected
-    const filteredObjectives = annualTimeline
-      ? filteredByRole.filter((obj: Objective) =>
-          obj.kpis?.some((kpi: any) =>
-            kpi.targets?.some((t: any) => 
-              t.timeline === annualTimeline || t.timeline.startsWith(`${annualTimeline}-`)
-            )
-          )
-        )
-      : filteredByRole;
-
-    console.log('📊 [Charts] After timeline filter', {
-      count: filteredObjectives.length,
-      annualTimeline
-    });
-
-    // Count KPIs by month (for bar chart)
-    // Since KPIs don't have createdAt, we'll use objective createdAt or distribute evenly
-    const kpisByMonth: Record<string, number> = {
-      Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0,
-      Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: 0, Dec: 0
-    };
-
-    // Count KPIs by category (for donut chart)
-    const kpisByCategory: Record<string, number> = {};
-
-    filteredObjectives.forEach((obj: Objective) => {
-      obj.kpis?.forEach((kpi: any) => {
-        // Count by month based on objective creation date (since KPIs don't have createdAt)
-        if (obj.createdAt) {
-          const month = new Date(obj.createdAt).toLocaleString('en', { month: 'short' });
-          if (kpisByMonth[month] !== undefined) {
-            kpisByMonth[month]++;
-          }
-        }
-
-        // Count by objective title (category)
-        const category = obj.title || 'Uncategorized';
-        kpisByCategory[category] = (kpisByCategory[category] || 0) + 1;
-      });
-    });
-
-    console.log('📊 [Charts] KPIs by month', kpisByMonth);
-    console.log('📊 [Charts] KPIs by category', kpisByCategory);
-
-    // Prepare bar chart data
-    const barData = {
-      labels: Object.keys(kpisByMonth),
-      datasets: [
-        {
-          label: "KPIs",
-          data: Object.values(kpisByMonth),
-          backgroundColor: "#3838EC",
-          borderRadius: 8,
-        },
-      ],
-    };
-
-    // Prepare donut chart data (top 7 categories)
-    const sortedCategories = Object.entries(kpisByCategory)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 7);
-
-    const donutData = {
-      labels: sortedCategories.map(([name]) => name),
-      datasets: [
-        {
-          data: sortedCategories.map(([, count]) => count),
-          backgroundColor: [
-            "#3838EC",
-            "#726BEA",
-            "#5B5BFF",
-            "#A3A3FF",
-            "#C7C7FF",
-            "#E0E0FF",
-            "#F4F4FF",
-          ],
-          borderWidth: 0,
-        },
-      ],
-    };
-
-    return { barData, donutData };
-  }, [objectivesData, annualTimeline, user?.role, selectedPeriod]);
-
-  if (loading) {
+  if (analytics.loading) {
     return (
       <section className="mb-10">
         <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-6">
@@ -154,20 +53,36 @@ export default function ChartsSection() {
         <h2 className="text-2xl md:text-4xl font-semibold text-[#3F3F46] dark:text-gray-100">
           Charts
         </h2>
-        {annualTimeline && (
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Showing data for {annualTimeline}
-          </span>
-        )}
+        <div className="text-sm text-gray-500 dark:text-gray-400 text-right">
+          {annualTimeline && <p>Timeline: {annualTimeline}</p>}
+          {selectedPeriod?.name && <p>Period: {selectedPeriod.name}</p>}
+          {roleSelectedUnit && selectedUnit && (
+            <p>
+              Unit: {selectedUnit.name} ({selectedUnit.type})
+            </p>
+          )}
+          <p>{chartData.totalKpis} KPIs in scope</p>
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <ChartCard title="KPIs Over Time" chartType="bar" data={chartData.barData} />
-        <ChartCard
-          title="KPIs by Objective"
-          chartType="doughnut"
-          data={chartData.donutData}
-        />
-      </div>
+      {chartData.totalKpis === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
+          No KPI data for your current filters. Try another strategic period or
+          org unit.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <ChartCard
+            title="KPIs Over Time"
+            chartType="bar"
+            data={chartData.barData}
+          />
+          <ChartCard
+            title="KPIs by Objective"
+            chartType="doughnut"
+            data={chartData.donutData}
+          />
+        </div>
+      )}
     </section>
   );
 }

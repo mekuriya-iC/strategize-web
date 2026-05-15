@@ -20,16 +20,23 @@ import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
 import type {
   ObjectiveType,
-  SubmissionLevel,
   SubmissionType,
 } from "@/types/graphql";
+import {
+  isKpiSubmittable,
+  resolveSubmissionLevel,
+} from "@/lib/objectives/submissionLevel";
 
 interface SubmitDialogProps {
   children: React.ReactNode; // The trigger element (button)
   itemId: string; // objectiveId or kpiId
   itemName: string; // for display purposes
   objectiveType: ObjectiveType; // CORPORATE, DIVISION, DEPARTMENT, PERSONNEL
+  assigneeType?: string | null;
+  parentId?: string | null;
   itemType: "objective" | "kpi"; // for display purposes
+  /** Status from the list row; avoids mismatch when single-KPI query is stale */
+  knownKpiStatus?: string | null;
   onSubmitSuccess?: () => void;
 }
 
@@ -38,7 +45,10 @@ export default function SubmitDialog({
   itemId,
   itemName,
   objectiveType,
+  assigneeType,
+  parentId,
   itemType,
+  knownKpiStatus,
   onSubmitSuccess,
 }: SubmitDialogProps) {
   const [open, setOpen] = useState(false);
@@ -51,7 +61,7 @@ export default function SubmitDialog({
 
   // Validate KPI exists (only for KPI submissions)
   const { kpi: kpiData, loading: kpiLoading } = useKPI(
-    itemType === "kpi" ? { kpiId: itemId } : { kpiId: "" }
+    itemType === "kpi" && open ? { kpiId: itemId } : { kpiId: "" }
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,17 +114,13 @@ export default function SubmitDialog({
         return;
       }
 
-      // SUPER_ADMIN and ADMIN can submit/approve KPIs in any state
-      const isAdminUser = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
-      
-      if (!isAdminUser && kpiData.status !== "NOT_SUBMITTED" && kpiData.status !== "REJECTED") {
-        console.error("❌ KPI is not in a submittable state:", {
-          kpiId: kpiData.kpiId,
-          status: kpiData.status,
-          userRole: user?.role,
-        });
+      const isAdminUser =
+        user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+      const effectiveStatus = kpiData.status ?? knownKpiStatus;
+
+      if (!isAdminUser && !isKpiSubmittable(effectiveStatus)) {
         toast.error(
-          "This KPI cannot be submitted. It may already be submitted or approved."
+          `This KPI cannot be submitted (current status: ${effectiveStatus ?? "unknown"}).`
         );
         return;
       }
@@ -124,13 +130,20 @@ export default function SubmitDialog({
 
     setIsSubmitting(true);
 
-    // Map ObjectiveType to SubmissionLevel
-    const submissionLevel: SubmissionLevel =
-      validObjectiveType === "PERSONNEL"
-        ? "PERSONNEL"
-        : validObjectiveType === "DEPARTMENT"
-          ? "DEPARTMENT"
-          : "DIVISION"; // CORPORATE, DIVISION -> DIVISION level
+    const submissionLevel = resolveSubmissionLevel(
+      itemType === "kpi" && kpiData?.objective
+        ? {
+            type: kpiData.objective.type,
+            assigneeType: kpiData.objective.assigneeType,
+            assigneeId: kpiData.objective.assigneeId,
+            parentId: kpiData.objective.parent?.objectiveId,
+          }
+        : {
+            type: validObjectiveType,
+            assigneeType: assigneeType ?? null,
+            parentId: parentId ?? null,
+          }
+    );
 
     // Set submission type based on item type
     const submissionType: SubmissionType =

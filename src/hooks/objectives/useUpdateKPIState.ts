@@ -3,7 +3,7 @@ import { useApolloClient } from "@apollo/client";
 import { useKPI } from "@/hooks/objectives/useKPIs";
 import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
 import { kpiLogger } from "@/lib/logger";
-import { buildYearRanges } from "@/components/objectives/YearSelector";
+import { resolveStrategicTimeline } from "@/components/objectives/YearSelector";
 import type {
   Kpi,
   KpiWeightType,
@@ -15,6 +15,10 @@ import type {
 
 
 import { useStrategicPeriodStore } from "@/stores";
+import {
+  getWeightAllocationForObjective,
+  usesAnnualOnlyKpiTargetsForKpi,
+} from "@/lib/objectives/kpiWeightScope";
 
 export interface UpdateKPIFormData {
   name: string;
@@ -29,20 +33,34 @@ interface UseUpdateKPIStateProps {
   kpiId: string;
   onSuccess?: () => void;
   existingKPIs?: Kpi[];
+  /** Full objective from detail page — supplies strategic period dates when KPI query is sparse */
+  objectiveOverride?: {
+    strategicPeriod?: { startDate?: string; endDate?: string } | null;
+    type?: string | null;
+    assigneeType?: string | null;
+    assigneeId?: string | null;
+    parentId?: string | null;
+  };
 }
 
-export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUpdateKPIStateProps) {
+export function useUpdateKPIState({
+  kpiId,
+  onSuccess,
+  existingKPIs = [],
+  objectiveOverride,
+}: UseUpdateKPIStateProps) {
   const { kpi, loading, error, refetch } = useKPI({ kpiId });
   const { updateKpi } = useKPIMutations();
   const client = useApolloClient();
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+  const annualTimeline = useStrategicPeriodStore((state) => state.annualTimeline);
 
   // Fetch parent KPI if it exists
   const { kpi: parentKpi } = useKPI(
     kpi?.parent?.kpiId ? { kpiId: kpi.parent.kpiId } : { kpiId: "" }
   );
 
-  const isCorporate = kpi?.objective?.type === "CORPORATE";
+  const isCorporate = usesAnnualOnlyKpiTargetsForKpi(kpi);
 
   // Form state
   const [formData, setFormData] = useState<UpdateKPIFormData>({
@@ -58,17 +76,22 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
 
   // Strategic period timeline (single year from objective's strategic period)
   const strategicTimeline = useMemo(() => {
-    const period = kpi?.objective?.strategicPeriod || selectedPeriod;
-    if (period) {
-      const yearRanges = buildYearRanges(period);
-      if (yearRanges.length > 0) return yearRanges[0];
-
-      // Fallback: if buildYearRanges returns nothing, try to get at least the start year
-      const startYear = new Date(period.startDate).getFullYear();
-      if (!isNaN(startYear)) return startYear.toString();
-    }
-    return "";
-  }, [kpi?.objective?.strategicPeriod, selectedPeriod]);
+    const period =
+      objectiveOverride?.strategicPeriod ||
+      kpi?.objective?.strategicPeriod ||
+      selectedPeriod;
+    return resolveStrategicTimeline(
+      period,
+      kpi?.targets,
+      annualTimeline
+    );
+  }, [
+    kpi?.objective?.strategicPeriod,
+    kpi?.targets,
+    selectedPeriod,
+    annualTimeline,
+    objectiveOverride?.strategicPeriod,
+  ]);
 
 
   // Yearly quarters state for non-corporate breakdown
@@ -97,7 +120,6 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
       }));
 
       // Initialize annual target from existing targets
-      // Get the strategic period timeline and find matching target
       if (targets && targets.length > 0 && strategicTimeline) {
         // Try to find an annual target (non-quarterly) for the strategic period
         // Handle both exact match and prefix match (e.g. "2025" matching "2025/26")
@@ -196,31 +218,25 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
     }
   }, [strategicTimeline, isCorporate]);
 
-  // Calculate weight allocation for the objective
+  // Weight allocation scoped to this objective only (not parent/sibling corporate KPIs)
   const weightAllocation = useMemo(() => {
-    // Priority 1: Use explicitly passed existingKPIs (matches CreateKPIForm logic)
-    // Priority 2: Use objective.kpis from the fetched KPI
-    const kpisList = existingKPIs.length > 0 ? existingKPIs : (kpi?.objective?.kpis || []);
+    const objectiveIdForScope =
+      kpi?.objective?.objectiveId || existingKPIs[0]?.objective?.objectiveId;
 
-    if (kpisList.length === 0 && !kpi) {
+    if (!objectiveIdForScope) {
       return { used: 0, remaining: 100, total: 0, isOver: false };
     }
 
-    // Sum weights of other KPIs (excluding the current one and rejected ones)
-    const used = kpisList
-      .filter(k => k.kpiId !== kpiId && k.status !== 'REJECTED')
-      .reduce((sum, k) => sum + (k.weight || 0), 0);
+    const kpisPool =
+      existingKPIs.length > 0 ? existingKPIs : (kpi?.objective?.kpis || []);
 
-    // Also add the current form weight to get the 'tentative' total
     const currentWeight = parseFloat(formData.weight) || 0;
-    const totalWithCurrent = used + currentWeight;
-
-    return {
-      used,
-      remaining: Math.max(0, 100 - used),
-      total: totalWithCurrent,
-      isOver: totalWithCurrent > 100.01 // Small tolerance for float math
-    };
+    return getWeightAllocationForObjective(
+      objectiveIdForScope,
+      kpisPool,
+      currentWeight,
+      kpiId
+    );
   }, [kpi, kpiId, formData.weight, existingKPIs]);
 
   // Auto-populate from parent KPI for non-corporate levels
@@ -230,8 +246,9 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
       if (!isCorporate && kpi.parent?.kpiId) {
         kpiLogger.debug("Auto-populating from parent KPI:", parentKpi.name);
 
-        // Auto-populate name if empty
-        if (!formData.name && parentKpi.name) {
+        // Auto-populate name only when the KPI has no saved name yet
+        const savedName = (kpi.name || "").trim();
+        if (!savedName && parentKpi.name) {
           updateField("name", parentKpi.name);
         }
 
@@ -315,17 +332,26 @@ export function useUpdateKPIState({ kpiId, onSuccess, existingKPIs = [] }: UseUp
 
                 setAnnualTarget(derivedAnnual.toString());
 
-                // Populate quarterly breakdown from parent's quarters
-                const newQuarters: Record<string, { q1: string; q2: string; q3: string; q4: string }> = { ...yearlyQuarters };
+                // Populate quarterly breakdown from parent's quarters (keyed by strategicTimeline)
+                const strategicYearPrefix = strategicTimeline.split('/')[0];
+                const newQuarters: Record<string, { q1: string; q2: string; q3: string; q4: string }> = {
+                  [strategicTimeline]: { q1: '0', q2: '0', q3: '0', q4: '0' },
+                };
 
                 parentQuarterlyTargets.forEach(t => {
                   const [year, quarter] = t.timeline.split('-');
                   if (year && quarter) {
+                    const cleanYear = year.trim();
+                    const isMatch =
+                      cleanYear === strategicYearPrefix || cleanYear === strategicTimeline;
+                    const targetKey = isMatch ? strategicTimeline : cleanYear;
                     const qKey = quarter.toLowerCase() as 'q1' | 'q2' | 'q3' | 'q4';
-                    if (!newQuarters[year]) {
-                      newQuarters[year] = { q1: '0', q2: '0', q3: '0', q4: '0' };
+                    if (!newQuarters[targetKey]) {
+                      newQuarters[targetKey] = { q1: '0', q2: '0', q3: '0', q4: '0' };
                     }
-                    newQuarters[year][qKey] = t.target.toString();
+                    if (['q1', 'q2', 'q3', 'q4'].includes(qKey)) {
+                      newQuarters[targetKey][qKey] = t.target.toString();
+                    }
                   }
                 });
 

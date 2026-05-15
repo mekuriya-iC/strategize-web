@@ -15,7 +15,9 @@ import type {
   Division,
   Department,
   Employee,
+  Objective,
 } from "@/types/graphql";
+import { filterDashboardObjectives } from "@/lib/dashboard/filterDashboardObjectives";
 
 export interface AnalyticsStats {
   // Core counts
@@ -51,6 +53,9 @@ export interface AnalyticsStats {
 
   // Error states
   error: string | null;
+
+  // Objectives included in dashboard scope (for charts)
+  filteredObjectives: Objective[];
 }
 
 interface ItemWithDateFields {
@@ -61,6 +66,7 @@ interface ItemWithDateFields {
 interface UseAnalyticsOptions {
   selectedUnit?: { id: string; type: "division" | "department" } | null;
   userRole?: string;
+  userId?: string;
   annualTimeline?: string | null;
   selectedPeriodId?: string | null;
 }
@@ -68,7 +74,11 @@ interface UseAnalyticsOptions {
 export const useAnalytics = (
   options: UseAnalyticsOptions = {}
 ): AnalyticsStats => {
-  const { selectedUnit, userRole, annualTimeline, selectedPeriodId } = options;
+  const { selectedUnit, userRole, userId, annualTimeline, selectedPeriodId } =
+    options;
+
+  const objectivesAssigneeId =
+    selectedUnit?.id ?? (userRole === "NORMAL" ? userId : undefined);
 
   // Check if user has permission for global data queries
   const canAccessGlobalData =
@@ -116,7 +126,7 @@ export const useAnalytics = (
     variables: {
       page: 1,
       limit: 1000,
-      assigneeId: selectedUnit?.id || undefined,
+      assigneeId: objectivesAssigneeId,
     },
     fetchPolicy: "cache-and-network",
   });
@@ -250,56 +260,12 @@ export const useAnalytics = (
     // 4. Filtering Objectives & KPIs based on Role (Corporate filter), Strategic Period, and Timeline
     const allObjectivesRaw = objectivesData?.objectives?.items || [];
 
-    console.log('📊 [Analytics] Processing objectives', {
-      totalObjectives: allObjectivesRaw.length,
-      selectedPeriodId,
+    const filteredObjectivesByTimeline = filterDashboardObjectives({
+      objectives: allObjectivesRaw,
       userRole,
       selectedUnit,
-      annualTimeline
-    });
-
-    // First, filter by strategic period if one is selected
-    const filteredByPeriod = selectedPeriodId
-      ? allObjectivesRaw.filter(obj => obj.strategicPeriod?.strategicPeriodId === selectedPeriodId)
-      : allObjectivesRaw;
-
-    console.log('📊 [Analytics] After period filter', {
-      count: filteredByPeriod.length,
-      objectives: filteredByPeriod.map(o => ({ 
-        title: o.title, 
-        periodId: o.strategicPeriod?.strategicPeriodId 
-      }))
-    });
-
-    // Admin/Super Admin should only see CORPORATE objectives and their KPIs at the landing dashboard
-    // unless they have a specific unit selected (which we assume happens in other views or via selectedUnit)
-    // NOTE: Using assigneeType instead of type since backend returns type as null
-    // Corporate objectives have no assigneeType and no assigneeId
-    const filteredObjectivesByRole = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && !selectedUnit
-      ? filteredByPeriod.filter(obj => !obj.assigneeType && !obj.assigneeId)
-      : filteredByPeriod;
-
-    console.log('📊 [Analytics] After role filter', {
-      count: filteredObjectivesByRole.length,
-      objectives: filteredObjectivesByRole.map(o => ({ 
-        title: o.title, 
-        assigneeType: o.assigneeType,
-        assigneeId: o.assigneeId 
-      }))
-    });
-
-    // Filter by Annual Timeline
-    const filteredObjectivesByTimeline = annualTimeline
-      ? filteredObjectivesByRole.filter(obj =>
-        obj.kpis?.some((kpi: any) =>
-          kpi.targets?.some((t: any) => t.timeline === annualTimeline || t.timeline.startsWith(`${annualTimeline}-`))
-        )
-      )
-      : filteredObjectivesByRole;
-
-    console.log('📊 [Analytics] After timeline filter', {
-      count: filteredObjectivesByTimeline.length,
-      annualTimeline
+      selectedPeriodId,
+      annualTimeline,
     });
 
     const objectivesCount = filteredObjectivesByTimeline.length;
@@ -414,6 +380,8 @@ export const useAnalytics = (
 
       // Error states
       error,
+
+      filteredObjectives: filteredObjectivesByTimeline,
     };
   }, [
     divisionsData,
@@ -432,6 +400,9 @@ export const useAnalytics = (
     objectivesError,
     kpisError,
     selectedUnit,
+    userRole,
+    userId,
+    objectivesAssigneeId,
     canAccessGlobalData,
     annualTimeline,
     selectedPeriodId,

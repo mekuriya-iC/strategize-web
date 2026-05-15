@@ -26,10 +26,37 @@ export const SubmissionsFragment = gql`
     kpi {
       kpiId
       name
+      status
+      assigneeType
+      assigneeId
+      objective {
+        objectiveId
+        title
+        type
+        status
+        assigneeType
+        assigneeId
+        parent {
+          objectiveId
+          assigneeType
+          assigneeId
+          type
+        }
+      }
     }
     objective {
       objectiveId
       title
+      type
+      status
+      assigneeType
+      assigneeId
+      parent {
+        objectiveId
+        assigneeType
+        assigneeId
+        type
+      }
     }
   }
 `;

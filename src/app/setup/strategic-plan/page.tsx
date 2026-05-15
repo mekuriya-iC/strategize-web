@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addYears, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import { useMutation } from '@apollo/client';
 import { gql } from '@apollo/client';
@@ -36,12 +36,33 @@ export default function StrategicPlanSetupPage() {
   const [createPlan, { loading }] = useMutation(CREATE_STRATEGIC_PLAN);
 
   const currentYear = new Date().getFullYear();
+  const [planDurationYears, setPlanDurationYears] = useState<2 | 3 | 4 | 5>(5);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     startDate: new Date(currentYear, 0, 1), // January 1 of current year
-    endDate: new Date(currentYear + 5, 11, 31), // December 31, five years from start
+    endDate: subDays(addYears(new Date(currentYear, 0, 1), 5), 1),
   });
+
+  const applyPlanDuration = (startDate: Date, years: number) => {
+    return subDays(addYears(startDate, years), 1);
+  };
+
+  const handleDurationChange = (years: 2 | 3 | 4 | 5) => {
+    setPlanDurationYears(years);
+    setFormData((prev) => ({
+      ...prev,
+      endDate: applyPlanDuration(prev.startDate, years),
+    }));
+  };
+
+  const handleStartDateChange = (date: Date) => {
+    setFormData((prev) => ({
+      ...prev,
+      startDate: date,
+      endDate: applyPlanDuration(date, planDurationYears),
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +147,26 @@ export default function StrategicPlanSetupPage() {
                 />
               </div>
 
+              {/* Plan duration */}
+              <div className="space-y-2">
+                <Label>Plan duration</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {([2, 3, 4, 5] as const).map((years) => (
+                    <Button
+                      key={years}
+                      type="button"
+                      variant={planDurationYears === years ? 'default' : 'outline'}
+                      onClick={() => handleDurationChange(years)}
+                    >
+                      {years} years
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-500">
+                  End date follows your start date and duration. You can fine-tune it below.
+                </p>
+              </div>
+
               {/* Date Range */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -146,7 +187,7 @@ export default function StrategicPlanSetupPage() {
                       <Calendar
                         mode="single"
                         selected={formData.startDate}
-                        onSelect={(date) => date && setFormData({ ...formData, startDate: date })}
+                        onSelect={(date) => date && handleStartDateChange(date)}
                       />
                     </PopoverContent>
                   </Popover>

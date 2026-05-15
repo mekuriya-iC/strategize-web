@@ -20,6 +20,7 @@ import {
   REMOVE_SHARED_KPI_PARTICIPANT,
 } from "@/lib/graphql/mutations/kpis";
 import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
+import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import {
   CreateKpiMutationVariables,
   UpdateKpiMutationVariables,
@@ -47,6 +48,8 @@ export const useKPIMutations = () => {
       },
       refetchQueries: [
         { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
+        "GetObjectives",
       ],
     });
 
@@ -57,6 +60,9 @@ export const useKPIMutations = () => {
       },
       refetchQueries: [
         { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
+        "GetObjectives",
+        "GetKpi",
       ],
     });
 

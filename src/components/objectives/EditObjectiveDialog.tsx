@@ -76,29 +76,20 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
       return;
     }
 
-    // For corporate users, validate strategic period as well
-    if (isCorporateUser && !strategicPeriodId) {
-      toast.error("Please select a strategic period");
-      return;
-    }
-
     try {
-      // Normalize legacy UI value if it ever sneaks in
-      const normalizedType =
-        (objectiveType as unknown as string) === "INDIVIDUAL"
-          ? ("PERSONNEL" as ObjectiveType)
-          : objectiveType;
-
-      // For non-corporate users, keep original status and strategic period
-      const updateInput = {
+      // Only send fields supported by UpdateObjectiveInput on the API
+      const updateInput: {
+        objectiveId: string;
+        title: string;
+        status?: ObjectiveStatus;
+      } = {
         objectiveId: objective.objectiveId,
-        title: objectiveName.trim(), // Backend uses 'title' not 'name'
-        // Note: type is not updatable in UpdateObjectiveInput
-        status: isNonCorporateUser ? objective.status : objectiveStatus,
-        strategicPeriodId: isNonCorporateUser
-          ? objective.strategicPeriod?.strategicPeriodId || ""
-          : strategicPeriodId,
+        title: objectiveName.trim(),
       };
+
+      if (isCorporateUser) {
+        updateInput.status = objectiveStatus;
+      }
 
       await updateObjective({
         input: updateInput,
@@ -275,12 +266,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
               <Button
                 type="submit"
                 className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6"
-                disabled={
-                  loading ||
-                  periodsLoading ||
-                  !objectiveName.trim() ||
-                  (isCorporateUser && !strategicPeriodId)
-                }
+                disabled={loading || !objectiveName.trim()}
               >
                 {loading ? "Updating..." : "Update Objective"}
               </Button>

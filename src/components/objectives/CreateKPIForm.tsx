@@ -13,6 +13,11 @@ import {
 // import QuarterlyBreakdown logic/types if needed
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import type { Objective, Kpi } from "@/types/graphql";
+import {
+  getKpisForObjectiveWeight,
+  sumKpiWeights,
+  usesAnnualOnlyKpiTargets,
+} from "@/lib/objectives/kpiWeightScope";
 
 interface CreateKPIFormProps {
     objectiveId: string;
@@ -45,7 +50,7 @@ export default function CreateKPIForm({
             toast.success("KPI Created Successfully");
             onSuccess?.();
         }, [onSuccess]),
-        isCorporate: objective.type === "CORPORATE"
+        isCorporate: usesAnnualOnlyKpiTargets(objective)
     });
 
     const handleFormSubmit = async (e: React.FormEvent) => {
@@ -75,7 +80,7 @@ export default function CreateKPIForm({
         return buildYearRanges(objective.strategicPeriod);
     }, [objective.strategicPeriod]);
 
-    const isCorporate = objective.type === "CORPORATE";
+    const isCorporate = usesAnnualOnlyKpiTargets(objective);
 
     const strategicYear = availableYears[0];
 
@@ -118,19 +123,18 @@ export default function CreateKPIForm({
     }, [isCorporate, strategicYear, yearlyQuarters, annualTargets, formData.unitType]);
 
 
-    // Calculate existing weight
+    // 100% weight budget applies to KPIs on this objective only
     const { existingWeight, remainingWeight } = useMemo(() => {
-        // Use existingKPIs if provided, otherwise fetch from objective.kpis
-        // Note: objective.kpis might have limited fields, so prefer existingKPIs
-        const kpis = existingKPIs.length > 0 ? existingKPIs : [];
-        const total = kpis
-            .filter(k => k.status !== "REJECTED")
-            .reduce((sum, k) => sum + ((k as Kpi).weight || 0), 0);
+        const scoped = getKpisForObjectiveWeight(
+            objectiveId,
+            existingKPIs.length > 0 ? existingKPIs : (objective.kpis as Kpi[]) || []
+        );
+        const total = sumKpiWeights(scoped);
         return {
             existingWeight: total,
-            remainingWeight: Math.max(0, 100 - total)
+            remainingWeight: Math.max(0, 100 - total),
         };
-    }, [existingKPIs]);
+    }, [existingKPIs, objectiveId, objective.kpis]);
 
     const hasValidBasicFields = useMemo(() => {
         if (!formData.name.trim()) return false;

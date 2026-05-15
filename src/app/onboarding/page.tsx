@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Building2, Target, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { useMutation } from '@apollo/client';
+import { useMutation, useApolloClient } from '@apollo/client';
 import { gql } from '@apollo/client';
+import { GET_ME } from '@/lib/graphql/queries/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 const CHANGE_PASSWORD = gql`
   mutation ChangePassword($input: ChangePasswordInput!) {
@@ -34,7 +36,9 @@ const UPDATE_ORGANIZATION = gql`
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const apolloClient = useApolloClient();
   const { user } = useAuth();
+  const setUser = useAuthStore((state) => state.setUser);
   const [step, setStep] = useState(1);
   const [passwordData, setPasswordData] = useState({ old: '', new: '', confirm: '' });
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -70,20 +74,35 @@ export default function OnboardingPage() {
 
     try {
       await changePassword({
-        variables: { 
-          input: { 
-            oldPassword: passwordData.old, 
-            newPassword: passwordData.new 
-          } 
-        }
+        variables: {
+          input: {
+            oldPassword: passwordData.old,
+            newPassword: passwordData.new,
+          },
+        },
       });
+
+      const { data: meData } = await apolloClient.query({
+        query: GET_ME,
+        fetchPolicy: 'network-only',
+      });
+
+      if (meData?.me) {
+        setUser(meData.me);
+      } else if (user) {
+        setUser({
+          ...user,
+          isFirstLogin: false,
+          mustChangePassword: false,
+        });
+      }
+
       toast.success('Password changed successfully');
-      
+
       // Redirect to existing organization template page for SUPER_ADMIN/ADMIN
       if (isSuperAdminOrAdmin) {
-        router.push('/organization-template');
+        window.location.assign('/organization-template');
       } else {
-        // Regular users go to completion step
         setStep(2);
       }
     } catch (error: any) {

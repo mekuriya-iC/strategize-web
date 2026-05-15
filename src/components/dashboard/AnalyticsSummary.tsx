@@ -45,6 +45,7 @@ export default function AnalyticsSummary() {
   const analytics = useAnalytics({
     selectedUnit: roleSelectedUnit,
     userRole: user?.role,
+    userId: user?.employeeId,
     annualTimeline,
     selectedPeriodId: selectedPeriod?.strategicPeriodId,
   });

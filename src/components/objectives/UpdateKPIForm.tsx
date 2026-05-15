@@ -10,8 +10,9 @@ import {
   KPIInformationCard,
   QuarterlyBreakdown
 } from "./kpi-form";
-import type { Kpi, KpiWeightType } from "@/types/graphql";
+import type { Kpi, KpiWeightType, Objective } from "@/types/graphql";
 import { useUpdateKPIState } from "@/hooks/objectives/useUpdateKPIState";
+import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 
 interface KPIFormSectionProps {
   title: string;
@@ -67,6 +68,7 @@ interface UpdateKPIFormProps {
   onSuccess?: () => void;
   onCancel: () => void;
   existingKPIs?: Kpi[];
+  objective?: Objective;
 }
 
 export default function UpdateKPIForm({
@@ -74,6 +76,7 @@ export default function UpdateKPIForm({
   onSuccess,
   onCancel,
   existingKPIs = [],
+  objective: objectiveProp,
 }: UpdateKPIFormProps) {
   const {
     formData,
@@ -99,6 +102,7 @@ export default function UpdateKPIForm({
       onSuccess?.();
     }, [onSuccess]),
     existingKPIs,
+    objectiveOverride: objectiveProp,
   });
 
   const handleFormSubmit = useCallback(async (e: React.FormEvent) => {
@@ -154,12 +158,9 @@ export default function UpdateKPIForm({
     return <div className="p-4">KPI not found</div>;
   }
 
-  // Determine level-based restrictions
-  const objectiveType = kpi.objective?.type;
-  const isCorporate = objectiveType === "CORPORATE";
-  const isDivision = objectiveType === "DIVISION";
-  const isDepartment = objectiveType === "DEPARTMENT";
-  const isPersonnel = objectiveType === "PERSONNEL";
+  // Determine level-based restrictions (cascaded corporate → quarterly, not annual-only)
+  const planningObjective = objectiveProp || kpi.objective;
+  const isCorporate = usesAnnualOnlyKpiTargets(planningObjective);
 
   const hasParent = !!kpi.parent?.kpiId;
 

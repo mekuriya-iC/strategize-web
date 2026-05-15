@@ -75,5 +75,20 @@ export const REMOVE_SUBMISSION = gql`
   }
 `;
 
+export const APPROVE_OBJECTIVE_WITH_KPIS = gql`
+  mutation ApproveObjectiveWithKpis($input: ApproveObjectiveWithKpisInput!) {
+    approveObjectiveWithKpis(input: $input) {
+      submissionId
+      status
+      reason
+      objective {
+        objectiveId
+        title
+        status
+      }
+    }
+  }
+`;
+
 // Aliases for consistency
 export const DELETE_SUBMISSION = REMOVE_SUBMISSION;

@@ -7,8 +7,18 @@ import { SubmissionsFragment } from '../fragments/-submissions';
  * Note: type parameter is required by the backend
  */
 export const GETSUBMISSIONS = gql`
-  query GetSubmissions($page: Int!, $limit: Int!, $type: ObjectiveType!, $submissionType: SubmissionType) {
-    submissions(page: $page, limit: $limit, type: $type, submissionType: $submissionType) {
+  query GetSubmissions(
+    $page: Int!
+    $limit: Int!
+    $type: ObjectiveType!
+    $submissionType: SubmissionType
+  ) {
+    submissions(
+      page: $page
+      limit: $limit
+      type: $type
+      submissionType: $submissionType
+    ) {
       items {
         ...SubmissionsFragment
       }

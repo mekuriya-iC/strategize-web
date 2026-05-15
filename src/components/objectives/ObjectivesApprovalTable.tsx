@@ -1,5 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import React from "react";
 import ObjectiveFilterBar from "./ObjectiveFilterBar";
@@ -21,6 +22,11 @@ import {
   GET_PENDING_SUBMISSIONS,
 } from "@/lib/graphql/queries/submissions";
 import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
+import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import {
+  kpiSubmissionsQueryVariables,
+  objectiveSubmissionsQueryVariables,
+} from "@/hooks/submissions/submissionQueryVariables";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
@@ -110,8 +116,16 @@ export default function ObjectivesApprovalTable() {
   }, [assigneeId, searchTerm, isEmployee]);
 
   // Fetch a large set and paginate client-side for predictable counts
+  const pathname = usePathname();
   const { objectives, loading, error, /* meta, */ refetch } =
     useObjectives(objectivesQueryVars);
+
+  // Refresh when landing on objectives, after login, or when user context changes
+  useEffect(() => {
+    if (pathname === "/dashboard/objectives" && userEmployeeId) {
+      refetch();
+    }
+  }, [pathname, userEmployeeId, refetch]);
 
   console.log('🔍 [ObjectivesQuery] API Response', {
     count: objectives.length,
@@ -143,32 +157,32 @@ export default function ObjectivesApprovalTable() {
 
   // Fetch KPI submissions specifically to get rejection reasons
   const { data: kpiSubmissionsData1 } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: { page: 1, limit: 1000, type: "DIVISION" },
+    variables: kpiSubmissionsQueryVariables("DIVISION"),
   });
   const { data: kpiSubmissionsData2 } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+    variables: kpiSubmissionsQueryVariables("DEPARTMENT"),
   });
   const { data: kpiSubmissionsData3 } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+    variables: kpiSubmissionsQueryVariables("PERSONNEL"),
   });
 
   // Fetch objective submissions to get rejection reasons for objectives
   const { data: objectiveSubmissionsData1 } = useQuery(
     GET_PENDING_SUBMISSIONS,
     {
-      variables: { page: 1, limit: 1000, type: "DIVISION" },
+      variables: objectiveSubmissionsQueryVariables("DIVISION"),
     }
   );
   const { data: objectiveSubmissionsData2 } = useQuery(
     GET_PENDING_SUBMISSIONS,
     {
-      variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+      variables: objectiveSubmissionsQueryVariables("DEPARTMENT"),
     }
   );
   const { data: objectiveSubmissionsData3 } = useQuery(
     GET_PENDING_SUBMISSIONS,
     {
-      variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+      variables: objectiveSubmissionsQueryVariables("PERSONNEL"),
     }
   );
 
@@ -660,12 +674,19 @@ export default function ObjectivesApprovalTable() {
         (obj) =>
           selected.includes(obj.objectiveId) &&
           (obj.status === "NOT_SUBMITTED" || obj.status === "REJECTED") &&
-          obj.type !== "CORPORATE"
+          !isTopLevelCorporateObjective({
+            type: obj.type,
+            assigneeType: obj.assigneeType,
+            assigneeId: obj.assigneeId,
+            parentId: obj.parent?.objectiveId,
+          })
       )
       .map((obj) => ({
         itemId: obj.objectiveId,
         itemName: obj.title || obj.name || "Unnamed Objective",
         objectiveType: obj.type,
+        assigneeType: obj.assigneeType,
+        parentId: obj.parent?.objectiveId,
         itemType: "objective" as const,
       }));
   }, [filteredObjectives, selected]);
@@ -768,19 +789,32 @@ export default function ObjectivesApprovalTable() {
     return filtered;
   }, [filteredObjectives]);
 
-  // Calculate cumulative weight for the current level (tab)
+  // Corporate tab: only top-level corporate objectives (exclude cascaded assignees)
   const cumulativeTabWeight = useMemo(() => {
     const group =
-      activeTab === "corporate" ? corporateObjectives :
-        activeTab === "division" ? divisionObjectives :
-          activeTab === "department" ? departmentObjectives :
-            personnelObjectives;
+      activeTab === "corporate"
+        ? corporateObjectives.filter(isTopLevelCorporateObjective)
+        : activeTab === "division"
+          ? divisionObjectives
+          : activeTab === "department"
+            ? departmentObjectives
+            : personnelObjectives;
 
     return group.reduce((total, obj) => {
-      const objKPIs = kpis.filter(k => k.objective?.objectiveId === obj.objectiveId);
+      const objKPIs = kpis.filter(
+        (k) =>
+          k.objective?.objectiveId === obj.objectiveId && k.status !== "REJECTED"
+      );
       return total + objKPIs.reduce((sum, kpi) => sum + (kpi.weight || 0), 0);
     }, 0);
-  }, [activeTab, corporateObjectives, divisionObjectives, departmentObjectives, personnelObjectives, kpis]);
+  }, [
+    activeTab,
+    corporateObjectives,
+    divisionObjectives,
+    departmentObjectives,
+    personnelObjectives,
+    kpis,
+  ]);
 
   const getPagedObjectivesForTab = (group: Objective[]) => {
     const total = group.length;

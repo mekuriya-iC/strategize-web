@@ -34,6 +34,10 @@ import ApproveObjectiveWithKPIsDialog from "./ApproveObjectiveWithKPIsDialog";
 import DivisionLevelApprovalDialog from "./DivisionLevelApprovalDialog";
 import { Kpi } from "@/types/graphql";
 import { useAuthStore } from "@/stores";
+import { useQuery } from "@apollo/client";
+import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import usePermissions from "@/hooks/permissions/usePermissions";
+import { canUserApproveSubmission } from "@/lib/objectives/cascadeApproval";
 
 type KpiSubmission = {
   submissionId: string;
@@ -142,6 +146,14 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("division");
   const user = useAuthStore((state) => state.user);
+  const { scope, role: userRole } = usePermissions();
+  const { data: departmentsData } = useQuery(GET_DEPARTMENTS, {
+    variables: { page: 1, limit: 1000 },
+  });
+  const departments = departmentsData?.departments?.items ?? [];
+
+  const canApproveGroupedSubmission = (obj: GroupedSubmission) =>
+    canUserApproveSubmission(userRole, scope, obj, departments);
 
   // Check if user is at corporate level (ADMIN or SUPER_ADMIN)
   const isCorporateLevel =
@@ -852,8 +864,12 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                       submissionId: k.submissionId,
                                     })
                                   )}
-                                  onApprove={async (id, reason) => {
-                                    await onApproveSubmission(id, reason);
+                                  onApprove={async (id, reason, selectedKPIs) => {
+                                    await onApproveSubmission(
+                                      id,
+                                      reason,
+                                      selectedKPIs
+                                    );
                                   }}
                                 >
                                   <div className="text-green-600 hover:bg-green-50 cursor-pointer flex items-center w-full px-2 py-1.5 text-sm">
@@ -871,7 +887,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                   const hasKPIs =
                                     effectiveKpiSubmissions.length > 0;
                                   const canApproveObjective =
-                                    !hasKPIs || allKPIsApproved;
+                                    (!hasKPIs || allKPIsApproved) &&
+                                    canApproveGroupedSubmission(obj);
 
                                   return (
                                     <DropdownMenuItem

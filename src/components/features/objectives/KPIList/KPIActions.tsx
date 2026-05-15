@@ -15,6 +15,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Kpi } from "@/types/graphql";
 import { useAuthStore } from "@/stores";
 import usePermissions from "@/hooks/permissions/usePermissions";
+import { canAssignDownstream } from "@/lib/objectives/cascadeApproval";
+import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import { isKpiSubmittable } from "@/lib/objectives/submissionLevel";
 
 interface KPIActionsProps {
     kpi: Kpi;
@@ -39,9 +42,20 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
     }, [allKpis, kpi.kpiId]);
 
     // Rule 1 & 2: Assignment requirements
-    const canAssign = isKpiApproved && isObjectiveApproved && !isAssigned;
+    const objective = kpi.objective;
+    const assignGate = objective
+      ? canAssignDownstream(objective, allKpis.filter((k) => k.objective?.objectiveId === objective.objectiveId))
+      : { allowed: false };
 
-    const isCorporate = kpi.objective?.type === "CORPORATE";
+    const canAssign =
+      !isAssigned &&
+      isKpiApproved &&
+      isObjectiveApproved &&
+      assignGate.allowed;
+
+    const isCorporate = objective
+      ? isTopLevelCorporateObjective(objective)
+      : false;
 
     // Rule 2 & 4: Read-only and Cascaded rules
     // Corporate objectives/KPIs are never read-only even if approved
@@ -126,12 +140,15 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
                     </TooltipProvider>
 
                     {/* Submit for Approval Rule: Only if not already approved or pending */}
-                    {kpi.status !== "APPROVED" && kpi.status !== "PENDING" && (
+                    {isKpiSubmittable(kpi.status) && (
                         <SubmitDialog
                             itemId={kpi.kpiId}
                             itemName={kpi.name}
                             objectiveType={(kpi.objective?.type || currentObjectiveType || "PERSONNEL") as any}
+                            assigneeType={kpi.objective?.assigneeType}
+                            parentId={kpi.objective?.parent?.objectiveId}
                             itemType="kpi"
+                            knownKpiStatus={kpi.status}
                             onSubmitSuccess={onRefresh}
                         >
                             <DropdownMenuItem

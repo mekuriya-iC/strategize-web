@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useApolloClient } from "@apollo/client";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
@@ -25,7 +25,6 @@ export default function LoginForm() {
   const [checkingSetup, setCheckingSetup] = useState(false);
   const { login, loading } = useAuth();
   const apolloClient = useApolloClient();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Check for expired session, intentional logout, or stored auth message
@@ -61,67 +60,67 @@ export default function LoginForm() {
     if (result?.success) {
       toast.success("Login Successful!");
 
+      const navigateAfterLogin = (path: string) => {
+        // Full navigation ensures the auth cookie is visible to middleware on first login
+        window.location.assign(path);
+      };
+
       // Check for redirect URL
       const redirectUrl = searchParams.get("redirect");
       if (redirectUrl && redirectUrl.startsWith("/")) {
-        router.push(redirectUrl);
-      } else {
-        // PRIORITY 1: Check if user needs onboarding (first login or password change)
-        const isFirstLogin = result.user?.isFirstLogin;
-        const mustChangePassword = result.user?.mustChangePassword;
-        
-        if (isFirstLogin || mustChangePassword) {
-          console.log("[LoginForm] User needs onboarding:", { isFirstLogin, mustChangePassword });
-          router.push("/onboarding");
-          return;
-        }
-
-        // PRIORITY 2: Role-based routing after login
-        const userRole = result.user?.role;
-        
-        // Only ADMIN and SUPER_ADMIN need to check organization setup
-        if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-          setCheckingSetup(true);
-          
-          try {
-            // Check if organization has periods and objectives
-            const [periodsResult, objectivesResult] = await Promise.all([
-              apolloClient.query({
-                query: GET_STRATEGIC_PERIODS,
-                variables: { page: 1, limit: 1 },
-                fetchPolicy: "network-only",
-              }),
-              apolloClient.query({
-                query: GET_OBJECTIVES,
-                variables: { page: 1, limit: 1 },
-                fetchPolicy: "network-only",
-              }),
-            ]);
-
-            const hasPeriods = (periodsResult.data?.strategicPeriods?.meta?.totalItems ?? 0) > 0;
-            const hasObjectives = (objectivesResult.data?.objectives?.meta?.totalItems ?? 0) > 0;
-            const isSetupComplete = hasPeriods && hasObjectives;
-
-            // If organization already has periods and objectives, go to dashboard
-            if (isSetupComplete) {
-              router.push("/dashboard");
-            } else {
-              // Otherwise, go through the setup flow
-              router.push("/organization-template");
-            }
-          } catch (error) {
-            // If there's an error checking setup, default to organization template
-            console.error("Error checking organization setup:", error);
-            router.push("/organization-template");
-          } finally {
-            setCheckingSetup(false);
-          }
-        } else {
-          // All other roles (NORMAL, COORDINATOR, MANAGER, DIRECTOR) go directly to dashboard
-          // The dashboard will auto-select the current strategic period
-          router.push("/dashboard");
-        }
+        navigateAfterLogin(redirectUrl);
+        return;
       }
+
+      // PRIORITY 1: Check if user needs onboarding (first login or password change)
+      const isFirstLogin = result.user?.isFirstLogin;
+      const mustChangePassword = result.user?.mustChangePassword;
+
+      if (isFirstLogin || mustChangePassword) {
+        navigateAfterLogin("/onboarding");
+        return;
+      }
+
+      // PRIORITY 2: Role-based routing after login
+      const userRole = result.user?.role;
+
+      // Only ADMIN and SUPER_ADMIN need to check organization setup
+      if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+        setCheckingSetup(true);
+
+        try {
+          const [periodsResult, objectivesResult] = await Promise.all([
+            apolloClient.query({
+              query: GET_STRATEGIC_PERIODS,
+              variables: { page: 1, limit: 1 },
+              fetchPolicy: "network-only",
+            }),
+            apolloClient.query({
+              query: GET_OBJECTIVES,
+              variables: { page: 1, limit: 1 },
+              fetchPolicy: "network-only",
+            }),
+          ]);
+
+          const hasPeriods =
+            (periodsResult.data?.strategicPeriods?.meta?.totalItems ?? 0) > 0;
+          const hasObjectives =
+            (objectivesResult.data?.objectives?.meta?.totalItems ?? 0) > 0;
+          const isSetupComplete = hasPeriods && hasObjectives;
+
+          navigateAfterLogin(
+            isSetupComplete ? "/dashboard" : "/organization-template"
+          );
+        } catch (error) {
+          console.error("Error checking organization setup:", error);
+          navigateAfterLogin("/organization-template");
+        } finally {
+          setCheckingSetup(false);
+        }
+        return;
+      }
+
+      navigateAfterLogin("/dashboard");
     } else {
       // Determine the type of error and show appropriate message
       const error = result?.error;

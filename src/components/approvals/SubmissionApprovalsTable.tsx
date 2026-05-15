@@ -152,6 +152,7 @@ export default function SubmissionApprovalsTable() {
   // Submission approval mutations
   const {
     handleApproveSubmissionWithItemUpdate,
+    handleApproveObjectiveWithKpis,
     handleRejectSubmissionWithItemUpdate,
     loading: mutationLoading,
   } = useSubmissionApprovalMutations();
@@ -319,7 +320,6 @@ export default function SubmissionApprovalsTable() {
         return;
       }
 
-      // Extract the minimal submission data required by the function
       const minimalSubmission = {
         submissionId: submission.submissionId,
         type: submission.type as "OBJECTIVE" | "KPI",
@@ -327,52 +327,67 @@ export default function SubmissionApprovalsTable() {
         kpi: submission.kpi,
       };
 
-      await handleApproveSubmissionWithItemUpdate(minimalSubmission, reason);
-
-      // If this is an objective submission, also approve all associated KPI submissions
       if (submission.type === "OBJECTIVE") {
         const objectiveSubmission = submissions.find(
           (sub) => sub.submissionId === submissionId
         ) as GroupedSubmission | undefined;
 
-        if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
-          const kpiApprovalPromises = objectiveSubmission.associatedKpiSubmissions
-            .filter((kpiSub) => {
-              const isPending = kpiSub.status === "PENDING";
-              if (!isPending) return false;
+        const pendingKpiSubs =
+          objectiveSubmission?.associatedKpiSubmissions?.filter(
+            (kpiSub) => kpiSub.status === "PENDING"
+          ) ?? [];
 
-              // DIVISION level: Strictly only approve if in the selected list
-              if (submission.level === "DIVISION") {
-                if (selectedKPIs && selectedKPIs.length > 0) {
-                  return selectedKPIs.includes(kpiSub.kpi?.kpiId || "");
-                }
-                // If it's division level and NO list is provided (e.g. bulk approve), 
-                // we DO NOT auto-approve KPIs. They must be reviewed individually.
-                return false;
-              }
+        if (pendingKpiSubs.length > 0) {
+          const selectedPending = pendingKpiSubs.filter((kpiSub) => {
+            if (selectedKPIs && selectedKPIs.length > 0) {
+              return selectedKPIs.includes(kpiSub.kpi?.kpiId || "");
+            }
+            if (submission.level === "DIVISION") {
+              return false;
+            }
+            return true;
+          });
 
-              // Other levels (Department, Personnel): 
-              // If selective KPIs provided, check against the list
-              if (selectedKPIs && selectedKPIs.length > 0) {
-                return selectedKPIs.includes(kpiSub.kpi?.kpiId || "");
-              }
+          const kpiSubmissionIds = selectedPending.map(
+            (kpiSub) => kpiSub.submissionId
+          );
+          const approvingAllPending =
+            kpiSubmissionIds.length === pendingKpiSubs.length;
 
-              // Default for non-division: approve all pending if no list provided
-              return true;
-            })
-            .map((kpiSub) => {
-              const kpiMinimalSubmission = {
-                submissionId: kpiSub.submissionId,
-                type: "KPI" as const,
-                objective: kpiSub.objective,
-                kpi: kpiSub.kpi,
-              };
-              return handleApproveSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
-            });
+          if (approvingAllPending && kpiSubmissionIds.length > 0) {
+            await handleApproveObjectiveWithKpis(
+              submissionId,
+              reason,
+              kpiSubmissionIds
+            );
+            toast.success("Objective and KPIs approved successfully");
+            await refetch();
+            return;
+          }
 
-          await Promise.all(kpiApprovalPromises);
+          if (kpiSubmissionIds.length > 0) {
+            const kpiApprovalPromises = selectedPending.map((kpiSub) =>
+              handleApproveSubmissionWithItemUpdate(
+                {
+                  submissionId: kpiSub.submissionId,
+                  type: "KPI" as const,
+                  objective: kpiSub.objective,
+                  kpi: kpiSub.kpi,
+                },
+                reason
+              )
+            );
+            await Promise.all(kpiApprovalPromises);
+            toast.success(
+              `${kpiSubmissionIds.length} KPI submission(s) approved`
+            );
+            await refetch();
+            return;
+          }
         }
       }
+
+      await handleApproveSubmissionWithItemUpdate(minimalSubmission, reason);
 
       toast.success(`Submission approved successfully`);
 

@@ -109,11 +109,19 @@ export const GET_KPI = gql`
         objectiveId
         title
         description
+        type
         level
         status
+        assigneeType
+        assigneeId
+        parent {
+          objectiveId
+        }
         strategicPeriod {
           strategicPeriodId
           name
+          startDate
+          endDate
         }
       }
       createdBy {
@@ -127,6 +135,13 @@ export const GET_KPI = gql`
         name
         targetValue
         measurementUnit
+        unitType
+        baseline
+        weight
+        targets {
+          timeline
+          target
+        }
       }
       targets {
         timeline

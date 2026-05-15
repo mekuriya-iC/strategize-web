@@ -11,6 +11,7 @@ import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_KPI_SUBMISSIONS } from "@/lib/graphql/queries/submissions";
+import { kpiSubmissionsQueryVariables } from "@/hooks/submissions/submissionQueryVariables";
 import KPIList from "@/components/features/objectives/KPIList";
 import YearSelector from "@/components/objectives/YearSelector";
 // import KPIForm from "@/components/objectives/KPIForm"; // Removed KPIForm
@@ -20,6 +21,14 @@ import BulkSubmitDialog from "@/components/submissions/BulkSubmitDialog";
 import ObjectiveWithKPIsSubmitDialog from "@/components/submissions/ObjectiveWithKPIsSubmitDialog";
 import AssignObjectiveDialog from "@/components/objectives/AssignObjectiveDialog";
 import { toast } from "sonner";
+import {
+  canAssignDownstream,
+  getAssignDownstreamLabel,
+  isDepartmentLevelObjective,
+  isDivisionLevelObjective,
+} from "@/lib/objectives/cascadeApproval";
+import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import { isKpiSubmittable } from "@/lib/objectives/submissionLevel";
 
 export default function ObjectiveDetailPage() {
   const params = useParams();
@@ -35,6 +44,7 @@ export default function ObjectiveDetailPage() {
     objective,
     loading: objectiveLoading,
     error: objectiveError,
+    refetch: refetchObjective,
   } = useObjective({
     objectiveId,
   });
@@ -66,13 +76,13 @@ export default function ObjectiveDetailPage() {
 
   // Fetch KPI submissions specifically to get rejection reasons
   const { data: kpiSubmissionsData1 } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: { page: 1, limit: 1000, type: "DIVISION" },
+    variables: kpiSubmissionsQueryVariables("DIVISION"),
   });
   const { data: kpiSubmissionsData2 } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: { page: 1, limit: 1000, type: "DEPARTMENT" },
+    variables: kpiSubmissionsQueryVariables("DEPARTMENT"),
   });
   const { data: kpiSubmissionsData3 } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: { page: 1, limit: 1000, type: "PERSONNEL" },
+    variables: kpiSubmissionsQueryVariables("PERSONNEL"),
   });
 
   // Combine all KPI submission data
@@ -133,37 +143,11 @@ export default function ObjectiveDetailPage() {
     (kpi) => kpi.objective?.objectiveId === objectiveId
   );
 
-  // Calculate relevant KPIs for weight validation (across all objectives of the same context)
-  // Must be at top level to avoid Hook Rules violation
-  const relevantKPIsForWeight = useMemo(() => {
-    if (!objective || !allObjectives.length) return objectiveKPIs;
-
-    return kpis.filter((k) => {
-      if (k.status === "REJECTED") return false;
-
-      const kObjId = k.objective?.objectiveId;
-      if (!kObjId) return false;
-
-      // Find full objective details to check context
-      const kObj = (allObjectives as any[]).find(o => o.objectiveId === kObjId);
-      if (!kObj) return false;
-
-      // Check if types match
-      if (kObj.type !== objective.type) return false;
-
-      // Check Strategic Period match
-      const kPeriodId = kObj.strategicPeriod?.strategicPeriodId;
-      const currentPeriodId = objective.strategicPeriod?.strategicPeriodId;
-      if (kPeriodId && currentPeriodId && kPeriodId !== currentPeriodId) return false;
-
-      // Check Assignee (Scope) match
-      if (objective.type !== "CORPORATE") {
-        if (kObj.assigneeId !== objective.assigneeId) return false;
-      }
-
-      return true;
-    });
-  }, [kpis, allObjectives, objective, objectiveKPIs]);
+  // Weight allocation is per objective (100% budget on this objective only)
+  const kpisForWeight = useMemo(
+    () => objectiveKPIs.filter((k) => k.status !== "REJECTED"),
+    [objectiveKPIs]
+  );
 
   // Function to check if objective has been assigned (has children)
   const hasBeenAssigned = () => {
@@ -235,13 +219,15 @@ export default function ObjectiveDetailPage() {
     const filteredKPIs = objectiveKPIs
       .filter(
         (kpi) =>
-          selectedKPIs.includes(kpi.kpiId) && kpi.status === "NOT_SUBMITTED"
+          selectedKPIs.includes(kpi.kpiId) && isKpiSubmittable(kpi.status)
       )
       .map((kpi) => {
         return {
           itemId: kpi.kpiId,
           itemName: kpi.name,
           objectiveType: objective.type,
+          assigneeType: objective.assigneeType,
+          parentId: objective.parent?.objectiveId,
           itemType: "kpi" as const,
         };
       });
@@ -260,6 +246,7 @@ export default function ObjectiveDetailPage() {
   const handleAssignSuccess = () => {
     setShowAssignDialog(false);
     refetch();
+    refetchObjective();
   };
 
   if (objectiveLoading) {
@@ -307,14 +294,30 @@ export default function ObjectiveDetailPage() {
     PERSONNEL: "bg-orange-100 text-orange-600",
   };
 
+  const objectiveContext = {
+    ...objective,
+    parentId: objective.parent?.objectiveId ?? null,
+  };
+
+  const assignDownstream = canAssignDownstream(objectiveContext, objectiveKPIs);
+  const showAssignButton =
+    !hasBeenAssigned() &&
+    (isTopLevelCorporateObjective(objectiveContext) ||
+      isDivisionLevelObjective(objectiveContext) ||
+      isDepartmentLevelObjective(objectiveContext));
+  const showSubmitButton =
+    !isTopLevelCorporateObjective(objectiveContext) &&
+    (objective.status === "NOT_SUBMITTED" || objective.status === "REJECTED");
+
   if (showAddKPI) {
     if (editingKPI) {
       return (
         <UpdateKPIForm
           kpiId={editingKPI}
+          objective={objective}
           onSuccess={handleKPISuccess}
           onCancel={() => setShowAddKPI(false)}
-          existingKPIs={relevantKPIsForWeight}
+          existingKPIs={kpisForWeight}
         />
       );
     }
@@ -325,7 +328,7 @@ export default function ObjectiveDetailPage() {
         objective={objective}
         onSuccess={handleKPISuccess}
         onCancel={() => setShowAddKPI(false)}
-        existingKPIs={relevantKPIsForWeight}
+        existingKPIs={kpisForWeight}
       />
     );
   }
@@ -339,7 +342,9 @@ export default function ObjectiveDetailPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-[#3F3F46] mb-2">
-            {objective.title || objective.name}
+            {(objective.title || objective.name || "").trim() ||
+              (objective.parent?.title || objective.parent?.name) ||
+              "Unnamed Objective"}
           </h1>
           <div className="flex flex-wrap gap-2">
             <Badge className={`${typeColors[objective.type]} border-0`}>
@@ -361,21 +366,18 @@ export default function ObjectiveDetailPage() {
 
         <div className="flex gap-3">
           {/* Submit button - show for unsubmitted objectives that are not corporate and have KPIs */}
-          {objective.status === "NOT_SUBMITTED" &&
-            objective.type !== "CORPORATE" &&
+          {showSubmitButton &&
             ((objective.kpis?.length ?? 0) > 0 ? (
               <ObjectiveWithKPIsSubmitDialog
                 objectiveId={objective.objectiveId}
                 objectiveName={objective.title || objective.name || "Unnamed Objective"}
                 objectiveType={objective.type}
+                assigneeType={objective.assigneeType}
+                parentId={objective.parent?.objectiveId}
                 associatedKPIs={objectiveKPIs}
                 onSubmitSuccess={() => {
-                  // Force refresh all data
-                  refetch(); // Refresh KPIs
-                  // Add a small delay and then trigger a refetch to ensure cache is updated
-                  setTimeout(() => {
-                    refetch();
-                  }, 500);
+                  refetch();
+                  refetchObjective();
                 }}
               >
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -395,53 +397,27 @@ export default function ObjectiveDetailPage() {
             ))}
 
           {/* Assign button - show for unassigned objectives that can be assigned */}
-          {!hasBeenAssigned() &&
-            (objective.type === "CORPORATE" ||
-              objective.type === "DIVISION" ||
-              objective.type === "DEPARTMENT") && (
+          {showAssignButton && (
               <Button
                 onClick={() => {
-                  // Only allow assignment if has KPIs AND (CORPORATE or DIVISION/DEPARTMENT is APPROVED)
-                  const hasKPIs = (objective.kpis?.length ?? 0) > 0;
-                  if (
-                    hasKPIs &&
-                    (objective.type === "CORPORATE" ||
-                      (objective.type === "DIVISION" &&
-                        objective.status === "APPROVED") ||
-                      (objective.type === "DEPARTMENT" &&
-                        objective.status === "APPROVED"))
-                  ) {
+                  if (assignDownstream.allowed) {
                     setShowAssignDialog(true);
                   }
                 }}
-                disabled={
-                  // Disable if no KPIs
-                  (objective.kpis?.length ?? 0) === 0 ||
-                  // Disable if not CORPORATE and not APPROVED
-                  (objective.type !== "CORPORATE" &&
-                    objective.status !== "APPROVED")
-                }
+                disabled={!assignDownstream.allowed}
                 className={
-                  (objective.kpis?.length ?? 0) > 0 &&
-                    (objective.type === "CORPORATE" ||
-                      objective.status === "APPROVED")
+                  assignDownstream.allowed
                     ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }
+                title={assignDownstream.reason}
               >
                 <Users className="w-4 h-4 mr-2" />
-                {objective.type === "CORPORATE"
-                  ? "Assign to Division/Department"
-                  : objective.type === "DIVISION"
-                    ? "Assign to Department"
-                    : "Assign to Personnel"}
-                {(objective.kpis?.length ?? 0) === 0 ? (
-                  <span className="ml-2 text-xs">(Add KPI first)</span>
-                ) : (
-                  objective.type !== "CORPORATE" &&
-                  objective.status !== "APPROVED" && (
-                    <span className="ml-2 text-xs">(Requires Approval)</span>
-                  )
+                {getAssignDownstreamLabel(objectiveContext)}
+                {!assignDownstream.allowed && assignDownstream.reason && (
+                  <span className="ml-2 text-xs">
+                    ({assignDownstream.reason.includes("approval") ? "Requires Approval" : assignDownstream.reason})
+                  </span>
                 )}
               </Button>
             )}
@@ -598,8 +574,13 @@ export default function ObjectiveDetailPage() {
           </Button>
         </div>
 
-        {/* Bulk Actions for KPIs - Do not show for Corporate Objectives */}
-        {objective.type !== "CORPORATE" &&
+        {/* Bulk Actions for KPIs — cascaded objectives only */}
+        {!isTopLevelCorporateObjective({
+          type: objective.type,
+          assigneeType: objective.assigneeType,
+          assigneeId: objective.assigneeId,
+          parentId: objective.parent?.objectiveId,
+        }) &&
           objectiveKPIs.length > 0 &&
           selectedKPIsForSubmission.length > 0 && (
             <div className="mb-4 flex justify-end">

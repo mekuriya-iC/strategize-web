@@ -21,14 +21,16 @@ import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
 import type {
   ObjectiveType,
-  SubmissionLevel,
   SubmissionType,
 } from "@/types/graphql";
+import { resolveSubmissionLevel } from "@/lib/objectives/submissionLevel";
 
 interface BulkSubmissionItem {
   itemId: string; // objectiveId or kpiId
   itemName: string; // for display
   objectiveType: ObjectiveType; // CORPORATE, DIVISION, DEPARTMENT, PERSONNEL
+  assigneeType?: string | null;
+  parentId?: string | null;
   itemType: "objective" | "kpi"; // for determining submission type
 }
 
@@ -117,12 +119,11 @@ export default function BulkSubmitDialog({
     // Create submission inputs for each item
     const submissionInputs = items.map((item) => {
       // Note: CORPORATE objectives should never reach here as they are auto-approved
-      const submissionLevel: SubmissionLevel =
-        item.objectiveType === "PERSONNEL"
-          ? "PERSONNEL"
-          : item.objectiveType === "DEPARTMENT"
-            ? "DEPARTMENT"
-            : "DIVISION"; // DIVISION maps to DIVISION level
+      const submissionLevel = resolveSubmissionLevel({
+        type: item.objectiveType,
+        assigneeType: item.assigneeType ?? null,
+        parentId: item.parentId ?? null,
+      });
 
       // Set submission type based on item type
       const submissionType: SubmissionType =

@@ -20,6 +20,7 @@ import {
 import { Objective, Kpi } from "@/types/graphql";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import usePermissions from "@/hooks/permissions/usePermissions";
+import { useAuthStore } from "@/stores";
 import EditObjectiveDialog from "@/components/objectives/EditObjectiveDialog";
 import DeleteObjectiveDialog from "@/components/objectives/DeleteObjectiveDialog";
 import AddKPIDialog from "@/components/objectives/AddKPIDialog";
@@ -49,41 +50,66 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [showStatusDialog, setShowStatusDialog] = useState(false);
 
-    const { role } = usePermissions();
+    const { role, scope } = usePermissions();
+    const currentUser = useAuthStore((state) => state.user);
 
     const isApproved = objective.status === "APPROVED";
     const canSubmit = objective.status === "NOT_SUBMITTED" || objective.status === "REJECTED";
     const isReadOnly = isApproved; // Rule 2: Objective becomes read-only after approval
 
-    // "No Edit" rule for cascaded objectives: 
-    // If corporate views division/dept/personnel, they can't edit but can delete.
-    const isCascaded = React.useMemo(() => {
-        if (!role) return false;
+    // Assignees (division/dept managers) may edit titles on objectives assigned to their unit
+    const isAssignedToCurrentUser = React.useMemo(() => {
+        if (!objective.assigneeId) return false;
 
-        // Level priority: CORPORATE (ADMIN/SUPER_ADMIN) > DIVISION (DIRECTOR) > DEPARTMENT (MANAGER) > PERSONNEL (NORMAL)
+        const assigneeType = objective.assigneeType?.toUpperCase();
+
+        if (assigneeType === "PERSONNEL" || !assigneeType) {
+            return objective.assigneeId === currentUser?.employeeId;
+        }
+
+        if (!scope) return false;
+
+        if (assigneeType === "DIVISION") {
+            return (
+                scope.managedDivisionIds.includes(objective.assigneeId) ||
+                scope.divisionIds.includes(objective.assigneeId)
+            );
+        }
+
+        if (assigneeType === "DEPARTMENT") {
+            return (
+                scope.managedDepartmentIds.includes(objective.assigneeId) ||
+                scope.departmentIds.includes(objective.assigneeId)
+            );
+        }
+
+        return false;
+    }, [currentUser?.employeeId, objective.assigneeId, objective.assigneeType, scope]);
+
+    // Higher-level users viewing lower-level objectives they cascaded: no edit (unless assignee)
+    const isCascaded = React.useMemo(() => {
+        if (!role || isAssignedToCurrentUser) return false;
+
         const roleOrder: Record<string, number> = {
-            'SUPER_ADMIN': 4,
-            'ADMIN': 4,
-            'DIRECTOR': 3,
-            'MANAGER': 2,
-            'NORMAL': 1
+            SUPER_ADMIN: 4,
+            ADMIN: 4,
+            DIRECTOR: 3,
+            MANAGER: 2,
+            NORMAL: 1,
         };
 
         const typeOrder: Record<string, number> = {
-            'CORPORATE': 4,
-            'DIVISION': 3,
-            'DEPARTMENT': 2,
-            'PERSONNEL': 1
+            CORPORATE: 4,
+            DIVISION: 3,
+            DEPARTMENT: 2,
+            PERSONNEL: 1,
         };
 
         const userLevel = roleOrder[role as string] || 0;
         const objectiveLevel = typeOrder[objective.type as string] || 0;
 
-        // If user is at a higher level than the objective, it's "cascaded" to them (for viewing/deleting)
-        // or rather, they are viewing a value they cascaded down.
-        // User wants: for lower levels seen by higher levels -> NO EDIT.
         return userLevel > objectiveLevel;
-    }, [role, objective.type]);
+    }, [role, objective.type, isAssignedToCurrentUser]);
 
     const objectiveKPIs = kpis.filter(k => k.objective?.objectiveId === objective.objectiveId);
 
@@ -193,6 +219,8 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
                 objectiveId={objective.objectiveId}
                 objectiveName={objective.title || objective.name || "Unnamed Objective"}
                 objectiveType={objective.type}
+                assigneeType={objective.assigneeType}
+                parentId={objective.parent?.objectiveId}
                 associatedKPIs={objectiveKPIs}
                 onSubmitSuccess={onEditSuccess}
             />

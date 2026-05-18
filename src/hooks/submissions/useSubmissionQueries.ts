@@ -18,6 +18,8 @@ import {
 interface UseSubmissionQueriesOptions {
   shouldFetch: boolean;
   approverRole: ApproverRole;
+  /** When false, returns all statuses (for "my submissions" tracking). Default true. */
+  pendingOnly?: boolean;
 }
 
 interface SubmissionQueriesResult {
@@ -53,7 +55,7 @@ function mapSubmissionItems(
   }));
 }
 
-function pendingOnly(items: MinimalSubmission[]): MinimalSubmission[] {
+function pendingOnlyStatus(items: MinimalSubmission[]): MinimalSubmission[] {
   return items.filter((s) => s.status === "PENDING");
 }
 
@@ -69,6 +71,7 @@ function collectSubmissionItems(
 export const useSubmissionQueries = ({
   shouldFetch,
   approverRole,
+  pendingOnly = true,
 }: UseSubmissionQueriesOptions): SubmissionQueriesResult => {
   const isCorporate = approverRole === "CORPORATE";
 
@@ -152,7 +155,10 @@ export const useSubmissionQueries = ({
     skip: !shouldFetch,
   });
 
-  const objectiveSubmissions = pendingOnly(
+  const applyStatusFilter = (items: MinimalSubmission[]) =>
+    pendingOnly ? pendingOnlyStatus(items) : items;
+
+  const objectiveSubmissions = applyStatusFilter(
     mapSubmissionItems(
       collectSubmissionItems(
         corporateObjData?.submissions?.items as MinimalSubmission[] | undefined,
@@ -163,7 +169,7 @@ export const useSubmissionQueries = ({
     )
   );
 
-  const kpiSubmissions = pendingOnly(
+  const kpiSubmissions = applyStatusFilter(
     mapSubmissionItems(
       collectSubmissionItems(
         corporateKpiData?.submissions?.items as MinimalSubmission[] | undefined,

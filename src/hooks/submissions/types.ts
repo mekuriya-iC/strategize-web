@@ -8,6 +8,8 @@ import type { SubmissionStatus } from "@/types/graphql";
 export type SubmissionLevel = "DEPARTMENT" | "DIVISION" | "PERSONNEL";
 export type SubmissionType = "OBJECTIVE" | "KPI";
 export type ApproverRole = "CORPORATE" | "DIVISION" | "DEPARTMENT";
+/** Inbound = approve items from below; outbound = track what you submitted upward */
+export type SubmissionListMode = "inbound" | "outbound";
 export type AssigneeType = "DIVISION" | "DEPARTMENT" | "PERSONNEL";
 
 export interface SubmissionAssignee {
@@ -49,7 +51,7 @@ export interface MinimalSubmission {
   level: SubmissionLevel;
   status: SubmissionStatus;
   reason?: string;
-  submittedBy: { fullName: string };
+  submittedBy: { employeeId?: string; fullName: string };
   objective?: SubmissionObjective | null;
   kpi?: SubmissionKpi | null;
   createdAt?: string;
@@ -66,6 +68,8 @@ export interface SubmissionApprovalsOptions {
   limit?: number;
   approverRole: ApproverRole;
   status?: SubmissionStatus;
+  listMode?: SubmissionListMode;
+  submitterEmployeeId?: string;
 }
 
 export interface SubmissionMeta {

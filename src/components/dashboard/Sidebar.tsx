@@ -9,12 +9,15 @@ import Image from "next/image";
 import type { Permission } from "@/lib/rbac/permissions";
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useAuthStore } from "@/stores";
 
 interface NavLink {
   label: string;
   href: string;
   icon: React.ReactNode;
   permission: Permission;
+  /** Shown only for division/department managers (not corporate admins) */
+  managerOnly?: boolean;
 }
 
 interface NavCategory {
@@ -231,11 +234,20 @@ const navCategories: NavCategory[] = [
         ),
       },
       {
-        label: "Approvals",
+        label: "Approve Requests",
         href: "/dashboard/approvals",
         permission: "nav:approvals",
         icon: (
           <Image src="/images/dashboard/sidebar/approvals.png" alt="approval" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "My Submissions",
+        href: "/dashboard/approvals/my-submissions",
+        permission: "nav:approvals",
+        managerOnly: true,
+        icon: (
+          <Image src="/images/dashboard/sidebar/approvals.png" alt="my submissions" width={16} height={16} className="sidebar-icon-filter"/>
         ),
       },
     ],
@@ -280,10 +292,25 @@ const navCategories: NavCategory[] = [
 function CollapsibleCategory({ category, open: sidebarOpen, onLinkClick }: { category: NavCategory; open: boolean; onLinkClick?: () => void }) {
   const pathname = usePathname();
   const { can } = usePermissions();
+  const user = useAuthStore((state) => state.user);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const isManagerRole =
+    user?.role === "DIRECTOR" || user?.role === "MANAGER";
+
   // Filter links based on permissions
-  const filteredLinks = category.links.filter((link) => can(link.permission));
+  const filteredLinks = category.links
+    .filter((link) => {
+      if (!can(link.permission)) return false;
+      if (link.managerOnly && !isManagerRole) return false;
+      return true;
+    })
+    .map((link) =>
+      link.href === "/dashboard/approvals" &&
+      (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN")
+        ? { ...link, label: "Approvals" }
+        : link
+    );
   
   if (filteredLinks.length === 0) return null;
 

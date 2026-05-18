@@ -7,6 +7,8 @@ import type {
   MinimalSubmission,
   GroupedSubmission,
   ApproverRole,
+  SubmissionLevel,
+  SubmissionListMode,
 } from "./types";
 
 /**
@@ -190,6 +192,40 @@ export const groupSubmissionsByObjective = (
   });
 
   return groupedSubmissions;
+};
+
+/** Level a manager submits at when requesting approval from above. */
+export function getOutboundSubmissionLevel(
+  approverRole: ApproverRole
+): SubmissionLevel | null {
+  if (approverRole === "DIVISION") return "DIVISION";
+  if (approverRole === "DEPARTMENT") return "DEPARTMENT";
+  return null;
+}
+
+/**
+ * Inbound: items from below to approve. Outbound: items the current user submitted upward.
+ */
+export const filterSubmissionsByListMode = (
+  submissions: MinimalSubmission[],
+  mode: SubmissionListMode,
+  approverRole: ApproverRole,
+  submitterEmployeeId?: string | null
+): MinimalSubmission[] => {
+  if (mode === "inbound") {
+    return submissions;
+  }
+
+  const outboundLevel = getOutboundSubmissionLevel(approverRole);
+  if (!outboundLevel || !submitterEmployeeId) {
+    return [];
+  }
+
+  return submissions.filter(
+    (submission) =>
+      submission.level === outboundLevel &&
+      submission.submittedBy?.employeeId === submitterEmployeeId
+  );
 };
 
 /**

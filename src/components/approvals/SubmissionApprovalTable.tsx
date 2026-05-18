@@ -121,6 +121,8 @@ interface SubmissionApprovalTableProps {
   strategicTargetsById?: Record<string, Record<string, number>>;
   // All KPIs with targets for parent lookup
   allKpis?: Kpi[];
+  /** Track-only view: no approve/reject or row selection */
+  readOnly?: boolean;
 }
 
 const statusMap = {
@@ -142,6 +144,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   allObjectives = [],
   strategicTargetsById = {},
   allKpis = [],
+  readOnly = false,
 }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("division");
@@ -504,11 +507,13 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
         <TableHeader>
           <TableRow className="border-b border-gray-200 bg-gray-50">
             <TableHead className="px-6 py-4 w-12">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={handleSelectAll}
-                className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-              />
+              {!readOnly && (
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                />
+              )}
             </TableHead>
             {(() => {
               // Get the most common objective type from the submissions to determine column headers
@@ -547,9 +552,11 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </TableHead>
-            <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </TableHead>
+            {!readOnly && (
+              <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </TableHead>
+            )}
             <TableHead className="px-6 py-4 w-12"></TableHead>
           </TableRow>
         </TableHeader>
@@ -586,8 +593,12 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                     className="px-6 py-4 w-12"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {obj.level === "DIVISION" && obj.status === "PENDING" ? (
-                      <div className="flex items-center justify-center" title="Manual Strategic Review Required">
+                    {readOnly ? null : obj.level === "DIVISION" &&
+                      obj.status === "PENDING" ? (
+                      <div
+                        className="flex items-center justify-center"
+                        title="Manual Strategic Review Required"
+                      >
                         <ShieldCheck className="h-4 w-4 text-blue-500/50" />
                       </div>
                     ) : (
@@ -699,7 +710,15 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                     )}
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    {obj.level === "DIVISION" ? (
+                    {readOnly ? (
+                      <span className="text-xs text-gray-500">
+                        {obj.status === "PENDING"
+                          ? "Awaiting approval from above"
+                          : obj.status === "APPROVED"
+                            ? "Approved"
+                            : "Rejected"}
+                      </span>
+                    ) : obj.level === "DIVISION" ? (
                       <div className="flex items-center gap-2">
                         <DivisionLevelApprovalDialog
                           submission={{

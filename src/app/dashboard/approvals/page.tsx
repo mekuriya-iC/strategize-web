@@ -59,7 +59,11 @@ export default function ApprovalsPage() {
           <div className="px-6">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-3xl font-semibold text-gray-900">
-                {isViewingOwnSubmissions ? "My Submissions" : "Approval Requests"}
+                {isViewingOwnSubmissions
+                  ? "My Submissions"
+                  : user?.role === "DIRECTOR" || user?.role === "MANAGER"
+                    ? "Approve Requests"
+                    : "Approval Requests"}
               </h1>
               {(guards.isAdmin || guards.isSuperAdmin) && (
                 <Button
@@ -186,7 +190,7 @@ export default function ApprovalsPage() {
 
           {/* Workflow Content - Only Submission-Based Approval */}
           <div className="px-6">
-            <SubmissionApprovalsTable />
+            <SubmissionApprovalsTable listMode="inbound" />
           </div>
         </div>
       </div>

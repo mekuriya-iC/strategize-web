@@ -17,6 +17,7 @@ import {
   useSubmissionQueries,
   useDepartmentHierarchy,
   filterSubmissionsByHierarchy,
+  filterSubmissionsByListMode,
   filterSubmissionsByStatus,
   groupSubmissionsByObjective,
   paginateSubmissions,
@@ -36,9 +37,12 @@ export const useSubmissionApprovals = ({
   limit = 10,
   approverRole,
   status,
+  listMode = "inbound",
+  submitterEmployeeId,
 }: SubmissionApprovalsOptions): UseSubmissionApprovalsResult => {
   const user = useAuthStore((state) => state.user);
   const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const effectiveSubmitterId = submitterEmployeeId ?? user?.employeeId;
 
   // Determine if we should make queries
   const shouldMakeQueries = Boolean(
@@ -54,6 +58,7 @@ export const useSubmissionApprovals = ({
   } = useSubmissionQueries({
     shouldFetch: shouldMakeQueries,
     approverRole,
+    pendingOnly: listMode === "inbound",
   });
 
   // Get departments hierarchy (for corporate and division filtering)
@@ -74,17 +79,25 @@ export const useSubmissionApprovals = ({
     ? getDepartmentsForDivision(selectedUnitId)
     : new Set<string>();
 
-  // Apply organizational hierarchy filtering
-  const hierarchyFiltered = filterSubmissionsByHierarchy(
+  const listModeFiltered = filterSubmissionsByListMode(
     allSubmissions,
+    listMode,
     approverRole,
-    selectedUnitType,
-    departmentsWithoutDivision,
-    departmentsInSelectedDivision,
-    selectedUnitId
+    effectiveSubmitterId
   );
 
-  // Apply status filtering
+  const hierarchyFiltered =
+    listMode === "inbound"
+      ? filterSubmissionsByHierarchy(
+          listModeFiltered,
+          approverRole,
+          selectedUnitType,
+          departmentsWithoutDivision,
+          departmentsInSelectedDivision,
+          selectedUnitId
+        )
+      : listModeFiltered;
+
   const statusFiltered = filterSubmissionsByStatus(hierarchyFiltered, status);
 
   // Group submissions by objective

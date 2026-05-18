@@ -69,6 +69,7 @@ export function canAccessRoute(
     '/dashboard/employees': 'nav:employees',
     '/dashboard/reports': 'nav:reports',
     '/dashboard/approvals': 'nav:approvals',
+    '/dashboard/approvals/my-submissions': 'nav:approvals',
     '/dashboard/admin': 'nav:admin',
     '/dashboard/settings': 'nav:settings',
     '/dashboard/checkin': 'nav:checkin',

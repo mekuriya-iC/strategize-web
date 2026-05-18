@@ -8,6 +8,10 @@ export * from "./types";
 
 // Utilities
 export * from "./utils";
+export {
+  objectiveSubmissionsQueryVariables,
+  kpiSubmissionsQueryVariables,
+} from "./submissionQueryVariables";
 
 // Hooks
 export { useSubmissionQueries } from "./useSubmissionQueries";

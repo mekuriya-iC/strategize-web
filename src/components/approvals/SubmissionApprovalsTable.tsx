@@ -14,6 +14,7 @@ import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { toast } from "sonner";
 import { CheckCircle, XCircle } from "lucide-react";
 import type { Kpi } from "@/types/graphql";
+import type { SubmissionListMode } from "@/hooks/submissions/types";
 import {
   Select,
   SelectContent,
@@ -38,13 +39,23 @@ type SubmissionData = {
   updatedAt?: string;
 };
 
-export default function SubmissionApprovalsTable() {
+interface SubmissionApprovalsTableProps {
+  /** Inbound = approve from below; outbound = track submissions you sent upward */
+  listMode?: SubmissionListMode;
+}
+
+export default function SubmissionApprovalsTable({
+  listMode = "inbound",
+}: SubmissionApprovalsTableProps) {
   const user = useAuthStore((state) => state.user);
   const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const readOnly = listMode === "outbound";
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("pending"); // Default to pending (submitted) submissions
+  const [statusFilter, setStatusFilter] = useState(
+    listMode === "outbound" ? "all" : "pending"
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
@@ -84,6 +95,8 @@ export default function SubmissionApprovalsTable() {
       page: currentPage,
       limit: itemsPerPage,
       approverRole: approverRole,
+      listMode,
+      submitterEmployeeId: user?.employeeId,
       status:
         statusFilter === "all"
           ? undefined
@@ -606,7 +619,7 @@ export default function SubmissionApprovalsTable() {
         </div>
 
         {/* Selected Count */}
-        {selected.length > 0 && (
+        {!readOnly && selected.length > 0 && (
           <div className="text-sm text-gray-600">
             {selected.length} selected
           </div>
@@ -626,7 +639,7 @@ export default function SubmissionApprovalsTable() {
           </p>
         </div>
         <div className="flex gap-2">
-          {selected.length > 0 && (
+          {!readOnly && selected.length > 0 && (
             <>
               <Button
                 onClick={handleApprove}
@@ -663,6 +676,7 @@ export default function SubmissionApprovalsTable() {
         onRejectSubmission={handleRejectSubmission}
         loading={loading}
         error={error}
+        readOnly={readOnly}
         allObjectives={allObjectivesLookup}
         allKpis={allKpis}
         strategicTargetsById={strategicTargetsById}

@@ -120,11 +120,14 @@ export function AssigneeTab({
             {type === "PERSONNEL" ? (
               <div className="space-y-2">
                 <p className="font-medium text-gray-500 italic">
-                  {sourceObjective?.type === "DEPARTMENT"
-                    ? "No employees found in this department"
-                    : sourceObjective?.type === "DIVISION"
-                      ? "Searching for employees in this division..."
-                      : "No personnel available for selection"}
+                  {(() => {
+                    const effectiveLevel = sourceObjective?.assigneeType || sourceObjective?.type;
+                    return effectiveLevel === "DEPARTMENT"
+                      ? "No employees found in this department"
+                      : effectiveLevel === "DIVISION"
+                        ? "Searching for employees in this division..."
+                        : "No personnel available for selection";
+                  })()}
                 </p>
                 <p className="text-xs">
                   Make sure employees are assigned to the relevant departments in your organization.

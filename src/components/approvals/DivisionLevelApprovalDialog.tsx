@@ -34,6 +34,7 @@ interface KPISubmission {
     status: string;
     weight?: number;
     baseline?: number | string;
+    targetValue?: number | string;
     submissionId?: string;
 }
 
@@ -218,6 +219,9 @@ export default function DivisionLevelApprovalDialog({
                                                 <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
                                                     <span className="flex items-center gap-1">
                                                         <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4">WEIGHT</Badge> {kpi.weight ?? "N/A"}%
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4">TARGET</Badge> {kpi.targetValue?.toLocaleString() || "N/A"}
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4">BASELINE</Badge> {kpi.baseline || "N/A"}

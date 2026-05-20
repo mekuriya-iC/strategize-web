@@ -50,6 +50,8 @@ export const GET_KPIS = gql`
           level
           status
           type
+          assigneeType
+          assigneeId
         }
         createdBy {
           employeeId

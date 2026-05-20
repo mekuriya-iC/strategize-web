@@ -29,6 +29,9 @@ export const SubmissionsFragment = gql`
       status
       assigneeType
       assigneeId
+      weight
+      baseline
+      targetValue
       objective {
         objectiveId
         title
@@ -38,6 +41,7 @@ export const SubmissionsFragment = gql`
         assigneeId
         parent {
           objectiveId
+          title
           assigneeType
           assigneeId
           type
@@ -53,6 +57,7 @@ export const SubmissionsFragment = gql`
       assigneeId
       parent {
         objectiveId
+        title
         assigneeType
         assigneeId
         type

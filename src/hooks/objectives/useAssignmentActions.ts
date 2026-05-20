@@ -147,7 +147,6 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                                     measurementUnit: "NUMBER", // Default to NUMBER
                                     organizationId: organizationId, // Required by backend
                                     targetValue: 0, // Will be updated with targets
-                                    status: "NOT_SUBMITTED",
                                     targets: []
                                 }
                             });
@@ -187,10 +186,16 @@ export function useAssignmentActions({ onSuccess, onClose }: { onSuccess?: () =>
                             await updateKpi({
                                 input: {
                                     kpiId: childKpi.kpiId,
-                                    targets: [{
-                                        timeline,
-                                        target: targetValue
-                                    }]
+                                    targetValue: targetValue,
+                                    targets: childKpi.targets?.length > 0
+                                        ? childKpi.targets.map((t: any) => ({
+                                            timeline: t.timeline,
+                                            target: targetValue
+                                        }))
+                                        : [{
+                                            timeline,
+                                            target: targetValue
+                                        }]
                                 }
                             });
                         } else {

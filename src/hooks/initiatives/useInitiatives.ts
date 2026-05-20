@@ -38,6 +38,15 @@ export interface Initiative {
   updatedAt: string;
   /** ID of the linked strategic objective (if any) */
   strategicObjectiveId?: string;
+  objective?: {
+    objectiveId: string;
+    title: string;
+    description?: string;
+    level?: string;
+    status?: string;
+    dueDate?: string;
+    weight?: number;
+  };
   owner?: InitiativeOwner;
   createdBy: {
     employeeId: string;

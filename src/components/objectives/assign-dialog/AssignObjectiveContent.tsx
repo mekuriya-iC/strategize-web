@@ -29,12 +29,26 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
 
     const { handleSubmit, isSubmitting } = useAssignmentActions({ onSuccess, onClose });
 
+    // Determine the effective cascading level:
+    // - For cascaded objectives (assigned from above), use assigneeType to determine what level we're at
+    // - A CORPORATE objective assigned to a DIVISION should cascade to DEPARTMENT/PERSONNEL (not DIVISION again)
+    // - Falls back to objective.type for top-level objectives
+    const effectiveLevel = React.useMemo(() => {
+        if (!objective) return "CORPORATE";
+        // If this objective was assigned to a specific type, that's the current level
+        if (objective.assigneeType === "DIVISION") return "DIVISION";
+        if (objective.assigneeType === "DEPARTMENT") return "DEPARTMENT";
+        if (objective.assigneeType === "EMPLOYEE") return "PERSONNEL";
+        // Fall back to objective type
+        return objective.type || "CORPORATE";
+    }, [objective]);
+
     // Compute tabs count for grid layout
     const getTabCount = () => {
         let count = 0;
-        if (objective?.type === "CORPORATE") count += 2; // Division + Dept
-        if (objective?.type === "DIVISION") count += 1; // Dept
-        if (objective?.type === "DEPARTMENT") count += 1; // Personnel
+        if (effectiveLevel === "CORPORATE") count += 2; // Division + Dept
+        if (effectiveLevel === "DIVISION") count += 2; // Dept + Personnel
+        if (effectiveLevel === "DEPARTMENT") count += 1; // Personnel
         return count || 1;
     };
 
@@ -92,19 +106,19 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
                 onValueChange={(value) => setAssigneeType(value as any)}
             >
                 <TabsList className={`grid w-full grid-cols-${getTabCount()}`}>
-                    {objective?.type === "CORPORATE" && (
+                    {effectiveLevel === "CORPORATE" && (
                         <TabsTrigger value="DIVISION" className="flex items-center gap-2">
                             <Building2 className="w-4 h-4" />
                             Division
                         </TabsTrigger>
                     )}
-                    {(objective?.type === "CORPORATE" || objective?.type === "DIVISION") && (
+                    {(effectiveLevel === "CORPORATE" || effectiveLevel === "DIVISION") && (
                         <TabsTrigger value="DEPARTMENT" className="flex items-center gap-2">
                             <Building2 className="w-4 h-4" />
                             Department
                         </TabsTrigger>
                     )}
-                    {objective?.type === "DEPARTMENT" && (
+                    {(effectiveLevel === "DIVISION" || effectiveLevel === "DEPARTMENT") && (
                         <TabsTrigger value="PERSONNEL" className="flex items-center gap-2">
                             <Users className="w-4 h-4" />
                             Employee

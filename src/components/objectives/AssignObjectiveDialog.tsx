@@ -41,11 +41,15 @@ export default function AssignObjectiveDialog({
           </DialogTitle>
           <DialogDescription>
             Assign &quot;{objective.title || objective.name}&quot; to a{" "}
-            {objective.type === "CORPORATE"
-              ? "division or department"
-              : objective.type === "DIVISION"
-                ? "department"
-                : "employee"}{" "}
+            {(() => {
+              // Determine effective level from assigneeType (for cascaded objectives)
+              const effectiveLevel = objective.assigneeType === "DIVISION" ? "DIVISION"
+                : objective.assigneeType === "DEPARTMENT" ? "DEPARTMENT"
+                : objective.type;
+              if (effectiveLevel === "CORPORATE") return "division or department";
+              if (effectiveLevel === "DIVISION") return "department or employee";
+              return "employee";
+            })()}{" "}
             with selected KPIs.
           </DialogDescription>
         </DialogHeader>

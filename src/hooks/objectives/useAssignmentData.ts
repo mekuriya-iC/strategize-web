@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
 import { GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
-import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees"; // Only for fallback
+import { GET_EMPLOYEES, GET_DIRECT_REPORTS } from "@/lib/graphql/queries/employees";
 import { useAssignmentContext, type AssigneeType } from "@/context/AssignmentContext";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import type { Division, Department, Employee } from "@/types/graphql";
@@ -27,10 +27,13 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
         fetchPolicy: "cache-and-network",
     });
 
-    // 2. Fetching Departments
+    // Determine effective source level:
+    // For cascaded objectives, assigneeType reflects the actual level (e.g., a CORPORATE-type
+    // objective assigned to DIVISION has assigneeType=DIVISION). Use assigneeType first.
     const sourceObjectiveType = sourceObjective?.type?.toUpperCase();
-    const isDivisionSource = sourceObjectiveType === "DIVISION" && sourceObjective?.assigneeId;
-    const isDepartmentSource = sourceObjectiveType === "DEPARTMENT" && sourceObjective?.assigneeId;
+    const effectiveSourceType = sourceObjective?.assigneeType?.toUpperCase() || sourceObjectiveType;
+    const isDivisionSource = effectiveSourceType === "DIVISION" && sourceObjective?.assigneeId;
+    const isDepartmentSource = effectiveSourceType === "DEPARTMENT" && sourceObjective?.assigneeId;
     const shouldFetchDepartments = assigneeType === "DEPARTMENT";
     const shouldFetchPersonnel = assigneeType === "PERSONNEL";
 
@@ -66,6 +69,15 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
     const { data: scopedDepartmentData, loading: loadingScopedDepartment } = useQuery(GET_DEPARTMENT_SAFE, {
         variables: { departmentId: sourceObjective?.assigneeId },
         skip: !isDepartmentSource,
+        fetchPolicy: "cache-and-network",
+    });
+
+    // C: Fetch direct reports of the division/department head
+    // This is crucial for divisions that do not have departments, but only have direct employees
+    const headUserId = scopedDivisionData?.division?.head?.employeeId || scopedDepartmentData?.department?.head?.employeeId;
+    const { data: directReportsData, loading: loadingDirectReports } = useQuery(GET_DIRECT_REPORTS, {
+        variables: { managerId: headUserId },
+        skip: !shouldFetchPersonnel || !headUserId,
         fetchPolicy: "cache-and-network",
     });
 
@@ -162,6 +174,17 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
                 allEmployees = globalEmployeesData?.employees?.items || [];
             }
 
+            // Merge in direct reports (to cover employees who report directly to the division head without a department)
+            const directReports = directReportsData?.directReports || [];
+            if (directReports.length > 0) {
+                const existingIds = new Set(allEmployees.map(e => e.employeeId));
+                directReports.forEach((emp: any) => {
+                    if (!existingIds.has(emp.employeeId)) {
+                        allEmployees.push(emp);
+                    }
+                });
+            }
+
             // CLIENT-SIDE SEARCH
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
@@ -183,13 +206,14 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
         scopedDivisionData,
         scopedDepartmentData,
         globalEmployeesData,
+        directReportsData,
         isAdmin,
         isDivisionSource,
         isDepartmentSource,
         sourceObjective
     ]);
 
-    const loading = loadingDivisions || loadingAllDepartments || loadingScopedDivision || loadingScopedDepartment || loadingGlobalEmployees;
+    const loading = loadingDivisions || loadingAllDepartments || loadingScopedDivision || loadingScopedDepartment || loadingGlobalEmployees || loadingDirectReports;
     // TODO: Consolidate errors properly. For now return generic error if any failed.
     const error = null;
 

@@ -44,13 +44,12 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
     // Rule 1 & 2: Assignment requirements
     const objective = kpi.objective;
     const assignGate = objective
-      ? canAssignDownstream(objective, allKpis.filter((k) => k.objective?.objectiveId === objective.objectiveId))
+      ? canAssignDownstream(objective, [kpi])
       : { allowed: false };
 
     const canAssign =
       !isAssigned &&
       isKpiApproved &&
-      isObjectiveApproved &&
       assignGate.allowed;
 
     const isCorporate = objective
@@ -129,10 +128,14 @@ const KPIActions: React.FC<KPIActionsProps> = ({ kpi, allKpis, onEdit, onRefresh
                                         <p className="text-xs mt-1">
                                             • KPI: {kpi.status ? kpi.status.replace("_", " ") : "Unknown"} {isKpiApproved ? "✓" : "×"}
                                         </p>
-                                        <p className="text-xs">
-                                            • Objective: {kpi.objective?.status ? kpi.objective.status.replace("_", " ") : "N/A"} {isObjectiveApproved ? "✓" : "×"}
+                                        {!isCascaded && (
+                                            <p className="text-xs">
+                                                • Objective: {kpi.objective?.status ? kpi.objective.status.replace("_", " ") : "N/A"} {isObjectiveApproved ? "✓" : "×"}
+                                            </p>
+                                        )}
+                                        <p className="text-[10px] mt-2 italic">
+                                            {isCascaded ? "This KPI must be APPROVED to assign." : "KPI and Objective must be APPROVED to assign."}
                                         </p>
-                                        <p className="text-[10px] mt-2 italic">Both must be APPROVED to assign.</p>
                                     </>
                                 )}
                             </TooltipContent>

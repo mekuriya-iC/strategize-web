@@ -72,6 +72,9 @@ export const GET_OBJECTIVES = gql`
           unitType
           status
           targetValue
+          parent {
+            kpiId
+          }
           targets {
             target
             timeline

@@ -34,6 +34,17 @@ export function canAssignDownstream(
     return { allowed: true };
   }
 
+  // For cascaded objectives (those with a parent), allow assignment when all KPIs are approved.
+  // The parent was already approved at the level above; if the child's KPIs are approved,
+  // the arrangement has been validated and can be cascaded further.
+  const isCascaded = !!objective.parentId || !!objective.parent;
+  if (isCascaded && kpiList.length > 0) {
+    const allKpisApproved = kpiList.every((k) => k.status === "APPROVED");
+    if (allKpisApproved) {
+      return { allowed: true };
+    }
+  }
+
   return {
     allowed: false,
     reason: "Requires approval before assigning downstream.",

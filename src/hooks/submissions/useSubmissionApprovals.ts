@@ -51,6 +51,7 @@ export const useSubmissionApprovals = ({
   );
 
   // Fetch all submissions using modular query hook
+  // pendingOnly is false so we can support filtering by APPROVED/REJECTED status too
   const {
     submissions: allSubmissions,
     loading: submissionsLoading,
@@ -58,7 +59,7 @@ export const useSubmissionApprovals = ({
   } = useSubmissionQueries({
     shouldFetch: shouldMakeQueries,
     approverRole,
-    pendingOnly: listMode === "inbound",
+    pendingOnly: false,
   });
 
   // Get departments hierarchy (for corporate and division filtering)

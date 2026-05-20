@@ -31,7 +31,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApproveSubmissionDialog from "./ApproveSubmissionDialog";
 import RejectSubmissionDialog from "./RejectSubmissionDialog";
 import ApproveObjectiveWithKPIsDialog from "./ApproveObjectiveWithKPIsDialog";
-import DivisionLevelApprovalDialog from "./DivisionLevelApprovalDialog";
 import { Kpi } from "@/types/graphql";
 import { useAuthStore } from "@/stores";
 import { useQuery } from "@apollo/client";
@@ -56,6 +55,7 @@ type KpiSubmission = {
     name?: string;
     weight?: number;
     baseline?: number | string;
+    targetValue?: number | string;
   };
 };
 
@@ -75,6 +75,8 @@ export type GroupedSubmission = {
     name?: string; // Backward compatibility
     type?: string;
     status?: string;
+    assigneeId?: string | null;
+    assigneeType?: string | null;
     parent?: { objectiveId: string; title?: string; name?: string } | null;
     kpis?: Array<{
       kpiId: string;
@@ -91,6 +93,7 @@ export type GroupedSubmission = {
     status?: string;
     weight?: number;
     baseline?: number | string;
+    targetValue?: number | string;
     objective?: {
       objectiveId: string;
       title?: string; // Backend uses 'title'
@@ -114,7 +117,8 @@ interface SubmissionApprovalTableProps {
   allObjectives?: Array<{
     objectiveId: string;
     name?: string;
-    parent?: { objectiveId: string; name?: string } | null;
+    title?: string;
+    parent?: { objectiveId: string; name?: string; title?: string } | null;
     kpis?: Array<{ kpiId: string; name: string }>;
   }>;
   // Optional: map of parent KPI yearly targets by child KPI id
@@ -202,8 +206,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
     const child = allObjectives?.find((o) => o.objectiveId === childId);
     const hasParent = !!child?.parent;
     const strategicName = hasParent
-      ? child.parent?.name || "N/A"
-      : submission.objective?.name || "N/A";
+      ? child.parent?.title || child.parent?.name || "N/A"
+      : submission.objective?.title || submission.objective?.name || "N/A";
     const childName = hasParent
       ? submission.objective?.name || undefined
       : undefined;
@@ -690,11 +694,37 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                         >
                           Obj Approved
                         </Badge>
-                        <Badge
-                          className="bg-yellow-100 text-yellow-600 rounded-full px-3 py-1 text-xs font-medium border-0"
-                        >
-                          KPIs Pending
-                        </Badge>
+                        {(() => {
+                          const allApproved = effectiveKpiSubmissions.length > 0 && effectiveKpiSubmissions.every((k) => k.status === "APPROVED");
+                          const allRejected = effectiveKpiSubmissions.length > 0 && effectiveKpiSubmissions.every((k) => k.status === "REJECTED");
+                          const someApproved = effectiveKpiSubmissions.some((k) => k.status === "APPROVED");
+                          if (allApproved) {
+                            return (
+                              <Badge className="bg-green-100 text-green-600 rounded-full px-3 py-1 text-xs font-medium border-0">
+                                All KPIs Approved
+                              </Badge>
+                            );
+                          }
+                          if (allRejected) {
+                            return (
+                              <Badge className="bg-red-100 text-red-600 rounded-full px-3 py-1 text-xs font-medium border-0">
+                                KPIs Rejected
+                              </Badge>
+                            );
+                          }
+                          if (someApproved) {
+                            return (
+                              <Badge className="bg-blue-100 text-blue-600 rounded-full px-3 py-1 text-xs font-medium border-0">
+                                Partial KPIs Approved
+                              </Badge>
+                            );
+                          }
+                          return (
+                            <Badge className="bg-yellow-100 text-yellow-600 rounded-full px-3 py-1 text-xs font-medium border-0">
+                              KPIs Pending
+                            </Badge>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <Badge
@@ -718,72 +748,6 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                             ? "Approved"
                             : "Rejected"}
                       </span>
-                    ) : obj.level === "DIVISION" ? (
-                      <div className="flex items-center gap-2">
-                        <DivisionLevelApprovalDialog
-                          submission={{
-                            submissionId: obj.submissionId,
-                            objective: obj.objective,
-                            level: obj.level,
-                            submittedBy: obj.submittedBy,
-                          }}
-                          associatedKPIs={effectiveKpiSubmissions.map((k) => ({
-                            kpiId: k.kpi?.kpiId || "",
-                            name: k.kpi?.name || "Unknown KPI",
-                            status: k.status,
-                            weight: k.kpi?.weight,
-                            baseline: k.kpi?.baseline,
-                            submissionId: k.submissionId,
-                          }))}
-                          onApprove={async (id, reason, selectedKPIs) => {
-                            await onApproveSubmission(id, reason, selectedKPIs);
-                          }}
-                          onReject={async (id, reason) => {
-                            await onRejectSubmission(id, reason);
-                          }}
-                        >
-                          <Button
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 h-8 shadow-sm"
-                          >
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            Review & Approve
-                          </Button>
-                        </DivisionLevelApprovalDialog>
-
-                        <RejectSubmissionDialog
-                          submission={{
-                            submissionId: obj.submissionId,
-                            type: "OBJECTIVE",
-                            level: obj.level,
-                            status: obj.status,
-                            reason: obj.reason || "",
-                            submittedBy: {
-                              employeeId: obj.submittedBy.employeeId || "",
-                              fullName: obj.submittedBy.fullName,
-                            },
-                            objective: obj.objective
-                              ? {
-                                objectiveId: obj.objective.objectiveId,
-                                name: obj.objective.title || obj.objective.name || "",
-                                type: obj.objective.type || "",
-                                status: obj.objective.status || obj.status,
-                              }
-                              : undefined,
-                            createdAt: new Date().toISOString(),
-                          }}
-                          onReject={onRejectSubmission}
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 border-red-200 hover:bg-red-50 h-8 font-medium"
-                          >
-                            <XCircle className="h-3.5 w-3.5 mr-1" />
-                            Reject
-                          </Button>
-                        </RejectSubmissionDialog>
-                      </div>
                     ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1107,9 +1071,11 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                     <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                                       Reason
                                     </TableHead>
-                                    <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                                      Actions
-                                    </TableHead>
+                                    {!readOnly && (
+                                      <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
+                                        Actions
+                                      </TableHead>
+                                    )}
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1491,6 +1457,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                               </span>
                                             )}
                                           </TableCell>
+                                          {!readOnly && (
                                           <TableCell className="px-4 py-3">
                                             {kpiSubmission.status ===
                                               "APPROVED" ||
@@ -1524,31 +1491,6 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                               </div>
                                             ) : (
                                               <div className="flex items-center gap-2">
-                                                {(() => {
-                                                  // Debug: Log what we're passing to approval/rejection dialogs
-                                                  //   `🎯 APPROVAL/REJECTION DEBUG for KPI ${kpiSubmission.kpi?.kpiId}:`,
-                                                  //   {
-                                                  //     kpiSubmissionId:
-                                                  //       kpiSubmission.submissionId,
-                                                  //     submissionType: "KPI",
-                                                  //     fullKpiSubmission:
-                                                  //       kpiSubmission,
-                                                  //     // Check if this submission ID exists in the parent submissions array
-                                                  //     existsInParentArray:
-                                                  //       obj.associatedKpiSubmissions?.some(
-                                                  //         (s: any) =>
-                                                  //           s.submissionId ===
-                                                  //           kpiSubmission.submissionId
-                                                  //       ),
-                                                  //     parentArraySubmissionIds:
-                                                  //       obj.associatedKpiSubmissions?.map(
-                                                  //         (s: any) =>
-                                                  //       s.submissionId
-                                                  //     ),
-                                                  //   }
-                                                  // );
-                                                  return null;
-                                                })()}
                                                 <ApproveSubmissionDialog
                                                   submission={{
                                                     submissionId:
@@ -1676,6 +1618,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                               </div>
                                             )}
                                           </TableCell>
+                                          )}
                                         </TableRow>
                                       );
                                     }

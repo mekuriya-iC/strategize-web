@@ -10,6 +10,7 @@ import { useQuery } from "@apollo/client";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_KPI_SUBMISSIONS } from "@/lib/graphql/queries/submissions";
 import { kpiSubmissionsQueryVariables } from "@/hooks/submissions/submissionQueryVariables";
 import KPIList from "@/components/features/objectives/KPIList";
@@ -68,6 +69,9 @@ export default function ObjectiveDetailPage() {
   const { data: departmentsData } = useQuery(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 100 },
   });
+  const { data: employeesData } = useQuery(GET_EMPLOYEES, {
+    variables: { page: 1, limit: 1000 },
+  });
 
   // Fetch all objectives to check for children (assignment status)
   const { data: allObjectivesData } = useQuery(GET_OBJECTIVES, {
@@ -98,6 +102,7 @@ export default function ObjectiveDetailPage() {
 
   const divisions = divisionsData?.divisions?.items || [];
   const departments = departmentsData?.departments?.items || [];
+  const employees = employeesData?.employees?.items || [];
   const allObjectives = allObjectivesData?.objectives?.items || [];
   // Build rejection reasons map for KPIs
   const kpiRejectionReasons = useMemo(() => {
@@ -163,7 +168,7 @@ export default function ObjectiveDetailPage() {
         objectiveId: string;
         parent?: { objectiveId: string };
         assigneeId?: string;
-        assigneeType?: "DIVISION" | "DEPARTMENT" | "EMPLOYEE";
+        assigneeType?: "DIVISION" | "DEPARTMENT" | "PERSONNEL" | "EMPLOYEE";
       }>
     ).filter((obj) => obj.parent?.objectiveId === objectiveId);
   };
@@ -462,8 +467,19 @@ export default function ObjectiveDetailPage() {
                       return department
                         ? department.name
                         : `Department ID: ${childObjective.assigneeId}`;
-                    } else if (childObjective.assigneeType === "EMPLOYEE") {
-                      return `Employee ID: ${childObjective.assigneeId}`;
+                    } else if (
+                      childObjective.assigneeType === "PERSONNEL" ||
+                      childObjective.assigneeType === "EMPLOYEE"
+                    ) {
+                      const employee = (
+                        employees as Array<{
+                          employeeId: string;
+                          fullName: string;
+                        }>
+                      ).find((e) => e.employeeId === childObjective.assigneeId);
+                      return employee
+                        ? employee.fullName
+                        : `Employee ID: ${childObjective.assigneeId}`;
                     }
 
                     return childObjective.assigneeId;

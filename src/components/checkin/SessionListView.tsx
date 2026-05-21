@@ -105,7 +105,9 @@ export default function SessionListView({
     },
   });
 
-  const teamSessions = (teamData?.checkinoutSessions?.items || []).filter((s: any) => s.employee);
+  const teamSessions = (teamData?.checkinoutSessions?.items || []).filter(
+    (s: any) => s.employee && s.employee?.employeeId !== currentUser?.employeeId
+  );
   const ownSessions = (ownData?.checkinoutSessions?.items || []).filter((s: any) => s.employee);
   const allSessions = (allData?.checkinoutSessions?.items || []).filter((s: any) => s.employee);
 

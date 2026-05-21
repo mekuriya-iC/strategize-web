@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_CHECKINOUT_SESSIONS, GET_CHECKINOUT_TASKS } from "@/lib/graphql/queries/checkins";
 import { CREATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
@@ -51,6 +51,7 @@ function EmployeeTaskCard({
   onToggle, 
   onEditTask, 
   onAddTask,
+  onTasksSummary,
   currentUser,
   searchQuery,
   filters
@@ -68,6 +69,16 @@ function EmployeeTaskCard({
     if (!tasksData?.checkinoutTasks?.items) return [];
     return tasksData.checkinoutTasks.items.map(mapTaskToFrontend);
   }, [tasksData]);
+
+  useEffect(() => {
+    if (!onTasksSummary || !session?.checkinoutSessionId) return;
+    const totalTasks = tasks.length;
+    const kpiMet = tasks.filter((task: any) =>
+      task.taskType === "KPI_FULFILLED" || task.checkoutStatus === "DONE"
+    ).length;
+    const kpiUnmet = totalTasks - kpiMet;
+    onTasksSummary(session.checkinoutSessionId, { totalTasks, kpiMet, kpiUnmet });
+  }, [onTasksSummary, session?.checkinoutSessionId, tasks]);
 
   const isCurrentUser = session.employee?.employeeId === currentUser?.employeeId;
   const isManagerOfThisEmployee = session.supervisor?.employeeId === currentUser?.employeeId;
@@ -229,6 +240,23 @@ export default function CheckInPage() {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [teamTaskSummaries, setTeamTaskSummaries] = useState<
+    Record<string, { totalTasks: number; kpiMet: number; kpiUnmet: number }>
+  >({});
+  const handleTasksSummary = useCallback((sessionId: string, summary: any) => {
+    setTeamTaskSummaries(prev => {
+      const existing = prev[sessionId];
+      if (
+        existing &&
+        existing.totalTasks === summary.totalTasks &&
+        existing.kpiMet === summary.kpiMet &&
+        existing.kpiUnmet === summary.kpiUnmet
+      ) {
+        return prev;
+      }
+      return { ...prev, [sessionId]: summary };
+    });
+  }, []);
 
   const handleEditTask = (task: any) => {
     setEditingTask(task);
@@ -273,7 +301,18 @@ export default function CheckInPage() {
   
   // Combine all relevant sessions for the list view
   const allSessions = useMemo(() => {
-    return [...employeeSessions, ...supervisedSessions];
+    const byId = new Map<string, any>();
+    for (const session of employeeSessions) {
+      if (session?.checkinoutSessionId && !byId.has(session.checkinoutSessionId)) {
+        byId.set(session.checkinoutSessionId, session);
+      }
+    }
+    for (const session of supervisedSessions) {
+      if (session?.checkinoutSessionId && !byId.has(session.checkinoutSessionId)) {
+        byId.set(session.checkinoutSessionId, session);
+      }
+    }
+    return Array.from(byId.values());
   }, [employeeSessions, supervisedSessions]);
 
   // Current session logic
@@ -323,6 +362,17 @@ export default function CheckInPage() {
 
     return combined;
   }, [supervisedSessions, employeeSessions, currentSession, currentUser]);
+
+  useEffect(() => {
+    const activeSessionIds = new Set(teamSessions.map((s: any) => s.checkinoutSessionId).filter(Boolean));
+    setTeamTaskSummaries(prev => {
+      const next: Record<string, { totalTasks: number; kpiMet: number; kpiUnmet: number }> = {};
+      for (const [sessionId, summary] of Object.entries(prev)) {
+        if (activeSessionIds.has(sessionId)) next[sessionId] = summary;
+      }
+      return next;
+    });
+  }, [teamSessions]);
 
   // Get the manager's own session ID for this week to allow "Add My Task"
   const mySessionId = useMemo(() => {
@@ -433,9 +483,6 @@ export default function CheckInPage() {
   const teamStatistics = useMemo(() => {
     if (!isManagerMode || !teamSessions.length) return null;
 
-    let totalTasks = 0;
-    let totalKpiMet = 0;
-    let totalKpiUnmet = 0;
     let completedSessions = 0;
 
     // Note: This only counts sessions, not individual tasks because tasks are loaded in cards
@@ -451,19 +498,20 @@ export default function CheckInPage() {
     };
   }, [isManagerMode, teamSessions]);
 
-  // Calculate statistics for the current selected view (Team or Individual)
-  const statistics = useMemo(() => {
-    // If in Manager Team View, we should ideally aggregate all tasks
-    // But since tasks are fetched in cards, we'll use a placeholder or aggregate if possible
-    // For now, let's keep it consistent with what the user sees
-    const currentTasks = currentWeekDataWithTasks?.tasks || [];
-    const totalTasks = currentTasks.length;
-    
-    const kpiMet = currentTasks.filter((task: any) => 
-      task.taskType === "KPI_FULFILLED" || task.checkoutStatus === "DONE"
-    ).length;
-    const kpiUnmet = totalTasks - kpiMet;
-
+  const teamAggregatedStats = useMemo(() => {
+    if (!isManagerMode || !teamSessions.length) return null;
+    let totalTasks = 0;
+    let kpiMet = 0;
+    let kpiUnmet = 0;
+    for (const session of teamSessions) {
+      const sessionId = session?.checkinoutSessionId;
+      if (!sessionId) continue;
+      const summary = teamTaskSummaries[sessionId];
+      if (!summary) continue;
+      totalTasks += summary.totalTasks;
+      kpiMet += summary.kpiMet;
+      kpiUnmet += summary.kpiUnmet;
+    }
     return {
       totalTasks,
       kpiMet,
@@ -471,7 +519,24 @@ export default function CheckInPage() {
       kpiMetPercentage: totalTasks > 0 ? Math.round((kpiMet / totalTasks) * 100) : 0,
       kpiUnmetPercentage: totalTasks > 0 ? Math.round((kpiUnmet / totalTasks) * 100) : 0,
     };
-  }, [currentWeekDataWithTasks]);
+  }, [isManagerMode, teamSessions, teamTaskSummaries]);
+
+  const statistics = useMemo(() => {
+    if (isManagerMode && teamAggregatedStats) return teamAggregatedStats;
+    const currentTasks = currentWeekDataWithTasks?.tasks || [];
+    const totalTasks = currentTasks.length;
+    const kpiMet = currentTasks.filter((task: any) =>
+      task.taskType === "KPI_FULFILLED" || task.checkoutStatus === "DONE"
+    ).length;
+    const kpiUnmet = totalTasks - kpiMet;
+    return {
+      totalTasks,
+      kpiMet,
+      kpiUnmet,
+      kpiMetPercentage: totalTasks > 0 ? Math.round((kpiMet / totalTasks) * 100) : 0,
+      kpiUnmetPercentage: totalTasks > 0 ? Math.round((kpiUnmet / totalTasks) * 100) : 0,
+    };
+  }, [currentWeekDataWithTasks, isManagerMode, teamAggregatedStats]);
 
   // Force open the add task modal with a specific session ID
   const handleOpenAddTask = (sessionId: string | null) => {
@@ -500,6 +565,18 @@ export default function CheckInPage() {
     }
 
     try {
+      const weekStart = normalizeDate(weekStartDate);
+      const preflight = await refetchEmployeeSessions();
+      const preflightItems = preflight.data?.checkinoutSessions?.items || [];
+      const existingSessionId =
+        preflightItems.find((s: any) => normalizeDate(s.weekStartDate) === weekStart)?.checkinoutSessionId ||
+        null;
+
+      if (existingSessionId) {
+        handleOpenAddTask(existingSessionId);
+        return;
+      }
+
       await createMySession({
         variables: {
           input: {
@@ -515,7 +592,6 @@ export default function CheckInPage() {
 
       const refreshed = await refetchEmployeeSessions();
       const refreshedItems = refreshed.data?.checkinoutSessions?.items || [];
-      const weekStart = normalizeDate(weekStartDate);
       const createdSessionId =
         refreshedItems.find((s: any) => normalizeDate(s.weekStartDate) === weekStart)?.checkinoutSessionId ||
         null;
@@ -822,6 +898,7 @@ export default function CheckInPage() {
                     onToggle={() => toggleSession(session.checkinoutSessionId)}
                     onEditTask={handleEditTask}
                     onAddTask={(sid: string) => handleOpenAddTask(sid)}
+                    onTasksSummary={handleTasksSummary}
                     currentUser={currentUser}
                     searchQuery={searchQuery}
                     filters={filters}

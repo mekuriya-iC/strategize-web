@@ -159,3 +159,18 @@ export const REMOVE_EVALUATION_WEIGHT_CONFIG = gql`
     }
   }
 `;
+
+/**
+ * Bulk Assign Evaluators Mutation
+ */
+export const BULK_ASSIGN_EVALUATORS = gql`
+  mutation BulkAssignEvaluators($bulkAssignEvaluatorsInput: BulkAssignEvaluatorsInput!) {
+    bulkAssignEvaluators(bulkAssignEvaluatorsInput: $bulkAssignEvaluatorsInput) {
+      totalCreated
+      totalSkipped
+      totalErrors
+      success
+      errors
+    }
+  }
+`;

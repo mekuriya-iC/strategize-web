@@ -214,3 +214,35 @@ export const GET_EVALUATION_WEIGHT_CONFIGS = gql`
     }
   }
 `;
+
+/**
+ * Get evaluator candidates for an evaluatee
+ */
+export const GET_EVALUATOR_CANDIDATES = gql`
+  query GetEvaluatorCandidates($evaluateeUserId: ID!) {
+    getEvaluatorCandidates(evaluateeUserId: $evaluateeUserId) {
+      candidates {
+        relationType
+        employees {
+          employeeId
+          fullName
+          email
+          role
+        }
+        count
+        applicable
+      }
+      applicableCategories
+      totalApplicableCategories
+    }
+  }
+`;
+
+/**
+ * Get default weights for an evaluatee
+ */
+export const GET_DEFAULT_WEIGHTS = gql`
+  query GetDefaultWeights($evaluateeUserId: ID!) {
+    getDefaultWeights(evaluateeUserId: $evaluateeUserId)
+  }
+`;

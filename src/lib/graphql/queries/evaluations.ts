@@ -1,11 +1,21 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Evaluation Cycle Queries
  */
 export const GET_EVALUATION_CYCLES = gql`
-  query GetEvaluationCycles($page: Int!, $limit: Int!, $search: String, $status: EvaluationCycleStatus) {
-    evaluationCycles(page: $page, limit: $limit, search: $search, status: $status) {
+  query GetEvaluationCycles(
+    $page: Int!
+    $limit: Int!
+    $search: String
+    $status: EvaluationCycleStatus
+  ) {
+    evaluationCycles(
+      page: $page
+      limit: $limit
+      search: $search
+      status: $status
+    ) {
       items {
         evaluationCycleId
         name
@@ -153,7 +163,11 @@ export const GET_COMPETENCY_ASSESSMENT = gql`
  */
 export const GET_ASSESSMENT_RESPONSES = gql`
   query GetAssessmentResponses($assessmentId: ID!, $page: Int!, $limit: Int!) {
-    assessmentResponses(assessmentId: $assessmentId, page: $page, limit: $limit) {
+    assessmentResponses(
+      assessmentId: $assessmentId
+      page: $page
+      limit: $limit
+    ) {
       items {
         assessmentResponseId
         rating
@@ -189,9 +203,57 @@ export const GET_ASSESSMENT_RESPONSES = gql`
 /**
  * Evaluation Weight Config Queries
  */
+export const GET_COMPETENCY_ASSESSMENT_EVALUATOR_OPTIONS = gql`
+  query GetCompetencyAssessmentEvaluatorOptions($evaluateeUserId: ID!) {
+    competencyAssessmentEvaluatorOptions(evaluateeUserId: $evaluateeUserId) {
+      supervisors {
+        employeeId
+        fullName
+        email
+        title
+      }
+      peers {
+        employeeId
+        fullName
+        email
+        title
+      }
+      subordinates {
+        employeeId
+        fullName
+        email
+        title
+      }
+    }
+  }
+`;
+
+export const GET_DEFAULT_WEIGHTS = gql`
+  query GetDefaultWeights($evaluationCycleId: ID!, $evaluateeUserId: ID!) {
+    getDefaultWeights(
+      evaluationCycleId: $evaluationCycleId
+      evaluateeUserId: $evaluateeUserId
+    ) {
+      enabledRelationTypes
+      weights {
+        relationType
+        weightPercent
+      }
+    }
+  }
+`;
+
 export const GET_EVALUATION_WEIGHT_CONFIGS = gql`
-  query GetEvaluationWeightConfigs($evaluationCycleId: ID, $page: Int!, $limit: Int!) {
-    evaluationWeightConfigs(evaluationCycleId: $evaluationCycleId, page: $page, limit: $limit) {
+  query GetEvaluationWeightConfigs(
+    $evaluationCycleId: ID
+    $page: Int!
+    $limit: Int!
+  ) {
+    evaluationWeightConfigs(
+      evaluationCycleId: $evaluationCycleId
+      page: $page
+      limit: $limit
+    ) {
       items {
         evaluationWeightConfigId
         relationType
@@ -212,37 +274,5 @@ export const GET_EVALUATION_WEIGHT_CONFIGS = gql`
         currentPage
       }
     }
-  }
-`;
-
-/**
- * Get evaluator candidates for an evaluatee
- */
-export const GET_EVALUATOR_CANDIDATES = gql`
-  query GetEvaluatorCandidates($evaluateeUserId: ID!) {
-    getEvaluatorCandidates(evaluateeUserId: $evaluateeUserId) {
-      candidates {
-        relationType
-        employees {
-          employeeId
-          fullName
-          email
-          role
-        }
-        count
-        applicable
-      }
-      applicableCategories
-      totalApplicableCategories
-    }
-  }
-`;
-
-/**
- * Get default weights for an evaluatee
- */
-export const GET_DEFAULT_WEIGHTS = gql`
-  query GetDefaultWeights($evaluateeUserId: ID!) {
-    getDefaultWeights(evaluateeUserId: $evaluateeUserId)
   }
 `;

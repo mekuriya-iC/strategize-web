@@ -1,21 +1,29 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Slider } from '@/components/ui/slider';
-import { Search, Users, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useQuery, useMutation } from '@apollo/client';
-import { GET_EMPLOYEES } from '@/lib/graphql/queries/employees';
-import { GET_EVALUATOR_CANDIDATES, GET_DEFAULT_WEIGHTS, GET_COMPETENCY_ASSESSMENTS } from '@/lib/graphql/queries/evaluations';
-import { BULK_ASSIGN_EVALUATORS } from '@/lib/graphql/mutations/evaluations';
-import { EvaluationRelationType } from '@/types/evaluation';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Users, CheckCircle2, AlertCircle } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { CREATE_COMPETENCY_ASSESSMENT } from "@/lib/graphql/mutations/evaluations";
+import {
+  GET_COMPETENCY_ASSESSMENTS,
+  GET_COMPETENCY_ASSESSMENT_EVALUATOR_OPTIONS,
+} from "@/lib/graphql/queries/evaluations";
+import { EvaluationRelationType } from "@/types/evaluation";
+import { toast } from "sonner";
 
 interface AssignEvaluatorsDialogProps {
   open: boolean;
@@ -24,15 +32,14 @@ interface AssignEvaluatorsDialogProps {
   evaluationCycleName: string;
 }
 
-interface EvaluatorSelection {
-  relationType: EvaluationRelationType;
-  evaluators: string[];
-  weight: number;
-}
-
-interface EmployeeWeightAssignment {
-  evaluateeUserId: string;
-  selections: EvaluatorSelection[];
+interface EmployeeAssignment {
+  employee: any;
+  assignSelf: boolean;
+  // If true, we assign exactly one supervisor evaluator (supervisorEvaluatorId)
+  assignSupervisor: boolean;
+  supervisorEvaluatorId?: string | null;
+  peers: string[];
+  subordinates: string[];
 }
 
 export default function AssignEvaluatorsDialog({
@@ -41,222 +48,266 @@ export default function AssignEvaluatorsDialog({
   evaluationCycleId,
   evaluationCycleName,
 }: AssignEvaluatorsDialogProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [step, setStep] = useState<'select' | 'configure'>('select');
-  const [assignments, setAssignments] = useState<Record<string, EmployeeWeightAssignment>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
+    null,
+  );
+  const [assignments, setAssignments] = useState<
+    Record<string, EmployeeAssignment>
+  >({});
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState<"select" | "assign">("select");
 
-  // Get all employees
-  const { data: employeesData, loading: employeesLoading } = useQuery(GET_EMPLOYEES, {
-    variables: { page: 1, limit: 1000, search: searchQuery },
-    fetchPolicy: 'cache-and-network',
-  });
+  const { data: employeesData, loading: employeesLoading } = useQuery(
+    GET_EMPLOYEES,
+    {
+      variables: { page: 1, limit: 1000, search: searchQuery },
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
-  // Get existing assessments
-  const { data: existingAssessmentsData } = useQuery(GET_COMPETENCY_ASSESSMENTS, {
-    variables: { page: 1, limit: 10000, evaluationCycleId },
-    fetchPolicy: 'network-only',
-  });
-
-  // Get evaluator candidates for selected employee
-  const { data: candidatesData } = useQuery(GET_EVALUATOR_CANDIDATES, {
-    variables: { evaluateeUserId: selectedEmployeeId },
-    skip: !selectedEmployeeId,
-  });
-
-  // Get default weights for selected employee
-  const { data: defaultWeightsData } = useQuery(GET_DEFAULT_WEIGHTS, {
-    variables: { evaluateeUserId: selectedEmployeeId },
-    skip: !selectedEmployeeId,
-  });
-
-  // Bulk assign mutation
-  const [bulkAssignEvaluators] = useMutation(BULK_ASSIGN_EVALUATORS, {
-    refetchQueries: [{ query: GET_COMPETENCY_ASSESSMENTS, variables: { page: 1, limit: 10000, evaluationCycleId } }],
+  const [createAssessment] = useMutation(CREATE_COMPETENCY_ASSESSMENT, {
+    refetchQueries: [GET_COMPETENCY_ASSESSMENTS],
   });
 
   const employees = employeesData?.employees?.items || [];
-  const selectedEmployee = employees.find((e: any) => e.employeeId === selectedEmployeeId);
-  const candidates = candidatesData?.getEvaluatorCandidates;
-  const defaultWeights = defaultWeightsData?.getDefaultWeights;
-  const existingAssessments = existingAssessmentsData?.competencyAssessments?.items || [];
+  const selectedEmployee = employees.find(
+    (e: any) => e.employeeId === selectedEmployeeId,
+  );
 
-  // Check if assessment exists
-  const assessmentExists = (evaluateeId: string, evaluatorId: string, relationType: string) => {
-    return existingAssessments.some((a: any) => 
-      a.evaluatee.employeeId === evaluateeId &&
-      a.evaluator.employeeId === evaluatorId &&
-      a.relationType === relationType
-    );
-  };
+  const { data: evaluatorOptionsData } = useQuery(
+    GET_COMPETENCY_ASSESSMENT_EVALUATOR_OPTIONS,
+    {
+      variables: { evaluateeUserId: selectedEmployeeId },
+      skip: !selectedEmployeeId,
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
-  // Initialize assignments when employee is selected
+  const evaluatorOptions =
+    evaluatorOptionsData?.competencyAssessmentEvaluatorOptions;
+  const supervisorOptions = evaluatorOptions?.supervisors || [];
+  const peerOptions = evaluatorOptions?.peers || [];
+  const subordinateOptions = evaluatorOptions?.subordinates || [];
+
+  // Initialize assignments when employees load
   useEffect(() => {
-    if (selectedEmployeeId && candidates && defaultWeights && !assignments[selectedEmployeeId]) {
-      const selections: EvaluatorSelection[] = [];
-
-      // Only add categories that have eligible evaluators and don't already exist
-      candidates.candidates.forEach((category: any) => {
-        if (category.applicable && category.count > 0) {
-          const existingCount = category.employees.filter((emp: any) =>
-            !assessmentExists(selectedEmployeeId, emp.employeeId, category.relationType)
-          ).length;
-
-          if (existingCount > 0) {
-            selections.push({
-              relationType: category.relationType,
-              evaluators: category.employees
-                .filter((emp: any) =>
-                  !assessmentExists(selectedEmployeeId, emp.employeeId, category.relationType)
-                )
-                .map((emp: any) => emp.employeeId),
-              weight: defaultWeights[category.relationType] || 0,
-            });
-          }
-        }
+    if (employees.length > 0 && Object.keys(assignments).length === 0) {
+      const initialAssignments: Record<string, EmployeeAssignment> = {};
+      employees.forEach((emp: any) => {
+        initialAssignments[emp.employeeId] = {
+          employee: emp,
+          assignSelf: true, // Default: everyone does self-assessment
+          assignSupervisor: false,
+          supervisorEvaluatorId: null,
+          peers: [],
+          subordinates: [],
+        };
       });
-
-      setAssignments(prev => ({
-        ...prev,
-        [selectedEmployeeId]: {
-          evaluateeUserId: selectedEmployeeId,
-          selections,
-        },
-      }));
+      setAssignments(initialAssignments);
     }
-  }, [selectedEmployeeId, candidates, defaultWeights, assignments, existingAssessments]);
+  }, [employees, assignments]);
 
-  // Handle weight change with validation
-  const handleWeightChange = (relationType: EvaluationRelationType, newWeight: number) => {
-    if (!selectedEmployeeId) return;
+  const handleToggleSelf = (employeeId: string) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        assignSelf: !prev[employeeId].assignSelf,
+      },
+    }));
+  };
 
-    setAssignments(prev => {
-      const assignment = prev[selectedEmployeeId];
-      if (!assignment) return prev;
-
-      const updatedSelections = assignment.selections.map(sel => 
-        sel.relationType === relationType 
-          ? { ...sel, weight: Math.min(100, Math.max(0, newWeight)) }
-          : sel
-      );
-
+  const handleToggleSupervisor = (
+    employeeId: string,
+    defaultSupervisorId?: string | null,
+  ) => {
+    setAssignments((prev) => {
+      const next = !prev[employeeId].assignSupervisor;
       return {
         ...prev,
-        [selectedEmployeeId]: {
-          ...assignment,
-          selections: updatedSelections,
+        [employeeId]: {
+          ...prev[employeeId],
+          assignSupervisor: next,
+          supervisorEvaluatorId: next
+            ? (prev[employeeId].supervisorEvaluatorId ??
+              defaultSupervisorId ??
+              null)
+            : null,
         },
       };
     });
   };
 
-  // Handle evaluator selection toggle
-  const handleEvaluatorToggle = (relationType: EvaluationRelationType, evaluatorId: string, isSelected: boolean) => {
-    if (!selectedEmployeeId) return;
+  const handleSupervisorSelect = (employeeId: string, supervisorId: string) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        supervisorEvaluatorId: supervisorId,
+        assignSupervisor: true,
+      },
+    }));
+  };
 
-    setAssignments(prev => {
-      const assignment = prev[selectedEmployeeId];
-      if (!assignment) return prev;
-
-      const updatedSelections = assignment.selections.map(sel => {
-        if (sel.relationType !== relationType) return sel;
-        
-        if (isSelected) {
-          return { ...sel, evaluators: [...sel.evaluators, evaluatorId] };
-        } else {
-          return { ...sel, evaluators: sel.evaluators.filter(id => id !== evaluatorId) };
-        }
-      });
+  const handleTogglePeer = (evaluateeId: string, peerId: string) => {
+    setAssignments((prev) => {
+      const currentPeers = prev[evaluateeId]?.peers || [];
+      const newPeers = currentPeers.includes(peerId)
+        ? currentPeers.filter((id) => id !== peerId)
+        : [...currentPeers, peerId];
 
       return {
         ...prev,
-        [selectedEmployeeId]: {
-          ...assignment,
-          selections: updatedSelections,
+        [evaluateeId]: {
+          ...prev[evaluateeId],
+          peers: newPeers,
         },
       };
     });
   };
 
-  // Calculate total weight
-  const getTotalWeight = (evaluateeId: string) => {
-    const assignment = assignments[evaluateeId];
-    if (!assignment) return 0;
-    return assignment.selections.reduce((sum, sel) => sum + sel.weight, 0);
-  };
+  const handleToggleSubordinate = (
+    evaluateeId: string,
+    subordinateId: string,
+  ) => {
+    setAssignments((prev) => {
+      const currentSubordinates = prev[evaluateeId]?.subordinates || [];
+      const newSubordinates = currentSubordinates.includes(subordinateId)
+        ? currentSubordinates.filter((id) => id !== subordinateId)
+        : [...currentSubordinates, subordinateId];
 
-  // Check if weights are valid (must equal 100%)
-  const isWeightValid = (evaluateeId: string) => {
-    const total = getTotalWeight(evaluateeId);
-    return Math.abs(total - 100) < 0.01; // Allow for floating point errors
+      return {
+        ...prev,
+        [evaluateeId]: {
+          ...prev[evaluateeId],
+          subordinates: newSubordinates,
+        },
+      };
+    });
   };
 
   const handleBulkAssign = async () => {
     setSaving(true);
+    let successCount = 0;
+    let errorCount = 0;
 
     try {
-      // Validate all assignments
       for (const [evaluateeId, assignment] of Object.entries(assignments)) {
-        if (!isWeightValid(evaluateeId)) {
-          toast.error(`Weights for ${assignment.evaluateeUserId} must total 100%`);
-          setSaving(false);
-          return;
+        const assessmentsToCreate: Array<{
+          evaluatorUserId: string;
+          relationType: EvaluationRelationType;
+        }> = [];
+
+        // Self assessment - use employeeId as userId
+        if (assignment.assignSelf) {
+          assessmentsToCreate.push({
+            evaluatorUserId: evaluateeId,
+            relationType: EvaluationRelationType.SELF,
+          });
+        }
+
+        // Supervisor assessment
+        if (assignment.assignSupervisor && assignment.supervisorEvaluatorId) {
+          assessmentsToCreate.push({
+            evaluatorUserId: assignment.supervisorEvaluatorId,
+            relationType: EvaluationRelationType.SUPERVISOR,
+          });
+        }
+
+        // Peer assessments
+        for (const peerId of assignment.peers) {
+          assessmentsToCreate.push({
+            evaluatorUserId: peerId,
+            relationType: EvaluationRelationType.PEER,
+          });
+        }
+
+        // Subordinate assessments
+        for (const subordinateId of assignment.subordinates) {
+          assessmentsToCreate.push({
+            evaluatorUserId: subordinateId,
+            relationType: EvaluationRelationType.SUBORDINATE,
+          });
+        }
+
+        // Create all assessments for this employee
+        for (const assessment of assessmentsToCreate) {
+          try {
+            await createAssessment({
+              variables: {
+                createCompetencyAssessmentInput: {
+                  evaluateeUserId: evaluateeId,
+                  evaluatorUserId: assessment.evaluatorUserId,
+                  evaluationCycleId,
+                  relationType: assessment.relationType,
+                },
+              },
+            });
+            successCount++;
+          } catch (error: any) {
+            console.error(
+              `Failed to create assessment for ${evaluateeId}:`,
+              error,
+            );
+            errorCount++;
+          }
         }
       }
 
-      // Build bulk assign input
-      const bulkAssignments = Object.values(assignments).map((assignment) => ({
-        evaluateeUserId: assignment.evaluateeUserId,
-        evaluators: assignment.selections.flatMap((sel) =>
-          sel.evaluators.map((evaluatorId) => ({
-            evaluatorUserId: evaluatorId,
-            relationType: sel.relationType,
-            weight: sel.weight,
-          }))
-        ),
-      }));
-
-      const result = await bulkAssignEvaluators({
-        variables: {
-          bulkAssignEvaluatorsInput: {
-            evaluationCycleId,
-            assignments: bulkAssignments,
-          },
-        },
-      });
-
-      if (result.data?.bulkAssignEvaluators?.success) {
-        toast.success(
-          `Successfully assigned ${result.data.bulkAssignEvaluators.totalCreated} evaluators`
-        );
+      if (errorCount === 0) {
+        toast.success(`Successfully created ${successCount} assessments`);
         onOpenChange(false);
-        setStep('select');
+        setStep("select");
         setSelectedEmployeeId(null);
-        setAssignments({});
       } else {
-        const errors = result.data?.bulkAssignEvaluators?.errors || [];
-        toast.error(`Failed with ${errors.length} errors`);
+        toast.warning(
+          `Created ${successCount} assessments, ${errorCount} failed`,
+        );
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to assign evaluators');
+      toast.error(error.message || "Failed to assign evaluators");
     } finally {
       setSaving(false);
     }
   };
 
+  const getTotalAssignments = () => {
+    return Object.values(assignments).reduce((total, assignment) => {
+      let count = 0;
+      if (assignment.assignSelf) count++;
+      if (assignment.assignSupervisor) count++;
+      count += assignment.peers.length;
+      count += assignment.subordinates.length;
+      return total + count;
+    }, 0);
+  };
+
+  const getEmployeeAssignmentCount = (employeeId: string) => {
+    const assignment = assignments[employeeId];
+    if (!assignment) return 0;
+
+    let count = 0;
+    if (assignment.assignSelf) count++;
+    if (assignment.assignSupervisor) count++;
+    count += assignment.peers.length;
+    count += assignment.subordinates.length;
+    return count;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Assign Evaluators - {evaluationCycleName}</DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Configure who evaluates whom with weight distribution
+            Configure who evaluates whom for this evaluation cycle
           </p>
         </DialogHeader>
 
-        {step === 'select' && (
+        {step === "select" && (
           <div className="space-y-4">
+            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -268,212 +319,368 @@ export default function AssignEvaluatorsDialog({
               />
             </div>
 
+            {/* Summary Stats */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="p-4 bg-indigo-50 rounded-lg">
                 <p className="text-sm text-gray-600">Total Employees</p>
-                <p className="text-2xl font-bold text-blue-600">{employees.length}</p>
+                <p className="text-2xl font-bold text-indigo-600">
+                  {employees.length}
+                </p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
-                <p className="text-sm text-gray-600">Ready to Configure</p>
-                <p className="text-2xl font-bold text-green-600">{employees.filter((e: any) => assignments[e.employeeId]?.selections.length > 0).length}</p>
+                <p className="text-sm text-gray-600">Total Assessments</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {getTotalAssignments()}
+                </p>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <p className="text-sm text-gray-600">Valid Weights</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {employees.filter((e: any) => isWeightValid(e.employeeId)).length}
+              <div className="p-4 bg-amber-50 rounded-lg">
+                <p className="text-sm text-gray-600">Avg per Employee</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {employees.length > 0
+                    ? (getTotalAssignments() / employees.length).toFixed(1)
+                    : 0}
                 </p>
               </div>
             </div>
 
-            <ScrollArea className="h-[350px] border rounded-lg p-4">
-              <div className="space-y-3">
-                {employeesLoading ? (
-                  <p className="text-center text-gray-500">Loading employees...</p>
-                ) : (
-                  employees.map((employee: any) => {
-                    const assignment = assignments[employee.employeeId];
-                    const hasAssignment = assignment && assignment.selections.length > 0;
-                    const weightValid = hasAssignment && isWeightValid(employee.employeeId);
+            {/* Employee List */}
+            <ScrollArea className="h-[400px] border rounded-lg">
+              {employeesLoading ? (
+                <div
+                  key="loading"
+                  className="flex items-center justify-center h-full"
+                >
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Loading employees...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {employees.map((employee: any) => {
+                    const assignmentCount = getEmployeeAssignmentCount(
+                      employee.employeeId,
+                    );
 
                     return (
                       <div
                         key={employee.employeeId}
-                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                         onClick={() => {
                           setSelectedEmployeeId(employee.employeeId);
-                          setStep('configure');
+                          setStep("assign");
                         }}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{employee.fullName}</p>
-                            <p className="text-xs text-gray-500">{employee.email}</p>
-                          </div>
-                          <div className="flex items-center gap-3 ml-4">
-                            {hasAssignment && (
-                              <Badge
-                                variant={weightValid ? 'default' : 'destructive'}
-                                className="text-xs"
-                              >
-                                {getTotalWeight(employee.employeeId).toFixed(1)}%
-                              </Badge>
-                            )}
-                            {hasAssignment && weightValid ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            ) : hasAssignment ? (
-                              <AlertCircle className="h-5 w-5 text-red-600" />
-                            ) : (
-                              <AlertCircle className="h-5 w-5 text-gray-400" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
-
-        {step === 'configure' && selectedEmployee && candidates && defaultWeights && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b">
-              <Button variant="ghost" size="sm" onClick={() => {
-                setStep('select');
-                setSelectedEmployeeId(null);
-              }}>
-                ← Back to List
-              </Button>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{selectedEmployee.fullName}</p>
-                <p className="text-sm text-gray-600">{selectedEmployee.email}</p>
-              </div>
-              <Badge variant={isWeightValid(selectedEmployeeId) ? 'default' : 'destructive'}>
-                Total: {getTotalWeight(selectedEmployeeId).toFixed(1)}%
-              </Badge>
-            </div>
-
-            <ScrollArea className="h-[350px] pr-4">
-              <div className="space-y-6">
-                {candidates.candidates
-                  .filter((cat: any) => cat.applicable && cat.count > 0)
-                  .map((category: any) => {
-                    const assignment = assignments[selectedEmployeeId];
-                    const selection = assignment?.selections.find(
-                      (sel) => sel.relationType === category.relationType
-                    );
-
-                    if (!selection) return null;
-
-                    return (
-                      <div key={category.relationType} className="p-4 border rounded-lg">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <span className="text-sm font-semibold text-indigo-600">
+                                {employee.fullName?.charAt(0) || "U"}
+                              </span>
+                            </div>
                             <div>
-                              <h3 className="font-semibold text-gray-900 capitalize">
-                                {category.relationType.toLowerCase()} Evaluation
-                              </h3>
-                              <p className="text-xs text-gray-600">
-                                {category.count} eligible {category.count === 1 ? 'person' : 'people'}
+                              <p className="font-medium text-gray-900">
+                                {employee.fullName}
                               </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-lg text-indigo-600">
-                                {selection.weight.toFixed(1)}%
+                              <p className="text-sm text-gray-600">
+                                {employee.email}
                               </p>
                             </div>
                           </div>
-
-                          <div>
-                            <Slider
-                              value={[selection.weight]}
-                              min={0}
-                              max={100}
-                              step={0.1}
-                              onValueChange={(value) =>
-                                handleWeightChange(category.relationType, value[0])
-                              }
-                              className="w-full"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Adjust weight for this category</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            {category.employees
-                              .filter((emp: any) =>
-                                !assessmentExists(selectedEmployeeId, emp.employeeId, category.relationType)
-                              )
-                              .map((evaluator: any) => (
-                                <div
-                                  key={evaluator.employeeId}
-                                  className="flex items-center space-x-2 p-2 bg-gray-50 rounded"
-                                >
-                                  <Checkbox
-                                    checked={selection.evaluators.includes(evaluator.employeeId)}
-                                    onCheckedChange={(isChecked) =>
-                                      handleEvaluatorToggle(
-                                        category.relationType,
-                                        evaluator.employeeId,
-                                        !!isChecked
-                                      )
-                                    }
-                                  />
-                                  <label className="flex-1 text-sm font-medium cursor-pointer">
-                                    {evaluator.fullName}
-                                  </label>
-                                </div>
-                              ))}
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="gap-1">
+                              <Users className="h-3 w-3" />
+                              {assignmentCount} evaluators
+                            </Badge>
+                            {assignmentCount > 0 ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-5 w-5 text-amber-600" />
+                            )}
                           </div>
                         </div>
                       </div>
                     );
                   })}
-              </div>
+                </div>
+              )}
             </ScrollArea>
-
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-900">
-                Weight validation: Weights must total exactly 100%. Current: <span className="font-bold">{getTotalWeight(selectedEmployeeId).toFixed(1)}%</span>
-              </p>
-            </div>
           </div>
         )}
 
-        <DialogFooter className="flex gap-2">
-          {step === 'select' ? (
+        {step === "assign" && selectedEmployee && (
+          <div className="space-y-4">
+            {/* Back button and employee info */}
+            <div className="flex items-center gap-3 pb-4 border-b">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep("select")}
+              >
+                ← Back
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-indigo-600">
+                    {selectedEmployee.fullName?.charAt(0) || "U"}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {selectedEmployee.fullName}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {selectedEmployee.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-6 pr-4">
+                {/* Self Assessment */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">
+                    Self Assessment
+                  </Label>
+                  <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                    <Checkbox
+                      id={`self-${selectedEmployeeId}`}
+                      checked={
+                        selectedEmployeeId
+                          ? assignments[selectedEmployeeId]?.assignSelf || false
+                          : false
+                      }
+                      onCheckedChange={() =>
+                        selectedEmployeeId &&
+                        handleToggleSelf(selectedEmployeeId)
+                      }
+                    />
+                    <label
+                      htmlFor={`self-${selectedEmployeeId}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      Assign self-assessment
+                    </label>
+                  </div>
+                </div>
+
+                {/* Supervisor Assessment */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">
+                    Supervisor Assessment
+                  </Label>
+
+                  {supervisorOptions.length === 0 ? (
+                    <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                      No supervisor found for this employee in the org chart.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                        <Checkbox
+                          id={`sup-${selectedEmployeeId}`}
+                          checked={
+                            selectedEmployeeId
+                              ? assignments[selectedEmployeeId]
+                                  ?.assignSupervisor || false
+                              : false
+                          }
+                          onCheckedChange={() =>
+                            selectedEmployeeId &&
+                            handleToggleSupervisor(
+                              selectedEmployeeId,
+                              supervisorOptions[0]?.employeeId ?? null,
+                            )
+                          }
+                        />
+                        <label
+                          htmlFor={`sup-${selectedEmployeeId}`}
+                          className="text-sm font-medium leading-none cursor-pointer flex-1"
+                        >
+                          Assign supervisor assessment
+                        </label>
+                      </div>
+
+                      {selectedEmployeeId &&
+                        assignments[selectedEmployeeId]?.assignSupervisor && (
+                          <div className="p-3 bg-white border rounded-lg">
+                            <p className="text-xs text-gray-500 mb-2">
+                              Supervisor
+                            </p>
+                            <div className="space-y-2">
+                              {supervisorOptions.map((sup: any) => (
+                                <div
+                                  key={sup.employeeId}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Checkbox
+                                    id={`sup-choice-${sup.employeeId}`}
+                                    checked={
+                                      assignments[selectedEmployeeId]
+                                        ?.supervisorEvaluatorId ===
+                                      sup.employeeId
+                                    }
+                                    onCheckedChange={() =>
+                                      handleSupervisorSelect(
+                                        selectedEmployeeId,
+                                        sup.employeeId,
+                                      )
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`sup-choice-${sup.employeeId}`}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {sup.fullName}
+                                    <span className="text-xs text-gray-500">
+                                      {" "}
+                                      · {sup.title}
+                                    </span>
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Peer Assessments */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">
+                    Peer Assessments
+                  </Label>
+
+                  {peerOptions.length === 0 ? (
+                    <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                      No eligible peers found for this employee.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {peerOptions.map((peer: any) => (
+                        <div
+                          key={peer.employeeId}
+                          className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg"
+                        >
+                          <Checkbox
+                            id={`peer-${peer.employeeId}`}
+                            checked={
+                              selectedEmployeeId
+                                ? assignments[
+                                    selectedEmployeeId
+                                  ]?.peers?.includes(peer.employeeId) || false
+                                : false
+                            }
+                            onCheckedChange={() =>
+                              selectedEmployeeId &&
+                              handleTogglePeer(
+                                selectedEmployeeId,
+                                peer.employeeId,
+                              )
+                            }
+                          />
+                          <label
+                            htmlFor={`peer-${peer.employeeId}`}
+                            className="text-sm font-medium leading-none cursor-pointer flex-1"
+                          >
+                            {peer.fullName}
+                            <span className="text-xs text-gray-500">
+                              {" "}
+                              · {peer.title}
+                            </span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Subordinate Assessments */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">
+                    Subordinate Assessments (360°)
+                  </Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Select direct reports to provide upward feedback
+                  </p>
+
+                  {subordinateOptions.length === 0 ? (
+                    <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                      No subordinates found for this employee.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {subordinateOptions.map((sub: any) => (
+                        <div
+                          key={sub.employeeId}
+                          className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg"
+                        >
+                          <Checkbox
+                            id={`sub-${sub.employeeId}`}
+                            checked={
+                              selectedEmployeeId
+                                ? assignments[
+                                    selectedEmployeeId
+                                  ]?.subordinates?.includes(sub.employeeId) ||
+                                  false
+                                : false
+                            }
+                            onCheckedChange={() =>
+                              selectedEmployeeId &&
+                              handleToggleSubordinate(
+                                selectedEmployeeId,
+                                sub.employeeId,
+                              )
+                            }
+                          />
+                          <label
+                            htmlFor={`sub-${sub.employeeId}`}
+                            className="text-sm font-medium leading-none cursor-pointer flex-1"
+                          >
+                            {sub.fullName}
+                            <span className="text-xs text-gray-500">
+                              {" "}
+                              · {sub.title}
+                            </span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        <DialogFooter>
+          {step === "select" ? (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleBulkAssign}
-                disabled={
-                  saving ||
-                  !employees.some((e: any) => isWeightValid(e.employeeId)) ||
-                  employees.filter((e: any) => isWeightValid(e.employeeId)).length === 0
-                }
+                disabled={saving || getTotalAssignments() === 0}
                 className="bg-indigo-600 hover:bg-indigo-700"
               >
-                {saving ? 'Assigning...' : 'Assign All'}
+                {saving
+                  ? "Assigning..."
+                  : `Assign ${getTotalAssignments()} Evaluators`}
               </Button>
             </>
           ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setStep('select')}
-              >
-                Back to List
-              </Button>
-              <Button
-                onClick={() => handleBulkAssign()}
-                disabled={!isWeightValid(selectedEmployeeId) || saving}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                {saving ? 'Assigning...' : 'Assign for This Employee'}
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => setStep("select")}>
+              Done
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

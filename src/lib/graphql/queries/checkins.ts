@@ -117,6 +117,16 @@ export const GET_CHECKINOUT_TASKS = gql`
         checkinoutTaskId
         taskTitle
         taskLinkType
+        linkedKpiId
+        linkedKpi {
+          kpiId
+          name
+        }
+        linkedInitiativeId
+        linkedInitiative {
+          initiativeId
+          title
+        }
         plannedDescription
         achievedDescription
         taskStatus
@@ -162,6 +172,16 @@ export const GET_CHECKINOUT_TASK = gql`
       checkinoutTaskId
       taskTitle
       taskLinkType
+      linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+      }
+      linkedInitiativeId
+      linkedInitiative {
+        initiativeId
+        title
+      }
       plannedDescription
       achievedDescription
       taskStatus

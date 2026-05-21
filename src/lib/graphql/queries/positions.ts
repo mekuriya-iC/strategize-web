@@ -74,6 +74,7 @@ export const GET_COMPETENCY_POSITION_ASSIGNMENTS = gql`
           competencyId
           name
           description
+          isActive
           coreCompetency {
             coreCompetencyId
             name

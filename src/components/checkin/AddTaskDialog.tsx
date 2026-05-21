@@ -6,7 +6,10 @@ import {
   CREATE_CHECKINOUT_TASK,
   UPDATE_CHECKINOUT_TASK,
 } from "@/lib/graphql/mutations/checkins";
-import { GETOBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
+import { GET_INITIATIVES } from "@/lib/graphql/queries/initiatives";
+import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+import { useAuthStore } from "@/stores";
 import {
   Dialog,
   DialogContent,
@@ -56,26 +59,10 @@ const TASK_TYPES = [
 ];
 
 const CHECKOUT_STATUS = [
+  { value: "DONE", label: "Done" },
   { value: "NOT_DONE", label: "Not Done" },
   { value: "POSTPONED", label: "Postponed" },
   { value: "CANCELLED", label: "Cancelled" },
-];
-
-const PREDEFINED_TASKS = [
-  {
-    value: "task_1",
-    label: "Review a Gafat RFP ON Stress Management Training",
-  },
-  {
-    value: "task_2",
-    label: "Preparing Technical Proposal FOR Gafat ON Stress Management Training",
-  },
-  {
-    value: "task_3",
-    label: "Preparing financial Proposal FOR BGI RFP ON Stress Management Training",
-  },
-  { value: "task_4", label: "Refine LEAD Proposal LEAD (COORPORATE)" },
-  { value: "task_5", label: "Finalize performance report logbook" },
 ];
 
 type TimeValue = { hour: string; minute: string; period: "AM" | "PM" };
@@ -87,6 +74,8 @@ export function AddTaskDialog({
   sessionId,
   editingTask,
 }: AddTaskDialogProps) {
+  const user = useAuthStore((state) => state.user);
+
   // Mutations
   const [createTaskMutation, { loading: creating }] = useMutation(CREATE_CHECKINOUT_TASK, {
     refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
@@ -97,6 +86,23 @@ export function AddTaskDialog({
   });
 
   const mutationLoading = creating || updating;
+  
+  // Queries
+  const { data: kpisData } = useQuery(GET_MY_KPIS, {
+    variables: { page: 1, limit: 100 },
+    skip: !open,
+  });
+
+  const { data: initiativesData } = useQuery(GET_INITIATIVES, {
+    variables: { page: 1, limit: 100 },
+    skip: !open,
+  });
+
+  const { data: employeesData } = useQuery(GET_EMPLOYEES, {
+     variables: { page: 1, limit: 500 },
+     skip: !open,
+   });
+
   const getNextSaturday = (fromDate: Date = new Date()) => {
     const date = new Date(fromDate);
     const day = date.getDay();
@@ -115,22 +121,15 @@ export function AddTaskDialog({
   const [linkedInitiative, setLinkedInitiative] = useState("");
   const [startDate, setStartDate] = useState<Date>(today);
   const [startTime, setStartTime] = useState<TimeValue>({
-    hour: "07",
-    minute: "00",
-    period: "AM",
+    hour: "07", minute: "00", period: "AM",
   });
   const [endDate, setEndDate] = useState<Date>(getNextSaturday(today));
   const [endTime, setEndTime] = useState<TimeValue>({
-    hour: "07",
-    minute: "00",
-    period: "AM",
+    hour: "07", minute: "00", period: "AM",
   });
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [remark, setRemark] = useState("");
-  const [isKpiMet, setIsKpiMet] = useState(true);
-  const [isInitiativeMet, setIsInitiativeMet] = useState(true);
-  const [isSelfDevComplete, setIsSelfDevComplete] = useState(true);
 
   // ✅ Track popover open states separately so they don't conflict
   const [startDateOpen, setStartDateOpen] = useState(false);
@@ -138,19 +137,15 @@ export function AddTaskDialog({
   const [startTimeOpen, setStartTimeOpen] = useState(false);
   const [endTimeOpen, setEndTimeOpen] = useState(false);
 
-  const { data: objectivesData } = useQuery(GETOBJECTIVES, {
-    variables: { page: 1, limit: 100 },
-  });
-
   // Populate form when editing
   useEffect(() => {
     if (editingTask && open) {
       setTaskType(editingTask.taskType);
       setTask(editingTask.task);
       setDescription(editingTask.description || "");
-      setRelatedTo(editingTask.relatedTo || "");
-      setLinkedKpi(editingTask.linkedKpi || "");
-      setLinkedInitiative(editingTask.linkedInitiative || "");
+      setRelatedTo(editingTask.relatedToEmployeeId || "");
+      setLinkedKpi(editingTask.linkedKpiId || "");
+      setLinkedInitiative(editingTask.linkedInitiativeId || "");
       
       const startDateTime = new Date(editingTask.startTime);
       setStartDate(startDateTime);
@@ -170,9 +165,6 @@ export function AddTaskDialog({
       
       setCheckoutStatus(editingTask.checkoutStatus || "");
       setRemark(editingTask.remark || "");
-      setIsKpiMet(editingTask.isKpiMet);
-      setIsInitiativeMet(editingTask.isInitiativeMet);
-      setIsSelfDevComplete(editingTask.isSelfDevComplete);
     } else if (!open) {
       // Reset form when dialog closes
       resetForm();
@@ -211,6 +203,9 @@ export function AddTaskDialog({
       const taskData = {
         taskTitle: task.trim(),
         taskLinkType: taskType,
+        linkedKpiId: (taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") ? linkedKpi : null,
+        linkedInitiativeId: (taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET") ? linkedInitiative : null,
+        relatedToEmployeeId: relatedTo || null,
         plannedDescription: description.trim() || null,
         taskStartDate: buildDateTime(startDate, startTime).toISOString(),
         taskEndDate: buildDateTime(endDate, endTime).toISOString(),
@@ -226,16 +221,8 @@ export function AddTaskDialog({
           variables: {
             input: {
               checkinoutTaskId: editingTask.id,
-              taskTitle: taskData.taskTitle,
-              taskLinkType: taskData.taskLinkType,
-              plannedDescription: taskData.plannedDescription,
+              ...taskData,
               achievedDescription: description.trim() || null,
-              taskStartDate: taskData.taskStartDate,
-              taskEndDate: taskData.taskEndDate,
-              taskStatus: taskData.taskStatus,
-              evidenceUrl: taskData.evidenceUrl,
-              challenges: taskData.challenges,
-              requiresApproval: taskData.requiresApproval,
             },
           },
         });
@@ -276,39 +263,7 @@ export function AddTaskDialog({
     setCheckoutStatus("");
     setAttachment(null);
     setRemark("");
-    setIsKpiMet(true);
-    setIsInitiativeMet(true);
-    setIsSelfDevComplete(true);
   };
-
-  const RadioGroup = ({
-    name,
-    options,
-    value,
-    onChange,
-  }: {
-    name: string;
-    options: { label: string; value: boolean }[];
-    value: boolean;
-    onChange: (v: boolean) => void;
-  }) => (
-    <div className="flex gap-4 sm:flex-col sm:gap-2">
-      {options.map((opt) => (
-        <label key={String(opt.value)} className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name={name}
-            checked={value === opt.value}
-            onChange={() => onChange(opt.value)}
-            className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
-          />
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            {opt.label}
-          </span>
-        </label>
-      ))}
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -356,9 +311,9 @@ export function AddTaskDialog({
                   </Label>
                   <CheckboxSelect
                     options={
-                      objectivesData?.objectives?.items?.map((obj: any) => ({
-                        value: obj.objectiveId,
-                        label: obj.title,
+                      kpisData?.myKpis?.items?.map((kpi: any) => ({
+                        value: kpi.kpiId,
+                        label: kpi.name,
                       })) || []
                     }
                     value={linkedKpi ? [linkedKpi] : []}
@@ -366,7 +321,6 @@ export function AddTaskDialog({
                     placeholder="Select Linked KPI"
                     searchable
                     searchPlaceholder="Search KPI..."
-                    predefinedTasks={PREDEFINED_TASKS}
                   />
                 </div>
               )}
@@ -378,9 +332,9 @@ export function AddTaskDialog({
                   </Label>
                   <CheckboxSelect
                     options={
-                      objectivesData?.objectives?.items?.map((obj: any) => ({
-                        value: obj.objectiveId,
-                        label: obj.title,
+                      initiativesData?.initiatives?.items?.map((init: any) => ({
+                        value: init.initiativeId,
+                        label: init.title,
                       })) || []
                     }
                     value={linkedInitiative ? [linkedInitiative] : []}
@@ -388,7 +342,6 @@ export function AddTaskDialog({
                     placeholder="Select Linked Initiative"
                     searchable
                     searchPlaceholder="Search Initiative..."
-                    predefinedTasks={PREDEFINED_TASKS}
                   />
                 </div>
               )}
@@ -424,17 +377,21 @@ export function AddTaskDialog({
             {/* Related To */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Related To
+                Related To (Optional)
               </Label>
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <Input
-                  placeholder="Search a person..."
-                  value={relatedTo}
-                  onChange={(e) => setRelatedTo(e.target.value)}
-                  className="pl-9 h-10 text-sm"
-                />
-              </div>
+              <CheckboxSelect
+                options={
+                  employeesData?.employees?.items?.map((emp: any) => ({
+                    value: emp.employeeId,
+                    label: emp.fullName,
+                  })) || []
+                }
+                value={relatedTo ? [relatedTo] : []}
+                onChange={(vals) => setRelatedTo(vals[0] || "")}
+                placeholder="Search a person..."
+                searchable
+                searchPlaceholder="Search employees..."
+              />
             </div>
 
             {/* Start Date & Time */}
@@ -612,18 +569,20 @@ export function AddTaskDialog({
               )}
             </div>
 
-            {/* Checkout */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Checkout
-              </Label>
-              <CheckboxSelect
-                options={CHECKOUT_STATUS}
-                value={checkoutStatus ? [checkoutStatus] : []}
-                onChange={(vals) => setCheckoutStatus(vals[vals.length - 1] || "")}
-                placeholder="Select checkout status"
-              />
-            </div>
+            {/* Checkout - Only visible when editing */}
+            {editingTask && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Checkout Status
+                </Label>
+                <CheckboxSelect
+                  options={CHECKOUT_STATUS}
+                  value={checkoutStatus ? [checkoutStatus] : []}
+                  onChange={(vals) => setCheckoutStatus(vals[vals.length - 1] || "")}
+                  placeholder="Select checkout status"
+                />
+              </div>
+            )}
 
             {/* Remark */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
@@ -636,56 +595,6 @@ export function AddTaskDialog({
                 onChange={(e) => setRemark(e.target.value)}
                 className="min-h-[100px] text-sm resize-none"
               />
-            </div>
-
-            {/* Status Questions */}
-            <div className="col-span-1 sm:col-span-2 lg:col-span-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Is KPI met or unmet?
-                  </Label>
-                  <RadioGroup
-                    name="kpiStatus"
-                    value={isKpiMet}
-                    onChange={setIsKpiMet}
-                    options={[
-                      { label: "Met", value: true },
-                      { label: "Unmet", value: false },
-                    ]}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Is initiative met or unmet?
-                  </Label>
-                  <RadioGroup
-                    name="initiativeStatus"
-                    value={isInitiativeMet}
-                    onChange={setIsInitiativeMet}
-                    options={[
-                      { label: "Met", value: true },
-                      { label: "Unmet", value: false },
-                    ]}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Self development complete?
-                  </Label>
-                  <RadioGroup
-                    name="selfDevStatus"
-                    value={isSelfDevComplete}
-                    onChange={setIsSelfDevComplete}
-                    options={[
-                      { label: "Complete", value: true },
-                      { label: "Incomplete", value: false },
-                    ]}
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>

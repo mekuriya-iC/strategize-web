@@ -11,7 +11,9 @@ interface ExpandedKPIsProps {
     showReasonColumn: boolean;
     kpiRejectionReasons?: Record<string, string>;
     childQuartersByParentId?: Record<string, Record<string, { q1?: number; q2?: number; q3?: number; q4?: number }>>;
-    allKpis?: Kpi[];
+    allKpis: Kpi[];
+    enableSorting?: boolean;
+    onRefresh?: () => void;
 }
 
 const statusMap = {
@@ -29,6 +31,8 @@ const ExpandedKPIs: React.FC<ExpandedKPIsProps> = ({
     kpiRejectionReasons,
     childQuartersByParentId,
     allKpis,
+    enableSorting = false,
+    onRefresh,
 }) => {
     return (
         <TableRow className="bg-gray-50/50">
@@ -43,11 +47,12 @@ const ExpandedKPIs: React.FC<ExpandedKPIsProps> = ({
                     <KPIList
                         kpis={objectiveKPIs}
                         onEdit={() => { }} // View mode in expansion usually
-                        onRefresh={() => { }} // Should be handled by parent refetch
+                        onRefresh={onRefresh || (() => { })}
                         kpiRejectionReasons={kpiRejectionReasons}
                         childQuartersByParentId={childQuartersByParentId}
                         currentObjective={objective}
                         allKpis={allKpis}
+                        enableSorting={enableSorting}
                     />
                 </div>
             </TableCell>

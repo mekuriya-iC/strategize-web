@@ -2,10 +2,13 @@ import React from "react";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GripVertical } from "lucide-react";
 import { Kpi } from "@/types/graphql";
 import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 import KPITargetsCell from "./KPITargetsCell";
 import KPIActions from "./KPIActions";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface KPITableRowProps {
     kpi: Kpi;
@@ -22,6 +25,7 @@ interface KPITableRowProps {
     childQuartersByParentId?: Record<string, Record<string, { q1?: number; q2?: number; q3?: number; q4?: number }>>;
     allKpis: Kpi[];
     currentObjectiveType?: string;
+    enableSorting?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -46,7 +50,27 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
     childQuartersByParentId,
     allKpis,
     currentObjectiveType,
+    enableSorting = false,
 }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: kpi.kpiId, disabled: !enableSorting });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.8 : 1,
+        zIndex: isDragging ? 1000 : "auto",
+        position: "relative" as const,
+        backgroundColor: isDragging ? "rgb(239 246 255)" : undefined,
+        boxShadow: isDragging ? "0 4px 12px rgba(0, 0, 0, 0.15)" : undefined,
+    };
+
     const getFirstColumnContent = (kpi: Kpi) => {
         if (kpi.parent?.name) {
             return kpi.parent.name.trim() || "Unnamed Parent KPI";
@@ -74,10 +98,24 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
 
     return (
         <TableRow
+            ref={setNodeRef}
+            style={style}
             className={`border-b border-gray-100 dark:border-gray-800 ${selected ? "bg-blue-50 dark:bg-blue-950/30" : idx % 2 === 1 ? "bg-white dark:bg-transparent" : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
-                } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer`}
+                } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${isDragging ? "ring-2 ring-blue-400" : ""}`}
             onClick={() => onEdit(kpi.kpiId)}
         >
+            {enableSorting && (
+                <TableCell className="px-2 w-10" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded touch-none"
+                    >
+                        <GripVertical className="h-4 w-4 text-gray-400" />
+                    </button>
+                </TableCell>
+            )}
+
             {showBulkActions && (
                 <TableCell className="px-6 py-4 w-12" onClick={(e) => e.stopPropagation()}>
                     <Checkbox

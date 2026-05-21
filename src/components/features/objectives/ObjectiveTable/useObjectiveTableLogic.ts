@@ -21,6 +21,7 @@ interface UseObjectiveTableLogicProps {
     enableSorting: boolean;
     onOrderChange?: (objectives: Objective[]) => void;
     sortConfig: { key: string; direction: "asc" | "desc" } | null;
+    startIndex?: number;
 }
 
 export const useObjectiveTableLogic = ({
@@ -31,6 +32,7 @@ export const useObjectiveTableLogic = ({
     enableSorting,
     onOrderChange,
     sortConfig,
+    startIndex = 0,
 }: UseObjectiveTableLogicProps) => {
     const user = useAuthStore((state) => state.user);
     const { saveOrder, isSaving } = useObjectivesOrder();
@@ -162,7 +164,11 @@ export const useObjectiveTableLogic = ({
             const reordered = arrayMove(sortedObjectives, oldIndex, newIndex);
             onOrderChange?.(reordered);
             try {
-                await saveOrder(reordered.map((obj, index) => ({ objectiveId: obj.objectiveId, order: index + 1 })));
+                // Use startIndex to calculate correct global order
+                await saveOrder(reordered.map((obj, index) => ({ 
+                    objectiveId: obj.objectiveId, 
+                    order: startIndex + index + 1 
+                })));
             } catch {
                 onOrderChange?.(sortedObjectives);
             }

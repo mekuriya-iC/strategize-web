@@ -1,33 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Bell, Filter, FileDown } from 'lucide-react';
+import { Bell, Filter, FileDown, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useDirectReports } from '@/hooks/employees/useEmployees';
+import { usePermissions } from '@/hooks/permissions/usePermissions';
+import { useDirectReports, useEmployees } from '@/hooks/employees/useEmployees';
 import { useAggregatePerformanceResults } from '@/hooks/performance/usePerformance';
 import { useEvaluationCycles } from '@/hooks/evaluations/useEvaluationCycles';
 import { EvaluationCycleStatus } from '@/types/evaluation';
 
 export default function TeamResults() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [searchQuery, setSearchQuery] = useState('');
   
+  const canReadAll = can('evaluations:read_all');
+  const canReadDivision = can('evaluations:read_division');
+  const canReadDepartment = can('evaluations:read_department');
+
+  // Fetch either all employees (HR/Admin) or direct reports (Manager)
+  const { employees: allEmployees, loading: employeesLoading } = useEmployees(1, 1000, '');
   const { directReports, loading: reportsLoading } = useDirectReports();
+  
   const { cycles } = useEvaluationCycles(1, 1, '', EvaluationCycleStatus.ACTIVE);
   const activeCycle = cycles?.[0];
   
   const { results: performanceResults, loading: performanceLoading } = useAggregatePerformanceResults({
     page: 1,
-    limit: 100,
+    limit: 1000,
     strategicPeriodId: activeCycle?.strategicPeriod?.strategicPeriodId,
   });
 
-  // Match direct reports with their performance results
-  const teamMembers = directReports.map((employee: any) => {
+  // Determine which list of employees to show based on permissions
+  const targetEmployees = useMemo(() => {
+    if (canReadAll) return allEmployees;
+    
+    // For manager view (direct reports)
+    return directReports;
+  }, [canReadAll, allEmployees, directReports]);
+
+  // Match target employees with their performance results
+  const teamMembers = targetEmployees.map((employee: any) => {
     const performance = performanceResults.find(
       (r: any) => r.user.employeeId === employee.employeeId
     );
@@ -54,17 +71,17 @@ export default function TeamResults() {
     };
   });
 
-  const filteredMembers = teamMembers.filter((member) =>
+  const filteredMembers = teamMembers.filter((member: any) =>
     member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate team statistics
-  const completedMembers = teamMembers.filter(m => m.status === 'Done');
+  const completedMembers = teamMembers.filter((m: any) => m.status === 'Done');
   const completedCount = completedMembers.length;
   const pendingCount = teamMembers.length - completedCount;
   const teamAverage = completedMembers.length > 0
-    ? (completedMembers.reduce((sum, m) => sum + m.scores.overall, 0) / completedMembers.length).toFixed(2)
+    ? (completedMembers.reduce((sum: number, m: any) => sum + m.scores.overall, 0) / completedMembers.length).toFixed(2)
     : '0.00';
   const completionRate = teamMembers.length > 0
     ? Math.round((completedCount / teamMembers.length) * 100)
@@ -78,7 +95,7 @@ export default function TeamResults() {
     return 'text-gray-400';
   };
 
-  const loading = reportsLoading || performanceLoading;
+  const loading = reportsLoading || performanceLoading || employeesLoading;
 
   if (loading) {
     return (
@@ -95,9 +112,9 @@ export default function TeamResults() {
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <p className="text-gray-500">No direct reports found</p>
+          <p className="text-gray-500">No employees found</p>
           <p className="text-sm text-gray-400 mt-2">
-            You don't have any team members reporting to you
+            {canReadAll ? "No employees found in the system." : "You don't have any team members reporting to you."}
           </p>
         </CardContent>
       </Card>
@@ -106,14 +123,45 @@ export default function TeamResults() {
 
   return (
     <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">Total Team</div>
+            <div className="text-2xl font-bold text-gray-900">{teamMembers.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">Completion</div>
+            <div className="flex items-center gap-2">
+              <div className="text-2xl font-bold text-gray-900">{completionRate}%</div>
+              <div className="text-xs text-gray-500">({completedCount}/{teamMembers.length})</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">Team Average</div>
+            <div className="text-2xl font-bold text-indigo-600">{teamAverage}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">Pending</div>
+            <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">
-            Direct reports · {activeCycle?.name || 'Current Cycle'}
+            {canReadAll ? "All Organization Results" : "Direct reports"} · {activeCycle?.name || 'Current Cycle'}
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            {filteredMembers.length} team member{filteredMembers.length !== 1 ? 's' : ''}
+            {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} shown
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -133,13 +181,14 @@ export default function TeamResults() {
       </div>
 
       {/* Search */}
-      <div className="max-w-md">
+      <div className="max-w-md relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
           type="text"
           placeholder="Search by name or department..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full"
+          className="w-full pl-10"
         />
       </div>
 
@@ -184,7 +233,7 @@ export default function TeamResults() {
                     </td>
                   </tr>
                 ) : (
-                  filteredMembers.map((member) => (
+                  filteredMembers.map((member: any) => (
                     <tr key={member.employeeId} className="hover:bg-gray-50 transition-colors">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
@@ -215,19 +264,21 @@ export default function TeamResults() {
                         </span>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className={`text-lg ${getScoreColor(member.scores.overall)}`}>
-                          {member.scores.overall > 0 ? member.scores.overall.toFixed(1) : '-'}
-                        </span>
+                        <div className="flex flex-col items-center">
+                          <span className="font-bold text-gray-900">
+                            {member.scores.overall > 0 ? member.scores.overall.toFixed(2) : '-'}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <Badge className={member.statusColor}>{member.status}</Badge>
+                        <Badge className={`${member.statusColor} border-none`}>
+                          {member.status}
+                        </Badge>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        {member.status === 'Pending' && (
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Bell className="h-4 w-4 text-gray-400" />
-                          </Button>
-                        )}
+                        <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
+                          View Details
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -237,42 +288,6 @@ export default function TeamResults() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Team Average</p>
-              <p className="text-3xl font-bold text-indigo-600">{teamAverage}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Completed</p>
-              <p className="text-3xl font-bold text-green-600">{completedCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Pending</p>
-              <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Completion Rate</p>
-              <p className="text-3xl font-bold text-teal-600">{completionRate}%</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

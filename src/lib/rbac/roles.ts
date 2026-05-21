@@ -15,8 +15,9 @@ export const ROLE_HIERARCHY: Record<EmployeeRole, number> = {
   COORDINATOR: 1,
   MANAGER: 2,
   DIRECTOR: 3,
-  ADMIN: 4,
-  SUPER_ADMIN: 5,
+  HR: 4,
+  ADMIN: 5,
+  SUPER_ADMIN: 6,
 };
 
 // Role display labels
@@ -25,6 +26,7 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
   COORDINATOR: 'Coordinator',
   MANAGER: 'Manager',
   DIRECTOR: 'Director',
+  HR: 'HR',
   ADMIN: 'Admin',
   SUPER_ADMIN: 'Super Admin',
 };
@@ -35,6 +37,7 @@ export const ROLE_DESCRIPTIONS: Record<EmployeeRole, string> = {
   COORDINATOR: 'Department coordinator with limited management capabilities',
   MANAGER: 'Department manager with full department-level access',
   DIRECTOR: 'Division director with division-wide access',
+  HR: 'HR manager with access to all employee data and evaluations',
   ADMIN: 'Corporate administrator with organization-wide access',
   SUPER_ADMIN: 'System administrator with full system access',
 };
@@ -93,6 +96,9 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
     'nav:settings',
     'nav:checkin',
     'nav:logbook',
+
+    // Evaluations
+    'evaluations:read_own',
   ],
 
   // ==================== COORDINATOR ====================
@@ -127,6 +133,9 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
 
     // Navigation
     'nav:approvals', // Can view but limited approval
+
+    // Evaluations
+    'evaluations:read_department',
   ],
 
   // ==================== MANAGER ====================
@@ -202,6 +211,29 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
     'nav:divisions',
     'nav:departments',
     'nav:employees',
+
+    // Evaluations
+    'evaluations:read_division',
+  ],
+
+  // ==================== HR ====================
+  // HR management with access to all employee data and evaluations
+  HR: [
+    // Employees - read all
+    'employees:read_all',
+
+    // Analytics & Reports
+    'analytics:read_all',
+    'reports:read_all',
+
+    // Evaluations - full access
+    'evaluations:read_all',
+    'evaluations:manage',
+    'evaluations:assign',
+
+    // Navigation
+    'nav:employees',
+    'nav:reports',
   ],
 
   // ==================== ADMIN ====================
@@ -300,7 +332,7 @@ export function getRolePermissions(role: EmployeeRole): Permission[] {
   const allPermissions = new Set<Permission>();
 
   // Get permissions from this role and all lower roles
-  const roles: EmployeeRole[] = ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'ADMIN', 'SUPER_ADMIN'];
+  const roles: EmployeeRole[] = ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR', 'ADMIN', 'SUPER_ADMIN'];
 
   for (const r of roles) {
     if (ROLE_HIERARCHY[r] <= roleLevel) {
@@ -338,9 +370,9 @@ export function hasMinimumRole(
 export function getAssignableRoles(assignerRole: EmployeeRole | string | undefined): EmployeeRole[] {
   switch (assignerRole) {
     case 'SUPER_ADMIN':
-      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'ADMIN', 'SUPER_ADMIN'];
+      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR', 'ADMIN', 'SUPER_ADMIN'];
     case 'ADMIN':
-      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR'];
+      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR'];
     case 'DIRECTOR':
       return ['NORMAL', 'COORDINATOR', 'MANAGER'];
     default:

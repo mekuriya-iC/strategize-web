@@ -613,18 +613,19 @@ export default function ObjectivesApprovalTable() {
 
   // Sort objectives by order field
   const sortedObjectives = useMemo(() => {
-    const objectivesToSort = orderedObjectives || filteredObjectives;
-    return [...objectivesToSort].sort((a, b) => {
+    if (orderedObjectives) return orderedObjectives;
+    
+    return [...filteredObjectives].sort((a, b) => {
       const orderA = (a as Objective & { order?: number }).order ?? Infinity;
       const orderB = (b as Objective & { order?: number }).order ?? Infinity;
       return orderA - orderB;
     });
   }, [filteredObjectives, orderedObjectives]);
 
-  // Reset ordered objectives when filtered objectives change
+  // Reset ordered objectives ONLY when tab or fundamental filters change, not on every refetch
   React.useEffect(() => {
     setOrderedObjectives(null);
-  }, [filteredObjectives]);
+  }, [activeTab, statusFilter, searchTerm, selectedPeriodId, selectedUnitId]);
 
   // Determine if sorting is enabled (only for users who can edit)
   const canEnableSorting = useMemo(() => {
@@ -633,8 +634,48 @@ export default function ObjectivesApprovalTable() {
   }, [isAdmin, isSuperAdmin, isDirector, isManager]);
 
   // Handle order change (optimistic update)
-  const handleOrderChange = (newOrderedObjectives: Objective[]) => {
-    setOrderedObjectives(newOrderedObjectives);
+  const handleOrderChange = (newOrderedPage: Objective[]) => {
+    // Merge reordered page back into the full list by matching IDs
+    const baseList = orderedObjectives || filteredObjectives;
+    
+    // Create a map of the new positions for items in this page
+    const updatedItemsMap = new Map(newOrderedPage.map(obj => [obj.objectiveId, obj]));
+    
+    // Create a new full list where items from the reordered page are replaced in their new sequence
+    // but only where they existed before, to maintain tab integrity
+    const updatedFullList = baseList.map(obj => {
+      if (updatedItemsMap.has(obj.objectiveId)) {
+        // This is tricky: we want the new order.
+        // For optimistic UI, we just need to make sure we don't have duplicates.
+        return updatedItemsMap.get(obj.objectiveId)!;
+      }
+      return obj;
+    });
+
+    // To properly support reordering across the full list while in a tab:
+    // We should actually move the items in the baseList.
+    const pageIds = new Set(newOrderedPage.map(o => o.objectiveId));
+    const finalFullList: Objective[] = [];
+    
+    // Indices in baseList where the paged items were located
+    const positions: number[] = [];
+    baseList.forEach((obj, idx) => {
+      if (pageIds.has(obj.objectiveId)) {
+        positions.push(idx);
+      }
+    });
+
+    // Reconstruct the list: put newOrderedPage items into the old positions
+    let pageIdx = 0;
+    baseList.forEach((obj, idx) => {
+      if (pageIds.has(obj.objectiveId)) {
+        finalFullList.push(newOrderedPage[pageIdx++]);
+      } else {
+        finalFullList.push(obj);
+      }
+    });
+    
+    setOrderedObjectives(finalFullList);
   };
 
   // Client-side pagination after filtering and sorting
@@ -763,31 +804,31 @@ export default function ObjectivesApprovalTable() {
     });
   };
 
-  // Group objectives by assigneeType for tabs (type field may be null from backend)
+  // Group objectives by assigneeType for tabs
   const corporateObjectives = useMemo(() => {
     // Corporate objectives have no assigneeType/assigneeId
-    const filtered = filteredObjectives.filter(o => !o.assigneeType && !o.assigneeId);
+    const filtered = sortedObjectives.filter(o => !o.assigneeType && !o.assigneeId);
     console.log('🔍 [TabFilter] Corporate objectives', { count: filtered.length, objectives: filtered.map(o => o.title) });
     return filtered;
-  }, [filteredObjectives]);
+  }, [sortedObjectives]);
   
   const divisionObjectives = useMemo(() => {
-    const filtered = filteredObjectives.filter(o => o.assigneeType === "DIVISION");
+    const filtered = sortedObjectives.filter(o => o.assigneeType === "DIVISION");
     console.log('🔍 [TabFilter] Division objectives', { count: filtered.length, objectives: filtered.map(o => o.title) });
     return filtered;
-  }, [filteredObjectives]);
+  }, [sortedObjectives]);
   
   const departmentObjectives = useMemo(() => {
-    const filtered = filteredObjectives.filter(o => o.assigneeType === "DEPARTMENT");
+    const filtered = sortedObjectives.filter(o => o.assigneeType === "DEPARTMENT");
     console.log('🔍 [TabFilter] Department objectives', { count: filtered.length, objectives: filtered.map(o => o.title) });
     return filtered;
-  }, [filteredObjectives]);
+  }, [sortedObjectives]);
   
   const personnelObjectives = useMemo(() => {
-    const filtered = filteredObjectives.filter(o => o.assigneeType === "PERSONNEL");
+    const filtered = sortedObjectives.filter(o => o.assigneeType === "PERSONNEL");
     console.log('🔍 [TabFilter] Personnel objectives', { count: filtered.length, objectives: filtered.map(o => o.title) });
     return filtered;
-  }, [filteredObjectives]);
+  }, [sortedObjectives]);
 
   // Corporate tab: only top-level corporate objectives (exclude cascaded assignees)
   const cumulativeTabWeight = useMemo(() => {
@@ -990,8 +1031,9 @@ export default function ObjectivesApprovalTable() {
         error={error?.message}
         objectiveRejectionReasons={objectiveRejectionReasons}
         kpiRejectionReasons={kpiRejectionReasons}
-        enableSorting={canEnableSorting && activeTab === "corporate"}
+        enableSorting={canEnableSorting}
         onOrderChange={handleOrderChange}
+        startIndex={startIndex}
         sortConfig={sortConfig}
         onSort={handleSort}
         groupBy={showTabs ?

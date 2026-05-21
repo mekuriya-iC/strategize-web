@@ -49,6 +49,7 @@ interface ObjectiveTableProps {
     onSort?: (key: string) => void;
     groupBy?: "none" | "division" | "department" | "personnel";
     unitNames?: Record<string, string>;
+    startIndex?: number;
 }
 
 const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
@@ -76,6 +77,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
         onSort,
         groupBy = "none",
         unitNames = {},
+        startIndex = 0,
     } = props;
 
     const {
@@ -99,6 +101,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
         enableSorting,
         onOrderChange,
         sortConfig,
+        startIndex,
     });
 
     if (loading) {
@@ -196,6 +199,8 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
                                             kpiRejectionReasons={kpiRejectionReasons}
                                             childQuartersByParentId={childQuartersByParentId}
                                             allKpis={kpis}
+                                            enableSorting={enableSorting}
+                                            onRefresh={onEditSuccess}
                                         />
                                     )}
                                 </React.Fragment>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,15 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Save, Send } from 'lucide-react';
 import { useCompetencyAssessment, useCompetencyAssessmentMutations } from '@/hooks/evaluations/useCompetencyAssessment';
-import { useCompetencies } from '@/hooks/competencies/useCompetencies';
+import { useCompetencies, useCompetencyIndicators } from '@/hooks/competencies/useCompetencies';
+import { usePositions, useCompetencyPositionAssignments } from '@/hooks/positions/usePositions';
 import { EvaluationStatus } from '@/types/evaluation';
 import { toast } from 'sonner';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_ASSESSMENT_RESPONSES } from '@/lib/graphql/queries/evaluations';
 import { CREATE_ASSESSMENT_RESPONSE } from '@/lib/graphql/mutations/evaluations';
-import { getOrganizationId } from '@/lib/constants/organization';
+import { GET_COMPETENCY_INDICATORS } from '@/lib/graphql/queries/competencies';
+import { useAuth } from '@/hooks/auth/useAuth';
 
 // Component to fetch and display indicators for a competency
 function CompetencyIndicators({ 
@@ -28,22 +30,14 @@ function CompetencyIndicators({
   onCommentChange,
   onIndicatorCountChange
 }: any) {
-  const { data, loading } = useQuery(
-    require('@/lib/graphql/queries/competencies').GET_COMPETENCY_INDICATORS,
-    {
-      variables: { competencyId, page: 1, limit: 100 },
-      fetchPolicy: 'cache-and-network',
-    }
-  );
-
-  const indicators = data?.competencyIndicators?.items || [];
+  const { indicators, loading } = useCompetencyIndicators(competencyId, 1, 100);
 
   // Report indicator count to parent
   useEffect(() => {
-    if (onIndicatorCountChange) {
+    if (!loading && onIndicatorCountChange) {
       onIndicatorCountChange(competencyId, indicators.length);
     }
-  }, [indicators.length, competencyId, onIndicatorCountChange]);
+  }, [indicators.length, competencyId, onIndicatorCountChange, loading]);
 
   if (loading) {
     return (
@@ -69,7 +63,7 @@ function CompetencyIndicators({
 
   return (
     <>
-      {indicators.map((indicator: any, index: number) => {
+      {indicators.map((indicator: any) => {
         const response = responses[indicator.competencyIndicatorId] || { rating: 0, comment: '' };
         
         return (
@@ -143,15 +137,51 @@ export default function AssessmentFormPage() {
   const params = useParams();
   const router = useRouter();
   const assessmentId = params.assessmentId as string;
+  const { user } = useAuth();
 
   const { assessment, loading: assessmentLoading } = useCompetencyAssessment(assessmentId);
   const { updateAssessment } = useCompetencyAssessmentMutations();
   
-  const organizationId = getOrganizationId();
-  const { competencies, loading: competenciesLoading } = useCompetencies(1, 100, '', organizationId);
+  const organizationId = assessment?.evaluatee?.organizationId || user?.organizationId;
+  
+  // 1. Fetch all positions to find the evaluatee's position
+  const { positions, loading: positionsLoading } = usePositions({
+    organizationId,
+    limit: 1000,
+  });
+
+  const evaluateePosition = positions.find(
+    (p) => p.title.toLowerCase() === assessment?.evaluatee?.title?.toLowerCase()
+  );
+
+  // 2. Fetch competencies for that position
+  const { assignments, loading: assignmentsLoading } = useCompetencyPositionAssignments({
+    positionId: evaluateePosition?.positionId,
+    limit: 100,
+  });
+
+  // 3. Fetch all competencies as fallback
+  const { competencies: allCompetencies, loading: allCompLoading } = useCompetencies(
+    1, 
+    100, 
+    '', 
+    organizationId
+  );
+
+  // Determine which competencies to show
+  const activeCompetencies = React.useMemo(() => {
+    // If position has assigned competencies, use those
+    if (assignments && assignments.length > 0) {
+      return assignments
+        .map((a: any) => a.competency)
+        .filter((c: any) => c.isActive);
+    }
+    // Fallback to all organization competencies
+    return allCompetencies.filter((c: any) => c.isActive);
+  }, [assignments, allCompetencies]);
   
   // Get existing responses
-  const { data: responsesData } = useQuery(GET_ASSESSMENT_RESPONSES, {
+  const { data: responsesData, loading: responsesLoading } = useQuery(GET_ASSESSMENT_RESPONSES, {
     variables: { assessmentId, page: 1, limit: 1000 },
     skip: !assessmentId,
   });
@@ -296,10 +326,7 @@ export default function AssessmentFormPage() {
   const completedCount = Object.values(responses).filter(r => r?.rating).length;
   const progress = totalIndicators > 0 ? (completedCount / totalIndicators) * 100 : 0;
 
-  // Filter to only active competencies
-  const activeCompetencies = competencies.filter((c: any) => c.isActive);
-
-  if (assessmentLoading || competenciesLoading) {
+  if (assessmentLoading || positionsLoading || assignmentsLoading || allCompLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -351,6 +378,11 @@ export default function AssessmentFormPage() {
               <p className="text-sm text-gray-600 mt-1">
                 {assessment.evaluationCycle.name}
               </p>
+              {evaluateePosition && (
+                <p className="text-xs text-indigo-600 font-medium mt-1">
+                  Position: {evaluateePosition.title}
+                </p>
+              )}
             </div>
             <Badge className={relationTypeColors[assessment.relationType]}>
               {assessment.relationType}
@@ -386,7 +418,10 @@ export default function AssessmentFormPage() {
         {activeCompetencies.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-gray-500">No competencies configured for evaluation</p>
+              <p className="text-gray-500 font-medium">No competencies configured for this evaluation</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Please ensure competencies are assigned to the position "{assessment?.evaluatee?.title}" or added to the organization.
+              </p>
             </CardContent>
           </Card>
         )}

@@ -19,6 +19,8 @@ interface Task {
   checkoutStatus: string;
   attachment?: string;
   remark?: string;
+  linkedKpiName?: string;
+  linkedInitiativeName?: string;
   isKpiMet: boolean;
   isInitiativeMet: boolean;
   isSelfDevComplete: boolean;
@@ -34,12 +36,16 @@ interface CheckInTableRowProps {
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
-  KPI_LINKED: "KPI Linked",
-  INITIATIVE_LINKED: "Initiative Linked",
+  KPI_FULFILLED: "KPI Fulfilled",
+  KPI_UNMET: "KPI Unmet",
+  INITIATIVE_FULFILLED: "Initiative Fulfilled",
+  INITIATIVE_UNMET: "Initiative Unmet",
+  SELF_DEVELOPMENT: "Self Development",
   UNLINKED: "Unlinked",
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  DONE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   NOT_DONE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
   POSTPONED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
@@ -52,14 +58,16 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
-    if (task.isKpiMet) {
+    if (task.taskType === "KPI_FULFILLED" || task.isKpiMet) {
       return { label: "KPI Fulfilled", color: "text-green-600 bg-green-50 dark:bg-green-900/20" };
-    } else if (!task.isKpiMet && task.taskType === "KPI_LINKED") {
+    } else if (task.taskType === "KPI_UNMET") {
       return { label: "KPI Unmet", color: "text-red-600 bg-red-50 dark:bg-red-900/20" };
-    } else if (task.isInitiativeMet) {
+    } else if (task.taskType === "INITIATIVE_FULFILLED" || task.isInitiativeMet) {
       return { label: "Initiative Fulfilled", color: "text-green-600 bg-green-50 dark:bg-green-900/20" };
-    } else if (!task.isInitiativeMet && task.taskType === "INITIATIVE_LINKED") {
+    } else if (task.taskType === "INITIATIVE_UNMET") {
       return { label: "Initiative Unmet", color: "text-red-600 bg-red-50 dark:bg-red-900/20" };
+    } else if (task.taskType === "SELF_DEVELOPMENT") {
+      return { label: "Self Development", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20" };
     }
     return { label: "-", color: "text-gray-600" };
   };
@@ -115,12 +123,18 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
       {/* Linked KPI/Initiative */}
       <td className="px-4 py-4">
-        <Badge
-          variant="outline"
-          className="bg-[#ECECFF] text-[#3838EC] border-[#3838EC]/20"
-        >
-          {TASK_TYPE_LABELS[task.taskType] || task.taskType}
-        </Badge>
+        {task.linkedKpiName || task.linkedInitiativeName ? (
+          <span className="text-sm font-medium text-gray-900 dark:text-white">
+            {task.linkedKpiName || task.linkedInitiativeName}
+          </span>
+        ) : (
+          <Badge
+            variant="outline"
+            className="bg-[#ECECFF] text-[#3838EC] border-[#3838EC]/20"
+          >
+            {TASK_TYPE_LABELS[task.taskType] || task.taskType}
+          </Badge>
+        )}
       </td>
 
       {/* Objective */}

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { usePermissions } from '@/hooks/permissions/usePermissions';
 import EvaluationOverview from '@/components/evaluations/EvaluationOverview';
 import MyEvaluations from '@/components/evaluations/MyEvaluations';
 import EvaluationResults from '@/components/evaluations/EvaluationResults';
@@ -13,10 +14,11 @@ import AdminSetup from '@/components/evaluations/AdminSetup';
 
 export default function EvaluationsPage() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [activeTab, setActiveTab] = useState('overview');
 
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
-  const isManager = user?.role === 'MANAGER' || user?.role === 'DIRECTOR' || isAdmin;
+  const canManageEvaluations = can('evaluations:manage');
+  const canReadDepartment = can('evaluations:read_department') || can('evaluations:read_division') || can('evaluations:read_all');
 
   const handleExport = () => {
     // TODO: Implement export functionality
@@ -65,7 +67,7 @@ export default function EvaluationsPage() {
           >
             Results
           </TabsTrigger>
-          {isManager && (
+          {canReadDepartment && (
             <TabsTrigger
               value="team-results"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 px-4 py-3"
@@ -73,7 +75,7 @@ export default function EvaluationsPage() {
               Team Results
             </TabsTrigger>
           )}
-          {isAdmin && (
+          {canManageEvaluations && (
             <TabsTrigger
               value="admin-setup"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 px-4 py-3"
@@ -95,13 +97,13 @@ export default function EvaluationsPage() {
           <EvaluationResults />
         </TabsContent>
 
-        {isManager && (
+        {canReadDepartment && (
           <TabsContent value="team-results" className="mt-6">
             <TeamResults />
           </TabsContent>
         )}
 
-        {isAdmin && (
+        {canManageEvaluations && (
           <TabsContent value="admin-setup" className="mt-6">
             <AdminSetup />
           </TabsContent>

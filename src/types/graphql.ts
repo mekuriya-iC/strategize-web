@@ -4,6 +4,7 @@ export const EmployeeRole = {
   COORDINATOR: "COORDINATOR",
   MANAGER: "MANAGER",
   DIRECTOR: "DIRECTOR",
+  HR: "HR",
   ADMIN: "ADMIN",
   SUPER_ADMIN: "SUPER_ADMIN",
 } as const;
@@ -16,6 +17,7 @@ export const ROLE_HIERARCHY = [
   "COORDINATOR",
   "MANAGER",
   "DIRECTOR",
+  "HR",
   "ADMIN",
   "SUPER_ADMIN",
 ] as const;
@@ -26,6 +28,7 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
   COORDINATOR: "Coordinator",
   MANAGER: "Manager",
   DIRECTOR: "Director",
+  HR: "HR",
   ADMIN: "Admin",
   SUPER_ADMIN: "Super Admin",
 };

@@ -126,6 +126,7 @@ export const GET_COMPETENCY_ASSESSMENT = gql`
         email
         title
         picture
+        organizationId
       }
       evaluator {
         employeeId

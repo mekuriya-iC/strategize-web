@@ -64,6 +64,9 @@ export const CREATE_CHECKINOUT_TASK = gql`
       checkinoutTaskId
       taskTitle
       taskLinkType
+      linkedKpiId
+      linkedInitiativeId
+      relatedToEmployeeId
       plannedDescription
       achievedDescription
       taskStatus
@@ -88,6 +91,9 @@ export const UPDATE_CHECKINOUT_TASK = gql`
       checkinoutTaskId
       taskTitle
       taskLinkType
+      linkedKpiId
+      linkedInitiativeId
+      relatedToEmployeeId
       plannedDescription
       achievedDescription
       taskStatus

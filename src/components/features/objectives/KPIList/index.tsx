@@ -1,11 +1,28 @@
 "use client";
 
-import React from "react";
-import { Table, TableBody } from "@/components/ui/table";
+import React, { useState, useEffect } from "react";
+import { Table, TableBody, TableCell } from "@/components/ui/table";
 import { Kpi, Objective } from "@/types/graphql";
 import { useKPIListLogic } from "./useKPIListLogic";
 import KPITableHeader from "./KPITableHeader";
 import KPITableRow from "./KPITableRow";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useKPIsOrder } from "@/hooks/objectives/useKPIsOrder";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 
 interface KPIListProps {
     kpis: Kpi[];
@@ -20,10 +37,11 @@ interface KPIListProps {
     childQuartersByParentId?: Record<string, Record<string, { q1?: number; q2?: number; q3?: number; q4?: number }>>;
     currentObjective?: Partial<Objective> | null;
     allKpis?: Kpi[];
+    enableSorting?: boolean;
 }
 
 const KPIList: React.FC<KPIListProps> = ({
-    kpis,
+    kpis: initialKpis,
     onEdit,
     onRefresh,
     selected = [],
@@ -33,10 +51,53 @@ const KPIList: React.FC<KPIListProps> = ({
     strategicTargetsById,
     kpiRejectionReasons,
     childQuartersByParentId,
-    allKpis = kpis,
+    allKpis = initialKpis,
     currentObjective,
+    enableSorting = false,
 }) => {
+    const [kpis, setKpis] = useState(initialKpis);
+    const { saveOrder } = useKPIsOrder();
+    const { can } = usePermissions();
+
+    useEffect(() => {
+        setKpis(initialKpis);
+    }, [initialKpis]);
+
     const { columnHeaders, showReasonColumn } = useKPIListLogic(kpis);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = kpis.findIndex((k) => k.kpiId === active.id);
+            const newIndex = kpis.findIndex((k) => k.kpiId === over.id);
+
+            const reorderedKpis = arrayMove(kpis, oldIndex, newIndex);
+            setKpis(reorderedKpis);
+
+            try {
+                const updates = reorderedKpis.map((kpi, index) => ({
+                    kpiId: kpi.kpiId,
+                    order: index + 1,
+                }));
+                await saveOrder(updates);
+                onRefresh();
+            } catch (error) {
+                setKpis(kpis); // Revert on error
+            }
+        }
+    };
 
     const allSelected = showBulkActions && kpis.length > 0 && kpis.every((k) => selected.includes(k.kpiId));
 
@@ -49,39 +110,54 @@ const KPIList: React.FC<KPIListProps> = ({
         );
     }
 
+    const canReorder = enableSorting && (can("objectives:update_all") || can("kpis:update_all"));
+
     return (
         <div className="overflow-x-auto rounded-lg border shadow-sm bg-white">
-            <Table>
-                <KPITableHeader
-                    showBulkActions={showBulkActions}
-                    allSelected={allSelected}
-                    onSelectAll={onSelectAll}
-                    showLevelSpecificColumn={columnHeaders.showSecondColumn}
-                    columnHeaders={columnHeaders}
-                    showReasonColumn={showReasonColumn}
-                />
-                <TableBody>
-                    {kpis.map((kpi, idx) => (
-                        <KPITableRow
-                            key={kpi.kpiId}
-                            kpi={kpi}
-                            idx={idx}
-                            selected={selected.includes(kpi.kpiId)}
-                            onSelect={onSelect || (() => { })}
-                            onEdit={onEdit}
-                            onRefresh={onRefresh}
-                            showBulkActions={showBulkActions}
-                            showLevelSpecificColumn={columnHeaders.showSecondColumn}
-                            columnHeaders={columnHeaders}
-                            strategicTargetsById={strategicTargetsById}
-                            kpiRejectionReasons={kpiRejectionReasons}
-                            childQuartersByParentId={childQuartersByParentId}
-                            allKpis={allKpis}
-                            currentObjectiveType={currentObjective?.type}
-                        />
-                    ))}
-                </TableBody>
-            </Table>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <Table>
+                    <KPITableHeader
+                        showBulkActions={showBulkActions}
+                        allSelected={allSelected}
+                        onSelectAll={onSelectAll}
+                        showLevelSpecificColumn={columnHeaders.showSecondColumn}
+                        columnHeaders={columnHeaders}
+                        showReasonColumn={showReasonColumn}
+                        enableSorting={canReorder}
+                    />
+                    <TableBody>
+                        <SortableContext
+                            items={kpis.map((k) => k.kpiId)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            {kpis.map((kpi, idx) => (
+                                <KPITableRow
+                                    key={kpi.kpiId}
+                                    kpi={kpi}
+                                    idx={idx}
+                                    selected={selected.includes(kpi.kpiId)}
+                                    onSelect={onSelect || (() => { })}
+                                    onEdit={onEdit}
+                                    onRefresh={onRefresh}
+                                    showBulkActions={showBulkActions}
+                                    showLevelSpecificColumn={columnHeaders.showSecondColumn}
+                                    columnHeaders={columnHeaders}
+                                    strategicTargetsById={strategicTargetsById}
+                                    kpiRejectionReasons={kpiRejectionReasons}
+                                    childQuartersByParentId={childQuartersByParentId}
+                                    allKpis={allKpis}
+                                    currentObjectiveType={currentObjective?.type}
+                                    enableSorting={canReorder}
+                                />
+                            ))}
+                        </SortableContext>
+                    </TableBody>
+                </Table>
+            </DndContext>
         </div>
     );
 };

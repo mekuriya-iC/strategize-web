@@ -16,6 +16,8 @@ interface Task {
   checkoutStatus: string;
   attachment?: string;
   remark?: string;
+  linkedKpiName?: string;
+  linkedInitiativeName?: string;
   isKpiMet: boolean;
   isInitiativeMet: boolean;
   isSelfDevComplete: boolean;
@@ -26,9 +28,11 @@ interface Task {
 interface CheckInTableProps {
   tasks: Task[];
   createdDate: Date;
+  endDate?: Date;
   searchQuery: string;
   onRefetch: () => void;
   onEditTask?: (task: Task) => void;
+  isEditable?: boolean;
   filters?: {
     objective: string;
     startDate: Date | undefined;
@@ -41,10 +45,12 @@ interface CheckInTableProps {
 export function CheckInTable({
   tasks,
   createdDate,
+  endDate,
   searchQuery,
   onRefetch,
   onEditTask,
   filters,
+  isEditable = true,
 }: CheckInTableProps) {
   // Filter tasks based on search query and filters
   const filteredTasks = useMemo(() => {
@@ -105,17 +111,21 @@ export function CheckInTable({
     return filtered;
   }, [tasks, searchQuery, filters]);
 
-  // Check if task is editable (only on creation day)
+  // Check if task is editable (within session interval)
   const isTaskEditable = (task: Task) => {
-    const taskCreatedDate = new Date(task.createdAt);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    // Check if it's the same day
-    return (
-      taskCreatedDate.getDate() === today.getDate() &&
-      taskCreatedDate.getMonth() === today.getMonth() &&
-      taskCreatedDate.getFullYear() === today.getFullYear()
-    );
+    const sessionStart = new Date(createdDate);
+    sessionStart.setHours(0, 0, 0, 0);
+    
+    const sessionEnd = endDate ? new Date(endDate) : new Date(sessionStart);
+    if (!endDate) {
+      sessionEnd.setDate(sessionStart.getDate() + 6); // Fallback to 1 week
+    }
+    sessionEnd.setHours(23, 59, 59, 999);
+
+    return today >= sessionStart && today <= sessionEnd;
   };
 
   return (
@@ -166,7 +176,7 @@ export function CheckInTable({
                 <CheckInTableRow
                   key={task.id}
                   task={task}
-                  isEditable={isTaskEditable(task)}
+                  isEditable={isEditable && isTaskEditable(task)}
                   onRefetch={onRefetch}
                   onEditTask={onEditTask}
                 />
@@ -182,7 +192,7 @@ export function CheckInTable({
           <CheckInTableCard
             key={task.id}
             task={task}
-            isEditable={isTaskEditable(task)}
+            isEditable={isEditable && isTaskEditable(task)}
             onRefetch={onRefetch}
             onEditTask={onEditTask}
           />

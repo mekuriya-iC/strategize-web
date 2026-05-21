@@ -36,7 +36,13 @@ export default function StrategySelector({
   onChange,
   className = "",
 }: StrategySelectorProps) {
+  const [mounted, setMounted] = useState(false);
   const { strategicPeriods, loading } = useStrategicPeriods();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { selectedPeriod: storeSelectedPeriod, setSelectedPeriod: storeSetPeriod } = useStrategicPeriodStore();
   const [selectedPeriod, setSelectedPeriod] = useState<StrategicPeriod | null>(
     null
@@ -80,13 +86,13 @@ export default function StrategySelector({
     setShowNewStrategyModal(false);
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
-      <Select disabled>
-        <SelectTrigger className={`w-full ${className}`}>
-          <SelectValue placeholder="Loading..." />
-        </SelectTrigger>
-      </Select>
+      <div className={`h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs ${className}`}>
+        <span className="text-muted-foreground">
+          {loading ? "Loading..." : ""}
+        </span>
+      </div>
     );
   }
 

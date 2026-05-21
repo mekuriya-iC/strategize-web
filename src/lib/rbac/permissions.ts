@@ -146,6 +146,14 @@ export const PERMISSIONS = {
   'logbook:delete_own': 'Delete own logbook entries',
   'logbook:delete_all': 'Delete any logbook entry',
 
+  // ==================== EVALUATIONS ====================
+  'evaluations:read_own': 'View own evaluation results',
+  'evaluations:read_department': 'View department evaluation results',
+  'evaluations:read_division': 'View division evaluation results',
+  'evaluations:read_all': 'View all evaluation results',
+  'evaluations:manage': 'Manage evaluation cycles and framework',
+  'evaluations:assign': 'Assign evaluators',
+
   // ==================== NAVIGATION ====================
   'nav:dashboard': 'Access dashboard',
   'nav:objectives': 'Access objectives page',

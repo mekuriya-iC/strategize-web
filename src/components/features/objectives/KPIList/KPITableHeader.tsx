@@ -9,6 +9,7 @@ interface KPITableHeaderProps {
     showLevelSpecificColumn: boolean;
     columnHeaders: { firstColumn: string; secondColumn: string | null };
     showReasonColumn: boolean;
+    enableSorting?: boolean;
 }
 
 const KPITableHeader: React.FC<KPITableHeaderProps> = ({
@@ -18,10 +19,12 @@ const KPITableHeader: React.FC<KPITableHeaderProps> = ({
     showLevelSpecificColumn,
     columnHeaders,
     showReasonColumn,
+    enableSorting = false,
 }) => {
     return (
         <TableHeader>
             <TableRow className="bg-muted/60 hover:bg-muted/60 border-b">
+                {enableSorting && <TableHead className="w-10 px-2" />}
                 {showBulkActions && (
                     <TableHead className="px-6 py-3 w-12">
                         {onSelectAll && (

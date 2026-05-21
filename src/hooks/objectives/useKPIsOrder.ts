@@ -1,23 +1,23 @@
 import { useMutation } from "@apollo/client";
-import { UPDATE_OBJECTIVES_ORDER } from "@/lib/graphql/mutations/objectives";
+import { REORDER_KPIS } from "@/lib/graphql/mutations/kpis";
 import { toast } from "sonner";
 import { useCacheStore } from "@/stores/cacheStore";
 
 interface OrderUpdate {
-  objectiveId: string;
+  kpiId: string;
   order: number;
 }
 
-export function useObjectivesOrder() {
+export function useKPIsOrder() {
   const invalidate = useCacheStore((state) => state.invalidate);
 
-  const [updateObjectivesOrder, { loading }] = useMutation(UPDATE_OBJECTIVES_ORDER, {
+  const [reorderKpis, { loading }] = useMutation(REORDER_KPIS, {
     onCompleted: () => {
-      invalidate("objectives");
+      invalidate("kpis");
     },
     onError: (error) => {
-      console.error("Failed to update objectives order:", error);
-      toast.error("Failed to save order. Please try again.");
+      console.error("Failed to update KPIs order:", error);
+      toast.error("Failed to save KPI order. Please try again.");
     },
   });
 
@@ -25,15 +25,15 @@ export function useObjectivesOrder() {
     if (updates.length === 0) return;
 
     try {
-      await updateObjectivesOrder({
+      await reorderKpis({
         variables: {
-          input: updates.map(({ objectiveId, order }) => ({
-            objectiveId,
+          input: updates.map(({ kpiId, order }) => ({
+            kpiId,
             order,
           })),
         },
       });
-      toast.success("Order saved successfully");
+      toast.success("KPI order saved successfully");
     } catch (error) {
       // Error already handled in onError
       throw error;
@@ -45,4 +45,3 @@ export function useObjectivesOrder() {
     isSaving: loading,
   };
 }
-

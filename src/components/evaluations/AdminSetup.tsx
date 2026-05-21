@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEvaluationCycles } from '@/hooks/evaluations/useEvaluationCycles';
 import { useCoreCompetencies, useCompetencies, useCompetencyMutations, useCompetencyIndicators } from '@/hooks/competencies/useCompetencies';
 import { useEvaluationWeightMutations } from '@/hooks/evaluations/useEvaluationWeights';
+import { usePermissions } from '@/hooks/permissions/usePermissions';
 import { EvaluationCycleStatus } from '@/types/evaluation';
 import CreateEvaluationCycleDialog from './dialogs/CreateEvaluationCycleDialog';
 import CreateCoreCompetencyDialog from './dialogs/CreateCoreCompetencyDialog';
@@ -26,9 +27,13 @@ import CompetencyIndicatorsList from './CompetencyIndicatorsList';
 import { toast } from 'sonner';
 
 export default function AdminSetup() {
+  const { can } = usePermissions();
   const [activeSubTab, setActiveSubTab] = useState('framework');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
+  const canManageFramework = can('evaluations:manage');
+  const canAssignEvaluators = can('evaluations:assign');
+
   // Dialog states
   const [createCycleOpen, setCreateCycleOpen] = useState(false);
   const [createCoreCompetencyOpen, setCreateCoreCompetencyOpen] = useState(false);
@@ -394,20 +399,28 @@ export default function AdminSetup() {
       )}
 
       {/* Sub-tabs */}
-      <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="bg-white border border-gray-200">
-          <TabsTrigger value="framework" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-            Framework
-          </TabsTrigger>
-          <TabsTrigger value="cycles" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-            Cycles
-          </TabsTrigger>
-          <TabsTrigger value="weights" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-            Weights
-          </TabsTrigger>
-          <TabsTrigger value="assign-evaluators" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-            Assign Evaluators
-          </TabsTrigger>
+      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="space-y-6">
+        <TabsList className="bg-white p-1 border border-gray-200 rounded-lg">
+          {canManageFramework && (
+            <TabsTrigger value="framework" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+              Competency Framework
+            </TabsTrigger>
+          )}
+          {canManageFramework && (
+            <TabsTrigger value="cycles" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+              Evaluation Cycles
+            </TabsTrigger>
+          )}
+          {canManageFramework && (
+            <TabsTrigger value="weights" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+              Weight Configuration
+            </TabsTrigger>
+          )}
+          {canAssignEvaluators && (
+            <TabsTrigger value="assign-evaluators" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+              Assign Evaluators
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Framework Tab */}

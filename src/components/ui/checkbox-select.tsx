@@ -48,29 +48,43 @@ export function CheckboxSelect({
   const CustomOption = (props: any) => {
     const { data, isSelected, isFocused } = props;
     return (
-      <components.Option {...props}>
-        <div
-          className={cn(
-            "flex items-start gap-3 px-1 py-0.5 cursor-pointer"
-          )}
-        >
+      <div onPointerDown={(e) => e.stopPropagation()}>
+        <components.Option {...props}>
           <div
             className={cn(
-              "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
-              isSelected
-                ? "bg-[#3838EC] border-[#3838EC]"
-                : "border-gray-300"
+              "flex items-start gap-3 px-1 py-0.5 cursor-pointer"
             )}
           >
-            {isSelected && (
-              <div className="w-2 h-2 rounded-full bg-white" />
-            )}
+            <div
+              className={cn(
+                "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
+                isSelected
+                  ? "bg-[#3838EC] border-[#3838EC]"
+                  : "border-gray-300"
+              )}
+            >
+              {isSelected && (
+                <div className="w-2 h-2 rounded-full bg-white" />
+              )}
+            </div>
+            <span className="text-sm leading-relaxed">{data.label}</span>
           </div>
-          <span className="text-sm leading-relaxed">{data.label}</span>
-        </div>
-      </components.Option>
+        </components.Option>
+      </div>
     );
   };
+
+  // ✅ Custom Menu to stop propagation
+   const CustomMenu = (props: any) => {
+     return (
+       <div 
+         onPointerDown={(e) => e.stopPropagation()}
+         onMouseDown={(e) => e.stopPropagation()}
+       >
+         <components.Menu {...props} />
+       </div>
+     );
+   };
 
   // ✅ Custom styles — uses menuPortalTarget to escape Dialog
   const styles: StylesConfig = {
@@ -107,6 +121,7 @@ export function CheckboxSelect({
     menuPortal: (base) => ({
       ...base,
       zIndex: 99999,
+      pointerEvents: "auto",
     }),
     menu: (base) => ({
       ...base,
@@ -165,7 +180,7 @@ export function CheckboxSelect({
         placeholder={placeholder}
         isSearchable={searchable}
         isClearable={value.length > 0}
-        components={{ Option: CustomOption }}
+        components={{ Option: CustomOption, Menu: CustomMenu }}
         styles={styles}
         // ✅ THIS IS THE KEY FIX:
         // menuPortalTarget renders the dropdown menu at document.body

@@ -60,6 +60,7 @@ export default function EvaluationResults() {
 
   const [calculatedScores, setCalculatedScores] = useState<any[]>([]);
   const [overallScore, setOverallScore] = useState(0);
+  const [effectiveWeights, setEffectiveWeights] = useState<Record<string, number> | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [selectedPeerAssessmentId, setSelectedPeerAssessmentId] = useState<string | null>(null);
 
@@ -253,6 +254,22 @@ export default function EvaluationResults() {
         comp.score = comp.breakdown.weighted;
       });
 
+      const hasSelf = competencyScores.some(c => c.breakdown.self > 0);
+      const hasPeer = competencyScores.some(c => c.breakdown.peer > 0);
+      const hasSupervisor = competencyScores.some(c => c.breakdown.supervisor > 0);
+      const hasSubordinate = competencyScores.some(c => c.breakdown.subordinate > 0);
+      const usedTotal =
+        (hasSelf ? weights.self : 0) +
+        (hasPeer ? weights.peer : 0) +
+        (hasSupervisor ? weights.supervisor : 0) +
+        (hasSubordinate ? weights.subordinate : 0);
+      const normalized = {
+        self: usedTotal > 0 && hasSelf ? Math.round((weights.self / usedTotal) * 100) : 0,
+        peer: usedTotal > 0 && hasPeer ? Math.round((weights.peer / usedTotal) * 100) : 0,
+        supervisor: usedTotal > 0 && hasSupervisor ? Math.round((weights.supervisor / usedTotal) * 100) : 0,
+        subordinate: usedTotal > 0 && hasSubordinate ? Math.round((weights.subordinate / usedTotal) * 100) : 0,
+      };
+
       // 5. Calculate overall score
       const overall = competencyScores.length > 0
         ? average(competencyScores.map(c => c.score))
@@ -273,6 +290,7 @@ export default function EvaluationResults() {
 
       setCalculatedScores(scoresToDisplay);
       setOverallScore(overall);
+      setEffectiveWeights(normalized);
     } catch (error) {
       console.error('Error calculating scores:', error);
     } finally {
@@ -588,10 +606,7 @@ export default function EvaluationResults() {
                     <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                       <p className="text-xs text-gray-500 font-medium mb-1 uppercase">Applied Weights</p>
                       <p className="text-xs text-gray-600">
-                        Self: {weightConfigs?.find((w: any) => w.relationType.toLowerCase() === 'self')?.weightPercent || 20}% · 
-                        Peer: {weightConfigs?.find((w: any) => w.relationType.toLowerCase() === 'peer')?.weightPercent || 30}% · 
-                        Supervisor: {weightConfigs?.find((w: any) => w.relationType.toLowerCase() === 'supervisor')?.weightPercent || 35}% · 
-                        Subordinate: {weightConfigs?.find((w: any) => w.relationType.toLowerCase() === 'subordinate')?.weightPercent || 15}%
+                        Self: {effectiveWeights?.self ?? 0}% · Peer: {effectiveWeights?.peer ?? 0}% · Supervisor: {effectiveWeights?.supervisor ?? 0}% · Subordinate: {effectiveWeights?.subordinate ?? 0}%
                       </p>
                     </div>
                   )}

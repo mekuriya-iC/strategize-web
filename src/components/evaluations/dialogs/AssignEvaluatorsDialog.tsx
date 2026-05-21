@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +76,46 @@ export default function AssignEvaluatorsDialog({
   const employees = employeesData?.employees?.items || [];
   const selectedEmployee = employees.find((e: any) => e.employeeId === selectedEmployeeId);
 
+  const selectedSupervisor = useMemo(() => {
+    if (!selectedEmployee?.managerId) return null;
+    return employees.find((e: any) => e.employeeId === selectedEmployee.managerId) || null;
+  }, [employees, selectedEmployee?.managerId]);
+
+  const eligiblePeers = useMemo(() => {
+    if (!selectedEmployee) return [];
+    const evaluateeRole = selectedEmployee.role;
+    const evaluateeManagerId = selectedEmployee.managerId || null;
+
+    const isEmployeeRole = evaluateeRole === 'NORMAL' || evaluateeRole === 'COORDINATOR';
+
+    return employees
+      .filter((e: any) => e?.employeeId && e.employeeId !== selectedEmployee.employeeId)
+      .filter((e: any) => e.employeeId !== evaluateeManagerId)
+      .filter((e: any) => {
+        if (!evaluateeManagerId) return false;
+
+        if (isEmployeeRole) {
+          const peerIsEmployeeRole = e.role === 'NORMAL' || e.role === 'COORDINATOR';
+          return peerIsEmployeeRole && e.managerId === evaluateeManagerId;
+        }
+
+        if (evaluateeRole === 'MANAGER') {
+          return e.role === 'MANAGER' && e.managerId === evaluateeManagerId;
+        }
+
+        if (evaluateeRole === 'DIRECTOR') {
+          return e.role === 'DIRECTOR' && e.managerId === evaluateeManagerId;
+        }
+
+        return false;
+      });
+  }, [employees, selectedEmployee]);
+
+  const eligibleSubordinates = useMemo(() => {
+    if (!selectedEmployee?.employeeId) return [];
+    return employees.filter((e: any) => e?.managerId === selectedEmployee.employeeId);
+  }, [employees, selectedEmployee?.employeeId]);
+
   // Initialize assignments when employees load
   useEffect(() => {
     if (employees.length > 0 && Object.keys(assignments).length === 0) {
@@ -87,7 +127,7 @@ export default function AssignEvaluatorsDialog({
         initialAssignments[emp.employeeId] = {
           employee: emp,
           assignSelf: !selfExists, // Only check if not already assigned
-          assignSupervisor: false,
+          assignSupervisor: !!emp.managerId,
           peers: [],
           subordinates: [],
         };
@@ -176,10 +216,18 @@ export default function AssignEvaluatorsDialog({
         }
 
         // Supervisor assessment - need to find supervisor
-        // Since backend doesn't expose supervisor field, we'll skip this for now
-        // TODO: Backend needs to add supervisor field to Employee type
         if (assignment.assignSupervisor) {
-          console.warn('Supervisor assignment not yet supported - backend needs supervisor field');
+          const supervisorId = assignment.employee?.managerId || null;
+          if (supervisorId) {
+            if (!assessmentExists(evaluateeId, supervisorId, EvaluationRelationType.SUPERVISOR)) {
+              assessmentsToCreate.push({
+                evaluatorUserId: supervisorId,
+                relationType: EvaluationRelationType.SUPERVISOR,
+              });
+            } else {
+              skippedCount++;
+            }
+          }
         }
 
         // Peer assessments
@@ -255,7 +303,10 @@ export default function AssignEvaluatorsDialog({
         count++;
       }
       if (assignment.assignSupervisor) {
-        count++; // Supervisor not implemented yet, so won't exist
+        const supervisorId = assignment.employee?.managerId || null;
+        if (supervisorId && !assessmentExists(evaluateeId, supervisorId, EvaluationRelationType.SUPERVISOR)) {
+          count++;
+        }
       }
       
       // Count peers that don't already exist
@@ -287,7 +338,10 @@ export default function AssignEvaluatorsDialog({
       count++;
     }
     if (assignment.assignSupervisor) {
-      count++; // Supervisor not implemented yet
+      const supervisorId = assignment.employee?.managerId || null;
+      if (supervisorId && !assessmentExists(employeeId, supervisorId, EvaluationRelationType.SUPERVISOR)) {
+        count++;
+      }
     }
     
     // Count peers that don't already exist
@@ -455,19 +509,53 @@ export default function AssignEvaluatorsDialog({
                 {/* Supervisor Assessment */}
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Supervisor Assessment</Label>
-                  <p className="text-sm text-amber-600 p-3 bg-amber-50 rounded-lg">
-                    Supervisor assignment not yet available. Backend needs to add supervisor field to Employee type.
-                  </p>
+                  {!selectedEmployee?.managerId ? (
+                    <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                      No supervisor found for this employee.
+                    </p>
+                  ) : (
+                    <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                      <Checkbox
+                        id={`supervisor-${selectedEmployeeId}`}
+                        checked={selectedEmployeeId ? (assignments[selectedEmployeeId]?.assignSupervisor || false) : false}
+                        onCheckedChange={() => selectedEmployeeId && handleToggleSupervisor(selectedEmployeeId)}
+                        disabled={
+                          !selectedEmployeeId ||
+                          !selectedEmployee?.managerId ||
+                          assessmentExists(selectedEmployeeId, selectedEmployee.managerId, EvaluationRelationType.SUPERVISOR)
+                        }
+                      />
+                      <label
+                        htmlFor={`supervisor-${selectedEmployeeId}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                      >
+                        Assign supervisor assessment{selectedSupervisor ? ` (${selectedSupervisor.fullName})` : ''}
+                      </label>
+                      {selectedEmployeeId &&
+                        selectedEmployee?.managerId &&
+                        assessmentExists(selectedEmployeeId, selectedEmployee.managerId, EvaluationRelationType.SUPERVISOR) && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Already assigned
+                          </Badge>
+                        )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Peer Assessments */}
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Peer Assessments</Label>
                   <div className="space-y-2">
-                    {employees
-                      .filter((e: any) => e.employeeId !== selectedEmployeeId)
-                      .map((peer: any) => {
-                        const alreadyExists = selectedEmployeeId ? assessmentExists(selectedEmployeeId, peer.employeeId, EvaluationRelationType.PEER) : false;
+                    {eligiblePeers.length === 0 ? (
+                      <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                        No eligible peers found for this employee.
+                      </p>
+                    ) : (
+                      eligiblePeers.map((peer: any) => {
+                        const alreadyExists = selectedEmployeeId
+                          ? assessmentExists(selectedEmployeeId, peer.employeeId, EvaluationRelationType.PEER)
+                          : false;
                         return (
                           <div key={peer.employeeId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
                             <Checkbox
@@ -490,7 +578,8 @@ export default function AssignEvaluatorsDialog({
                             )}
                           </div>
                         );
-                      })}
+                      })
+                    )}
                   </div>
                 </div>
 
@@ -498,9 +587,47 @@ export default function AssignEvaluatorsDialog({
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Subordinate Assessments (360°)</Label>
                   <p className="text-xs text-gray-500 mb-2">Select direct reports to provide upward feedback</p>
-                  <p className="text-sm text-amber-600 p-3 bg-amber-50 rounded-lg">
-                    Subordinate assignment not yet available. Backend needs to add supervisor field to Employee type to identify direct reports.
-                  </p>
+                  {eligibleSubordinates.length === 0 ? (
+                    <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                      No direct reports found for this employee.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {eligibleSubordinates.map((subordinate: any) => {
+                        const alreadyExists = selectedEmployeeId
+                          ? assessmentExists(selectedEmployeeId, subordinate.employeeId, EvaluationRelationType.SUBORDINATE)
+                          : false;
+                        return (
+                          <div key={subordinate.employeeId} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              id={`subordinate-${subordinate.employeeId}`}
+                              checked={
+                                selectedEmployeeId
+                                  ? (assignments[selectedEmployeeId]?.subordinates?.includes(subordinate.employeeId) || false)
+                                  : false
+                              }
+                              onCheckedChange={() =>
+                                selectedEmployeeId && handleToggleSubordinate(selectedEmployeeId, subordinate.employeeId)
+                              }
+                              disabled={alreadyExists}
+                            />
+                            <label
+                              htmlFor={`subordinate-${subordinate.employeeId}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                            >
+                              {subordinate.fullName}
+                            </label>
+                            {alreadyExists && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Assigned
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </ScrollArea>

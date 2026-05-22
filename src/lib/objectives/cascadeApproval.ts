@@ -1,22 +1,23 @@
 import type { Department, Objective, Kpi } from "@/types/graphql";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
-import {
-  canApproveSubmission,
-  type UserScope,
-} from "@/lib/rbac/scopes";
+import { canApproveSubmission, type UserScope } from "@/lib/rbac/scopes";
 
 export interface AssignDownstreamResult {
   allowed: boolean;
   reason?: string;
 }
 
+type ObjectiveCascadeContext = Pick<
+  Objective,
+  "type" | "assigneeType" | "assigneeId" | "parent" | "status" | "kpis"
+> & {
+  parentId?: string | null;
+};
+
 /** Whether the user can assign this objective/KPIs to a lower organizational level. */
 export function canAssignDownstream(
-  objective: Pick<
-    Objective,
-    "type" | "assigneeType" | "assigneeId" | "parentId" | "parent" | "status" | "kpis"
-  >,
-  kpis?: Kpi[]
+  objective: ObjectiveCascadeContext,
+  kpis?: Kpi[],
 ): AssignDownstreamResult {
   const kpiList = kpis ?? objective.kpis ?? [];
   if (kpiList.length === 0) {
@@ -53,7 +54,7 @@ export function canAssignDownstream(
 
 /** Cascaded division-level objective (assigned from corporate). */
 export function isDivisionLevelObjective(
-  objective: Pick<Objective, "assigneeType" | "type" | "parentId" | "parent">
+  objective: ObjectiveCascadeContext,
 ): boolean {
   if (objective.assigneeType === "DIVISION") return true;
   return objective.type === "DIVISION" && !!objective.parentId;
@@ -61,7 +62,7 @@ export function isDivisionLevelObjective(
 
 /** Cascaded department-level objective. */
 export function isDepartmentLevelObjective(
-  objective: Pick<Objective, "assigneeType" | "type" | "parentId" | "parent">
+  objective: ObjectiveCascadeContext,
 ): boolean {
   if (objective.assigneeType === "DEPARTMENT") return true;
   return objective.type === "DEPARTMENT" && !!objective.parentId;
@@ -69,7 +70,7 @@ export function isDepartmentLevelObjective(
 
 /** Label for assign-down action based on objective level. */
 export function getAssignDownstreamLabel(
-  objective: Pick<Objective, "type" | "assigneeType" | "parentId" | "parent">
+  objective: ObjectiveCascadeContext,
 ): string {
   if (isTopLevelCorporateObjective(objective)) {
     return "Assign to Division/Department";
@@ -96,7 +97,7 @@ export function canUserApproveSubmission(
       assigneeType?: string | null;
     } | null;
   },
-  departments: Department[] = []
+  departments: Department[] = [],
 ): boolean {
   const level = submission.level as
     | "CORPORATE"
@@ -132,6 +133,6 @@ export function canUserApproveSubmission(
     level === "CORPORATE" ? "DIVISION" : level,
     departmentId,
     divisionId,
-    departmentReportsToCorpDirectly
+    departmentReportsToCorpDirectly,
   );
 }

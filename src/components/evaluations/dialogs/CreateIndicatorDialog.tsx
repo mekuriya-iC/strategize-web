@@ -1,14 +1,20 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { getOrganizationId } from '@/lib/constants/organization';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useCompetencyMutations } from '@/hooks/competencies/useCompetencies';
-import { toast } from 'sonner';
+import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCompetencyMutations } from "@/hooks/competencies/useCompetencies";
+import { toast } from "sonner";
 
 interface CreateIndicatorDialogProps {
   open: boolean;
@@ -23,9 +29,9 @@ export default function CreateIndicatorDialog({
   competencyId,
   competencyName,
 }: CreateIndicatorDialogProps) {
-  const [description, setDescription] = useState('');
-  const [ratingScaleMin, setRatingScaleMin] = useState('1');
-  const [ratingScaleMax, setRatingScaleMax] = useState('5');
+  const [description, setDescription] = useState("");
+  const [ratingScaleMin, setRatingScaleMin] = useState("1");
+  const [ratingScaleMax, setRatingScaleMax] = useState("5");
   const [loading, setLoading] = useState(false);
 
   const organizationId = getOrganizationId();
@@ -35,7 +41,12 @@ export default function CreateIndicatorDialog({
     e.preventDefault();
 
     if (!description) {
-      toast.error('Please enter a description');
+      toast.error("Please enter a description");
+      return;
+    }
+
+    if (!organizationId) {
+      toast.error("Organization context is missing");
       return;
     }
 
@@ -43,7 +54,7 @@ export default function CreateIndicatorDialog({
     const max = parseInt(ratingScaleMax);
 
     if (min >= max) {
-      toast.error('Maximum rating must be greater than minimum');
+      toast.error("Maximum rating must be greater than minimum");
       return;
     }
 
@@ -52,28 +63,29 @@ export default function CreateIndicatorDialog({
     try {
       await createIndicator({
         competencyId,
+        organizationId,
         description,
         ratingScaleMin: min,
         ratingScaleMax: max,
       });
 
-      toast.success('Indicator created successfully');
+      toast.success("Indicator created successfully");
       onOpenChange(false);
       resetForm();
-      
+
       // Trigger a page reload to refresh the indicators list
       window.location.reload();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create indicator');
+      toast.error(error.message || "Failed to create indicator");
     } finally {
       setLoading(false);
     }
   };
 
   const resetForm = () => {
-    setDescription('');
-    setRatingScaleMin('1');
-    setRatingScaleMax('5');
+    setDescription("");
+    setRatingScaleMin("1");
+    setRatingScaleMax("5");
   };
 
   return (
@@ -136,8 +148,12 @@ export default function CreateIndicatorDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
-              {loading ? 'Creating...' : 'Create'}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {loading ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

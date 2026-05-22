@@ -25,7 +25,10 @@ const DONUT_COLORS = [
   "#F4F4FF",
 ];
 
-function timelineBucketLabel(timeline: string, annualTimeline?: string | null): string {
+function timelineBucketLabel(
+  timeline: string,
+  annualTimeline?: string | null,
+): string {
   if (!timeline) return "Other";
 
   if (annualTimeline && timeline.startsWith(`${annualTimeline}-`)) {
@@ -51,7 +54,10 @@ function timelineBucketLabel(timeline: string, annualTimeline?: string | null): 
   return timeline;
 }
 
-function matchesAnnualTimeline(timeline: string, annualTimeline: string): boolean {
+function matchesAnnualTimeline(
+  timeline: string,
+  annualTimeline: string,
+): boolean {
   return (
     timeline === annualTimeline || timeline.startsWith(`${annualTimeline}-`)
   );
@@ -59,7 +65,7 @@ function matchesAnnualTimeline(timeline: string, annualTimeline: string): boolea
 
 export function buildDashboardChartData(
   objectives: Objective[],
-  annualTimeline?: string | null
+  annualTimeline?: string | null,
 ) {
   const kpisByPeriod: Record<string, number> = {};
   const kpisByCategory: Record<string, number> = {};
@@ -72,7 +78,9 @@ export function buildDashboardChartData(
     obj.kpis?.forEach((kpi) => {
       kpisByCategory[category] = (kpisByCategory[category] || 0) + 1;
 
-      const targets = kpi.targets ?? [];
+      const targets =
+        (kpi as { targets?: Array<{ timeline?: string | null }> }).targets ??
+        [];
       if (targets.length > 0) {
         targets.forEach((t) => {
           if (!t.timeline) return;
@@ -129,5 +137,9 @@ export function buildDashboardChartData(
     ],
   };
 
-  return { barData, donutData, totalKpis: Object.values(kpisByCategory).reduce((a, b) => a + b, 0) };
+  return {
+    barData,
+    donutData,
+    totalKpis: Object.values(kpisByCategory).reduce((a, b) => a + b, 0),
+  };
 }

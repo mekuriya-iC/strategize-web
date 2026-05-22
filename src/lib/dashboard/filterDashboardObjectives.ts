@@ -22,27 +22,28 @@ export function filterDashboardObjectives({
 
   if (selectedPeriodId) {
     filtered = filtered.filter(
-      (obj) => obj.strategicPeriod?.strategicPeriodId === selectedPeriodId
+      (obj) => obj.strategicPeriod?.strategicPeriodId === selectedPeriodId,
     );
   }
 
   // Corporate landing view: only top-level corporate objectives (no assignee)
-  if (
-    (userRole === "ADMIN" || userRole === "SUPER_ADMIN") &&
-    !selectedUnit
-  ) {
+  if ((userRole === "ADMIN" || userRole === "SUPER_ADMIN") && !selectedUnit) {
     filtered = filtered.filter((obj) => !obj.assigneeType && !obj.assigneeId);
   }
 
   if (annualTimeline) {
     filtered = filtered.filter((obj) =>
-      obj.kpis?.some((kpi) =>
-        kpi.targets?.some(
+      obj.kpis?.some((kpi) => {
+        const targets =
+          (kpi as { targets?: Array<{ timeline?: string | null }> }).targets ??
+          [];
+
+        return targets.some(
           (t) =>
             t.timeline === annualTimeline ||
-            (t.timeline && t.timeline.startsWith(`${annualTimeline}-`))
-        )
-      )
+            (t.timeline && t.timeline.startsWith(`${annualTimeline}-`)),
+        );
+      }),
     );
   }
 

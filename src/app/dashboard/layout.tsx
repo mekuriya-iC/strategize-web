@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DepartmentSelectionProvider } from "@/context/DepartmentSelectionContext";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -24,22 +24,22 @@ function AuthSync() {
   useEffect(() => {
     setLoading(loading);
     if (data?.me) {
-      console.log('🔍 User data:', {
+      console.log("🔍 User data:", {
         email: data.me.email,
         role: data.me.role,
         isFirstLogin: data.me.isFirstLogin,
-        mustChangePassword: data.me.mustChangePassword
+        mustChangePassword: data.me.mustChangePassword,
       });
-      
+
       setUser(data.me);
       setAuthenticated(true);
-      
+
       // Redirect to onboarding if first login or must change password
       if (data.me.isFirstLogin || data.me.mustChangePassword) {
-        console.log('🚀 Redirecting to onboarding...');
-        router.push('/onboarding');
+        console.log("🚀 Redirecting to onboarding...");
+        router.push("/onboarding");
       } else {
-        console.log('✅ User has completed onboarding');
+        console.log("✅ User has completed onboarding");
       }
     }
   }, [data, loading, setUser, setLoading, setAuthenticated, router]);
@@ -98,7 +98,9 @@ export default function DashboardLayout({
         <div className="flex h-screen bg-gray-50 dark:bg-[#09090b] overflow-hidden">
           {/* Sidebar with its own error boundary */}
           <SectionErrorBoundary sectionName="sidebar">
-            <Sidebar />
+            <Suspense fallback={<div className="w-16 md:w-72" />}>
+              <Sidebar />
+            </Suspense>
           </SectionErrorBoundary>
 
           <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">

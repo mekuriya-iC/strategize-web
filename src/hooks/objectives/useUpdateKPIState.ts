@@ -10,9 +10,8 @@ import type {
   KpiStatus,
   KpiUnitType,
   UpdateKpiInput,
-  KpiTargetInput
+  KpiTargetInput,
 } from "@/types/graphql";
-
 
 import { useStrategicPeriodStore } from "@/stores";
 import {
@@ -52,12 +51,16 @@ export function useUpdateKPIState({
   const { kpi, loading, error, refetch } = useKPI({ kpiId });
   const { updateKpi } = useKPIMutations();
   const client = useApolloClient();
-  const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
-  const annualTimeline = useStrategicPeriodStore((state) => state.annualTimeline);
+  const selectedPeriod = useStrategicPeriodStore(
+    (state) => state.selectedPeriod,
+  );
+  const annualTimeline = useStrategicPeriodStore(
+    (state) => state.annualTimeline,
+  );
 
   // Fetch parent KPI if it exists
   const { kpi: parentKpi } = useKPI(
-    kpi?.parent?.kpiId ? { kpiId: kpi.parent.kpiId } : { kpiId: "" }
+    kpi?.parent?.kpiId ? { kpiId: kpi.parent.kpiId } : { kpiId: "" },
   );
 
   const isCorporate = usesAnnualOnlyKpiTargetsForKpi(kpi);
@@ -76,15 +79,17 @@ export function useUpdateKPIState({
 
   // Strategic period timeline (single year from objective's strategic period)
   const strategicTimeline = useMemo(() => {
-    const period =
+    const rawPeriod =
       objectiveOverride?.strategicPeriod ||
       kpi?.objective?.strategicPeriod ||
       selectedPeriod;
-    return resolveStrategicTimeline(
-      period,
-      kpi?.targets,
-      annualTimeline
-    );
+
+    const period =
+      rawPeriod?.startDate && rawPeriod?.endDate
+        ? { startDate: rawPeriod.startDate, endDate: rawPeriod.endDate }
+        : null;
+
+    return resolveStrategicTimeline(period, kpi?.targets, annualTimeline);
   }, [
     kpi?.objective?.strategicPeriod,
     kpi?.targets,
@@ -93,9 +98,10 @@ export function useUpdateKPIState({
     objectiveOverride?.strategicPeriod,
   ]);
 
-
   // Yearly quarters state for non-corporate breakdown
-  const [yearlyQuarters, setYearlyQuarters] = useState<Record<string, { q1: string; q2: string; q3: string; q4: string }>>({});
+  const [yearlyQuarters, setYearlyQuarters] = useState<
+    Record<string, { q1: string; q2: string; q3: string; q4: string }>
+  >({});
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,31 +115,32 @@ export function useUpdateKPIState({
       const { name, baseline, weight, status, unitType, targets } = kpi;
 
       // Initialize form data from current KPI
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         name: name || "",
         baseline: baseline?.toString() || "0",
         weight: weight?.toString() || "0",
         weightType: prev.weightType || ("PERCENT" as KpiWeightType),
         status,
-        unitType: unitType || "NUMBER" as KpiUnitType,
+        unitType: unitType || ("NUMBER" as KpiUnitType),
       }));
 
       // Initialize annual target from existing targets
       if (targets && targets.length > 0 && strategicTimeline) {
         // Try to find an annual target (non-quarterly) for the strategic period
         // Handle both exact match and prefix match (e.g. "2025" matching "2025/26")
-        const annualTargetEntry = targets.find(t => {
+        const annualTargetEntry = targets.find((t) => {
           const tLine = t.timeline;
           const sLine = strategicTimeline;
-          const tPrefix = tLine.split('/')[0];
-          const sPrefix = sLine.split('/')[0];
+          const tPrefix = tLine.split("/")[0];
+          const sPrefix = sLine.split("/")[0];
 
-          return !tLine.includes('-Q') && (
-            tLine === sLine ||
-            tPrefix === sPrefix ||
-            tLine.startsWith(sLine) ||
-            sLine.startsWith(tLine)
+          return (
+            !tLine.includes("-Q") &&
+            (tLine === sLine ||
+              tPrefix === sPrefix ||
+              tLine.startsWith(sLine) ||
+              sLine.startsWith(tLine))
           );
         });
 
@@ -141,18 +148,24 @@ export function useUpdateKPIState({
           setAnnualTarget(annualTargetEntry.target.toString());
         } else {
           // If no annual target found, sum up quarterly targets for the strategic period
-          const yearPrefix = strategicTimeline.split('/')[0];
-          const quarterlyTargets = targets.filter(t =>
-            (t.timeline.startsWith(yearPrefix) || t.timeline.startsWith(strategicTimeline)) && t.timeline.includes('-Q')
+          const yearPrefix = strategicTimeline.split("/")[0];
+          const quarterlyTargets = targets.filter(
+            (t) =>
+              (t.timeline.startsWith(yearPrefix) ||
+                t.timeline.startsWith(strategicTimeline)) &&
+              t.timeline.includes("-Q"),
           );
 
           if (quarterlyTargets.length > 0) {
             const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
-            const derived = kpi.unitType === "PERCENT" ? sum / quarterlyTargets.length : sum;
+            const derived =
+              kpi.unitType === "PERCENT" ? sum / quarterlyTargets.length : sum;
             setAnnualTarget(derived.toString());
           } else {
             // Fallback: use first target value if it matches strategic period year prefix
-            const firstTarget = targets.find(t => t.timeline.startsWith(yearPrefix));
+            const firstTarget = targets.find((t) =>
+              t.timeline.startsWith(yearPrefix),
+            );
             if (firstTarget) {
               setAnnualTarget(firstTarget.target.toString());
             }
@@ -160,15 +173,23 @@ export function useUpdateKPIState({
         }
 
         // Initialize yearlyQuarters from targets
-        const newYearlyQuarters: Record<string, { q1: string; q2: string; q3: string; q4: string }> = {};
+        const newYearlyQuarters: Record<
+          string,
+          { q1: string; q2: string; q3: string; q4: string }
+        > = {};
 
         // Pre-initialize with 0s for the strategic year to ensure fields are controlled
         // CRITICAL FIX: Always use strategicTimeline as the key to prevent duplicates like "2025" vs "2025/26"
-        newYearlyQuarters[strategicTimeline] = { q1: "0", q2: "0", q3: "0", q4: "0" };
+        newYearlyQuarters[strategicTimeline] = {
+          q1: "0",
+          q2: "0",
+          q3: "0",
+          q4: "0",
+        };
 
-        const strategicYearPrefix = strategicTimeline.split('/')[0];
+        const strategicYearPrefix = strategicTimeline.split("/")[0];
 
-        targets.forEach(t => {
+        targets.forEach((t) => {
           if (t.timeline.includes("-Q")) {
             const parts = t.timeline.split("-");
             if (parts.length === 2) {
@@ -176,11 +197,18 @@ export function useUpdateKPIState({
               const cleanYear = year.trim();
 
               // Normalize: if the year matches the strategic prefix or full timeline, use strategicTimeline key
-              const isMatch = cleanYear === strategicYearPrefix || cleanYear === strategicTimeline;
+              const isMatch =
+                cleanYear === strategicYearPrefix ||
+                cleanYear === strategicTimeline;
               const targetKey = isMatch ? strategicTimeline : cleanYear;
 
               if (!newYearlyQuarters[targetKey]) {
-                newYearlyQuarters[targetKey] = { q1: "0", q2: "0", q3: "0", q4: "0" };
+                newYearlyQuarters[targetKey] = {
+                  q1: "0",
+                  q2: "0",
+                  q3: "0",
+                  q4: "0",
+                };
               }
 
               const qKey = quarter.toLowerCase() as "q1" | "q2" | "q3" | "q4";
@@ -194,7 +222,7 @@ export function useUpdateKPIState({
       } else if (strategicTimeline) {
         // If no targets exist yet, initialize the strategic year with 0s
         setYearlyQuarters({
-          [strategicTimeline]: { q1: "0", q2: "0", q3: "0", q4: "0" }
+          [strategicTimeline]: { q1: "0", q2: "0", q3: "0", q4: "0" },
         });
       }
 
@@ -206,11 +234,11 @@ export function useUpdateKPIState({
   // Ensure yearlyQuarters is initialized for the strategic period
   useEffect(() => {
     if (strategicTimeline && !isCorporate) {
-      setYearlyQuarters(prev => {
+      setYearlyQuarters((prev) => {
         if (!prev[strategicTimeline]) {
           return {
             ...prev,
-            [strategicTimeline]: { q1: "0", q2: "0", q3: "0", q4: "0" }
+            [strategicTimeline]: { q1: "0", q2: "0", q3: "0", q4: "0" },
           };
         }
         return prev;
@@ -227,15 +255,20 @@ export function useUpdateKPIState({
       return { used: 0, remaining: 100, total: 0, isOver: false };
     }
 
-    const kpisPool =
-      existingKPIs.length > 0 ? existingKPIs : (kpi?.objective?.kpis || []);
+    const kpisPool: Kpi[] =
+      existingKPIs.length > 0
+        ? existingKPIs
+        : ((kpi?.objective?.kpis || []).map((item) => ({
+            ...item,
+            objective: { objectiveId: objectiveIdForScope },
+          })) as unknown as Kpi[]);
 
     const currentWeight = parseFloat(formData.weight) || 0;
     return getWeightAllocationForObjective(
       objectiveIdForScope,
       kpisPool,
       currentWeight,
-      kpiId
+      kpiId,
     );
   }, [kpi, kpiId, formData.weight, existingKPIs]);
 
@@ -263,37 +296,45 @@ export function useUpdateKPIState({
         }
 
         // Auto-populate weightType and unitType if empty
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          weightType: prev.weightType || (parentKpi.unitType || "PERCENT") as KpiWeightType,
-          unitType: prev.unitType || parentKpi.unitType || "NUMBER" as KpiUnitType,
+          weightType:
+            prev.weightType ||
+            ((parentKpi.unitType || "PERCENT") as KpiWeightType),
+          unitType:
+            prev.unitType || parentKpi.unitType || ("NUMBER" as KpiUnitType),
         }));
 
         // Auto-populate annual target from parent if current KPI has no target
         if (parentKpi.targets?.length > 0 && strategicTimeline) {
           // Check if we already have any targets (annual or quarterly) for this KPI in the current strategic timeline
-          const hasExistingTarget = kpi.targets?.some(t => {
+          const hasExistingTarget = kpi.targets?.some((t) => {
             const tLine = t.timeline;
             const sLine = strategicTimeline;
-            const tPrefix = tLine.split('/')[0].split('-')[0];
-            const sPrefix = sLine.split('/')[0].split('-')[0];
+            const tPrefix = tLine.split("/")[0].split("-")[0];
+            const sPrefix = sLine.split("/")[0].split("-")[0];
 
-            return tPrefix === sPrefix || tLine.startsWith(sLine) || sLine.startsWith(tLine);
+            return (
+              tPrefix === sPrefix ||
+              tLine.startsWith(sLine) ||
+              sLine.startsWith(tLine)
+            );
           });
 
           if (!hasExistingTarget) {
             // Try to get the parent's annual target for the strategic period
-            const parentAnnualTarget = parentKpi.targets.find(t => {
+            const parentAnnualTarget = parentKpi.targets.find((t) => {
               const tLine = t.timeline;
               const sLine = strategicTimeline;
-              const tPrefix = tLine.split('/')[0];
-              const sPrefix = sLine.split('/')[0];
+              const tPrefix = tLine.split("/")[0];
+              const sPrefix = sLine.split("/")[0];
 
-              return !tLine.includes("-Q") && (
-                tLine === sLine ||
-                tPrefix === sPrefix ||
-                tLine.startsWith(sLine) ||
-                sLine.startsWith(tLine)
+              return (
+                !tLine.includes("-Q") &&
+                (tLine === sLine ||
+                  tPrefix === sPrefix ||
+                  tLine.startsWith(sLine) ||
+                  sLine.startsWith(tLine))
               );
             });
 
@@ -302,30 +343,35 @@ export function useUpdateKPIState({
               setAnnualTarget(parentAnnualTarget.target.toString());
 
               // Initialize quarterly breakdown by distributing the annual target
-              const quarterlyValue = parentKpi.unitType === "PERCENT"
-                ? parentAnnualTarget.target
-                : (parentAnnualTarget.target / 4).toFixed(2);
+              const quarterlyValue =
+                parentKpi.unitType === "PERCENT"
+                  ? parentAnnualTarget.target
+                  : (parentAnnualTarget.target / 4).toFixed(2);
 
-              setYearlyQuarters(prev => ({
+              setYearlyQuarters((prev) => ({
                 ...prev,
                 [strategicTimeline]: {
                   q1: quarterlyValue.toString(),
                   q2: quarterlyValue.toString(),
                   q3: quarterlyValue.toString(),
                   q4: quarterlyValue.toString(),
-                }
+                },
               }));
             } else {
               // If no annual target, try to get quarterly targets
-              const parentQuarterlyTargets = parentKpi.targets.filter(t =>
-                t.timeline.startsWith(strategicTimeline.split('/')[0]) &&
-                t.timeline.includes('-Q')
+              const parentQuarterlyTargets = parentKpi.targets.filter(
+                (t) =>
+                  t.timeline.startsWith(strategicTimeline.split("/")[0]) &&
+                  t.timeline.includes("-Q"),
               );
 
               if (parentQuarterlyTargets.length > 0) {
                 // Calculate the average for PERCENT or sum for NUMBER
                 const isPercent = parentKpi.unitType === "PERCENT";
-                const total = parentQuarterlyTargets.reduce((sum, t) => sum + t.target, 0);
+                const total = parentQuarterlyTargets.reduce(
+                  (sum, t) => sum + t.target,
+                  0,
+                );
                 const derivedAnnual = isPercent
                   ? total / parentQuarterlyTargets.length
                   : total;
@@ -333,23 +379,36 @@ export function useUpdateKPIState({
                 setAnnualTarget(derivedAnnual.toString());
 
                 // Populate quarterly breakdown from parent's quarters (keyed by strategicTimeline)
-                const strategicYearPrefix = strategicTimeline.split('/')[0];
-                const newQuarters: Record<string, { q1: string; q2: string; q3: string; q4: string }> = {
-                  [strategicTimeline]: { q1: '0', q2: '0', q3: '0', q4: '0' },
+                const strategicYearPrefix = strategicTimeline.split("/")[0];
+                const newQuarters: Record<
+                  string,
+                  { q1: string; q2: string; q3: string; q4: string }
+                > = {
+                  [strategicTimeline]: { q1: "0", q2: "0", q3: "0", q4: "0" },
                 };
 
-                parentQuarterlyTargets.forEach(t => {
-                  const [year, quarter] = t.timeline.split('-');
+                parentQuarterlyTargets.forEach((t) => {
+                  const [year, quarter] = t.timeline.split("-");
                   if (year && quarter) {
                     const cleanYear = year.trim();
                     const isMatch =
-                      cleanYear === strategicYearPrefix || cleanYear === strategicTimeline;
+                      cleanYear === strategicYearPrefix ||
+                      cleanYear === strategicTimeline;
                     const targetKey = isMatch ? strategicTimeline : cleanYear;
-                    const qKey = quarter.toLowerCase() as 'q1' | 'q2' | 'q3' | 'q4';
+                    const qKey = quarter.toLowerCase() as
+                      | "q1"
+                      | "q2"
+                      | "q3"
+                      | "q4";
                     if (!newQuarters[targetKey]) {
-                      newQuarters[targetKey] = { q1: '0', q2: '0', q3: '0', q4: '0' };
+                      newQuarters[targetKey] = {
+                        q1: "0",
+                        q2: "0",
+                        q3: "0",
+                        q4: "0",
+                      };
                     }
-                    if (['q1', 'q2', 'q3', 'q4'].includes(qKey)) {
+                    if (["q1", "q2", "q3", "q4"].includes(qKey)) {
                       newQuarters[targetKey][qKey] = t.target.toString();
                     }
                   }
@@ -364,11 +423,21 @@ export function useUpdateKPIState({
         setHasAutoPopulated(true);
       }
     }
-  }, [kpi, parentKpi, hasAutoPopulated, strategicTimeline, isCorporate, yearlyQuarters]);
+  }, [
+    kpi,
+    parentKpi,
+    hasAutoPopulated,
+    strategicTimeline,
+    isCorporate,
+    yearlyQuarters,
+  ]);
 
   // Update form field
   const updateField = useCallback(
-    (field: keyof UpdateKPIFormData, value: string | KpiWeightType | KpiStatus | KpiUnitType) => {
+    (
+      field: keyof UpdateKPIFormData,
+      value: string | KpiWeightType | KpiStatus | KpiUnitType,
+    ) => {
       if (kpi?.status === "APPROVED" && !isCorporate) return;
 
       setFormData((prev) => ({
@@ -376,7 +445,7 @@ export function useUpdateKPIState({
         [field]: value,
       }));
     },
-    [kpi?.status, isCorporate]
+    [kpi?.status, isCorporate],
   );
 
   const assignedAnnualTarget = useMemo(() => {
@@ -385,43 +454,46 @@ export function useUpdateKPIState({
     // 1. PRIMARY: Use the KPI's own annual target if it exists and is non-zero
     // This allows the specific assigned target (e.g., 50) to override the parent's total (e.g., 100)
     if (kpi?.targets?.length) {
-      const annualTargetEntry = kpi.targets.find(t => {
+      const annualTargetEntry = kpi.targets.find((t) => {
         const tLine = t.timeline;
         const sLine = strategicTimeline;
-        const tPrefix = tLine.split('/')[0].split('-')[0];
-        const sPrefix = sLine.split('/')[0].split('-')[0];
+        const tPrefix = tLine.split("/")[0].split("-")[0];
+        const sPrefix = sLine.split("/")[0].split("-")[0];
 
-        return !tLine.includes("-Q") && (
-          tLine === sLine ||
-          tPrefix === sPrefix ||
-          tLine.startsWith(sLine) ||
-          sLine.startsWith(tLine)
-        ) && (t.target > 0);
+        return (
+          !tLine.includes("-Q") &&
+          (tLine === sLine ||
+            tPrefix === sPrefix ||
+            tLine.startsWith(sLine) ||
+            sLine.startsWith(tLine)) &&
+          t.target > 0
+        );
       });
       if (annualTargetEntry) return annualTargetEntry.target;
     }
 
     // 2. SECONDARY: If Parent exists, use Parent KPI's target (Default Assignment)
     if (parentKpi?.targets?.length) {
-      const parentAnnual = parentKpi.targets.find(t => {
+      const parentAnnual = parentKpi.targets.find((t) => {
         const tLine = t.timeline;
         const sLine = strategicTimeline;
-        const tPrefix = tLine.split('/')[0].split('-')[0];
-        const sPrefix = sLine.split('/')[0].split('-')[0];
+        const tPrefix = tLine.split("/")[0].split("-")[0];
+        const sPrefix = sLine.split("/")[0].split("-")[0];
 
-        return !tLine.includes("-Q") && (
-          tLine === sLine ||
-          tPrefix === sPrefix ||
-          tLine.startsWith(sLine) ||
-          sLine.startsWith(tLine)
+        return (
+          !tLine.includes("-Q") &&
+          (tLine === sLine ||
+            tPrefix === sPrefix ||
+            tLine.startsWith(sLine) ||
+            sLine.startsWith(tLine))
         );
       });
 
       if (parentAnnual) return parentAnnual.target;
 
-      // For non-corporate parents (like Division parents of Department KPIs), 
+      // For non-corporate parents (like Division parents of Department KPIs),
       // they might only have quarterly targets
-      const parentQuarterlies = parentKpi.targets.filter(t => {
+      const parentQuarterlies = parentKpi.targets.filter((t) => {
         const tLine = t.timeline.toUpperCase();
         const sPrefix = strategicTimeline.split("/")[0].split("-")[0];
 
@@ -430,7 +502,9 @@ export function useUpdateKPIState({
 
       if (parentQuarterlies.length > 0) {
         const sum = parentQuarterlies.reduce((acc, t) => acc + t.target, 0);
-        return parentKpi.unitType === "PERCENT" ? sum / parentQuarterlies.length : sum;
+        return parentKpi.unitType === "PERCENT"
+          ? sum / parentQuarterlies.length
+          : sum;
       }
     }
 
@@ -464,7 +538,7 @@ export function useUpdateKPIState({
           }
         }
       } else {
-        // Non-Corporate: Submit quarterly breakdown. 
+        // Non-Corporate: Submit quarterly breakdown.
         // DO NOT add an explicit annual target record if quarterly ones exist for the strategic period,
         // as this leads to double-counting in some parts of the system.
 
@@ -475,20 +549,20 @@ export function useUpdateKPIState({
             const qKey = quarter.toUpperCase();
             targets.push({
               timeline: `${year}-${qKey}`,
-              target: val
+              target: val,
             });
           });
         });
 
-        // Optional: If there are other years without quarterly breakdown but with annual targets, 
+        // Optional: If there are other years without quarterly breakdown but with annual targets,
         // they can be handled here, but for now we focus on the strategic period.
       }
 
       // Calculate targetValue from targets or annual target
-      const calculatedTargetValue = isCorporate 
-        ? (parseFloat(annualTarget) || 0)
-        : targets.length > 0 
-          ? Math.max(...targets.map(t => t.target))
+      const calculatedTargetValue = isCorporate
+        ? parseFloat(annualTarget) || 0
+        : targets.length > 0
+          ? Math.max(...targets.map((t) => t.target))
           : 0;
 
       // Create the update input with only the fields that are allowed by UpdateKpiInput
@@ -502,7 +576,7 @@ export function useUpdateKPIState({
         ...(formData.status && { status: formData.status }),
         ...(formData.unitType && { unitType: formData.unitType }),
         // Only include targets if we have any
-        ...(targets.length > 0 && { targets })
+        ...(targets.length > 0 && { targets }),
       };
 
       console.log("🎯 Updating KPI with input:", {
@@ -538,7 +612,7 @@ export function useUpdateKPIState({
     strategicTimeline,
     annualTarget,
     yearlyQuarters,
-    isCorporate
+    isCorporate,
   ]);
 
   // Handle annual target change

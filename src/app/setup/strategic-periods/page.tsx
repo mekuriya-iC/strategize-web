@@ -1,20 +1,36 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
-import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
-import { useAuth } from '@/hooks/auth/useAuth';
-import Logo from '@/components/Logo';
-import { format, addMonths, addYears, startOfYear, endOfYear, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter } from 'date-fns';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CheckCircle2, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { useMutation } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useAuth } from "@/hooks/auth/useAuth";
+import Logo from "@/components/Logo";
+import {
+  format,
+  addMonths,
+  addYears,
+  startOfYear,
+  endOfYear,
+  startOfMonth,
+  endOfMonth,
+  startOfQuarter,
+  endOfQuarter,
+} from "date-fns";
 
 const CREATE_STRATEGIC_PERIOD = gql`
   mutation CreateStrategicPeriod($input: CreateStrategicPeriodInput!) {
@@ -31,10 +47,10 @@ const CREATE_STRATEGIC_PERIOD = gql`
 
 interface Period {
   name: string;
-  type: 'ANNUAL' | 'QUARTERLY' | 'MONTHLY';
+  type: "ANNUAL" | "QUARTERLY" | "MONTHLY";
   startDate: Date;
   endDate: Date;
-  status: 'active' | 'upcoming' | 'past';
+  status: "active" | "upcoming" | "past";
 }
 
 export default function StrategicPeriodsSetupPage() {
@@ -42,21 +58,34 @@ export default function StrategicPeriodsSetupPage() {
   const { user } = useAuth();
   const [createPeriod] = useMutation(CREATE_STRATEGIC_PERIOD);
 
-  const [granularity, setGranularity] = useState<'annual' | 'annual-quarterly' | 'annual-quarterly-monthly' | 'custom'>('annual-quarterly');
-  const [fiscalType, setFiscalType] = useState<'ethiopian' | 'calendar' | 'custom'>('calendar');
-  const [customStartMonth, setCustomStartMonth] = useState('1');
+  const [granularity, setGranularity] = useState<
+    "annual" | "annual-quarterly" | "annual-quarterly-monthly" | "custom"
+  >("annual-quarterly");
+  const [fiscalType, setFiscalType] = useState<
+    "ethiopian" | "calendar" | "custom"
+  >("calendar");
+  const [customStartMonth, setCustomStartMonth] = useState("1");
   const [periods, setPeriods] = useState<Period[]>([]);
   const [activePeriodIndex, setActivePeriodIndex] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const strategicPlanId = typeof window !== 'undefined' ? sessionStorage.getItem('strategicPlanId') : null;
-  const planStartDate = typeof window !== 'undefined' ? sessionStorage.getItem('planStartDate') : null;
-  const planEndDate = typeof window !== 'undefined' ? sessionStorage.getItem('planEndDate') : null;
+  const strategicPlanId =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("strategicPlanId")
+      : null;
+  const planStartDate =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("planStartDate")
+      : null;
+  const planEndDate =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("planEndDate")
+      : null;
 
   useEffect(() => {
     if (!strategicPlanId || !planStartDate || !planEndDate) {
-      toast.error('Missing plan information. Please start from the beginning.');
-      router.push('/organization-template');
+      toast.error("Missing plan information. Please start from the beginning.");
+      router.push("/organization-template");
       return;
     }
 
@@ -73,11 +102,15 @@ export default function StrategicPeriodsSetupPage() {
 
     // Adjust start date based on fiscal type
     let fiscalStart = new Date(start);
-    if (fiscalType === 'ethiopian') {
+    if (fiscalType === "ethiopian") {
       // Ethiopian fiscal year: Hamle to Sene (July to June)
       fiscalStart = new Date(start.getFullYear(), 6, 1); // July 1
-    } else if (fiscalType === 'custom') {
-      fiscalStart = new Date(start.getFullYear(), parseInt(customStartMonth) - 1, 1);
+    } else if (fiscalType === "custom") {
+      fiscalStart = new Date(
+        start.getFullYear(),
+        parseInt(customStartMonth) - 1,
+        1,
+      );
     }
 
     // Generate annual periods
@@ -93,15 +126,23 @@ export default function StrategicPeriodsSetupPage() {
 
       const yearPeriod: Period = {
         name: `Year ${currentYear.getFullYear()}`,
-        type: 'ANNUAL',
+        type: "ANNUAL",
         startDate: new Date(currentYear),
         endDate: new Date(yearEnd),
-        status: today >= currentYear && today <= yearEnd ? 'active' : today > yearEnd ? 'past' : 'upcoming',
+        status:
+          today >= currentYear && today <= yearEnd
+            ? "active"
+            : today > yearEnd
+              ? "past"
+              : "upcoming",
       };
       generatedPeriods.push(yearPeriod);
 
       // Generate quarterly periods if selected
-      if (granularity === 'annual-quarterly' || granularity === 'annual-quarterly-monthly') {
+      if (
+        granularity === "annual-quarterly" ||
+        granularity === "annual-quarterly-monthly"
+      ) {
         for (let q = 0; q < 4; q++) {
           const qStart = new Date(currentYear);
           qStart.setMonth(qStart.getMonth() + q * 3);
@@ -114,15 +155,20 @@ export default function StrategicPeriodsSetupPage() {
 
           const quarterPeriod: Period = {
             name: `Q${q + 1} ${currentYear.getFullYear()}`,
-            type: 'QUARTERLY',
+            type: "QUARTERLY",
             startDate: new Date(qStart),
             endDate: new Date(qEnd),
-            status: today >= qStart && today <= qEnd ? 'active' : today > qEnd ? 'past' : 'upcoming',
+            status:
+              today >= qStart && today <= qEnd
+                ? "active"
+                : today > qEnd
+                  ? "past"
+                  : "upcoming",
           };
           generatedPeriods.push(quarterPeriod);
 
           // Generate monthly periods if selected
-          if (granularity === 'annual-quarterly-monthly') {
+          if (granularity === "annual-quarterly-monthly") {
             for (let m = 0; m < 3; m++) {
               const mStart = new Date(qStart);
               mStart.setMonth(mStart.getMonth() + m);
@@ -132,11 +178,16 @@ export default function StrategicPeriodsSetupPage() {
               if (mEnd > end) mEnd.setTime(end.getTime());
 
               const monthPeriod: Period = {
-                name: format(mStart, 'MMMM yyyy'),
-                type: 'MONTHLY',
+                name: format(mStart, "MMMM yyyy"),
+                type: "MONTHLY",
                 startDate: new Date(mStart),
                 endDate: new Date(mEnd),
-                status: today >= mStart && today <= mEnd ? 'active' : today > mEnd ? 'past' : 'upcoming',
+                status:
+                  today >= mStart && today <= mEnd
+                    ? "active"
+                    : today > mEnd
+                      ? "past"
+                      : "upcoming",
               };
               generatedPeriods.push(monthPeriod);
             }
@@ -151,7 +202,9 @@ export default function StrategicPeriodsSetupPage() {
     setPeriods(generatedPeriods);
 
     // Set active period to the one covering today
-    const activeIndex = generatedPeriods.findIndex((p) => p.status === 'active');
+    const activeIndex = generatedPeriods.findIndex(
+      (p) => p.status === "active",
+    );
     if (activeIndex !== -1) {
       setActivePeriodIndex(activeIndex);
     }
@@ -159,7 +212,7 @@ export default function StrategicPeriodsSetupPage() {
 
   const handleComplete = async () => {
     if (periods.length === 0) {
-      toast.error('No periods to create');
+      toast.error("No periods to create");
       return;
     }
 
@@ -182,17 +235,17 @@ export default function StrategicPeriodsSetupPage() {
       }
 
       toast.success(`${periods.length} strategic periods created successfully`);
-      
+
       // Clear session storage - onboarding complete
-      sessionStorage.removeItem('strategicPlanId');
-      sessionStorage.removeItem('planStartDate');
-      sessionStorage.removeItem('planEndDate');
-      sessionStorage.removeItem('selectedOrgTemplate');
+      sessionStorage.removeItem("strategicPlanId");
+      sessionStorage.removeItem("planStartDate");
+      sessionStorage.removeItem("planEndDate");
+      sessionStorage.removeItem("selectedOrgTemplate");
 
       // Redirect to dashboard - objectives can be created from there
-      router.push('/dashboard');
+      router.push("/dashboard");
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create strategic periods');
+      toast.error(error.message || "Failed to create strategic periods");
     } finally {
       setLoading(false);
     }
@@ -200,9 +253,9 @@ export default function StrategicPeriodsSetupPage() {
 
   const progress = (4 / 4) * 100; // Step 4 of 4
 
-  const annualCount = periods.filter((p) => p.type === 'ANNUAL').length;
-  const quarterlyCount = periods.filter((p) => p.type === 'QUARTERLY').length;
-  const monthlyCount = periods.filter((p) => p.type === 'MONTHLY').length;
+  const annualCount = periods.filter((p) => p.type === "ANNUAL").length;
+  const quarterlyCount = periods.filter((p) => p.type === "QUARTERLY").length;
+  const monthlyCount = periods.filter((p) => p.type === "MONTHLY").length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col">
@@ -225,24 +278,51 @@ export default function StrategicPeriodsSetupPage() {
           <CardContent className="space-y-6">
             {/* Step A: Granularity */}
             <div className="space-y-3">
-              <Label className="text-base font-semibold">How would you like to divide your plan timeline?</Label>
-              <RadioGroup value={granularity} onValueChange={(v: any) => setGranularity(v)}>
+              <Label className="text-base font-semibold">
+                How would you like to divide your plan timeline?
+              </Label>
+              <RadioGroup
+                value={granularity}
+                onValueChange={(v: any) => setGranularity(v)}
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="annual" id="annual" />
-                  <Label htmlFor="annual" className="font-normal cursor-pointer">
-                    Annual only <span className="text-gray-500">— One period per year</span>
+                  <Label
+                    htmlFor="annual"
+                    className="font-normal cursor-pointer"
+                  >
+                    Annual only{" "}
+                    <span className="text-gray-500">— One period per year</span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="annual-quarterly" id="annual-quarterly" />
-                  <Label htmlFor="annual-quarterly" className="font-normal cursor-pointer">
-                    Annual + Quarterly <span className="text-gray-500">— Years divided into 4 quarters each</span>
+                  <RadioGroupItem
+                    value="annual-quarterly"
+                    id="annual-quarterly"
+                  />
+                  <Label
+                    htmlFor="annual-quarterly"
+                    className="font-normal cursor-pointer"
+                  >
+                    Annual + Quarterly{" "}
+                    <span className="text-gray-500">
+                      — Years divided into 4 quarters each
+                    </span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="annual-quarterly-monthly" id="annual-quarterly-monthly" />
-                  <Label htmlFor="annual-quarterly-monthly" className="font-normal cursor-pointer">
-                    Annual + Quarterly + Monthly <span className="text-gray-500">— Quarters divided into months</span>
+                  <RadioGroupItem
+                    value="annual-quarterly-monthly"
+                    id="annual-quarterly-monthly"
+                  />
+                  <Label
+                    htmlFor="annual-quarterly-monthly"
+                    className="font-normal cursor-pointer"
+                  >
+                    Annual + Quarterly + Monthly{" "}
+                    <span className="text-gray-500">
+                      — Quarters divided into months
+                    </span>
                   </Label>
                 </div>
               </RadioGroup>
@@ -250,36 +330,57 @@ export default function StrategicPeriodsSetupPage() {
 
             {/* Step B: Fiscal Year */}
             <div className="space-y-3">
-              <Label className="text-base font-semibold">Does your organization follow Ethiopian fiscal year?</Label>
-              <RadioGroup value={fiscalType} onValueChange={(v: any) => setFiscalType(v)}>
+              <Label className="text-base font-semibold">
+                Does your organization follow Ethiopian fiscal year?
+              </Label>
+              <RadioGroup
+                value={fiscalType}
+                onValueChange={(v: any) => setFiscalType(v)}
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="ethiopian" id="ethiopian" />
-                  <Label htmlFor="ethiopian" className="font-normal cursor-pointer">
-                    Ethiopian fiscal year <span className="text-gray-500">— Hamle to Sene (July to June)</span>
+                  <Label
+                    htmlFor="ethiopian"
+                    className="font-normal cursor-pointer"
+                  >
+                    Ethiopian fiscal year{" "}
+                    <span className="text-gray-500">
+                      — Hamle to Sene (July to June)
+                    </span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="calendar" id="calendar" />
-                  <Label htmlFor="calendar" className="font-normal cursor-pointer">
-                    Calendar year <span className="text-gray-500">— January to December</span>
+                  <Label
+                    htmlFor="calendar"
+                    className="font-normal cursor-pointer"
+                  >
+                    Calendar year{" "}
+                    <span className="text-gray-500">— January to December</span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="custom" id="custom" />
-                  <Label htmlFor="custom" className="font-normal cursor-pointer">
+                  <Label
+                    htmlFor="custom"
+                    className="font-normal cursor-pointer"
+                  >
                     Custom start month
                   </Label>
                 </div>
               </RadioGroup>
-              {fiscalType === 'custom' && (
-                <Select value={customStartMonth} onValueChange={setCustomStartMonth}>
+              {fiscalType === "custom" && (
+                <Select
+                  value={customStartMonth}
+                  onValueChange={setCustomStartMonth}
+                >
                   <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 12 }, (_, i) => (
                       <SelectItem key={i + 1} value={String(i + 1)}>
-                        {format(new Date(2024, i, 1), 'MMMM')}
+                        {format(new Date(2024, i, 1), "MMMM")}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -292,32 +393,50 @@ export default function StrategicPeriodsSetupPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold">Auto-generated Preview</h3>
                 <div className="text-sm text-gray-600">
-                  Total: {annualCount} annual + {quarterlyCount} quarterly + {monthlyCount} monthly = {periods.length} periods
+                  Total: {annualCount} annual + {quarterlyCount} quarterly +{" "}
+                  {monthlyCount} monthly = {periods.length} periods
                 </div>
               </div>
               <div className="space-y-1 text-sm font-mono">
                 {periods.slice(0, 20).map((period, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Calendar className="h-3 w-3 text-gray-400" />
-                    <span className={period.type === 'annual' ? 'font-semibold' : period.type === 'quarterly' ? 'ml-4' : 'ml-8'}>
+                    <span
+                      className={
+                        period.type === "ANNUAL"
+                          ? "font-semibold"
+                          : period.type === "QUARTERLY"
+                            ? "ml-4"
+                            : "ml-8"
+                      }
+                    >
                       {period.name}
                     </span>
                     <span className="text-gray-500">
-                      ({format(period.startDate, 'MMM d, yyyy')} – {format(period.endDate, 'MMM d, yyyy')})
+                      ({format(period.startDate, "MMM d, yyyy")} –{" "}
+                      {format(period.endDate, "MMM d, yyyy")})
                     </span>
-                    {period.status === 'active' && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Active</span>
+                    {period.status === "active" && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                        Active
+                      </span>
                     )}
                   </div>
                 ))}
                 {periods.length > 20 && (
-                  <div className="text-gray-500 ml-5">... and {periods.length - 20} more periods</div>
+                  <div className="text-gray-500 ml-5">
+                    ... and {periods.length - 20} more periods
+                  </div>
                 )}
               </div>
             </div>
 
-            <Button onClick={handleComplete} className="w-full" disabled={loading || periods.length === 0}>
-              {loading ? 'Creating Periods...' : 'Complete Setup'}
+            <Button
+              onClick={handleComplete}
+              className="w-full"
+              disabled={loading || periods.length === 0}
+            >
+              {loading ? "Creating Periods..." : "Complete Setup"}
             </Button>
           </CardContent>
         </Card>

@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/auth/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Building2, Target, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
-import { useMutation, useApolloClient } from '@apollo/client';
-import { gql } from '@apollo/client';
-import { GET_ME } from '@/lib/graphql/queries/auth';
-import { useAuthStore } from '@/stores/authStore';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle2, Building2, Target, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { useMutation, useApolloClient } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { GET_ME } from "@/lib/graphql/queries/auth";
+import { useAuthStore } from "@/stores/authStore";
 
 const CHANGE_PASSWORD = gql`
   mutation ChangePassword($input: ChangePasswordInput!) {
@@ -25,7 +25,9 @@ const CHANGE_PASSWORD = gql`
 `;
 
 const UPDATE_ORGANIZATION = gql`
-  mutation UpdateOrganization($updateOrganizationInput: UpdateOrganizationInput!) {
+  mutation UpdateOrganization(
+    $updateOrganizationInput: UpdateOrganizationInput!
+  ) {
     updateOrganization(updateOrganizationInput: $updateOrganizationInput) {
       organizationId
       onboardingCompleted
@@ -40,35 +42,55 @@ export default function OnboardingPage() {
   const { user } = useAuth();
   const setUser = useAuthStore((state) => state.setUser);
   const [step, setStep] = useState(1);
-  const [passwordData, setPasswordData] = useState({ old: '', new: '', confirm: '' });
-  const [selectedTemplate, setSelectedTemplate] = useState('');
-  
+  const [passwordData, setPasswordData] = useState({
+    old: "",
+    new: "",
+    confirm: "",
+  });
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+
   const [changePassword] = useMutation(CHANGE_PASSWORD);
   const [updateOrg] = useMutation(UPDATE_ORGANIZATION);
 
   useEffect(() => {
-    console.log('🎯 Onboarding page loaded');
-    console.log('👤 User:', user);
+    console.log("🎯 Onboarding page loaded");
+    console.log("👤 User:", user);
   }, [user]);
 
   // Only SUPER_ADMIN and ADMIN see template selection
-  const isSuperAdminOrAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  const isSuperAdminOrAdmin =
+    user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
   const totalSteps = isSuperAdminOrAdmin ? 3 : 2; // Regular users skip template selection
 
   const templates = [
-    { id: 'functional', name: 'Functional', icon: Building2, desc: 'Organized by function (HR, Finance, Sales)' },
-    { id: 'divisional', name: 'Divisional', icon: Target, desc: 'Organized by division/region' },
-    { id: 'matrix', name: 'Matrix', icon: Calendar, desc: 'Cross-functional teams' },
-    { id: 'flat', name: 'Flat', icon: CheckCircle2, desc: 'Minimal hierarchy' },
+    {
+      id: "functional",
+      name: "Functional",
+      icon: Building2,
+      desc: "Organized by function (HR, Finance, Sales)",
+    },
+    {
+      id: "divisional",
+      name: "Divisional",
+      icon: Target,
+      desc: "Organized by division/region",
+    },
+    {
+      id: "matrix",
+      name: "Matrix",
+      icon: Calendar,
+      desc: "Cross-functional teams",
+    },
+    { id: "flat", name: "Flat", icon: CheckCircle2, desc: "Minimal hierarchy" },
   ];
 
   const handlePasswordChange = async () => {
     if (passwordData.new !== passwordData.confirm) {
-      toast.error('Passwords do not match');
+      toast.error("Passwords do not match");
       return;
     }
     if (passwordData.new.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
@@ -84,35 +106,32 @@ export default function OnboardingPage() {
 
       const { data: meData } = await apolloClient.query({
         query: GET_ME,
-        fetchPolicy: 'network-only',
+        fetchPolicy: "network-only",
       });
 
       if (meData?.me) {
         setUser(meData.me);
       } else if (user) {
-        setUser({
-          ...user,
-          isFirstLogin: false,
-          mustChangePassword: false,
-        });
+        // Keep existing user shape from store types when /me is unavailable.
+        setUser(user);
       }
 
-      toast.success('Password changed successfully');
+      toast.success("Password changed successfully");
 
       // Redirect to existing organization template page for SUPER_ADMIN/ADMIN
       if (isSuperAdminOrAdmin) {
-        window.location.assign('/organization-template');
+        window.location.assign("/organization-template");
       } else {
         setStep(2);
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to change password');
+      toast.error(error.message || "Failed to change password");
     }
   };
 
   const handleTemplateSelect = async () => {
     if (!selectedTemplate) {
-      toast.error('Please select a template');
+      toast.error("Please select a template");
       return;
     }
 
@@ -122,13 +141,13 @@ export default function OnboardingPage() {
           updateOrganizationInput: {
             organizationId: user?.organizationId,
             structureTemplate: selectedTemplate,
-          }
-        }
+          },
+        },
       });
-      toast.success('Template selected');
+      toast.success("Template selected");
       setStep(3);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save template');
+      toast.error(error.message || "Failed to save template");
     }
   };
 
@@ -141,14 +160,14 @@ export default function OnboardingPage() {
             updateOrganizationInput: {
               organizationId: user?.organizationId,
               onboardingCompleted: true,
-            }
-          }
+            },
+          },
         });
       }
-      toast.success('Setup complete!');
-      router.push('/dashboard');
+      toast.success("Setup complete!");
+      router.push("/dashboard");
     } catch (error: any) {
-      toast.error(error.message || 'Failed to complete onboarding');
+      toast.error(error.message || "Failed to complete onboarding");
     }
   };
 
@@ -160,7 +179,9 @@ export default function OnboardingPage() {
         <CardHeader>
           <div className="flex items-center justify-between mb-4">
             <CardTitle className="text-2xl">Welcome to Strategize</CardTitle>
-            <span className="text-sm text-gray-500">Step {step} of {totalSteps}</span>
+            <span className="text-sm text-gray-500">
+              Step {step} of {totalSteps}
+            </span>
           </div>
           <Progress value={progress} className="h-2" />
         </CardHeader>
@@ -168,8 +189,12 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className="space-y-4">
               <div className="text-center mb-6">
-                <h3 className="text-xl font-semibold mb-2">Change Your Password</h3>
-                <p className="text-gray-600">Please set a new password for security</p>
+                <h3 className="text-xl font-semibold mb-2">
+                  Change Your Password
+                </h3>
+                <p className="text-gray-600">
+                  Please set a new password for security
+                </p>
               </div>
               <div className="space-y-4">
                 <div>
@@ -177,7 +202,9 @@ export default function OnboardingPage() {
                   <Input
                     type="password"
                     value={passwordData.old}
-                    onChange={(e) => setPasswordData({ ...passwordData, old: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, old: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -185,7 +212,9 @@ export default function OnboardingPage() {
                   <Input
                     type="password"
                     value={passwordData.new}
-                    onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, new: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -193,7 +222,12 @@ export default function OnboardingPage() {
                   <Input
                     type="password"
                     value={passwordData.confirm}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        confirm: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <Button onClick={handlePasswordChange} className="w-full">
@@ -206,8 +240,12 @@ export default function OnboardingPage() {
           {step === 2 && isSuperAdminOrAdmin && (
             <div className="space-y-4">
               <div className="text-center mb-6">
-                <h3 className="text-xl font-semibold mb-2">Choose Organization Structure</h3>
-                <p className="text-gray-600">Select the structure that best fits your organization</p>
+                <h3 className="text-xl font-semibold mb-2">
+                  Choose Organization Structure
+                </h3>
+                <p className="text-gray-600">
+                  Select the structure that best fits your organization
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {templates.map((template) => (
@@ -216,8 +254,8 @@ export default function OnboardingPage() {
                     onClick={() => setSelectedTemplate(template.id)}
                     className={`p-6 border-2 rounded-lg text-left transition-all ${
                       selectedTemplate === template.id
-                        ? 'border-indigo-600 bg-indigo-50'
-                        : 'border-gray-200 hover:border-indigo-300'
+                        ? "border-indigo-600 bg-indigo-50"
+                        : "border-gray-200 hover:border-indigo-300"
                     }`}
                   >
                     <template.icon className="h-8 w-8 mb-3 text-indigo-600" />
@@ -226,21 +264,26 @@ export default function OnboardingPage() {
                   </button>
                 ))}
               </div>
-              <Button onClick={handleTemplateSelect} className="w-full" disabled={!selectedTemplate}>
+              <Button
+                onClick={handleTemplateSelect}
+                className="w-full"
+                disabled={!selectedTemplate}
+              >
                 Continue
               </Button>
             </div>
           )}
 
-          {(step === 3 && isSuperAdminOrAdmin) || (step === 2 && !isSuperAdminOrAdmin) ? (
+          {(step === 3 && isSuperAdminOrAdmin) ||
+          (step === 2 && !isSuperAdminOrAdmin) ? (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Setup Complete!</h3>
                 <p className="text-gray-600">
-                  {isSuperAdminOrAdmin 
-                    ? 'You can now access your dashboard and complete the remaining setup steps'
-                    : 'Your password has been changed. You can now access the dashboard.'}
+                  {isSuperAdminOrAdmin
+                    ? "You can now access your dashboard and complete the remaining setup steps"
+                    : "Your password has been changed. You can now access the dashboard."}
                 </p>
               </div>
               {isSuperAdminOrAdmin && (

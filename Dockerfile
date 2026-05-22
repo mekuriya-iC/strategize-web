@@ -13,7 +13,7 @@ ENV NEXT_PUBLIC_SOCKET=wss://strategize-api.frontiertech.org/graphql
 WORKDIR /app
 
 # Copy package.json and package-lock.json to the working directory
-COPY package*.json pnpm-lock.yaml ./
+COPY package*.json ./
 
 # Install the app dependencies
 RUN pnpm install

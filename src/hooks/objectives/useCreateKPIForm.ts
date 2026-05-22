@@ -140,7 +140,7 @@ export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }
 
             const input: CreateKpiInput = {
                 name: formData.name,
-                baseline: parseFloat(formData.baseline) || 0,
+                baseline: formData.baseline !== "" ? parseFloat(formData.baseline) : undefined,
                 weight: parseFloat(formData.weight) || 0,
                 unitType: formData.unitType,
                 strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId

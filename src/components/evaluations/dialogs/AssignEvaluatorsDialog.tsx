@@ -187,22 +187,28 @@ export default function AssignEvaluatorsDialog({
     });
   };
 
-  const handleBulkAssign = async () => {
+  const handleBulkAssign = async (evaluateeId?: string) => {
     setSaving(true);
     let successCount = 0;
     let errorCount = 0;
 
+    const targetAssignments = evaluateeId
+      ? { [evaluateeId]: assignments[evaluateeId] }
+      : assignments;
+
     try {
-      for (const [evaluateeId, assignment] of Object.entries(assignments)) {
+      for (const [id, assignment] of Object.entries(targetAssignments)) {
+        if (!assignment) continue;
+
         const assessmentsToCreate: Array<{
           evaluatorUserId: string;
           relationType: EvaluationRelationType;
         }> = [];
 
-        // Self assessment - use employeeId as userId
+        // Self assessment
         if (assignment.assignSelf) {
           assessmentsToCreate.push({
-            evaluatorUserId: evaluateeId,
+            evaluatorUserId: id,
             relationType: EvaluationRelationType.SELF,
           });
         }
@@ -237,7 +243,7 @@ export default function AssignEvaluatorsDialog({
             await createAssessment({
               variables: {
                 createCompetencyAssessmentInput: {
-                  evaluateeUserId: evaluateeId,
+                  evaluateeUserId: id,
                   evaluatorUserId: assessment.evaluatorUserId,
                   evaluationCycleId,
                   relationType: assessment.relationType,
@@ -247,7 +253,7 @@ export default function AssignEvaluatorsDialog({
             successCount++;
           } catch (error: any) {
             console.error(
-              `Failed to create assessment for ${evaluateeId}:`,
+              `Failed to create assessment for ${id}:`,
               error,
             );
             errorCount++;
@@ -256,10 +262,13 @@ export default function AssignEvaluatorsDialog({
       }
 
       if (errorCount === 0) {
-        toast.success(`Successfully created ${successCount} assessments`);
-        onOpenChange(false);
-        setStep("select");
-        setSelectedEmployeeId(null);
+        toast.success(`Successfully assigned evaluators`);
+        if (evaluateeId) {
+          setStep("select");
+          setSelectedEmployeeId(null);
+        } else {
+          onOpenChange(false);
+        }
       } else {
         toast.warning(
           `Created ${successCount} assessments, ${errorCount} failed`,
@@ -367,7 +376,7 @@ export default function AssignEvaluatorsDialog({
                     return (
                       <div
                         key={employee.employeeId}
-                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors group"
                         onClick={() => {
                           setSelectedEmployeeId(employee.employeeId);
                           setStep("assign");
@@ -375,13 +384,13 @@ export default function AssignEvaluatorsDialog({
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
                               <span className="text-sm font-semibold text-indigo-600">
                                 {employee.fullName?.charAt(0) || "U"}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">
+                              <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
                                 {employee.fullName}
                               </p>
                               <p className="text-sm text-gray-600">
@@ -389,16 +398,29 @@ export default function AssignEvaluatorsDialog({
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="gap-1">
-                              <Users className="h-3 w-3" />
-                              {assignmentCount} evaluators
-                            </Badge>
-                            {assignmentCount > 0 ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <AlertCircle className="h-5 w-5 text-amber-600" />
-                            )}
+                          <div className="flex items-center gap-4">
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge variant="outline" className="gap-1">
+                                <Users className="h-3 w-3" />
+                                {assignmentCount} evaluators
+                              </Badge>
+                              {assignmentCount > 0 ? (
+                                <span className="text-[10px] text-green-600 font-medium">
+                                  Configured
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-amber-600 font-medium">
+                                  Not configured
+                                </span>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                            >
+                              Configure →
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -659,28 +681,34 @@ export default function AssignEvaluatorsDialog({
 
         <DialogFooter>
           {step === "select" ? (
-            <>
+            <div className="flex w-full justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                Close
               </Button>
-              <Button
-                onClick={handleBulkAssign}
-                disabled={saving || getTotalAssignments() === 0}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                {saving
-                  ? "Assigning..."
-                  : `Assign ${getTotalAssignments()} Evaluators`}
-              </Button>
-            </>
+            </div>
           ) : (
-            <Button variant="outline" onClick={() => setStep("select")}>
-              Done
-            </Button>
+            <div className="flex w-full justify-between items-center">
+              <p className="text-sm text-gray-500 italic">
+                {getEmployeeAssignmentCount(selectedEmployeeId || "")} evaluators
+                selected for {selectedEmployee?.fullName}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setStep("select")}>
+                  Back
+                </Button>
+                <Button
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                  disabled={saving}
+                  onClick={() => handleBulkAssign(selectedEmployeeId || "")}
+                >
+                  {saving ? "Saving..." : "Save & Confirm"}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>

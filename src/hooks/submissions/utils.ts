@@ -74,26 +74,33 @@ export const getDepartmentIdFromSubmission = (
     }
   }
 
-  // For PERSONNEL level, resolve department from parent objective
+  // For PERSONNEL level, resolve department from parent objective or submitter's department
   if (submission.level === "PERSONNEL") {
-    // If it's an objective submission
+    // 1. Try parent objective (current logic)
     if (submission.objective?.parent) {
-      if (submission.objective.parent.assigneeType === "DEPARTMENT" && submission.objective.parent.assigneeId) {
-        return submission.objective.parent.assigneeId;
-      }
-      if (submission.objective.parent.type === "DEPARTMENT" && submission.objective.parent.assigneeId) {
+      if (
+        (submission.objective.parent.assigneeType === "DEPARTMENT" ||
+          submission.objective.parent.type === "DEPARTMENT") &&
+        submission.objective.parent.assigneeId
+      ) {
         return submission.objective.parent.assigneeId;
       }
     }
 
-    // If it's a KPI submission
     if (nestedObjective?.parent) {
-      if (nestedObjective.parent.assigneeType === "DEPARTMENT" && nestedObjective.parent.assigneeId) {
+      if (
+        (nestedObjective.parent.assigneeType === "DEPARTMENT" ||
+          nestedObjective.parent.type === "DEPARTMENT") &&
+        nestedObjective.parent.assigneeId
+      ) {
         return nestedObjective.parent.assigneeId;
       }
-      if (nestedObjective.parent.type === "DEPARTMENT" && nestedObjective.parent.assigneeId) {
-        return nestedObjective.parent.assigneeId;
-      }
+    }
+
+    // 2. Fallback: Use the submitter's first department
+    // This is often more reliable for PERSONNEL level submissions
+    if (submission.submittedBy?.departments && submission.submittedBy.departments.length > 0) {
+      return (submission.submittedBy.departments[0] as { departmentId: string }).departmentId;
     }
   }
 
@@ -216,15 +223,13 @@ export const filterSubmissionsByListMode = (
     return submissions;
   }
 
-  const outboundLevel = getOutboundSubmissionLevel(approverRole);
-  if (!outboundLevel || !submitterEmployeeId) {
+  if (!submitterEmployeeId) {
     return [];
   }
 
+  // For outbound (tracking), show all items submitted by the current user
   return submissions.filter(
-    (submission) =>
-      submission.level === outboundLevel &&
-      submission.submittedBy?.employeeId === submitterEmployeeId
+    (submission) => submission.submittedBy?.employeeId === submitterEmployeeId
   );
 };
 

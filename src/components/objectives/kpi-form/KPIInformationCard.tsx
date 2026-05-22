@@ -117,7 +117,7 @@ export function KPIInformationCard({
 
           {/* Baseline Value */}
           <div>
-            <Label htmlFor="baseline">Baseline Value</Label>
+            <Label htmlFor="baseline">Baseline Value (Optional)</Label>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 id="baseline"
@@ -125,7 +125,7 @@ export function KPIInformationCard({
                 step="0.01"
                 value={formData.baseline}
                 onChange={(e) => onInputChange("baseline", e.target.value)}
-                placeholder="Enter baseline value"
+                placeholder="N/A"
                 disabled={!canEditStructure}
               />
               <div>
@@ -144,8 +144,11 @@ export function KPIInformationCard({
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NUMBER">Number</SelectItem>
-                    <SelectItem value="PERCENT">Percent</SelectItem>
+                    <SelectItem value="NUMBER">Number (#)</SelectItem>
+                    <SelectItem value="PERCENT">Percent (%)</SelectItem>
+                    <SelectItem value="CURRENCY">Currency ($)</SelectItem>
+                    <SelectItem value="RATIO">Ratio (x:y)</SelectItem>
+                    <SelectItem value="COUNT">Count (n)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

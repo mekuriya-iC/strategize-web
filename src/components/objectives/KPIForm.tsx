@@ -152,7 +152,7 @@ export default function KPIForm({
 
       const kpiData = {
         name: formData.name.trim() || "",
-        baseline: formData.baseline ? Number(formData.baseline) : 0,
+        baseline: formData.baseline !== "" ? Number(formData.baseline) : undefined,
         weight: formData.weight ? Number(formData.weight) : 0,
         unitType: formData.weightType,
         targets: validTargets,

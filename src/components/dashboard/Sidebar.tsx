@@ -1,13 +1,13 @@
 "use client";
 import Logo from "@/components/Logo";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/stores";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import StrategySelector from "./StrategySelector";
 import Image from "next/image";
 import type { Permission } from "@/lib/rbac/permissions";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores";
 
@@ -226,11 +226,19 @@ const navCategories: NavCategory[] = [
     permission: "nav:reports",
     links: [
       {
-        label: "Reports",
-        href: "/dashboard/reports",
+        label: "Performance Reports",
+        href: "/dashboard/reports?tab=performance",
         permission: "nav:reports",
         icon: (
           <Image src="/images/dashboard/sidebar/reports.png" alt="report" width={16} height={16} className="sidebar-icon-filter"/>
+        ),
+      },
+      {
+        label: "My Submissions",
+        href: "/dashboard/reports?tab=my-submissions",
+        permission: "nav:reports",
+        icon: (
+          <Image src="/images/dashboard/sidebar/approvals.png" alt="my submissions" width={16} height={16} className="sidebar-icon-filter"/>
         ),
       },
       {
@@ -239,15 +247,6 @@ const navCategories: NavCategory[] = [
         permission: "nav:approvals",
         icon: (
           <Image src="/images/dashboard/sidebar/approvals.png" alt="approval" width={16} height={16} className="sidebar-icon-filter"/>
-        ),
-      },
-      {
-        label: "My Submissions",
-        href: "/dashboard/approvals/my-submissions",
-        permission: "nav:approvals",
-        managerOnly: true,
-        icon: (
-          <Image src="/images/dashboard/sidebar/approvals.png" alt="my submissions" width={16} height={16} className="sidebar-icon-filter"/>
         ),
       },
     ],
@@ -291,10 +290,11 @@ const navCategories: NavCategory[] = [
 
 function CollapsibleCategory({ category, open: sidebarOpen, onLinkClick }: { category: NavCategory; open: boolean; onLinkClick?: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { can } = usePermissions();
+  const { openSidebar } = useUIStore();
   const user = useAuthStore((state) => state.user);
-  const [isExpanded, setIsExpanded] = useState(false);
-
+  
   const isManagerRole =
     user?.role === "DIRECTOR" || user?.role === "MANAGER";
 
@@ -311,60 +311,88 @@ function CollapsibleCategory({ category, open: sidebarOpen, onLinkClick }: { cat
         ? { ...link, label: "Approvals" }
         : link
     );
-  
-  if (filteredLinks.length === 0) return null;
-
-  // Check if any link in this category is active
-  const isCategoryActive = filteredLinks.some((link) => {
-    if (link.href === "/dashboard") return pathname === "/dashboard";
-    if (link.href === "/dashboard/admin") return pathname === "/dashboard/admin";
-    return pathname.startsWith(link.href);
-  });
 
   const isLinkActive = (linkHref: string) => {
-    if (linkHref === "/dashboard") return pathname === "/dashboard";
-    if (linkHref === "/dashboard/admin") return pathname === "/dashboard/admin";
-    return pathname.startsWith(linkHref);
+    const url = new URL(linkHref, "http://localhost");
+    const linkPath = url.pathname;
+    const linkTab = url.searchParams.get("tab");
+    
+    if (linkPath === "/dashboard") return pathname === "/dashboard";
+    if (linkPath === "/dashboard/admin") return pathname === "/dashboard/admin";
+    
+    const isPathMatch = pathname.startsWith(linkPath);
+    if (!isPathMatch) return false;
+    
+    // If link has a tab requirement, check if it matches current searchParams
+    if (linkTab) {
+      return searchParams.get("tab") === linkTab;
+    }
+    
+    return true;
+  };
+
+  const isCategoryActive = filteredLinks.some((link) => isLinkActive(link.href));
+
+  const [isExpanded, setIsExpanded] = useState(isCategoryActive);
+
+  // Sync expanded state with active state when category becomes active
+  useEffect(() => {
+    if (isCategoryActive) {
+      setIsExpanded(true);
+    }
+  }, [isCategoryActive]);
+
+  if (filteredLinks.length === 0) return null;
+
+  const handleCategoryClick = () => {
+    if (!sidebarOpen) {
+      openSidebar();
+      setIsExpanded(true);
+    } else {
+      setIsExpanded(!isExpanded);
+    }
   };
 
   return (
-    <div>
+    <div className="w-full">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleCategoryClick}
         className={`
           w-full flex items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800
-          ${sidebarOpen ? "gap-3 px-3 py-2 justify-between" : "gap-0 px-2 py-2 justify-center"}
-          ${isCategoryActive ? "bg-[rgba(56,56,236,0.1)] text-[#3838EC] dark:bg-[#212123] dark:text-blue-400" : "text-gray-700 dark:text-gray-300"}
+          ${isCategoryActive ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20" : "text-gray-600 dark:text-gray-400"}
+          ${sidebarOpen ? "px-4 py-3" : "h-12 w-12 mx-auto justify-center"}
         `}
-        title={!sidebarOpen ? category.label : undefined}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">{category.icon}</div>
-          {sidebarOpen && <span>{category.label}</span>}
-        </div>
+        <span className={`${sidebarOpen ? "mr-3" : ""}`}>
+          {category.icon}
+        </span>
         {sidebarOpen && (
-          <div className="flex-shrink-0">
-            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </div>
+          <>
+            <span className="flex-1 text-left">{category.label}</span>
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </>
         )}
       </button>
-      
+
       {sidebarOpen && isExpanded && (
-        <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+        <div className="mt-1 ml-4 pl-4 border-l border-gray-100 dark:border-gray-800 space-y-1">
           {filteredLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-lg font-normal transition-colors text-sm hover:bg-[#F4F6FA] dark:hover:bg-gray-800
-                ${isLinkActive(link.href)
-                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white font-medium"
-                  : "text-gray-600 dark:text-gray-400"
-                }
-              `}
               onClick={onLinkClick}
+              className={`
+                flex items-center px-4 py-2 rounded-lg text-sm transition-all duration-300
+                ${isLinkActive(link.href)
+                  ? "text-indigo-600 font-bold bg-indigo-50/50 dark:bg-indigo-900/10"
+                  : "text-gray-500 hover:text-indigo-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"}
+              `}
             >
-              {link.icon}
+              <span className="mr-3">{link.icon}</span>
               {link.label}
             </Link>
           ))}
@@ -374,166 +402,71 @@ function CollapsibleCategory({ category, open: sidebarOpen, onLinkClick }: { cat
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const pathname = usePathname();
-  const { sidebarOpen: open, closeSidebar } = useUIStore();
+  const { sidebarOpen, openSidebar } = useUIStore();
   const { can } = usePermissions();
+  const user = useAuthStore((state) => state.user);
 
-  // Filter standalone links based on permissions
-  const filteredStandaloneLinks = standaloneLinks.filter((link) => can(link.permission));
-  
-  // Filter categories based on permissions
-  const filteredCategories = navCategories.filter((category) => 
-    can(category.permission) && category.links.some((link) => can(link.permission))
-  );
-
-  const isLinkActive = (linkHref: string) => {
-    if (linkHref === "/dashboard") return pathname === "/dashboard";
-    if (linkHref === "/dashboard/admin") return pathname === "/dashboard/admin";
-    return pathname.startsWith(linkHref);
+  const isLinkActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
   };
 
   return (
-    <>
-      {/* Mobile/Tablet overlay */}
-      <div
-        className={`fixed inset-0 bg-black/40 z-50 transition-opacity lg:hidden ${open
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
-          }`}
-        onClick={closeSidebar}
-        aria-hidden="true"
-      />
+    <div
+      className={`
+        flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 transition-all duration-300
+        ${sidebarOpen ? "w-64" : "w-20"}
+      `}
+    >
+      <div className={`p-6 mb-2 ${!sidebarOpen && "flex justify-center"}`}>
+        <Logo className={sidebarOpen ? "w-40" : "w-10"} />
+      </div>
 
-      {/* Mobile/Tablet sidebar */}
-      <aside
-        className={`
-          fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800
-          flex flex-col justify-between py-6 px-4
-          transition-transform duration-300
-          ${open ? "translate-x-0" : "-translate-x-full"}
-          lg:hidden
-        `}
-      >
-        <div className="overflow-y-auto">
-          <div className="mb-10 pl-2">
-            <Logo width={140} height={32} />
-          </div>
-          <nav className="flex flex-col gap-2">
-            {/* Standalone links */}
-            {filteredStandaloneLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex dark:text-gray-100 items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800 ${isLinkActive(link.href)
-                  ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white"
-                  : "text-gray-700 dark:text-gray-300"
-                  }`}
-                onClick={closeSidebar}
-              >
+      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-3 space-y-1">
+        {/* Standalone Links */}
+        {standaloneLinks
+          .filter((link) => can(link.permission))
+          .map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={onLinkClick}
+              className={`
+                flex items-center rounded-lg font-medium transition-all duration-300 text-base
+                ${isLinkActive(link.href)
+                  ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-[#F4F6FA] dark:hover:bg-gray-800"}
+                ${sidebarOpen ? "px-4 py-3" : "h-12 w-12 mx-auto justify-center mb-1"}
+              `}
+            >
+              <span className={`${sidebarOpen ? "mr-3" : ""}`}>
                 {link.icon}
-                {link.label}
-              </Link>
-            ))}
-            
-            {/* Categorized links */}
-            {filteredCategories.map((category) => (
-              <CollapsibleCategory
-                key={category.label}
-                category={category}
-                open={true}
-                onLinkClick={closeSidebar}
-              />
-            ))}
-          </nav>
-        </div>
-        <div className="flex flex-col gap-4 mt-10 md:mt-14">
-          <div>
-            <StrategySelector />
-          </div>
-          <div className="text-xs text-gray-400 text-center mt-2">
-            Powered by <span className="font-semibold">iCapital Africa</span>
-          </div>
-        </div>
-      </aside>
+              </span>
+              {sidebarOpen && link.label}
+            </Link>
+          ))}
 
-      {/* Desktop sidebar */}
-      <aside
-        className={`
-          hidden lg:flex lg:flex-col lg:h-full bg-white dark:bg-[#18181b] border-r border-[#E2E8F0] dark:border-gray-800 py-6
-          transition-all duration-300 ease-in-out
-          ${open ? "lg:w-64 px-4" : "lg:w-16 px-2"}
-        `}
-      >
-        <div className="flex-1 overflow-y-auto">
-          <div
-            className={`mb-10 transition-all duration-300 ${open ? "pl-2" : "pl-0"
-              }`}
-          >
-            {open ? (
-              <Logo width={140} height={32} />
-            ) : (
-              <div className="w-8 h-8 bg-[#3838EC] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
-              </div>
-            )}
-          </div>
-          <nav className="flex flex-col gap-2">
-            {/* Standalone links */}
-            {filteredStandaloneLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`
-                  flex dark:text-gray-100 items-center rounded-lg font-medium transition-all duration-300 text-base hover:bg-[#F4F6FA] dark:hover:bg-gray-800
-                  ${open ? "gap-3 px-3 py-2" : "gap-0 px-2 py-2 justify-center"}
-                  ${isLinkActive(link.href)
-                    ? "bg-[rgba(56,56,236,0.2)] text-[#09090B] dark:bg-[#212123] dark:text-white"
-                    : "text-gray-700 dark:text-gray-300"
-                  }
-                `}
-                title={!open ? link.label : undefined}
-              >
-                <div className="flex-shrink-0">{link.icon}</div>
-                <span
-                  className={`transition-all duration-300 ${open ? "opacity-100 block" : "opacity-0 hidden"
-                    }`}
-                >
-                  {link.label}
-                </span>
-              </Link>
-            ))}
-            
-            {/* Categorized links */}
-            {filteredCategories.map((category) => (
-              <CollapsibleCategory
-                key={category.label}
-                category={category}
-                open={open}
-              />
-            ))}
-          </nav>
+        {/* Categorized Links */}
+        {navCategories.map((category) => (
+          <CollapsibleCategory 
+            key={category.label} 
+            category={category} 
+            open={sidebarOpen} 
+            onLinkClick={onLinkClick}
+          />
+        ))}
+      </div>
+
+      {/* Powered by iCapital Africa */}
+      <div className="p-4 mt-auto border-t border-gray-50 dark:border-gray-800">
+        <div className={`flex items-center ${sidebarOpen ? "gap-2" : "justify-center"}`}>
+          <p className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+            {sidebarOpen ? "Powered by" : ""} <span className="text-indigo-600 font-bold">{sidebarOpen ? "iCapital Africa" : "iCA"}</span>
+          </p>
         </div>
-        <div
-          className={`flex flex-col gap-4 mt-6 transition-all duration-300 ${open ? "" : "items-center"
-            }`}
-        >
-          {open && (
-            <div>
-              <StrategySelector />
-            </div>
-          )}
-          <div
-            className={`text-xs text-[#BDBDBD] text-center mt-2 transition-all duration-300 ${open ? "" : "hidden"
-              }`}
-          >
-            Powered by{" "}
-            <span className="font-semibold text-[#3F3F46] dark:text-gray-400">
-              iCapital Africa
-            </span>
-          </div>
-        </div>
-      </aside>
-    </>
+      </div>
+    </div>
   );
 }

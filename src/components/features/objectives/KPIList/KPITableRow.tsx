@@ -156,9 +156,11 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
 
             <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2">
-                    <span>{kpi.baseline}</span>
-                    <Badge variant="outline" className="text-xs">
-                        {kpi.unitType === "NUMBER" ? "Number" : "Percent"}
+                    <span className={kpi.baseline === null || kpi.baseline === undefined ? "text-gray-400 italic text-sm" : ""}>
+                        {kpi.baseline === null || kpi.baseline === undefined ? "N/A" : kpi.baseline}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] px-1 h-4 uppercase font-bold text-gray-500">
+                        {kpi.unitType || "NUMBER"}
                     </Badge>
                 </div>
             </TableCell>

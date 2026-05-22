@@ -139,9 +139,9 @@ export default function CreateKPIForm({
     const hasValidBasicFields = useMemo(() => {
         if (!formData.name.trim()) return false;
 
-        // Baseline and weight are required inputs in the desired flow.
-        if (formData.baseline.trim() === "") return false;
-        if (isNaN(Number(formData.baseline))) return false;
+        // Baseline is now optional. If empty, it's valid (will be saved as 0 or null depending on backend)
+        // If provided, it must be a valid number.
+        if (formData.baseline.trim() !== "" && isNaN(Number(formData.baseline))) return false;
 
         if (formData.weight.trim() === "") return false;
         if (isNaN(Number(formData.weight))) return false;

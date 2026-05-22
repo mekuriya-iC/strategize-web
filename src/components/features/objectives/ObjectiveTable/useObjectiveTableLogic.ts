@@ -75,10 +75,11 @@ export const useObjectiveTableLogic = ({
             return result;
         }
 
+        // If sorting is enabled, use the explicit order property
         if (enableSorting) {
             return result.sort((a, b) => {
-                const orderA = (a as any).order ?? Infinity;
-                const orderB = (b as any).order ?? Infinity;
+                const orderA = (a as any).order ?? 0;
+                const orderB = (b as any).order ?? 0;
                 return orderA - orderB;
             });
         }
@@ -162,14 +163,30 @@ export const useObjectiveTableLogic = ({
             const oldIndex = sortedObjectives.findIndex((obj) => obj.objectiveId === active.id);
             const newIndex = sortedObjectives.findIndex((obj) => obj.objectiveId === over.id);
             const reordered = arrayMove(sortedObjectives, oldIndex, newIndex);
-            onOrderChange?.(reordered);
+            
+            // Calculate and assign new orders to the objects themselves
+            // This prevents the "snap-back" caused by the sort function using old .order values
+            const reorderedWithNewOrders = reordered.map((obj, index) => ({
+                ...obj,
+                order: startIndex + index + 1
+            }));
+
+            // Prepare the updates for the backend
+            const updates = reorderedWithNewOrders.map((obj) => ({
+                objectiveId: obj.objectiveId,
+                order: obj.order
+            }));
+
+            // Immediately notify parent of order change for optimistic UI
+            // We pass the objects with updated .order properties
+            onOrderChange?.(reorderedWithNewOrders);
+            
             try {
-                // Use startIndex to calculate correct global order
-                await saveOrder(reordered.map((obj, index) => ({ 
-                    objectiveId: obj.objectiveId, 
-                    order: startIndex + index + 1 
-                })));
-            } catch {
+                // Persist to backend
+                await saveOrder(updates);
+            } catch (error) {
+                console.error("Failed to save reordered objectives:", error);
+                // Rollback on failure
                 onOrderChange?.(sortedObjectives);
             }
         }

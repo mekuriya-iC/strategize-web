@@ -75,6 +75,10 @@ export const useSubmissionQueries = ({
 }: UseSubmissionQueriesOptions): SubmissionQueriesResult => {
   const isCorporate = approverRole === "CORPORATE";
 
+  // For My Submissions (pendingOnly = false), we want to fetch across all levels 
+  // to find everything the user has submitted.
+  const shouldFetchAllLevels = !pendingOnly || isCorporate;
+
   const {
     data: corporateObjData,
     loading: corporateObjLoading,
@@ -82,7 +86,7 @@ export const useSubmissionQueries = ({
   } = useQuery(GET_PENDING_SUBMISSIONS, {
     variables: objectiveSubmissionsQueryVariables("CORPORATE"),
     fetchPolicy: "cache-and-network",
-    skip: !shouldFetch || !isCorporate,
+    skip: !shouldFetch || !shouldFetchAllLevels,
   });
 
   const {
@@ -122,7 +126,7 @@ export const useSubmissionQueries = ({
   } = useQuery(GET_KPI_SUBMISSIONS, {
     variables: kpiSubmissionsQueryVariables("CORPORATE"),
     fetchPolicy: "cache-and-network",
-    skip: !shouldFetch || !isCorporate,
+    skip: !shouldFetch || !shouldFetchAllLevels,
   });
 
   const {

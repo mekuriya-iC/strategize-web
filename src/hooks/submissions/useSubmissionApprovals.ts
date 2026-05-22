@@ -47,7 +47,7 @@ export const useSubmissionApprovals = ({
   // Determine if we should make queries
   const shouldMakeQueries = Boolean(
     user &&
-    (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || selectedUnit)
+    (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || selectedUnit || listMode === "outbound")
   );
 
   // Fetch all submissions using modular query hook

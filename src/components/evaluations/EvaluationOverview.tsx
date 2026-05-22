@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, AlertCircle, TrendingUp } from 'lucide-react';
@@ -184,80 +185,90 @@ export default function EvaluationOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Title and Export */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">360° Behavioral Competence Evaluation</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm text-gray-500">{activeCycle?.name || 'Current Cycle'}</span>
+            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">
+              ● ACTIVE
+            </span>
+          </div>
+        </div>
+        <Button variant="outline" className="text-gray-600 border-gray-200">
+          <TrendingUp className="h-4 w-4 mr-2" />
+          Export
+        </Button>
+      </div>
+
       {/* Alert Banner */}
-      {pendingEvaluations > 0 && daysLeft > 0 && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            <span className="font-semibold">{pendingEvaluations} evaluations pending</span> — Complete
-            before {activeCycle?.endDate && new Date(activeCycle.endDate).toLocaleDateString()} to avoid
+      {pendingEvaluations > 0 && (
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+          </div>
+          <p className="text-sm text-amber-800">
+            <span className="font-bold">{pendingEvaluations} evaluations pending</span> — Complete
+            before {activeCycle?.endDate && new Date(activeCycle.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to avoid
             affecting your performance review.
-          </AlertDescription>
-        </Alert>
+          </p>
+        </div>
       )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="pt-6">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">My Evals</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-semibold text-gray-900">{totalEvaluations}</p>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">My Evals</p>
+                <p className="text-3xl font-bold text-gray-900">{totalEvaluations}</p>
+                <p className="text-[10px] text-gray-500 font-medium">
+                  {completedEvaluations} done · {pendingEvaluations} pending
+                </p>
               </div>
-              <p className="text-xs text-gray-500">
-                {completedEvaluations} done · {pendingEvaluations} pending
+              <div className="text-indigo-600 font-bold text-xl opacity-20">6</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
+          <CardContent className="pt-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avg Score</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-3xl font-bold text-gray-900">{averageScore.toFixed(1)}</p>
+                <p className="text-sm font-bold text-gray-400">/5.0</p>
+              </div>
+              <p className="text-[10px] text-gray-500 font-medium">Based on received ratings</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
+          <CardContent className="pt-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Deadline</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {activeCycle?.endDate
+                  ? new Date(activeCycle.endDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : 'N/A'}
               </p>
+              <p className="text-[10px] text-gray-500 font-medium">{daysLeft} days left</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="pt-6">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Overall Score</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-semibold text-gray-900">
-                  {averageScore.toFixed(1)}
-                </p>
-                <p className="text-sm text-gray-500">/5.0</p>
-              </div>
-              <p className="text-xs text-gray-500">Official weighted score</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Deadline</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-semibold text-gray-900">
-                  {activeCycle?.endDate
-                    ? new Date(activeCycle.endDate).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : 'N/A'}
-                </p>
-              </div>
-              <p className="text-xs text-gray-500">{daysLeft} days left</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Overdue</p>
-              <div className="flex items-baseline gap-2">
-                <p className={`text-3xl font-semibold ${overdueEvaluations > 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {overdueEvaluations}
-                </p>
-              </div>
-              <p className="text-xs text-gray-500">
-                {overdueEvaluations > 0 ? 'Action required' : 'All on track'}
-              </p>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Overdue</p>
+              <p className="text-3xl font-bold text-gray-900">{overdueEvaluations}</p>
+              <p className="text-[10px] text-green-600 font-bold uppercase tracking-tight">All on track</p>
             </div>
           </CardContent>
         </Card>
@@ -265,127 +276,109 @@ export default function EvaluationOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Actions */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">Pending Actions</CardTitle>
-            <Button variant="link" className="text-sm text-indigo-600 p-0 h-auto">
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-bold text-gray-900">Pending Actions</CardTitle>
+            <Button variant="link" className="text-xs font-bold text-indigo-600 uppercase tracking-wider p-0 h-auto">
               View All →
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {pendingActions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">No pending evaluations</p>
-              </div>
-            ) : (
-              pendingActions.slice(0, 3).map((assessment: any) => {
-                const initials = assessment.evaluatee.fullName
-                  .split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .toUpperCase();
-                
-                const relationColors: Record<string, string> = {
-                  self: 'bg-indigo-100 text-indigo-700',
-                  supervisor: 'bg-amber-100 text-amber-700',
-                  peer: 'bg-green-100 text-green-700',
-                  subordinate: 'bg-purple-100 text-purple-700',
-                };
-
-                const relationColor = relationColors[assessment.relationType.toLowerCase()] || 'bg-gray-100 text-gray-700';
-
-                return (
-                  <div
-                    key={assessment.competencyAssessmentId}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
+          <CardContent>
+            <div className="space-y-4">
+              {pendingActions.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm text-gray-500 font-medium">All evaluations completed! 🎉</p>
+                </div>
+              ) : (
+                pendingActions.map((action: any) => (
+                  <div key={action.competencyAssessmentId} className="flex items-center justify-between group">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-medium">
-                        {initials}
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                        {action.evaluatee.fullName.split(' ').map((n: any) => n[0]).join('')}
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{assessment.evaluatee.fullName}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-xs px-2 py-0.5 rounded ${relationColor}`}>
-                            {assessment.relationType.charAt(0) + assessment.relationType.slice(1).toLowerCase()}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {assessment.status === EvaluationStatus.NOT_STARTED ? '0%' : '33%'}
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-gray-900">{action.evaluatee.fullName}</p>
+                          <Badge className={`text-[10px] font-bold uppercase tracking-tighter px-1.5 py-0 h-4 border-none ${
+                            action.relationType.toLowerCase() === 'peer' ? 'bg-teal-50 text-teal-600' :
+                            action.relationType.toLowerCase() === 'supervisor' ? 'bg-amber-50 text-amber-600' :
+                            'bg-purple-50 text-purple-600'
+                          }`}>
+                            {action.relationType}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 w-32">
+                          <div className="h-1.5 flex-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-indigo-600 rounded-full" 
+                              style={{ width: `${action.status === EvaluationStatus.IN_PROGRESS ? 33 : 0}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400">
+                            {action.status === EvaluationStatus.IN_PROGRESS ? '33%' : '0%'}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleStartEvaluation(assessment.competencyAssessmentId)}
-                      className={
-                        assessment.status === EvaluationStatus.IN_PROGRESS
-                          ? 'bg-indigo-600 hover:bg-indigo-700'
-                          : ''
-                      }
+                    <Button 
+                      size="sm" 
+                      className={`h-8 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider ${
+                        action.status === EvaluationStatus.IN_PROGRESS 
+                          ? 'bg-indigo-600 hover:bg-indigo-700' 
+                          : 'bg-indigo-600 hover:bg-indigo-700'
+                      }`}
+                      onClick={() => handleStartEvaluation(action.competencyAssessmentId)}
                     >
-                      {assessment.status === EvaluationStatus.IN_PROGRESS ? 'Continue' : 'Start'}
+                      {action.status === EvaluationStatus.IN_PROGRESS ? 'Continue' : 'Start'}
                     </Button>
                   </div>
-                );
-              })
-            )}
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* Score Summary */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Self Assessment Scores</CardTitle>
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold text-gray-900">Score Summary</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingSelf ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-500">Loading scores...</p>
-              </div>
-            ) : !isSelfDone ? (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">Complete your self-assessment to see your scores</p>
-                {selfAssessment && (
-                  <Button
-                    variant="link"
-                    className="text-indigo-600 mt-2"
-                    onClick={() => handleStartEvaluation(selfAssessment.competencyAssessmentId)}
-                  >
-                    Start Now →
-                  </Button>
-                )}
-              </div>
-            ) : selfScores.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">No scores available for this assessment</p>
-              </div>
-            ) : (
-              selfScores.map((comp, idx) => {
-                const colors = [
-                  'bg-indigo-600',
-                  'bg-teal-600',
-                  'bg-amber-600',
-                  'bg-purple-600',
-                ];
-                const textColor = colors[idx % colors.length].replace('bg-', 'text-');
-                
-                return (
-                  <div key={comp.name} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 uppercase text-xs font-medium">
-                        {comp.name}
-                      </span>
-                      <span className={`font-semibold ${textColor}`}>
-                        {comp.score.toFixed(1)}
-                      </span>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {selfScores.length === 0 ? (
+                <div className="col-span-2 py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">No scores available yet</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Complete your self-assessment to see results</p>
+                </div>
+              ) : (
+                selfScores.map((score, idx) => {
+                  const colors = [
+                    { text: 'text-indigo-600', bg: 'bg-indigo-50', bar: 'bg-indigo-600', border: 'border-indigo-100' },
+                    { text: 'text-teal-600', bg: 'bg-teal-50', bar: 'bg-teal-600', border: 'border-teal-100' },
+                    { text: 'text-amber-600', bg: 'bg-amber-50', bar: 'bg-amber-600', border: 'border-amber-100' },
+                    { text: 'text-purple-600', bg: 'bg-purple-50', bar: 'bg-purple-600', border: 'border-purple-100' },
+                  ];
+                  const color = colors[idx % colors.length];
+                  return (
+                    <div key={score.name} className={`p-3 rounded-xl border ${color.bg} ${color.border} space-y-2`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${color.text}`}>
+                        {score.name}
+                      </p>
+                      <div className="flex items-baseline gap-1">
+                        <p className="text-lg font-bold text-gray-900">{score.score.toFixed(1)}</p>
+                        <p className="text-[10px] font-bold text-gray-400">/5</p>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/50 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${color.bar} rounded-full`} 
+                          style={{ width: `${(score.score / 5) * 100}%` }}
+                        />
+                      </div>
                     </div>
-                    <Progress value={comp.score * 20} className={`h-2 [&>div]:${colors[idx % colors.length]}`} />
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </CardContent>
         </Card>
 

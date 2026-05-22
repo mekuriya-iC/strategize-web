@@ -84,12 +84,19 @@ const KPIList: React.FC<KPIListProps> = ({
             const newIndex = kpis.findIndex((k) => k.kpiId === over.id);
 
             const reorderedKpis = arrayMove(kpis, oldIndex, newIndex);
-            setKpis(reorderedKpis);
+            
+            // Assign new orders to the objects themselves for optimistic UI stability
+            const reorderedWithNewOrders = reorderedKpis.map((kpi, index) => ({
+                ...kpi,
+                order: index + 1,
+            }));
+            
+            setKpis(reorderedWithNewOrders);
 
             try {
-                const updates = reorderedKpis.map((kpi, index) => ({
+                const updates = reorderedWithNewOrders.map((kpi) => ({
                     kpiId: kpi.kpiId,
-                    order: index + 1,
+                    order: kpi.order,
                 }));
                 await saveOrder(updates);
                 onRefresh();

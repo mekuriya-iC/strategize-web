@@ -19,9 +19,7 @@ export default function TeamResults() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const canReadAll = can('evaluations:read_all');
-  const canReadDivision = can('evaluations:read_division');
-  const canReadDepartment = can('evaluations:read_department');
-
+  
   // Fetch either all employees (HR/Admin) or direct reports (Manager)
   const { employees: allEmployees, loading: employeesLoading } = useEmployees(1, 1000, '');
   const { directReports, loading: reportsLoading } = useDirectReports();
@@ -38,8 +36,6 @@ export default function TeamResults() {
   // Determine which list of employees to show based on permissions
   const targetEmployees = useMemo(() => {
     if (canReadAll) return allEmployees;
-    
-    // For manager view (direct reports)
     return directReports;
   }, [canReadAll, allEmployees, directReports]);
 
@@ -67,7 +63,6 @@ export default function TeamResults() {
         overall: performance?.aggregateScore || 0,
       },
       status: performance ? 'Done' : 'Pending',
-      statusColor: performance ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700',
     };
   });
 
@@ -110,10 +105,10 @@ export default function TeamResults() {
 
   if (teamMembers.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-gray-500">No employees found</p>
-          <p className="text-sm text-gray-400 mt-2">
+      <Card className="border-none shadow-sm bg-white rounded-2xl">
+        <CardContent className="py-20 text-center">
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No employees found</p>
+          <p className="text-sm text-gray-400 mt-2 font-medium">
             {canReadAll ? "No employees found in the system." : "You don't have any team members reporting to you."}
           </p>
         </CardContent>
@@ -125,31 +120,46 @@ export default function TeamResults() {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="pt-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Total Team</div>
-            <div className="text-2xl font-bold text-gray-900">{teamMembers.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Completion</div>
-            <div className="flex items-center gap-2">
-              <div className="text-2xl font-bold text-gray-900">{completionRate}%</div>
-              <div className="text-xs text-gray-500">({completedCount}/{teamMembers.length})</div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Team</p>
+              <p className="text-3xl font-bold text-gray-900">{teamMembers.length}</p>
+              <p className="text-[10px] text-gray-500 font-medium">Active members</p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="pt-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Team Average</div>
-            <div className="text-2xl font-bold text-indigo-600">{teamAverage}</div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Completion</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-3xl font-bold text-gray-900">{completionRate}%</p>
+                <p className="text-[10px] text-gray-500 font-bold">({completedCount}/{teamMembers.length})</p>
+              </div>
+              <p className="text-[10px] text-gray-500 font-medium">Evaluations finished</p>
+            </div>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="pt-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Pending</div>
-            <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Team Average</p>
+              <p className="text-3xl font-bold text-indigo-600">{teamAverage}</p>
+              <p className="text-[10px] text-gray-500 font-medium">Overall score avg</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl">
+          <CardContent className="pt-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pending</p>
+              <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+              <p className="text-[10px] text-amber-600 font-bold uppercase tracking-tight">Requires action</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -157,137 +167,146 @@ export default function TeamResults() {
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            {canReadAll ? "All Organization Results" : "Direct reports"} · {activeCycle?.name || 'Current Cycle'}
+          <h2 className="text-lg font-bold text-gray-900">
+            {canReadAll ? "Organization-wide Results" : "Team Performance"}
           </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} shown
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">
+            {activeCycle?.name || 'Current Cycle'} · {filteredMembers.length} members shown
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-9 rounded-xl border-gray-100 text-gray-600 font-bold text-[10px] uppercase tracking-wider gap-2">
+            <Filter className="h-3.5 w-3.5" />
             Filter
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <FileDown className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-9 rounded-xl border-gray-100 text-gray-600 font-bold text-[10px] uppercase tracking-wider gap-2">
+            <FileDown className="h-3.5 w-3.5" />
             Export
           </Button>
-          <Button size="sm" className="gap-2 bg-indigo-600 hover:bg-indigo-700">
-            <Bell className="h-4 w-4" />
+          <Button size="sm" className="h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-[10px] uppercase tracking-wider gap-2 shadow-lg shadow-indigo-100">
+            <Bell className="h-3.5 w-3.5" />
             Send Reminders
           </Button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="max-w-md relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          type="text"
-          placeholder="Search by name or department..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10"
-        />
-      </div>
+      {/* Search and List */}
+      <div className="space-y-4">
+        <div className="max-w-md relative group">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 group-focus-within:text-indigo-600 transition-colors" />
+          <Input
+            type="text"
+            placeholder="Search by name or department..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 h-11 bg-white border-none shadow-sm rounded-xl text-sm focus-visible:ring-indigo-600"
+          />
+        </div>
 
-      {/* Team Members Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Employee
-                  </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Dept
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Competency
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Individual KPI
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Shared KPI
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Overall
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Status
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 uppercase text-xs">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredMembers.length === 0 ? (
+        <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50/50 border-b border-gray-100">
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-500">
-                      No team members found
-                    </td>
+                    <th className="text-left py-4 px-6 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Employee
+                    </th>
+                    <th className="text-left py-4 px-4 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Department
+                    </th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Comp.
+                    </th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Indiv. KPI
+                    </th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Shared KPI
+                    </th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Overall
+                    </th>
+                    <th className="text-center py-4 px-4 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Status
+                    </th>
+                    <th className="text-right py-4 px-6 font-bold text-gray-400 uppercase tracking-widest text-[10px]">
+                      Action
+                    </th>
                   </tr>
-                ) : (
-                  filteredMembers.map((member: any) => (
-                    <tr key={member.employeeId} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-medium flex-shrink-0">
-                            {member.avatar}
-                          </div>
-                          <span className="font-medium text-gray-900 whitespace-nowrap">
-                            {member.fullName}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-600 text-sm whitespace-nowrap">
-                        {member.department}
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.competency)}>
-                          {member.scores.competency > 0 ? member.scores.competency.toFixed(1) : '-'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.individualKpi)}>
-                          {member.scores.individualKpi > 0 ? member.scores.individualKpi.toFixed(1) : '-'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className={getScoreColor(member.scores.sharedKpi)}>
-                          {member.scores.sharedKpi > 0 ? member.scores.sharedKpi.toFixed(1) : '-'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="font-bold text-gray-900">
-                            {member.scores.overall > 0 ? member.scores.overall.toFixed(2) : '-'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <Badge className={`${member.statusColor} border-none`}>
-                          {member.status}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                          View Details
-                        </Button>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">
+                        No team members found
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                  ) : (
+                    filteredMembers.map((member: any) => (
+                      <tr key={member.employeeId} className="group hover:bg-gray-50/50 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-sm">
+                              {member.avatar}
+                            </div>
+                            <span className="font-bold text-gray-900 text-sm">
+                              {member.fullName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">
+                            {member.department}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`text-sm ${getScoreColor(member.scores.competency)}`}>
+                            {member.scores.competency.toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`text-sm ${getScoreColor(member.scores.individualKpi)}`}>
+                            {member.scores.individualKpi.toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`text-sm ${getScoreColor(member.scores.sharedKpi)}`}>
+                            {member.scores.sharedKpi.toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <div className="inline-flex flex-col items-center">
+                            <span className={`text-sm font-bold ${getScoreColor(member.scores.overall)}`}>
+                              {member.scores.overall.toFixed(2)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <Badge className={`text-[10px] font-bold uppercase tracking-widest border-none px-2 py-0.5 h-5 ${
+                            member.status === 'Done' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                          }`}>
+                            {member.status}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

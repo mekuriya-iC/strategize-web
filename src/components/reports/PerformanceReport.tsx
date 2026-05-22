@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_COMPETENCY_ASSESSMENTS } from "@/lib/graphql/queries/evaluations";
+import { useAuthStore } from "@/stores";
 import {
   Card,
   CardContent,
@@ -29,6 +30,13 @@ const COLORS = ["#10b981", "#3b82f6", "#6b7280"];
 
 export default function PerformanceReport({ onExport }: PerformanceReportProps) {
   const [period, setPeriod] = useState("current");
+  const user = useAuthStore((state) => state.user);
+
+  const hasFullAccess =
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "ADMIN" ||
+    user?.role === "HR" ||
+    user?.role === "DIRECTOR";
 
   const { data: employeesData, loading: empLoading } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
@@ -36,12 +44,22 @@ export default function PerformanceReport({ onExport }: PerformanceReportProps) 
   });
 
   const { data: assessmentsData, loading: assessLoading } = useQuery(GET_COMPETENCY_ASSESSMENTS, {
-    variables: { page: 1, limit: 1000 },
+    variables: { 
+      page: 1, 
+      limit: 1000,
+      // If not admin, the backend now automatically filters or we can be explicit
+      evaluateeUserId: hasFullAccess ? undefined : user?.employeeId 
+    },
     fetchPolicy: "cache-and-network",
   });
 
-  const employees = employeesData?.employees?.items || [];
+  let employees = employeesData?.employees?.items || [];
   const assessments = assessmentsData?.competencyAssessments?.items || [];
+
+  // Filter employees if not admin
+  if (!hasFullAccess && user) {
+    employees = employees.filter((e: any) => e.employeeId === user.employeeId);
+  }
 
   // Calculate performance metrics
   const totalEmployees = employees.length;

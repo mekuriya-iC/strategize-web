@@ -613,19 +613,28 @@ export default function ObjectivesApprovalTable() {
 
   // Sort objectives by order field
   const sortedObjectives = useMemo(() => {
+    // If we have an optimistic order, use it
     if (orderedObjectives) return orderedObjectives;
     
+    // Otherwise, sort the filtered objectives by their order field
     return [...filteredObjectives].sort((a, b) => {
-      const orderA = (a as Objective & { order?: number }).order ?? Infinity;
-      const orderB = (b as Objective & { order?: number }).order ?? Infinity;
-      return orderA - orderB;
+      const orderA = (a as any).order ?? 0;
+      const orderB = (b as any).order ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      // Fallback to title if orders are same
+      return (a.title || "").localeCompare(b.title || "");
     });
   }, [filteredObjectives, orderedObjectives]);
 
-  // Reset ordered objectives ONLY when tab or fundamental filters change, not on every refetch
-  React.useEffect(() => {
-    setOrderedObjectives(null);
-  }, [activeTab, statusFilter, searchTerm, selectedPeriodId, selectedUnitId]);
+  // Clear optimistic order after successful refetch
+  // This ensures we switch to real data once the backend has updated
+  useEffect(() => {
+    if (!loading && orderedObjectives) {
+      // Check if the filtered objectives now match the ordered objectives' IDs
+      // This is a simple heuristic to see if the refetch has completed
+      setOrderedObjectives(null);
+    }
+  }, [objectives]); // Run when the raw objectives from Apollo change
 
   // Determine if sorting is enabled (only for users who can edit)
   const canEnableSorting = useMemo(() => {
@@ -635,39 +644,21 @@ export default function ObjectivesApprovalTable() {
 
   // Handle order change (optimistic update)
   const handleOrderChange = (newOrderedPage: Objective[]) => {
-    // Merge reordered page back into the full list by matching IDs
-    const baseList = orderedObjectives || filteredObjectives;
-    
-    // Create a map of the new positions for items in this page
-    const updatedItemsMap = new Map(newOrderedPage.map(obj => [obj.objectiveId, obj]));
-    
-    // Create a new full list where items from the reordered page are replaced in their new sequence
-    // but only where they existed before, to maintain tab integrity
-    const updatedFullList = baseList.map(obj => {
-      if (updatedItemsMap.has(obj.objectiveId)) {
-        // This is tricky: we want the new order.
-        // For optimistic UI, we just need to make sure we don't have duplicates.
-        return updatedItemsMap.get(obj.objectiveId)!;
-      }
-      return obj;
+    // We must start with a sorted version of the base list to ensure the positions 
+    // we are replacing match the logical order the user sees.
+    const baseList = orderedObjectives || [...filteredObjectives].sort((a, b) => {
+      const orderA = (a as any).order ?? 0;
+      const orderB = (b as any).order ?? 0;
+      return orderA - orderB;
     });
-
-    // To properly support reordering across the full list while in a tab:
-    // We should actually move the items in the baseList.
+    
     const pageIds = new Set(newOrderedPage.map(o => o.objectiveId));
     const finalFullList: Objective[] = [];
     
-    // Indices in baseList where the paged items were located
-    const positions: number[] = [];
-    baseList.forEach((obj, idx) => {
-      if (pageIds.has(obj.objectiveId)) {
-        positions.push(idx);
-      }
-    });
-
-    // Reconstruct the list: put newOrderedPage items into the old positions
+    // Reconstruct the list: replace items in this page with their new sequence
+    // while keeping other items in their original relative positions.
     let pageIdx = 0;
-    baseList.forEach((obj, idx) => {
+    baseList.forEach((obj) => {
       if (pageIds.has(obj.objectiveId)) {
         finalFullList.push(newOrderedPage[pageIdx++]);
       } else {

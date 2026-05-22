@@ -10,6 +10,7 @@
 
 import { useAuthStore, useOrgUnitStore } from "@/stores";
 import { submissionLogger } from "@/lib/logger";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {
   type SubmissionApprovalsOptions,
   type GroupedSubmission,
@@ -22,7 +23,7 @@ import {
   groupSubmissionsByObjective,
   paginateSubmissions,
   calculatePaginationMeta,
-} from "@/hooks/submissions"
+} from "@/hooks/submissions";
 
 interface UseSubmissionApprovalsResult {
   submissions: GroupedSubmission[];
@@ -42,12 +43,18 @@ export const useSubmissionApprovals = ({
 }: SubmissionApprovalsOptions): UseSubmissionApprovalsResult => {
   const user = useAuthStore((state) => state.user);
   const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const { scope } = usePermissions();
   const effectiveSubmitterId = submitterEmployeeId ?? user?.employeeId;
 
   // Determine if we should make queries
   const shouldMakeQueries = Boolean(
     user &&
-    (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || selectedUnit || listMode === "outbound")
+    (user.role === "SUPER_ADMIN" ||
+      user.role === "ADMIN" ||
+      approverRole === "DIVISION" ||
+      approverRole === "DEPARTMENT" ||
+      selectedUnit ||
+      listMode === "outbound"),
   );
 
   // Fetch all submissions using modular query hook
@@ -63,28 +70,53 @@ export const useSubmissionApprovals = ({
   });
 
   // Get departments hierarchy (for corporate and division filtering)
-  const { departmentsWithoutDivision, getDepartmentsForDivision, loading: departmentsLoading } =
-    useDepartmentHierarchy({
-      shouldFetch: shouldMakeQueries && (approverRole === "CORPORATE" || approverRole === "DIVISION"),
-    });
+  const {
+    departmentsWithoutDivision,
+    getDepartmentsForDivision,
+    loading: departmentsLoading,
+  } = useDepartmentHierarchy({
+    shouldFetch:
+      shouldMakeQueries &&
+      (approverRole === "CORPORATE" || approverRole === "DIVISION"),
+  });
 
-  // Get selected unit type and ID for filtering
+  // Get selected unit type and ID for filtering.
+  // Auto-scope fallback: if no unit is selected, use the user's managed scope.
   const selectedUnitType = selectedUnit?.type as
     | "division"
     | "department"
     | null;
   const selectedUnitId = selectedUnit?.id || null;
 
+  const effectiveSelectedUnitType: "division" | "department" | null =
+    selectedUnitType ??
+    (approverRole === "DIVISION"
+      ? "division"
+      : approverRole === "DEPARTMENT"
+        ? "department"
+        : null);
+
+  const effectiveSelectedUnitId: string | null =
+    selectedUnitId ??
+    (approverRole === "DIVISION"
+      ? (scope?.managedDivisionIds?.[0] ?? null)
+      : approverRole === "DEPARTMENT"
+        ? (scope?.managedDepartmentIds?.[0] ??
+          user?.departments?.[0]?.departmentId ??
+          null)
+        : null);
+
   // Get departments for the selected division (for division-level filtering)
-  const departmentsInSelectedDivision = selectedUnitId && selectedUnitType === "division"
-    ? getDepartmentsForDivision(selectedUnitId)
-    : new Set<string>();
+  const departmentsInSelectedDivision =
+    effectiveSelectedUnitId && effectiveSelectedUnitType === "division"
+      ? getDepartmentsForDivision(effectiveSelectedUnitId)
+      : new Set<string>();
 
   const listModeFiltered = filterSubmissionsByListMode(
     allSubmissions,
     listMode,
     approverRole,
-    effectiveSubmitterId
+    effectiveSubmitterId,
   );
 
   const hierarchyFiltered =
@@ -92,10 +124,10 @@ export const useSubmissionApprovals = ({
       ? filterSubmissionsByHierarchy(
           listModeFiltered,
           approverRole,
-          selectedUnitType,
+          effectiveSelectedUnitType,
           departmentsWithoutDivision,
           departmentsInSelectedDivision,
-          selectedUnitId
+          effectiveSelectedUnitId,
         )
       : listModeFiltered;
 
@@ -108,7 +140,7 @@ export const useSubmissionApprovals = ({
   const paginatedSubmissions = paginateSubmissions(
     groupedSubmissions,
     page,
-    limit
+    limit,
   );
 
   // Calculate metadata
@@ -116,7 +148,7 @@ export const useSubmissionApprovals = ({
     groupedSubmissions.length,
     page,
     limit,
-    paginatedSubmissions.length
+    paginatedSubmissions.length,
   );
 
   // Combined loading state
@@ -129,11 +161,11 @@ export const useSubmissionApprovals = ({
       hierarchyFilteredCount: hierarchyFiltered.length,
       groupedSubmissionsCount: groupedSubmissions.length,
       approverRole,
-      selectedUnitType,
-      selectedUnitId,
+      selectedUnitType: effectiveSelectedUnitType,
+      selectedUnitId: effectiveSelectedUnitId,
       departmentsInDivision: Array.from(departmentsInSelectedDivision),
       // Log first few submissions for debugging
-      sampleSubmissions: allSubmissions.slice(0, 3).map(s => ({
+      sampleSubmissions: allSubmissions.slice(0, 3).map((s) => ({
         submissionId: s.submissionId,
         level: s.level,
         objectiveType: s.objective?.type,

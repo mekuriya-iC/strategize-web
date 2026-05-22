@@ -138,26 +138,26 @@ export default function ObjectiveDetailPage() {
             });
           }
         }
-      }
+      },
     );
     return reasonsMap;
   }, [submissionsData]);
 
   // Filter KPIs for this specific objective (handle null objectives)
   const objectiveKPIs = kpis.filter(
-    (kpi) => kpi.objective?.objectiveId === objectiveId
+    (kpi) => kpi.objective?.objectiveId === objectiveId,
   );
 
   // Weight allocation is per objective (100% budget on this objective only)
   const kpisForWeight = useMemo(
     () => objectiveKPIs.filter((k) => k.status !== "REJECTED"),
-    [objectiveKPIs]
+    [objectiveKPIs],
   );
 
   // Function to check if objective has been assigned (has children)
   const hasBeenAssigned = () => {
     return (allObjectives as Array<{ parent?: { objectiveId: string } }>).some(
-      (obj) => obj.parent?.objectiveId === objectiveId
+      (obj) => obj.parent?.objectiveId === objectiveId,
     );
   };
 
@@ -202,7 +202,7 @@ export default function ObjectiveDetailPage() {
     setSelectedKPIs((prev) =>
       prev.includes(kpiId)
         ? prev.filter((id) => id !== kpiId)
-        : [...prev, kpiId]
+        : [...prev, kpiId],
     );
   };
 
@@ -224,7 +224,7 @@ export default function ObjectiveDetailPage() {
     const filteredKPIs = objectiveKPIs
       .filter(
         (kpi) =>
-          selectedKPIs.includes(kpi.kpiId) && isKpiSubmittable(kpi.status)
+          selectedKPIs.includes(kpi.kpiId) && isKpiSubmittable(kpi.status),
       )
       .map((kpi) => {
         return {
@@ -243,7 +243,7 @@ export default function ObjectiveDetailPage() {
   const handleBulkKPISubmitSuccess = () => {
     setSelectedKPIs([]);
     toast.success(
-      `${selectedKPIsForSubmission.length} KPI(s) submitted for approval`
+      `${selectedKPIsForSubmission.length} KPI(s) submitted for approval`,
     );
     refetch();
   };
@@ -348,7 +348,8 @@ export default function ObjectiveDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-[#3F3F46] mb-2">
             {(objective.title || objective.name || "").trim() ||
-              (objective.parent?.title || objective.parent?.name) ||
+              objective.parent?.title ||
+              objective.parent?.name ||
               "Unnamed Objective"}
           </h1>
           <div className="flex flex-wrap gap-2">
@@ -356,7 +357,9 @@ export default function ObjectiveDetailPage() {
               {objective.type}
             </Badge>
             <Badge className={`${statusColors[objective.status]} border-0`}>
-              {objective.status ? objective.status.replace("_", " ") : "Unknown"}
+              {objective.status
+                ? objective.status.replace("_", " ")
+                : "Unknown"}
             </Badge>
             {hasBeenAssigned() && (
               <Badge
@@ -375,7 +378,9 @@ export default function ObjectiveDetailPage() {
             ((objective.kpis?.length ?? 0) > 0 ? (
               <ObjectiveWithKPIsSubmitDialog
                 objectiveId={objective.objectiveId}
-                objectiveName={objective.title || objective.name || "Unnamed Objective"}
+                objectiveName={
+                  objective.title || objective.name || "Unnamed Objective"
+                }
                 objectiveType={objective.type}
                 assigneeType={objective.assigneeType}
                 parentId={objective.parent?.objectiveId}
@@ -403,29 +408,33 @@ export default function ObjectiveDetailPage() {
 
           {/* Assign button - show for unassigned objectives that can be assigned */}
           {showAssignButton && (
-              <Button
-                onClick={() => {
-                  if (assignDownstream.allowed) {
-                    setShowAssignDialog(true);
-                  }
-                }}
-                disabled={!assignDownstream.allowed}
-                className={
-                  assignDownstream.allowed
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            <Button
+              onClick={() => {
+                if (assignDownstream.allowed) {
+                  setShowAssignDialog(true);
                 }
-                title={assignDownstream.reason}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                {getAssignDownstreamLabel(objectiveContext)}
-                {!assignDownstream.allowed && assignDownstream.reason && (
-                  <span className="ml-2 text-xs">
-                    ({assignDownstream.reason.includes("approval") ? "Requires Approval" : assignDownstream.reason})
-                  </span>
-                )}
-              </Button>
-            )}
+              }}
+              disabled={!assignDownstream.allowed}
+              className={
+                assignDownstream.allowed
+                  ? "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }
+              title={assignDownstream.reason}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              {getAssignDownstreamLabel(objectiveContext)}
+              {!assignDownstream.allowed && assignDownstream.reason && (
+                <span className="ml-2 text-xs">
+                  (
+                  {assignDownstream.reason.includes("approval")
+                    ? "Requires Approval"
+                    : assignDownstream.reason}
+                  )
+                </span>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Assignment info - show for objectives that have been assigned */}
@@ -462,7 +471,7 @@ export default function ObjectiveDetailPage() {
                           name: string;
                         }>
                       ).find(
-                        (d) => d.departmentId === childObjective.assigneeId
+                        (d) => d.departmentId === childObjective.assigneeId,
                       );
                       return department
                         ? department.name
@@ -525,7 +534,11 @@ export default function ObjectiveDetailPage() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Status</p>
-            <p className="font-medium">{objective.status ? objective.status.replace("_", " ") : "Unknown"}</p>
+            <p className="font-medium">
+              {objective.status
+                ? objective.status.replace("_", " ")
+                : "Unknown"}
+            </p>
           </div>
           {objective.strategicPeriod && (
             <>
@@ -533,14 +546,14 @@ export default function ObjectiveDetailPage() {
                 <p className="text-sm text-gray-500">Strategic Period</p>
                 <p className="font-medium">
                   {new Date(
-                    objective.strategicPeriod.startDate
+                    objective.strategicPeriod.startDate,
                   ).toLocaleDateString("en-US", {
                     month: "long",
                     year: "numeric",
                   })}{" "}
                   -{" "}
                   {new Date(
-                    objective.strategicPeriod.endDate
+                    objective.strategicPeriod.endDate,
                   ).toLocaleDateString("en-US", {
                     month: "long",
                     year: "numeric",
@@ -582,11 +595,19 @@ export default function ObjectiveDetailPage() {
           <h2 className="text-lg font-semibold">Key Performance Indicators</h2>
           <Button
             onClick={handleAddKPI}
-            disabled={objective.status === "APPROVED" && objective.type !== "CORPORATE"}
-            className={objective.status === "APPROVED" && objective.type !== "CORPORATE" ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#3838EC] hover:bg-[#2e2ed6]"}
+            disabled={
+              objective.status === "APPROVED" && objective.type !== "CORPORATE"
+            }
+            className={
+              objective.status === "APPROVED" && objective.type !== "CORPORATE"
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-[#3838EC] hover:bg-[#2e2ed6]"
+            }
           >
             <Plus className="w-4 h-4 mr-2" />
-            {objective.status === "APPROVED" && objective.type !== "CORPORATE" ? "Adding Disabled (Approved)" : "Add KPI"}
+            {objective.status === "APPROVED" && objective.type !== "CORPORATE"
+              ? "Adding Disabled (Approved)"
+              : "Add KPI"}
           </Button>
         </div>
 
@@ -644,6 +665,7 @@ export default function ObjectiveDetailPage() {
             onSelect={handleSelectKPI}
             onSelectAll={handleSelectAllKPIs}
             showBulkActions={true}
+            enableSorting={true}
             strategicTargetsById={(function () {
               try {
                 const parentId = objective.parent?.objectiveId;
@@ -652,7 +674,7 @@ export default function ObjectiveDetailPage() {
 
                 // Build parent KPI list with targets using global kpis list
                 const parentKPIs = kpis.filter(
-                  (k) => k.objective?.objectiveId === parentId
+                  (k) => k.objective?.objectiveId === parentId,
                 );
 
                 const map: Record<string, Record<string, number>> = {};
@@ -660,7 +682,9 @@ export default function ObjectiveDetailPage() {
                 // Use parent.kpiId matching for accurate target cascading
                 objectiveKPIs.forEach((childKpi) => {
                   const parentKpiId = childKpi.parent?.kpiId;
-                  const parentKpi = parentKpiId ? parentKPIs.find(pk => pk.kpiId === parentKpiId) : null;
+                  const parentKpi = parentKpiId
+                    ? parentKPIs.find((pk) => pk.kpiId === parentKpiId)
+                    : null;
 
                   // Debug: Child KPI ${childKpi.name} (${childKpi.kpiId}) -> Parent KPI ${parentKpi?.name || 'None'}
 
@@ -679,7 +703,8 @@ export default function ObjectiveDetailPage() {
                     const tl = t.timeline as string;
                     if (tl.includes("-Q")) {
                       const year = tl.split("-")[0];
-                      byYear[year] = (byYear[year] || 0) + Number(t.target || 0);
+                      byYear[year] =
+                        (byYear[year] || 0) + Number(t.target || 0);
                       quarterCounts[year] = (quarterCounts[year] || 0) + 1;
                     } else {
                       byYear[tl] = Number(t.target || 0);
@@ -736,7 +761,8 @@ export default function ObjectiveDetailPage() {
                   childObjectives.forEach(
                     (childObj: { objectiveId: string }) => {
                       const childKpis = kpis.filter(
-                        (k) => k.objective?.objectiveId === childObj.objectiveId
+                        (k) =>
+                          k.objective?.objectiveId === childObj.objectiveId,
                       );
                       const childKpi = childKpis[kpiIndex]; // Match by index
 
@@ -760,10 +786,10 @@ export default function ObjectiveDetailPage() {
                                   Number(target.target || 0);
                               }
                             }
-                          }
+                          },
                         );
                       }
-                    }
+                    },
                   );
 
                   map[corporateKpi.kpiId] = yearQuartersMap;
@@ -780,9 +806,9 @@ export default function ObjectiveDetailPage() {
               type: objective.type,
               parent: objective.parent
                 ? {
-                  objectiveId: objective.parent.objectiveId,
-                  name: objective.parent.name,
-                }
+                    objectiveId: objective.parent.objectiveId,
+                    name: objective.parent.name,
+                  }
                 : null,
             }}
           />

@@ -513,7 +513,7 @@ export default function AdminSetup() {
               onClick={() => setCreateCoreCompetencyOpen(true)}
             >
               <Plus className="h-4 w-4" />
-              Add Core Competency
+              Add Competency
             </Button>
           </div>
 
@@ -663,7 +663,7 @@ export default function AdminSetup() {
                           handleAddCompetency(group.core?.coreCompetencyId)
                         }
                       >
-                        + Add Competency
+                        + Add Core Competency
                       </Button>
                     </div>
                   </CardContent>

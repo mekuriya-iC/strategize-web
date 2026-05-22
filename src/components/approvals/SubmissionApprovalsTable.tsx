@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import React from "react";
 import SubmissionApprovalTable from "./SubmissionApprovalTable";
@@ -54,7 +54,7 @@ export default function SubmissionApprovalsTable({
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(
-    listMode === "outbound" ? "all" : "pending"
+    listMode === "outbound" ? "all" : "pending",
   );
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -101,8 +101,21 @@ export default function SubmissionApprovalsTable({
         statusFilter === "all"
           ? undefined
           : (statusFilter.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED"),
-    }
+    },
   );
+
+  // Ensure fresh data after client-side navigation/hydration
+  useEffect(() => {
+    if (!user?.employeeId) return;
+    refetch();
+  }, [
+    user?.employeeId,
+    approverRole,
+    listMode,
+    statusFilter,
+    currentPage,
+    refetch,
+  ]);
 
   // Fetch a broad set of objectives to resolve strategic/child names in the table
   const { objectives: allObjectivesLookup } = useObjectives({
@@ -153,7 +166,7 @@ export default function SubmissionApprovalsTable({
             });
             byChildId[ck.kpiId] = map;
           });
-        }
+        },
       );
 
       return byChildId;
@@ -201,7 +214,7 @@ export default function SubmissionApprovalsTable({
     setSelected((prev) =>
       prev.includes(submissionId)
         ? prev.filter((id) => id !== submissionId)
-        : [...prev, submissionId]
+        : [...prev, submissionId],
     );
   };
 
@@ -209,13 +222,13 @@ export default function SubmissionApprovalsTable({
     try {
       const approvePromises = selected.map((submissionId) => {
         const submission = submissions.find(
-          (sub) => sub.submissionId === submissionId
+          (sub) => sub.submissionId === submissionId,
         );
         if (!submission) return Promise.resolve();
 
         return handleApproveSubmission(
           submission.submissionId,
-          "Bulk approved"
+          "Bulk approved",
         );
       });
 
@@ -233,13 +246,13 @@ export default function SubmissionApprovalsTable({
     try {
       const rejectPromises = selected.map((submissionId) => {
         const submission = submissions.find(
-          (sub) => sub.submissionId === submissionId
+          (sub) => sub.submissionId === submissionId,
         );
         if (!submission) return Promise.resolve();
 
         return handleRejectSubmissionWithItemUpdate(
           submission,
-          "Bulk rejected"
+          "Bulk rejected",
         );
       });
 
@@ -256,18 +269,20 @@ export default function SubmissionApprovalsTable({
   const handleApproveSubmission = async (
     submissionId: string,
     reason: string,
-    selectedKPIs?: string[]
+    selectedKPIs?: string[],
   ) => {
     try {
       // Handle virtual objective submissions (KPI-only groupings)
       // Virtual submissions are created when KPIs are submitted but their parent objective is already approved
       if (submissionId.startsWith("virtual-")) {
         const virtualSubmission = submissions.find(
-          (sub) => sub.submissionId === submissionId
+          (sub) => sub.submissionId === submissionId,
         ) as GroupedSubmission | undefined;
 
-        if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
-
+        if (
+          virtualSubmission?.associatedKpiSubmissions &&
+          virtualSubmission.associatedKpiSubmissions.length > 0
+        ) {
           const kpiApprovalPromises = virtualSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
             .map((kpiSub) => {
@@ -277,11 +292,16 @@ export default function SubmissionApprovalsTable({
                 objective: kpiSub.objective,
                 kpi: kpiSub.kpi,
               };
-              return handleApproveSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+              return handleApproveSubmissionWithItemUpdate(
+                kpiMinimalSubmission,
+                reason,
+              );
             });
 
           await Promise.all(kpiApprovalPromises);
-          toast.success(`${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) approved successfully`);
+          toast.success(
+            `${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) approved successfully`,
+          );
           await refetch();
           return;
         } else {
@@ -292,7 +312,7 @@ export default function SubmissionApprovalsTable({
 
       // First, try to find in main submissions array (for objectives)
       let submission: SubmissionData | undefined = submissions.find(
-        (sub) => sub.submissionId === submissionId
+        (sub) => sub.submissionId === submissionId,
       );
 
       // If not found in main array, search in associated KPI submissions
@@ -317,7 +337,7 @@ export default function SubmissionApprovalsTable({
                 reason?: string;
                 kpi?: { kpiId: string };
                 objective?: { objectiveId: string };
-              }) => kpi.submissionId === submissionId
+              }) => kpi.submissionId === submissionId,
             );
             if (kpiSubmission) {
               submission = kpiSubmission as SubmissionData;
@@ -342,12 +362,12 @@ export default function SubmissionApprovalsTable({
 
       if (submission.type === "OBJECTIVE") {
         const objectiveSubmission = submissions.find(
-          (sub) => sub.submissionId === submissionId
+          (sub) => sub.submissionId === submissionId,
         ) as GroupedSubmission | undefined;
 
         const pendingKpiSubs =
           objectiveSubmission?.associatedKpiSubmissions?.filter(
-            (kpiSub) => kpiSub.status === "PENDING"
+            (kpiSub) => kpiSub.status === "PENDING",
           ) ?? [];
 
         if (pendingKpiSubs.length > 0) {
@@ -362,7 +382,7 @@ export default function SubmissionApprovalsTable({
           });
 
           const kpiSubmissionIds = selectedPending.map(
-            (kpiSub) => kpiSub.submissionId
+            (kpiSub) => kpiSub.submissionId,
           );
           const approvingAllPending =
             kpiSubmissionIds.length === pendingKpiSubs.length;
@@ -371,7 +391,7 @@ export default function SubmissionApprovalsTable({
             await handleApproveObjectiveWithKpis(
               submissionId,
               reason,
-              kpiSubmissionIds
+              kpiSubmissionIds,
             );
             toast.success("Objective and KPIs approved successfully");
             await refetch();
@@ -387,12 +407,12 @@ export default function SubmissionApprovalsTable({
                   objective: kpiSub.objective,
                   kpi: kpiSub.kpi,
                 },
-                reason
-              )
+                reason,
+              ),
             );
             await Promise.all(kpiApprovalPromises);
             toast.success(
-              `${kpiSubmissionIds.length} KPI submission(s) approved`
+              `${kpiSubmissionIds.length} KPI submission(s) approved`,
             );
             await refetch();
             return;
@@ -414,18 +434,20 @@ export default function SubmissionApprovalsTable({
 
   const handleRejectSubmission = async (
     submissionId: string,
-    reason: string
+    reason: string,
   ) => {
     try {
       // Handle virtual objective submissions (KPI-only groupings)
       // Virtual submissions are created when KPIs are submitted but their parent objective is already approved
       if (submissionId.startsWith("virtual-")) {
         const virtualSubmission = submissions.find(
-          (sub) => sub.submissionId === submissionId
+          (sub) => sub.submissionId === submissionId,
         ) as GroupedSubmission | undefined;
 
-        if (virtualSubmission?.associatedKpiSubmissions && virtualSubmission.associatedKpiSubmissions.length > 0) {
-
+        if (
+          virtualSubmission?.associatedKpiSubmissions &&
+          virtualSubmission.associatedKpiSubmissions.length > 0
+        ) {
           const kpiRejectPromises = virtualSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
             .map((kpiSub) => {
@@ -435,11 +457,16 @@ export default function SubmissionApprovalsTable({
                 objective: kpiSub.objective,
                 kpi: kpiSub.kpi,
               };
-              return handleRejectSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+              return handleRejectSubmissionWithItemUpdate(
+                kpiMinimalSubmission,
+                reason,
+              );
             });
 
           await Promise.all(kpiRejectPromises);
-          toast.success(`${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) rejected`);
+          toast.success(
+            `${virtualSubmission.associatedKpiSubmissions.length} KPI submission(s) rejected`,
+          );
           await refetch();
           return;
         } else {
@@ -450,7 +477,7 @@ export default function SubmissionApprovalsTable({
 
       // First, try to find in main submissions array (for objectives)
       let submission: SubmissionData | undefined = submissions.find(
-        (sub) => sub.submissionId === submissionId
+        (sub) => sub.submissionId === submissionId,
       );
 
       // If not found in main array, search in associated KPI submissions
@@ -475,7 +502,7 @@ export default function SubmissionApprovalsTable({
                 reason?: string;
                 kpi?: { kpiId: string };
                 objective?: { objectiveId: string };
-              }) => kpi.submissionId === submissionId
+              }) => kpi.submissionId === submissionId,
             );
             if (kpiSubmission) {
               submission = kpiSubmission as SubmissionData;
@@ -504,11 +531,13 @@ export default function SubmissionApprovalsTable({
       // If this is an objective submission, also reject all associated KPI submissions
       if (submission.type === "OBJECTIVE") {
         const objectiveSubmission = submissions.find(
-          (sub) => sub.submissionId === submissionId
+          (sub) => sub.submissionId === submissionId,
         ) as GroupedSubmission | undefined;
 
-        if (objectiveSubmission?.associatedKpiSubmissions && objectiveSubmission.associatedKpiSubmissions.length > 0) {
-
+        if (
+          objectiveSubmission?.associatedKpiSubmissions &&
+          objectiveSubmission.associatedKpiSubmissions.length > 0
+        ) {
           const kpiRejectPromises = objectiveSubmission.associatedKpiSubmissions
             .filter((kpiSub) => kpiSub.status === "PENDING")
             .map((kpiSub) => {
@@ -518,7 +547,10 @@ export default function SubmissionApprovalsTable({
                 objective: kpiSub.objective,
                 kpi: kpiSub.kpi,
               };
-              return handleRejectSubmissionWithItemUpdate(kpiMinimalSubmission, reason);
+              return handleRejectSubmissionWithItemUpdate(
+                kpiMinimalSubmission,
+                reason,
+              );
             });
 
           await Promise.all(kpiRejectPromises);

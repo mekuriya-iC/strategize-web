@@ -2,7 +2,12 @@
 
 import { Suspense, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PerformanceReport, KPIReport, DepartmentReport, MySubmissionsReport } from "@/components/reports";
+import {
+  PerformanceReport,
+  KPIReport,
+  DepartmentReport,
+  MySubmissionsReport,
+} from "@/components/reports";
 import { exportReport } from "@/lib/utils/exportReport";
 import { toast } from "sonner";
 import { TrendingUp, Target, Building2, Send } from "lucide-react";
@@ -13,12 +18,10 @@ import { useAuthStore } from "@/stores";
 function ReportsContent() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
-  
+
+  const fullAccessRoles = new Set(["SUPER_ADMIN", "HR", "CEO"]);
   const hasFullAccess =
-    user?.role === "SUPER_ADMIN" ||
-    user?.role === "ADMIN" ||
-    user?.role === "HR" ||
-    user?.role === "DIRECTOR";
+    !!user?.role && fullAccessRoles.has(user.role as string);
 
   const initialTab = searchParams.get("tab") || "performance";
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -45,7 +48,7 @@ function ReportsContent() {
             Reports & Analytics
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {hasFullAccess 
+            {hasFullAccess
               ? "Comprehensive insights into organizational performance and metrics"
               : "Personal performance overview and submission history"}
           </p>
@@ -53,13 +56,19 @@ function ReportsContent() {
       </div>
 
       {/* Report Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className={`grid w-full ${hasFullAccess ? "grid-cols-4" : "grid-cols-2"} lg:w-auto lg:inline-grid`}>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
+        <TabsList
+          className={`grid w-full ${hasFullAccess ? "grid-cols-4" : "grid-cols-2"} lg:w-auto lg:inline-grid`}
+        >
           <TabsTrigger value="performance" className="gap-2">
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Performance</span>
           </TabsTrigger>
-          
+
           {hasFullAccess && (
             <>
               <TabsTrigger value="kpi" className="gap-2">
@@ -88,7 +97,9 @@ function ReportsContent() {
         {hasFullAccess && (
           <>
             <TabsContent value="kpi" className="space-y-6">
-              <KPIReport onExport={(data) => handleExport(data, "kpi-report")} />
+              <KPIReport
+                onExport={(data) => handleExport(data, "kpi-report")}
+              />
             </TabsContent>
 
             <TabsContent value="department" className="space-y-6">
@@ -115,11 +126,13 @@ function ReportsContent() {
  */
 export default function ReportsPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      }
+    >
       <ReportsContent />
     </Suspense>
   );

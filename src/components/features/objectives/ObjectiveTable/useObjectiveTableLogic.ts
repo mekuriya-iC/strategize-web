@@ -3,212 +3,297 @@ import { Objective, Kpi } from "@/types/graphql";
 import { useAuthStore } from "@/stores";
 import { useObjectivesOrder } from "@/hooks/objectives/useObjectivesOrder";
 import {
-    DragEndEvent,
-    DragStartEvent,
-    PointerSensor,
-    KeyboardSensor,
-    useSensor,
-    useSensors,
-    closestCenter,
+  DragEndEvent,
+  DragStartEvent,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 interface UseObjectiveTableLogicProps {
-    objectives: Objective[];
-    allObjectives: Objective[];
-    kpis: Kpi[];
-    groupBy: "none" | "division" | "department" | "personnel";
-    enableSorting: boolean;
-    onOrderChange?: (objectives: Objective[]) => void;
-    sortConfig: { key: string; direction: "asc" | "desc" } | null;
-    startIndex?: number;
+  objectives: Objective[];
+  allObjectives: Objective[];
+  kpis: Kpi[];
+  groupBy: "none" | "division" | "department" | "personnel";
+  enableSorting: boolean;
+  onOrderChange?: (objectives: Objective[]) => void;
+  sortConfig: { key: string; direction: "asc" | "desc" } | null;
+  startIndex?: number;
 }
 
 export const useObjectiveTableLogic = ({
-    objectives,
-    allObjectives,
-    kpis,
-    groupBy,
-    enableSorting,
-    onOrderChange,
-    sortConfig,
-    startIndex = 0,
+  objectives,
+  allObjectives,
+  kpis,
+  groupBy,
+  enableSorting,
+  onOrderChange,
+  sortConfig,
+  startIndex = 0,
 }: UseObjectiveTableLogicProps) => {
-    const user = useAuthStore((state) => state.user);
-    const { saveOrder, isSaving } = useObjectivesOrder();
-    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-    const [activeId, setActiveId] = useState<string | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const { saveOrder, isSaving } = useObjectivesOrder();
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-    const toggleGroup = (groupId: string) => {
-        setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
-    };
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
 
-    const sortedObjectives = useMemo(() => {
-        let result = [...objectives];
+  const sortedObjectives = useMemo(() => {
+    let result = [...objectives];
 
-        if (sortConfig) {
-            result.sort((a, b) => {
-                const aValue = a[sortConfig.key as keyof Objective];
-                const bValue = b[sortConfig.key as keyof Objective];
+    // When drag sorting is enabled, always prioritize explicit manual order.
+    // This prevents snapping back due to column sort config (e.g. createdAt).
+    if (enableSorting) {
+      return result.sort((a, b) => {
+        const orderA = (a as any).order ?? 0;
+        const orderB = (b as any).order ?? 0;
+        return orderA - orderB;
+      });
+    }
 
-                if (sortConfig.key === "createdAt") {
-                    return sortConfig.direction === "asc"
-                        ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                }
+    if (sortConfig) {
+      result.sort((a, b) => {
+        const aValue = a[sortConfig.key as keyof Objective];
+        const bValue = b[sortConfig.key as keyof Objective];
 
-                if (aValue === null || aValue === undefined) return 1;
-                if (bValue === null || bValue === undefined) return -1;
-
-                if (typeof aValue === "string" && typeof bValue === "string") {
-                    return sortConfig.direction === "asc"
-                        ? aValue.localeCompare(bValue)
-                        : bValue.localeCompare(aValue);
-                }
-
-                const valA = aValue as any;
-                const valB = bValue as any;
-                if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-                if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
-                return 0;
-            });
-            return result;
+        if (sortConfig.key === "createdAt") {
+          return sortConfig.direction === "asc"
+            ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
-        // If sorting is enabled, use the explicit order property
-        if (enableSorting) {
-            return result.sort((a, b) => {
-                const orderA = (a as any).order ?? 0;
-                const orderB = (b as any).order ?? 0;
-                return orderA - orderB;
-            });
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortConfig.direction === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
         }
 
-        return result;
-    }, [objectives, enableSorting, sortConfig]);
+        const valA = aValue as any;
+        const valB = bValue as any;
+        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+      return result;
+    }
 
-    const groupedObjectives = useMemo(() => {
-        if (groupBy === "none") return { "All": sortedObjectives };
+    return result;
+  }, [objectives, enableSorting, sortConfig]);
 
-        const groups: Record<string, Objective[]> = {};
-        sortedObjectives.forEach((obj) => {
-            let key = "Unassigned";
+  const groupedObjectives = useMemo(() => {
+    if (groupBy === "none") return { All: sortedObjectives };
 
-            if (groupBy === "personnel") {
-                const parentDeptObj = allObjectives.find((ao) => ao.objectiveId === obj.parent?.objectiveId);
-                if (parentDeptObj) {
-                    const deptId = parentDeptObj.assigneeId || "Unknown Dept";
-                    const parentDivObj = allObjectives.find((ao) => ao.objectiveId === parentDeptObj.parent?.objectiveId);
-                    const divId = parentDivObj?.assigneeId || "Unknown Div";
-                    key = `${divId}|${deptId}`;
-                } else {
-                    key = "Other|Direct Assignments";
-                }
-            } else {
-                key = obj.assigneeId || "Unassigned";
-            }
+    const groups: Record<string, Objective[]> = {};
+    sortedObjectives.forEach((obj) => {
+      let key = "Unassigned";
 
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(obj);
-        });
-        return groups;
-    }, [sortedObjectives, groupBy, allObjectives]);
-
-    const groupKeys = useMemo(() => Object.keys(groupedObjectives), [groupedObjectives]);
-
-    const columnHeaders = useMemo(() => {
-        if (groupBy && groupBy !== "none") {
-            switch (groupBy) {
-                case "division": return { firstColumn: "CORPORATE OBJECTIVE", secondColumn: "DIVISION OBJECTIVE", showSecondColumn: true };
-                case "department": return { firstColumn: "DIVISION OBJECTIVE", secondColumn: "DEPARTMENT OBJECTIVE", showSecondColumn: true };
-                case "personnel": return { firstColumn: "DEPARTMENT OBJECTIVE", secondColumn: "PERSONAL OBJECTIVE", showSecondColumn: true };
-            }
+      if (groupBy === "personnel") {
+        const parentDeptObj = allObjectives.find(
+          (ao) => ao.objectiveId === obj.parent?.objectiveId,
+        );
+        if (parentDeptObj) {
+          const deptId = parentDeptObj.assigneeId || "Unknown Dept";
+          const parentDivObj = allObjectives.find(
+            (ao) => ao.objectiveId === parentDeptObj.parent?.objectiveId,
+          );
+          const divId = parentDivObj?.assigneeId || "Unknown Div";
+          key = `${divId}|${deptId}`;
+        } else {
+          key = "Other|Direct Assignments";
         }
+      } else {
+        key = obj.assigneeId || "Unassigned";
+      }
 
-        const allCorporate = objectives.every((obj) => obj.type === "CORPORATE");
-        const hasDiv = objectives.some((obj) => obj.type === "DIVISION");
-        const hasDept = objectives.some((obj) => obj.type === "DEPARTMENT");
-        const hasPers = objectives.some((obj) => obj.type === "PERSONNEL");
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(obj);
+    });
+    return groups;
+  }, [sortedObjectives, groupBy, allObjectives]);
 
-        switch (user?.role) {
-            case "SUPER_ADMIN":
-            case "ADMIN":
-                if (allCorporate) return { firstColumn: "CORPORATE OBJECTIVE", secondColumn: null, showSecondColumn: false };
-                if (hasDiv && !hasDept && !hasPers) return { firstColumn: "CORPORATE OBJECTIVE", secondColumn: "DIVISION OBJECTIVE", showSecondColumn: true };
-                if (hasDept && !hasPers) return { firstColumn: "PARENT OBJECTIVE", secondColumn: "DEPARTMENT OBJECTIVE", showSecondColumn: true };
-                if (hasPers) return { firstColumn: "DEPARTMENT OBJECTIVE", secondColumn: "PERSONAL OBJECTIVE", showSecondColumn: true };
-                return { firstColumn: "CORPORATE OBJECTIVE", secondColumn: "CHILD OBJECTIVE", showSecondColumn: true };
-            case "DIRECTOR": return { firstColumn: "CORPORATE OBJECTIVE", secondColumn: "DIVISION OBJECTIVE", showSecondColumn: true };
-            case "MANAGER":
-            case "COORDINATOR":
-                if (allCorporate) return { firstColumn: "CORPORATE OBJECTIVE", secondColumn: null, showSecondColumn: false };
-                return { firstColumn: "DIVISION OBJECTIVE", secondColumn: "DEPARTMENT OBJECTIVE", showSecondColumn: true };
-            case "NORMAL": return { firstColumn: "DEPARTMENT OBJECTIVE", secondColumn: "PERSONNEL OBJECTIVE", showSecondColumn: true };
-            default: return { firstColumn: "STRATEGIC OBJECTIVE", secondColumn: "OBJECTIVE", showSecondColumn: true };
-        }
-    }, [objectives, groupBy, user?.role]);
+  const groupKeys = useMemo(
+    () => Object.keys(groupedObjectives),
+    [groupedObjectives],
+  );
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
+  const columnHeaders = useMemo(() => {
+    if (groupBy && groupBy !== "none") {
+      switch (groupBy) {
+        case "division":
+          return {
+            firstColumn: "CORPORATE OBJECTIVE",
+            secondColumn: "DIVISION OBJECTIVE",
+            showSecondColumn: true,
+          };
+        case "department":
+          return {
+            firstColumn: "DIVISION OBJECTIVE",
+            secondColumn: "DEPARTMENT OBJECTIVE",
+            showSecondColumn: true,
+          };
+        case "personnel":
+          return {
+            firstColumn: "DEPARTMENT OBJECTIVE",
+            secondColumn: "PERSONAL OBJECTIVE",
+            showSecondColumn: true,
+          };
+      }
+    }
 
-    const handleDragStart = (event: DragStartEvent) => {
-        setActiveId(event.active.id as string);
-    };
+    const allCorporate = objectives.every((obj) => obj.type === "CORPORATE");
+    const hasDiv = objectives.some((obj) => obj.type === "DIVISION");
+    const hasDept = objectives.some((obj) => obj.type === "DEPARTMENT");
+    const hasPers = objectives.some((obj) => obj.type === "PERSONNEL");
 
-    const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const oldIndex = sortedObjectives.findIndex((obj) => obj.objectiveId === active.id);
-            const newIndex = sortedObjectives.findIndex((obj) => obj.objectiveId === over.id);
-            const reordered = arrayMove(sortedObjectives, oldIndex, newIndex);
-            
-            // Calculate and assign new orders to the objects themselves
-            // This prevents the "snap-back" caused by the sort function using old .order values
-            const reorderedWithNewOrders = reordered.map((obj, index) => ({
-                ...obj,
-                order: startIndex + index + 1
-            }));
+    switch (user?.role) {
+      case "SUPER_ADMIN":
+      case "ADMIN":
+        if (allCorporate)
+          return {
+            firstColumn: "CORPORATE OBJECTIVE",
+            secondColumn: null,
+            showSecondColumn: false,
+          };
+        if (hasDiv && !hasDept && !hasPers)
+          return {
+            firstColumn: "CORPORATE OBJECTIVE",
+            secondColumn: "DIVISION OBJECTIVE",
+            showSecondColumn: true,
+          };
+        if (hasDept && !hasPers)
+          return {
+            firstColumn: "PARENT OBJECTIVE",
+            secondColumn: "DEPARTMENT OBJECTIVE",
+            showSecondColumn: true,
+          };
+        if (hasPers)
+          return {
+            firstColumn: "DEPARTMENT OBJECTIVE",
+            secondColumn: "PERSONAL OBJECTIVE",
+            showSecondColumn: true,
+          };
+        return {
+          firstColumn: "CORPORATE OBJECTIVE",
+          secondColumn: "CHILD OBJECTIVE",
+          showSecondColumn: true,
+        };
+      case "DIRECTOR":
+        return {
+          firstColumn: "CORPORATE OBJECTIVE",
+          secondColumn: "DIVISION OBJECTIVE",
+          showSecondColumn: true,
+        };
+      case "MANAGER":
+      case "COORDINATOR":
+        if (allCorporate)
+          return {
+            firstColumn: "CORPORATE OBJECTIVE",
+            secondColumn: null,
+            showSecondColumn: false,
+          };
+        return {
+          firstColumn: "DIVISION OBJECTIVE",
+          secondColumn: "DEPARTMENT OBJECTIVE",
+          showSecondColumn: true,
+        };
+      case "NORMAL":
+        return {
+          firstColumn: "DEPARTMENT OBJECTIVE",
+          secondColumn: "PERSONNEL OBJECTIVE",
+          showSecondColumn: true,
+        };
+      default:
+        return {
+          firstColumn: "STRATEGIC OBJECTIVE",
+          secondColumn: "OBJECTIVE",
+          showSecondColumn: true,
+        };
+    }
+  }, [objectives, groupBy, user?.role]);
 
-            // Prepare the updates for the backend
-            const updates = reorderedWithNewOrders.map((obj) => ({
-                objectiveId: obj.objectiveId,
-                order: obj.order
-            }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
-            // Immediately notify parent of order change for optimistic UI
-            // We pass the objects with updated .order properties
-            onOrderChange?.(reorderedWithNewOrders);
-            
-            try {
-                // Persist to backend
-                await saveOrder(updates);
-            } catch (error) {
-                console.error("Failed to save reordered objectives:", error);
-                // Rollback on failure
-                onOrderChange?.(sortedObjectives);
-            }
-        }
-        setActiveId(null);
-    };
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
 
-    const objectiveIds = useMemo(() => sortedObjectives.map((obj) => obj.objectiveId), [sortedObjectives]);
-    const activeObjective = useMemo(() => sortedObjectives.find((obj) => obj.objectiveId === activeId), [sortedObjectives, activeId]);
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedObjectives.findIndex(
+        (obj) => obj.objectiveId === active.id,
+      );
+      const newIndex = sortedObjectives.findIndex(
+        (obj) => obj.objectiveId === over.id,
+      );
+      const reordered = arrayMove(sortedObjectives, oldIndex, newIndex);
 
-    return {
-        sortedObjectives,
-        groupedObjectives,
-        groupKeys,
-        columnHeaders,
-        expandedGroups,
-        toggleGroup,
-        sensors,
-        handleDragStart,
-        handleDragEnd,
-        objectiveIds,
-        activeObjective,
-        isSaving,
-        activeId,
-    };
+      // Calculate and assign new orders to the objects themselves
+      // This prevents the "snap-back" caused by the sort function using old .order values
+      const reorderedWithNewOrders = reordered.map((obj, index) => ({
+        ...obj,
+        order: startIndex + index + 1,
+      }));
+
+      // Prepare the updates for the backend
+      const updates = reorderedWithNewOrders.map((obj) => ({
+        objectiveId: obj.objectiveId,
+        order: obj.order,
+      }));
+
+      // Immediately notify parent of order change for optimistic UI
+      // We pass the objects with updated .order properties
+      onOrderChange?.(reorderedWithNewOrders);
+
+      try {
+        // Persist to backend
+        await saveOrder(updates);
+      } catch (error) {
+        console.error("Failed to save reordered objectives:", error);
+        // Rollback on failure
+        onOrderChange?.(sortedObjectives);
+      }
+    }
+    setActiveId(null);
+  };
+
+  const objectiveIds = useMemo(
+    () => sortedObjectives.map((obj) => obj.objectiveId),
+    [sortedObjectives],
+  );
+  const activeObjective = useMemo(
+    () => sortedObjectives.find((obj) => obj.objectiveId === activeId),
+    [sortedObjectives, activeId],
+  );
+
+  return {
+    sortedObjectives,
+    groupedObjectives,
+    groupKeys,
+    columnHeaders,
+    expandedGroups,
+    toggleGroup,
+    sensors,
+    handleDragStart,
+    handleDragEnd,
+    objectiveIds,
+    activeObjective,
+    isSaving,
+    activeId,
+  };
 };

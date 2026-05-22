@@ -3,6 +3,7 @@
  * Handles fetching submissions across all objective types
  */
 
+import { useCallback } from "react";
 import { useQuery } from "@apollo/client";
 import {
   GET_PENDING_SUBMISSIONS,
@@ -29,14 +30,15 @@ interface SubmissionQueriesResult {
 }
 
 function mapSubmissionItems(
-  items: MinimalSubmission[] | undefined
+  items: MinimalSubmission[] | undefined,
 ): MinimalSubmission[] {
   return (items ?? []).map((item) => ({
     ...item,
     objective: item.objective
       ? {
           ...item.objective,
-          name: item.objective.name ?? (item.objective as { title?: string }).title,
+          name:
+            item.objective.name ?? (item.objective as { title?: string }).title,
         }
       : item.objective,
     kpi: item.kpi
@@ -75,7 +77,7 @@ export const useSubmissionQueries = ({
 }: UseSubmissionQueriesOptions): SubmissionQueriesResult => {
   const isCorporate = approverRole === "CORPORATE";
 
-  // For My Submissions (pendingOnly = false), we want to fetch across all levels 
+  // For My Submissions (pendingOnly = false), we want to fetch across all levels
   // to find everything the user has submitted.
   const shouldFetchAllLevels = !pendingOnly || isCorporate;
 
@@ -167,10 +169,12 @@ export const useSubmissionQueries = ({
       collectSubmissionItems(
         corporateObjData?.submissions?.items as MinimalSubmission[] | undefined,
         divisionObjData?.submissions?.items as MinimalSubmission[] | undefined,
-        departmentObjData?.submissions?.items as MinimalSubmission[] | undefined,
-        personnelObjData?.submissions?.items as MinimalSubmission[] | undefined
-      )
-    )
+        departmentObjData?.submissions?.items as
+          | MinimalSubmission[]
+          | undefined,
+        personnelObjData?.submissions?.items as MinimalSubmission[] | undefined,
+      ),
+    ),
   );
 
   const kpiSubmissions = applyStatusFilter(
@@ -178,10 +182,12 @@ export const useSubmissionQueries = ({
       collectSubmissionItems(
         corporateKpiData?.submissions?.items as MinimalSubmission[] | undefined,
         divisionKpiData?.submissions?.items as MinimalSubmission[] | undefined,
-        departmentKpiData?.submissions?.items as MinimalSubmission[] | undefined,
-        personnelKpiData?.submissions?.items as MinimalSubmission[] | undefined
-      )
-    )
+        departmentKpiData?.submissions?.items as
+          | MinimalSubmission[]
+          | undefined,
+        personnelKpiData?.submissions?.items as MinimalSubmission[] | undefined,
+      ),
+    ),
   );
 
   const allSubmissions = deduplicateSubmissions([
@@ -199,7 +205,7 @@ export const useSubmissionQueries = ({
     departmentKpiLoading ||
     personnelKpiLoading;
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     corporateObjRefetch();
     divisionObjRefetch();
     departmentObjRefetch();
@@ -208,7 +214,16 @@ export const useSubmissionQueries = ({
     divisionKpiRefetch();
     departmentKpiRefetch();
     personnelKpiRefetch();
-  };
+  }, [
+    corporateObjRefetch,
+    divisionObjRefetch,
+    departmentObjRefetch,
+    personnelObjRefetch,
+    corporateKpiRefetch,
+    divisionKpiRefetch,
+    departmentKpiRefetch,
+    personnelKpiRefetch,
+  ]);
 
   return {
     submissions: allSubmissions,

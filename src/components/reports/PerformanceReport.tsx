@@ -28,49 +28,50 @@ interface PerformanceReportProps {
 
 const COLORS = ["#10b981", "#3b82f6", "#6b7280"];
 
-export default function PerformanceReport({ onExport }: PerformanceReportProps) {
+export default function PerformanceReport({
+  onExport,
+}: PerformanceReportProps) {
   const [period, setPeriod] = useState("current");
   const user = useAuthStore((state) => state.user);
 
+  const fullAccessRoles = new Set(["SUPER_ADMIN", "HR", "CEO"]);
   const hasFullAccess =
-    user?.role === "SUPER_ADMIN" ||
-    user?.role === "ADMIN" ||
-    user?.role === "HR" ||
-    user?.role === "DIRECTOR";
+    !!user?.role && fullAccessRoles.has(user.role as string);
 
   const { data: employeesData, loading: empLoading } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
     fetchPolicy: "cache-and-network",
+    skip: !hasFullAccess,
   });
 
-  const { data: assessmentsData, loading: assessLoading } = useQuery(GET_COMPETENCY_ASSESSMENTS, {
-    variables: { 
-      page: 1, 
-      limit: 1000,
-      // If not admin, the backend now automatically filters or we can be explicit
-      evaluateeUserId: hasFullAccess ? undefined : user?.employeeId 
+  const { data: assessmentsData, loading: assessLoading } = useQuery(
+    GET_COMPETENCY_ASSESSMENTS,
+    {
+      variables: {
+        page: 1,
+        limit: 1000,
+        // If not admin, the backend now automatically filters or we can be explicit
+        evaluateeUserId: hasFullAccess ? undefined : user?.employeeId,
+      },
+      fetchPolicy: "cache-and-network",
     },
-    fetchPolicy: "cache-and-network",
-  });
+  );
 
-  let employees = employeesData?.employees?.items || [];
+  let employees = hasFullAccess
+    ? employeesData?.employees?.items || []
+    : user
+      ? [user]
+      : [];
   const assessments = assessmentsData?.competencyAssessments?.items || [];
-
-  // Filter employees if not admin
-  if (!hasFullAccess && user) {
-    employees = employees.filter((e: any) => e.employeeId === user.employeeId);
-  }
 
   // Calculate performance metrics
   const totalEmployees = employees.length;
   const completedAssessments = assessments.filter(
-    (a: any) => a.status === "SUBMITTED"
+    (a: any) => a.status === "SUBMITTED",
   ).length;
-  
+
   const avgCompletionRate =
-    employees.length > 0
-      ? (completedAssessments / employees.length) * 100
-      : 0;
+    employees.length > 0 ? (completedAssessments / employees.length) * 100 : 0;
 
   // Performance distribution based on assessment status
   const performanceDistribution = [
@@ -91,7 +92,10 @@ export default function PerformanceReport({ onExport }: PerformanceReportProps) 
     },
   ].filter((item) => item.value > 0);
 
-  const totalDistribution = performanceDistribution.reduce((sum, item) => sum + item.value, 0);
+  const totalDistribution = performanceDistribution.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
 
   // Top assessed employees (by number of assessments received)
   const assessmentsByEmployee = assessments.reduce((acc: any, a: any) => {
@@ -111,7 +115,10 @@ export default function PerformanceReport({ onExport }: PerformanceReportProps) 
       score: e.count,
     }));
 
-  const maxScore = topPerformers.length > 0 ? Math.max(...topPerformers.map(p => p.score)) : 1;
+  const maxScore =
+    topPerformers.length > 0
+      ? Math.max(...topPerformers.map((p) => p.score))
+      : 1;
 
   const handleExport = () => {
     const reportData = {
@@ -166,7 +173,9 @@ export default function PerformanceReport({ onExport }: PerformanceReportProps) 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Employees
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -194,18 +203,24 @@ export default function PerformanceReport({ onExport }: PerformanceReportProps) 
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Completion Rate
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgCompletionRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">
+              {avgCompletionRate.toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground">Average completion</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Top Performers
+            </CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -229,7 +244,10 @@ export default function PerformanceReport({ onExport }: PerformanceReportProps) 
             {performanceDistribution.length > 0 ? (
               <div className="space-y-4">
                 {performanceDistribution.map((item, index) => {
-                  const percentage = totalDistribution > 0 ? (item.value / totalDistribution) * 100 : 0;
+                  const percentage =
+                    totalDistribution > 0
+                      ? (item.value / totalDistribution) * 100
+                      : 0;
                   return (
                     <div key={index} className="space-y-2">
                       <div className="flex items-center justify-between text-sm">

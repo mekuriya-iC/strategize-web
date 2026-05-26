@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEvaluationCycleMutations } from "@/hooks/evaluations/useEvaluationCycles";
+import { EvaluationCycleStatus } from "@/types/evaluation";
 
 import { toast } from "sonner";
 
@@ -64,6 +65,7 @@ export default function CreateEvaluationCycleDialog({
         description,
         startDate,
         endDate,
+        status: EvaluationCycleStatus.ACTIVE,
         organizationId: getOrganizationId(),
       });
 

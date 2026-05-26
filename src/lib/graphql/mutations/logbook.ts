@@ -42,6 +42,7 @@ export const UPDATE_LOGBOOK_ENTRY = gql`
       kpiTargetValue
       kpiAchievedValue
       kpiCompletionPercent
+      contributionUnit
       evidenceUrl
       evidenceDescription
       decisionsMade

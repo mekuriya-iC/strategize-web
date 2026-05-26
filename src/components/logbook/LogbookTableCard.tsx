@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, TrashIcon, FileIcon, CalendarIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PencilIcon,
+  TrashIcon,
+  FileIcon,
+  CalendarIcon,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation } from "@apollo/client";
 import { REMOVE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
+import { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -16,6 +24,8 @@ interface LogbookItem {
   outcome: string;
   entryDate: string;
   attachmentUrl?: string | null;
+  status?: string;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
   employee?: any;
@@ -37,6 +47,7 @@ export function LogbookTableCard({
   onEditEntry,
 }: LogbookTableCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [deleteEntry, { loading }] = useMutation(REMOVE_LOGBOOK_ENTRY, {
     refetchQueries: ["GetLogbookEntries"],
   });
@@ -80,6 +91,11 @@ export function LogbookTableCard({
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
                 {item.activity}
               </h3>
+              <span className="inline-flex mb-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                {item.status === "SUBMITTED"
+                  ? "Pending Approval"
+                  : item.status || "DRAFT"}
+              </span>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <CalendarIcon className="w-4 h-4" />
                 <span>{format(new Date(item.entryDate), "MMM d, yyyy")}</span>
@@ -108,7 +124,7 @@ export function LogbookTableCard({
             {item.description}
           </div>
         )}
-        
+
         {item.attachmentUrl && (
           <div className="flex items-center gap-1 text-[#3838EC] text-xs mt-2">
             <FileIcon className="w-3 h-3" />
@@ -127,6 +143,17 @@ export function LogbookTableCard({
               </label>
               <p className="text-sm text-gray-900 dark:text-white mt-1">
                 {item.description}
+              </p>
+            </div>
+          )}
+
+          {item.rejectionReason && (
+            <div>
+              <label className="text-xs font-medium text-red-700 dark:text-red-300 uppercase">
+                Rejection Reason
+              </label>
+              <p className="text-sm text-red-600 dark:text-red-300 mt-1">
+                {item.rejectionReason}
               </p>
             </div>
           )}
@@ -163,11 +190,28 @@ export function LogbookTableCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2">
+            {(item.status === "DRAFT" ||
+              item.status === "REJECTED" ||
+              !item.status) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSubmitDialogOpen(true)}
+                disabled={loading}
+                className="flex-1 text-green-600 border-green-600 hover:bg-green-50"
+              >
+                Submit
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={handleEdit}
-              disabled={loading}
+              disabled={
+                loading ||
+                item.status === "SUBMITTED" ||
+                item.status === "APPROVED"
+              }
               className="flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
             >
               <PencilIcon className="w-4 h-4 mr-2" />
@@ -177,7 +221,11 @@ export function LogbookTableCard({
               variant="outline"
               size="sm"
               onClick={handleDelete}
-              disabled={loading}
+              disabled={
+                loading ||
+                item.status === "SUBMITTED" ||
+                item.status === "APPROVED"
+              }
               className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
             >
               <TrashIcon className="w-4 h-4 mr-2" />
@@ -186,6 +234,15 @@ export function LogbookTableCard({
           </div>
         </div>
       )}
+      <SubmitApprovalDialog
+        open={isSubmitDialogOpen}
+        onOpenChange={setIsSubmitDialogOpen}
+        item={item}
+        onSuccess={() => {
+          setIsSubmitDialogOpen(false);
+          onRefetch();
+        }}
+      />
     </div>
   );
 }

@@ -43,6 +43,22 @@ export function KPIInformationCard({
   mode = "create",
   hideParentSelector = false,
 }: KPIInformationCardProps) {
+  const unitPlaceholder = (() => {
+    switch (formData.unitType) {
+      case "PERCENT":
+        return "e.g., 75";
+      case "CURRENCY":
+        return "e.g., 1000000 ETB";
+      case "RATIO":
+        return "e.g., 1.5";
+      case "COUNT":
+        return "e.g., 100";
+      case "NUMBER":
+      default:
+        return "e.g., 100";
+    }
+  })();
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -53,7 +69,10 @@ export function KPIInformationCard({
         {!hideParentSelector && objective?.parent && (
           <div className="bg-gray-50/50 p-4 rounded-lg border border-gray-100">
             <div className="flex items-center justify-between mb-2">
-              <Label htmlFor="parent-kpi" className="text-gray-900 font-semibold">
+              <Label
+                htmlFor="parent-kpi"
+                className="text-gray-900 font-semibold"
+              >
                 Strategic KPI (Parent Reference)
               </Label>
               {objective.type !== "CORPORATE" && (
@@ -71,7 +90,9 @@ export function KPIInformationCard({
                 <SelectValue placeholder="Skip to create an independent KPI" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none_standalone">-- Create Independent KPI (No Parent) --</SelectItem>
+                <SelectItem value="none_standalone">
+                  -- Create Independent KPI (No Parent) --
+                </SelectItem>
                 {candidateParentKPIs.map((pk) => (
                   <SelectItem key={pk.kpiId} value={pk.kpiId}>
                     {pk.name}
@@ -125,7 +146,7 @@ export function KPIInformationCard({
                 step="0.01"
                 value={formData.baseline}
                 onChange={(e) => onInputChange("baseline", e.target.value)}
-                placeholder="N/A"
+                placeholder={unitPlaceholder}
                 disabled={!canEditStructure}
               />
               <div>
@@ -146,7 +167,7 @@ export function KPIInformationCard({
                   <SelectContent>
                     <SelectItem value="NUMBER">Number (#)</SelectItem>
                     <SelectItem value="PERCENT">Percent (%)</SelectItem>
-                    <SelectItem value="CURRENCY">Currency ($)</SelectItem>
+                    <SelectItem value="CURRENCY">Currency (ETB)</SelectItem>
                     <SelectItem value="RATIO">Ratio (x:y)</SelectItem>
                     <SelectItem value="COUNT">Count (n)</SelectItem>
                   </SelectContent>
@@ -197,4 +218,3 @@ export function KPIInformationCard({
     </Card>
   );
 }
-

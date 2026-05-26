@@ -11,6 +11,8 @@ interface LogbookItem {
   outcome: string;
   entryDate: string;
   attachmentUrl?: string | null;
+  status?: string;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
   employee?: any;
@@ -34,7 +36,8 @@ export function LogbookTable({
   onEditEntry,
 }: LogbookTableProps) {
   const allSelected = data.length > 0 && selectedItems.length === data.length;
-  const someSelected = selectedItems.length > 0 && selectedItems.length < data.length;
+  const someSelected =
+    selectedItems.length > 0 && selectedItems.length < data.length;
 
   return (
     <>
@@ -49,7 +52,9 @@ export function LogbookTable({
                     checked={allSelected}
                     onCheckedChange={onSelectAll}
                     aria-label="Select all"
-                    className={someSelected ? "data-[state=checked]:bg-[#3838EC]" : ""}
+                    className={
+                      someSelected ? "data-[state=checked]:bg-[#3838EC]" : ""
+                    }
                   />
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">

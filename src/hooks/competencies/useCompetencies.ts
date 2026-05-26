@@ -1,12 +1,12 @@
-import { useQuery, useMutation } from '@apollo/client';
-import { toast } from 'sonner';
+import { useQuery, useMutation } from "@apollo/client";
+import { toast } from "sonner";
 import {
   GET_COMPETENCIES,
   GET_COMPETENCY,
   GET_CORE_COMPETENCIES,
   GET_COMPETENCY_INDICATORS,
   GET_POSITION_COMPETENCIES,
-} from '@/lib/graphql/queries/competencies';
+} from "@/lib/graphql/queries/competencies";
 import {
   CREATE_CORE_COMPETENCY,
   UPDATE_CORE_COMPETENCY,
@@ -19,7 +19,7 @@ import {
   REMOVE_COMPETENCY_INDICATOR,
   CREATE_COMPETENCY_POSITION_ASSIGNMENT,
   REMOVE_COMPETENCY_POSITION_ASSIGNMENT,
-} from '@/lib/graphql/mutations/competencies';
+} from "@/lib/graphql/mutations/competencies";
 import type {
   CreateCoreCompetencyInput,
   UpdateCoreCompetencyInput,
@@ -28,12 +28,17 @@ import type {
   CreateCompetencyIndicatorInput,
   UpdateCompetencyIndicatorInput,
   CreateCompetencyPositionAssignmentInput,
-} from '@/types/evaluation';
+} from "@/types/evaluation";
 
-export const useCompetencies = (page = 1, limit = 50, search = '', organizationId?: string) => {
+export const useCompetencies = (
+  page = 1,
+  limit = 50,
+  search = "",
+  organizationId?: string,
+) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCIES, {
     variables: { page, limit, search, organizationId },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   return {
@@ -49,7 +54,7 @@ export const useCompetency = (competencyId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCY, {
     variables: { competencyId },
     skip: !competencyId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   return {
@@ -60,10 +65,14 @@ export const useCompetency = (competencyId: string) => {
   };
 };
 
-export const useCoreCompetencies = (page = 1, limit = 50, organizationId?: string) => {
+export const useCoreCompetencies = (
+  page = 1,
+  limit = 50,
+  organizationId?: string,
+) => {
   const { data, loading, error, refetch } = useQuery(GET_CORE_COMPETENCIES, {
     variables: { page, limit, organizationId },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   return {
@@ -75,12 +84,19 @@ export const useCoreCompetencies = (page = 1, limit = 50, organizationId?: strin
   };
 };
 
-export const useCompetencyIndicators = (competencyId: string, page = 1, limit = 50) => {
-  const { data, loading, error, refetch } = useQuery(GET_COMPETENCY_INDICATORS, {
-    variables: { competencyId, page, limit },
-    skip: !competencyId,
-    fetchPolicy: 'cache-and-network',
-  });
+export const useCompetencyIndicators = (
+  competencyId: string,
+  page = 1,
+  limit = 50,
+) => {
+  const { data, loading, error, refetch } = useQuery(
+    GET_COMPETENCY_INDICATORS,
+    {
+      variables: { competencyId, page, limit },
+      skip: !competencyId,
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
   return {
     indicators: data?.competencyIndicators?.items || [],
@@ -91,12 +107,19 @@ export const useCompetencyIndicators = (competencyId: string, page = 1, limit = 
   };
 };
 
-export const usePositionCompetencies = (positionId: string, page = 1, limit = 50) => {
-  const { data, loading, error, refetch } = useQuery(GET_POSITION_COMPETENCIES, {
-    variables: { positionId, page, limit },
-    skip: !positionId,
-    fetchPolicy: 'cache-and-network',
-  });
+export const usePositionCompetencies = (
+  positionId: string,
+  page = 1,
+  limit = 50,
+) => {
+  const { data, loading, error, refetch } = useQuery(
+    GET_POSITION_COMPETENCIES,
+    {
+      variables: { positionId, page, limit },
+      skip: !positionId,
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
   return {
     assignments: data?.competencyPositionAssignments?.items || [],
@@ -110,36 +133,48 @@ export const usePositionCompetencies = (positionId: string, page = 1, limit = 50
 export const useCompetencyMutations = (organizationId?: string) => {
   const [createCoreCompetency] = useMutation(CREATE_CORE_COMPETENCY, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: organizationId ? [{ 
-      query: GET_CORE_COMPETENCIES,
-      variables: { page: 1, limit: 50, organizationId }
-    }] : [],
+    refetchQueries: organizationId
+      ? [
+          {
+            query: GET_CORE_COMPETENCIES,
+            variables: { page: 1, limit: 50, organizationId },
+          },
+        ]
+      : [],
     awaitRefetchQueries: true,
   });
 
   const [updateCoreCompetency] = useMutation(UPDATE_CORE_COMPETENCY, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: organizationId ? [{ 
-      query: GET_CORE_COMPETENCIES,
-      variables: { page: 1, limit: 50, organizationId }
-    }] : [],
+    refetchQueries: organizationId
+      ? [
+          {
+            query: GET_CORE_COMPETENCIES,
+            variables: { page: 1, limit: 50, organizationId },
+          },
+        ]
+      : [],
     awaitRefetchQueries: true,
   });
 
   const [removeCoreCompetency] = useMutation(REMOVE_CORE_COMPETENCY, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: organizationId ? [{ 
-      query: GET_CORE_COMPETENCIES,
-      variables: { page: 1, limit: 50, organizationId }
-    }] : [],
+    refetchQueries: organizationId
+      ? [
+          {
+            query: GET_CORE_COMPETENCIES,
+            variables: { page: 1, limit: 50, organizationId },
+          },
+        ]
+      : [],
     awaitRefetchQueries: true,
     update(cache, { data }) {
       if (data?.removeCoreCompetency) {
-        cache.evict({ 
-          id: cache.identify({ 
-            __typename: 'CoreCompetency', 
-            coreCompetencyId: data.removeCoreCompetency.coreCompetencyId 
-          }) 
+        cache.evict({
+          id: cache.identify({
+            __typename: "CoreCompetency",
+            coreCompetencyId: data.removeCoreCompetency.coreCompetencyId,
+          }),
         });
         cache.gc();
       }
@@ -148,36 +183,48 @@ export const useCompetencyMutations = (organizationId?: string) => {
 
   const [createCompetency] = useMutation(CREATE_COMPETENCY, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: organizationId ? [{ 
-      query: GET_COMPETENCIES,
-      variables: { page: 1, limit: 100, search: '', organizationId }
-    }] : [],
+    refetchQueries: organizationId
+      ? [
+          {
+            query: GET_COMPETENCIES,
+            variables: { page: 1, limit: 100, search: "", organizationId },
+          },
+        ]
+      : [],
     awaitRefetchQueries: true,
   });
 
   const [updateCompetency] = useMutation(UPDATE_COMPETENCY, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: organizationId ? [{ 
-      query: GET_COMPETENCIES,
-      variables: { page: 1, limit: 100, search: '', organizationId }
-    }] : [],
+    refetchQueries: organizationId
+      ? [
+          {
+            query: GET_COMPETENCIES,
+            variables: { page: 1, limit: 100, search: "", organizationId },
+          },
+        ]
+      : [],
     awaitRefetchQueries: true,
   });
 
   const [removeCompetency] = useMutation(REMOVE_COMPETENCY, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: organizationId ? [{ 
-      query: GET_COMPETENCIES,
-      variables: { page: 1, limit: 100, search: '', organizationId }
-    }] : [],
+    refetchQueries: organizationId
+      ? [
+          {
+            query: GET_COMPETENCIES,
+            variables: { page: 1, limit: 100, search: "", organizationId },
+          },
+        ]
+      : [],
     awaitRefetchQueries: true,
     update(cache, { data }) {
       if (data?.removeCompetency) {
-        cache.evict({ 
-          id: cache.identify({ 
-            __typename: 'Competency', 
-            competencyId: data.removeCompetency.competencyId 
-          }) 
+        cache.evict({
+          id: cache.identify({
+            __typename: "Competency",
+            competencyId: data.removeCompetency.competencyId,
+          }),
         });
         cache.gc();
       }
@@ -186,8 +233,6 @@ export const useCompetencyMutations = (organizationId?: string) => {
 
   const [createIndicator] = useMutation(CREATE_COMPETENCY_INDICATOR, {
     onError: (error) => toast.error(`Failed: ${error.message}`),
-    // Note: We can't refetch GET_COMPETENCY_INDICATORS here because we don't know the competencyId
-    // The component will refetch when it detects the new indicator
   });
 
   const [updateIndicator] = useMutation(UPDATE_COMPETENCY_INDICATOR, {
@@ -198,28 +243,35 @@ export const useCompetencyMutations = (organizationId?: string) => {
     onError: (error) => toast.error(`Failed: ${error.message}`),
     update(cache, { data }) {
       if (data?.removeCompetencyIndicator) {
-        cache.evict({ 
-          id: cache.identify({ 
-            __typename: 'CompetencyIndicator', 
-            competencyIndicatorId: data.removeCompetencyIndicator.competencyIndicatorId 
-          }) 
+        cache.evict({
+          id: cache.identify({
+            __typename: "CompetencyIndicator",
+            competencyIndicatorId:
+              data.removeCompetencyIndicator.competencyIndicatorId,
+          }),
         });
         cache.gc();
       }
     },
   });
 
-  const [createPositionAssignment] = useMutation(CREATE_COMPETENCY_POSITION_ASSIGNMENT, {
-    onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [{ query: GET_POSITION_COMPETENCIES }],
-    awaitRefetchQueries: true,
-  });
+  const [createPositionAssignment] = useMutation(
+    CREATE_COMPETENCY_POSITION_ASSIGNMENT,
+    {
+      onError: (error) => toast.error(`Failed: ${error.message}`),
+      refetchQueries: [{ query: GET_POSITION_COMPETENCIES }],
+      awaitRefetchQueries: true,
+    },
+  );
 
-  const [removePositionAssignment] = useMutation(REMOVE_COMPETENCY_POSITION_ASSIGNMENT, {
-    onError: (error) => toast.error(`Failed: ${error.message}`),
-    refetchQueries: [{ query: GET_POSITION_COMPETENCIES }],
-    awaitRefetchQueries: true,
-  });
+  const [removePositionAssignment] = useMutation(
+    REMOVE_COMPETENCY_POSITION_ASSIGNMENT,
+    {
+      onError: (error) => toast.error(`Failed: ${error.message}`),
+      refetchQueries: [{ query: GET_POSITION_COMPETENCIES }],
+      awaitRefetchQueries: true,
+    },
+  );
 
   return {
     createCoreCompetency: async (input: CreateCoreCompetencyInput) => {
@@ -235,7 +287,9 @@ export const useCompetencyMutations = (organizationId?: string) => {
       return result.data?.updateCoreCompetency;
     },
     removeCoreCompetency: async (coreCompetencyId: string) => {
-      const result = await removeCoreCompetency({ variables: { coreCompetencyId } });
+      const result = await removeCoreCompetency({
+        variables: { coreCompetencyId },
+      });
       return result.data?.removeCoreCompetency;
     },
     createCompetency: async (input: CreateCompetencyInput) => {
@@ -257,6 +311,17 @@ export const useCompetencyMutations = (organizationId?: string) => {
     createIndicator: async (input: CreateCompetencyIndicatorInput) => {
       const result = await createIndicator({
         variables: { createCompetencyIndicatorInput: input },
+        refetchQueries: [
+          {
+            query: GET_COMPETENCY_INDICATORS,
+            variables: {
+              competencyId: input.competencyId,
+              page: 1,
+              limit: 100,
+            },
+          },
+        ],
+        awaitRefetchQueries: true,
       });
       return result.data?.createCompetencyIndicator;
     },
@@ -267,16 +332,22 @@ export const useCompetencyMutations = (organizationId?: string) => {
       return result.data?.updateCompetencyIndicator;
     },
     removeIndicator: async (competencyIndicatorId: string) => {
-      const result = await removeIndicator({ variables: { competencyIndicatorId } });
+      const result = await removeIndicator({
+        variables: { competencyIndicatorId },
+      });
       return result.data?.removeCompetencyIndicator;
     },
-    createPositionAssignment: async (input: CreateCompetencyPositionAssignmentInput) => {
+    createPositionAssignment: async (
+      input: CreateCompetencyPositionAssignmentInput,
+    ) => {
       const result = await createPositionAssignment({
         variables: { createCompetencyPositionAssignmentInput: input },
       });
       return result.data?.createCompetencyPositionAssignment;
     },
-    removePositionAssignment: async (competencyPositionAssignmentId: string) => {
+    removePositionAssignment: async (
+      competencyPositionAssignmentId: string,
+    ) => {
       const result = await removePositionAssignment({
         variables: { competencyPositionAssignmentId },
       });

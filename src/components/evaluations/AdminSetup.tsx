@@ -77,7 +77,15 @@ export default function AdminSetup() {
   const [supervisorWeight, setSupervisorWeight] = useState(35);
   const [subordinateWeight, setSubordinateWeight] = useState(15);
 
-  const { cycles, loading: cyclesLoading } = useEvaluationCycles(1, 20);
+  const { cycles, loading: cyclesLoading } = useEvaluationCycles(
+    1,
+    20,
+    "",
+    EvaluationCycleStatus.ACTIVE,
+  );
+  const hasActiveCycle = cycles?.some(
+    (cycle: any) => cycle.status === EvaluationCycleStatus.ACTIVE,
+  );
   const organizationId = getOrganizationId();
   const { coreCompetencies, loading: coreLoading } = useCoreCompetencies(
     1,
@@ -401,6 +409,7 @@ export default function AdminSetup() {
       <CreateEvaluationCycleDialog
         open={createCycleOpen}
         onOpenChange={setCreateCycleOpen}
+        hasActiveCycle={hasActiveCycle}
       />
       <CreateCoreCompetencyDialog
         open={createCoreCompetencyOpen}
@@ -698,7 +707,21 @@ export default function AdminSetup() {
             </div>
             <Button
               className="gap-2 bg-indigo-600 hover:bg-indigo-700"
-              onClick={() => setCreateCycleOpen(true)}
+              onClick={() => {
+                if (hasActiveCycle) {
+                  toast.error(
+                    "Complete the active evaluation cycle before creating another one.",
+                  );
+                  return;
+                }
+                setCreateCycleOpen(true);
+              }}
+              disabled={hasActiveCycle}
+              title={
+                hasActiveCycle
+                  ? "Complete the active cycle before creating another one"
+                  : undefined
+              }
             >
               <Plus className="h-4 w-4" />
               Create Cycle

@@ -29,6 +29,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
         kpiTargetValue
         kpiAchievedValue
         kpiCompletionPercent
+        contributionUnit
         evidenceUrl
         evidenceDescription
         decisionsMade
@@ -76,6 +77,7 @@ export const GET_LOGBOOK_ENTRY = gql`
       kpiTargetValue
       kpiAchievedValue
       kpiCompletionPercent
+      contributionUnit
       evidenceUrl
       evidenceDescription
       decisionsMade

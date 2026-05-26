@@ -1,29 +1,37 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { getOrganizationId } from '@/lib/constants/organization';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useEvaluationCycleMutations } from '@/hooks/evaluations/useEvaluationCycles';
-import { EvaluationCycleStatus } from '@/types/evaluation';
-import { toast } from 'sonner';
+import { useState } from "react";
+import { getOrganizationId } from "@/lib/constants/organization";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useEvaluationCycleMutations } from "@/hooks/evaluations/useEvaluationCycles";
+
+import { toast } from "sonner";
 
 interface CreateEvaluationCycleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  hasActiveCycle?: boolean;
 }
 
 export default function CreateEvaluationCycleDialog({
   open,
   onOpenChange,
+  hasActiveCycle = false,
 }: CreateEvaluationCycleDialogProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { createCycle } = useEvaluationCycleMutations();
@@ -31,13 +39,20 @@ export default function CreateEvaluationCycleDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (hasActiveCycle) {
+      toast.error(
+        "Complete the active evaluation cycle before creating another one.",
+      );
+      return;
+    }
+
     if (!name || !startDate || !endDate) {
-      toast.error('Please fill in all required fields');
+      toast.error("Please fill in all required fields");
       return;
     }
 
     if (new Date(startDate) >= new Date(endDate)) {
-      toast.error('End date must be after start date');
+      toast.error("End date must be after start date");
       return;
     }
 
@@ -52,21 +67,21 @@ export default function CreateEvaluationCycleDialog({
         organizationId: getOrganizationId(),
       });
 
-      toast.success('Evaluation cycle created successfully');
+      toast.success("Evaluation cycle created successfully");
       onOpenChange(false);
       resetForm();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create evaluation cycle');
+      toast.error(error.message || "Failed to create evaluation cycle");
     } finally {
       setLoading(false);
     }
   };
 
   const resetForm = () => {
-    setName('');
-    setDescription('');
-    setStartDate('');
-    setEndDate('');
+    setName("");
+    setDescription("");
+    setStartDate("");
+    setEndDate("");
   };
 
   return (
@@ -138,8 +153,12 @@ export default function CreateEvaluationCycleDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
-              {loading ? 'Creating...' : 'Create Cycle'}
+            <Button
+              type="submit"
+              disabled={loading || hasActiveCycle}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {loading ? "Creating..." : "Create Cycle"}
             </Button>
           </DialogFooter>
         </form>

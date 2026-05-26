@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Calendar, Users, Search, Plus, Eye, Trash2 } from 'lucide-react';
-import { useQuery, useMutation } from '@apollo/client';
-import { GET_CHECKINOUT_SESSIONS } from '@/lib/graphql/queries/checkins';
-import { REMOVE_CHECKINOUT_SESSION } from '@/lib/graphql/mutations/checkins';
-import { toast } from 'sonner';
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Calendar, Users, Search, Plus, Eye, Trash2 } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client";
+import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
+import { REMOVE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
+import { toast } from "sonner";
 
 interface SessionListViewProps {
   currentUser: any;
@@ -25,91 +25,108 @@ export default function SessionListView({
   onSelectSession,
 }: SessionListViewProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('my-team');
-  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("my-team");
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(
+    null,
+  );
 
-  const isManager = ['MANAGER', 'DIRECTOR', 'ADMIN'].includes(currentUser?.role);
-  const isAdminOrHR = ['ADMIN', 'HR'].includes(currentUser?.role);
+  const isManager = ["MANAGER", "DIRECTOR", "ADMIN"].includes(
+    currentUser?.role,
+  );
+  const isAdminOrHR = ["ADMIN", "HR"].includes(currentUser?.role);
 
   // Query for team sessions (as supervisor)
-  const { data: teamData, loading: teamLoading, refetch: refetchTeam } = useQuery(
-    GET_CHECKINOUT_SESSIONS,
-    {
-      variables: {
-        supervisorUserId: currentUser?.employeeId,
-        page: 1,
-        limit: 100,
-      },
-      skip: !isManager || !currentUser?.employeeId,
-      fetchPolicy: 'cache-and-network',
-      errorPolicy: 'all', // Return partial data even if there are errors
-    }
-  );
+  const {
+    data: teamData,
+    loading: teamLoading,
+    refetch: refetchTeam,
+  } = useQuery(GET_CHECKINOUT_SESSIONS, {
+    variables: {
+      supervisorUserId: currentUser?.employeeId,
+      page: 1,
+      limit: 100,
+    },
+    skip: !isManager || !currentUser?.employeeId,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all", // Return partial data even if there are errors
+  });
 
   // Query for own sessions (as employee)
-  const { data: ownData, loading: ownLoading, refetch: refetchOwn } = useQuery(
-    GET_CHECKINOUT_SESSIONS,
-    {
-      variables: {
-        employeeUserId: currentUser?.employeeId,
-        page: 1,
-        limit: 100,
-      },
-      skip: !currentUser?.employeeId,
-      fetchPolicy: 'cache-and-network',
-      errorPolicy: 'all', // Return partial data even if there are errors
-    }
-  );
+  const {
+    data: ownData,
+    loading: ownLoading,
+    refetch: refetchOwn,
+  } = useQuery(GET_CHECKINOUT_SESSIONS, {
+    variables: {
+      employeeUserId: currentUser?.employeeId,
+      page: 1,
+      limit: 100,
+    },
+    skip: !currentUser?.employeeId,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all", // Return partial data even if there are errors
+  });
 
   // Query for all sessions (admin/HR)
-  const { data: allData, loading: allLoading, refetch: refetchAll } = useQuery(
-    GET_CHECKINOUT_SESSIONS,
-    {
-      variables: {
-        page: 1,
-        limit: 100,
-      },
-      skip: !isAdminOrHR,
-      fetchPolicy: 'cache-and-network',
-      errorPolicy: 'all', // Return partial data even if there are errors
-    }
-  );
+  const {
+    data: allData,
+    loading: allLoading,
+    refetch: refetchAll,
+  } = useQuery(GET_CHECKINOUT_SESSIONS, {
+    variables: {
+      page: 1,
+      limit: 100,
+    },
+    skip: !isAdminOrHR,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all", // Return partial data even if there are errors
+  });
 
   const [deleteSession] = useMutation(REMOVE_CHECKINOUT_SESSION, {
     onCompleted: () => {
-      toast.success('Session deleted successfully');
+      toast.success("Session deleted successfully");
       refetchTeam();
       refetchOwn();
       refetchAll();
     },
     onError: (error) => {
       // Ignore the "Cannot return null" error as the deletion actually succeeds
-      if (error.message?.includes('Cannot return null for non-nullable field')) {
-        toast.success('Session deleted successfully');
+      if (
+        error.message?.includes("Cannot return null for non-nullable field")
+      ) {
+        toast.success("Session deleted successfully");
         refetchTeam();
         refetchOwn();
         refetchAll();
         return;
       }
-      
+
       // Check if it's a foreign key constraint error
-      if (error.message?.includes('foreign key constraint') || error.message?.includes('CheckinoutTask')) {
+      if (
+        error.message?.includes("foreign key constraint") ||
+        error.message?.includes("CheckinoutTask")
+      ) {
         toast.error(
-          'Cannot delete session with existing tasks. Please delete all tasks first.',
-          { duration: 5000 }
+          "Cannot delete session with existing tasks. Please delete all tasks first.",
+          { duration: 5000 },
         );
       } else {
-        toast.error(error.message || 'Failed to delete session');
+        toast.error(error.message || "Failed to delete session");
       }
     },
   });
 
   const teamSessions = (teamData?.checkinoutSessions?.items || []).filter(
-    (s: any) => s.employee && s.employee?.employeeId !== currentUser?.employeeId
+    (s: any) =>
+      s.employee && s.employee?.employeeId !== currentUser?.employeeId,
   );
-  const ownSessions = (ownData?.checkinoutSessions?.items || []).filter((s: any) => s.employee);
-  const allSessions = (allData?.checkinoutSessions?.items || []).filter((s: any) => s.employee);
+  const ownSessions = (ownData?.checkinoutSessions?.items || []).filter(
+    (s: any) => s.employee,
+  );
+  const allSessions = (allData?.checkinoutSessions?.items || []).filter(
+    (s: any) => s.employee,
+  );
 
   // Filter peer managers' sessions (managers who are employees in sessions)
   const peerManagerSessions = useMemo(() => {
@@ -117,7 +134,7 @@ export default function SessionListView({
     return allSessions.filter((session: any) => {
       const employeeRole = session.employee?.role;
       return (
-        ['MANAGER', 'DIRECTOR'].includes(employeeRole) &&
+        ["MANAGER", "DIRECTOR"].includes(employeeRole) &&
         session.employee?.employeeId !== currentUser?.employeeId
       );
     });
@@ -128,32 +145,35 @@ export default function SessionListView({
     if (session.title) {
       return session.title;
     }
-    
+
     const startDate = new Date(session.weekStartDate);
     const endDate = new Date(session.weekEndDate);
-    return `Sprint ${index + 1} - ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    return `Sprint ${index + 1} - ${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} to ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'OPEN':
-        return 'bg-blue-100 text-blue-700';
-      case 'SUBMITTED':
-        return 'bg-amber-100 text-amber-700';
-      case 'REVIEWED':
-        return 'bg-purple-100 text-purple-700';
-      case 'APPROVED':
-        return 'bg-green-100 text-green-700';
-      case 'REJECTED':
-        return 'bg-red-100 text-red-700';
+      case "OPEN":
+        return "bg-blue-100 text-blue-700";
+      case "SUBMITTED":
+        return "bg-amber-100 text-amber-700";
+      case "REVIEWED":
+        return "bg-purple-100 text-purple-700";
+      case "APPROVED":
+        return "bg-green-100 text-green-700";
+      case "REJECTED":
+        return "bg-red-100 text-red-700";
       default:
-        return 'bg-gray-100 text-gray-700';
+        return "bg-gray-100 text-gray-700";
     }
   };
 
-  const handleDeleteSession = async (sessionId: string, sessionTitle: string) => {
-    console.log('🗑️ Delete requested for:', sessionId, sessionTitle);
-    
+  const handleDeleteSession = async (
+    sessionId: string,
+    sessionTitle: string,
+  ) => {
+    console.log("🗑️ Delete requested for:", sessionId, sessionTitle);
+
     // Use Sonner toast for confirmation with centered position
     toast(
       <div className="flex flex-col gap-3 p-2">
@@ -163,7 +183,9 @@ export default function SessionListView({
           </div>
           <div>
             <p className="font-semibold text-gray-900">Delete Session?</p>
-            <p className="text-sm text-gray-600 mt-0.5">This action cannot be undone</p>
+            <p className="text-sm text-gray-600 mt-0.5">
+              This action cannot be undone
+            </p>
           </div>
         </div>
         <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-200">
@@ -189,26 +211,26 @@ export default function SessionListView({
       </div>,
       {
         duration: Infinity,
-        position: 'top-center',
-        className: 'w-full max-w-md',
+        position: "top-center",
+        className: "w-full max-w-md",
         style: {
-          padding: '16px',
+          padding: "16px",
         },
-      }
+      },
     );
   };
 
   const confirmDelete = async (sessionId: string) => {
-    console.log('✅ Delete confirmed, calling mutation...');
+    console.log("✅ Delete confirmed, calling mutation...");
     setDeletingSessionId(sessionId);
-    
+
     try {
       await deleteSession({
         variables: { checkinoutSessionId: sessionId },
       });
-      console.log('✅ Delete mutation completed');
+      console.log("✅ Delete mutation completed");
     } catch (error: any) {
-      console.error('❌ Delete mutation failed:', error);
+      console.error("❌ Delete mutation failed:", error);
       // Error handling is done in the mutation's onError callback
     } finally {
       setDeletingSessionId(null);
@@ -219,7 +241,7 @@ export default function SessionListView({
     if (!searchQuery) return sessions;
     return sessions.filter((session: any) => {
       // Handle null employee gracefully
-      const employeeName = session.employee?.fullName || 'Unknown Employee';
+      const employeeName = session.employee?.fullName || "Unknown Employee";
       return (
         employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         session.weekStartDate.includes(searchQuery) ||
@@ -228,27 +250,39 @@ export default function SessionListView({
     });
   };
 
-  const renderSessionCard = (session: any, index: number, showEmployee = true) => {
+  const renderSessionCard = (
+    session: any,
+    index: number,
+    showEmployee = true,
+  ) => {
     const sprintTitle = getSprintTitle(session, index);
-    
+
     // Handle null employee gracefully
-    const employeeName = session.employee?.fullName || 'Unknown Employee';
-    const supervisorName = session.supervisor?.fullName || 'Unknown Supervisor';
+    const employeeName = session.employee?.fullName || "Unknown Employee";
+    const supervisorName = session.supervisor?.fullName || "Unknown Supervisor";
 
     return (
-      <Card key={session.checkinoutSessionId} className="hover:shadow-md transition-shadow">
+      <Card
+        key={session.checkinoutSessionId}
+        className="hover:shadow-md transition-shadow"
+      >
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">{sprintTitle}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                {sprintTitle}
+              </h3>
               {showEmployee && (
                 <p className="text-sm text-gray-600">
                   Employee: <span className="font-medium">{employeeName}</span>
-                  {!session.employee && <span className="text-red-500 ml-1">(Deleted)</span>}
+                  {!session.employee && (
+                    <span className="text-red-500 ml-1">(Deleted)</span>
+                  )}
                 </p>
               )}
               <p className="text-sm text-gray-600">
-                Supervisor: <span className="font-medium">{supervisorName}</span>
+                Supervisor:{" "}
+                <span className="font-medium">{supervisorName}</span>
               </p>
             </div>
             <Badge className={getStatusColor(session.overallStatus)}>
@@ -260,7 +294,7 @@ export default function SessionListView({
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
               <span>
-                {new Date(session.weekStartDate).toLocaleDateString()} -{' '}
+                {new Date(session.weekStartDate).toLocaleDateString()} -{" "}
                 {new Date(session.weekEndDate).toLocaleDateString()}
               </span>
             </div>
@@ -283,12 +317,15 @@ export default function SessionListView({
               <Eye className="h-4 w-4 mr-2" />
               View Session
             </Button>
-            {isManager && (
+            {(isAdminOrHR ||
+              session.supervisor?.employeeId === currentUser?.employeeId) && (
               <Button
                 size="sm"
                 variant="outline"
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => handleDeleteSession(session.checkinoutSessionId, sprintTitle)}
+                onClick={() =>
+                  handleDeleteSession(session.checkinoutSessionId, sprintTitle)
+                }
                 disabled={deletingSessionId === session.checkinoutSessionId}
               >
                 {deletingSessionId === session.checkinoutSessionId ? (
@@ -309,7 +346,10 @@ export default function SessionListView({
       <Users className="h-16 w-16 text-gray-400 mb-4" />
       <p className="text-gray-600 mb-4">{message}</p>
       {showCreateButton && isManager && (
-        <Button onClick={onCreateSession} className="bg-indigo-600 hover:bg-indigo-700">
+        <Button
+          onClick={onCreateSession}
+          className="bg-indigo-600 hover:bg-indigo-700"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Check-In Period
         </Button>
@@ -330,7 +370,9 @@ export default function SessionListView({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Check-In Sessions</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              My Check-In Sessions
+            </h1>
             <p className="text-sm text-gray-600 mt-1">
               View and manage your weekly check-in sessions
             </p>
@@ -359,11 +401,11 @@ export default function SessionListView({
         ) : filteredSessions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSessions.map((session: any, index: number) =>
-              renderSessionCard(session, index, false)
+              renderSessionCard(session, index, false),
             )}
           </div>
         ) : (
-          renderEmptyState('No check-in sessions found')
+          renderEmptyState("No check-in sessions found")
         )}
       </div>
     );
@@ -375,13 +417,18 @@ export default function SessionListView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Check-In Sessions</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Check-In Sessions
+          </h1>
           <p className="text-sm text-gray-600 mt-1">
             Manage check-in sessions for your team
           </p>
         </div>
         {isManager && (
-          <Button onClick={onCreateSession} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button
+            onClick={onCreateSession}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Check-In Period
           </Button>
@@ -438,17 +485,19 @@ export default function SessionListView({
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-600">Loading sessions...</p>
+                <p className="mt-2 text-sm text-gray-600">
+                  Loading sessions...
+                </p>
               </div>
             </div>
           ) : filterSessions(teamSessions).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filterSessions(teamSessions).map((session: any, index: number) =>
-                renderSessionCard(session, index)
+                renderSessionCard(session, index),
               )}
             </div>
           ) : (
-            renderEmptyState('No team sessions found', true)
+            renderEmptyState("No team sessions found", true)
           )}
         </TabsContent>
 
@@ -458,17 +507,19 @@ export default function SessionListView({
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-600">Loading sessions...</p>
+                <p className="mt-2 text-sm text-gray-600">
+                  Loading sessions...
+                </p>
               </div>
             </div>
           ) : filterSessions(ownSessions).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filterSessions(ownSessions).map((session: any, index: number) =>
-                renderSessionCard(session, index, false)
+                renderSessionCard(session, index, false),
               )}
             </div>
           ) : (
-            renderEmptyState('No personal sessions found')
+            renderEmptyState("No personal sessions found")
           )}
         </TabsContent>
 
@@ -479,17 +530,20 @@ export default function SessionListView({
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Loading sessions...</p>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Loading sessions...
+                  </p>
                 </div>
               </div>
             ) : filterSessions(peerManagerSessions).length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filterSessions(peerManagerSessions).map((session: any, index: number) =>
-                  renderSessionCard(session, index)
+                {filterSessions(peerManagerSessions).map(
+                  (session: any, index: number) =>
+                    renderSessionCard(session, index),
                 )}
               </div>
             ) : (
-              renderEmptyState('No peer manager sessions found')
+              renderEmptyState("No peer manager sessions found")
             )}
           </TabsContent>
         )}
@@ -501,17 +555,20 @@ export default function SessionListView({
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Loading sessions...</p>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Loading sessions...
+                  </p>
                 </div>
               </div>
             ) : filterSessions(allSessions).length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filterSessions(allSessions).map((session: any, index: number) =>
-                  renderSessionCard(session, index)
+                {filterSessions(allSessions).map(
+                  (session: any, index: number) =>
+                    renderSessionCard(session, index),
                 )}
               </div>
             ) : (
-              renderEmptyState('No sessions found')
+              renderEmptyState("No sessions found")
             )}
           </TabsContent>
         )}

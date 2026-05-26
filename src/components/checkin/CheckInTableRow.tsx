@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon, FileIcon, LockIcon, ChevronDownIcon } from "lucide-react";
+import { PencilIcon, TrashIcon, FileIcon, LockIcon } from "lucide-react";
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
@@ -17,6 +17,8 @@ interface Task {
   startTime: string;
   endTime: string;
   checkoutStatus: string;
+  requiresApproval?: boolean;
+  approvedAt?: string | null;
   attachment?: string;
   remark?: string;
   linkedKpiName?: string;
@@ -47,11 +49,17 @@ const TASK_TYPE_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   DONE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   NOT_DONE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  POSTPONED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  POSTPONED:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
 };
 
-export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: CheckInTableRowProps) {
+export function CheckInTableRow({
+  task,
+  isEditable,
+  onRefetch,
+  onEditTask,
+}: CheckInTableRowProps) {
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
     refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
   });
@@ -59,15 +67,33 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
     if (task.taskType === "KPI_FULFILLED" || task.isKpiMet) {
-      return { label: "KPI Fulfilled", color: "text-green-600 bg-green-50 dark:bg-green-900/20" };
+      return {
+        label: "KPI Fulfilled",
+        color: "text-green-600 bg-green-50 dark:bg-green-900/20",
+      };
     } else if (task.taskType === "KPI_UNMET") {
-      return { label: "KPI Unmet", color: "text-red-600 bg-red-50 dark:bg-red-900/20" };
-    } else if (task.taskType === "INITIATIVE_FULFILLED" || task.isInitiativeMet) {
-      return { label: "Initiative Fulfilled", color: "text-green-600 bg-green-50 dark:bg-green-900/20" };
+      return {
+        label: "KPI Unmet",
+        color: "text-red-600 bg-red-50 dark:bg-red-900/20",
+      };
+    } else if (
+      task.taskType === "INITIATIVE_FULFILLED" ||
+      task.isInitiativeMet
+    ) {
+      return {
+        label: "Initiative Fulfilled",
+        color: "text-green-600 bg-green-50 dark:bg-green-900/20",
+      };
     } else if (task.taskType === "INITIATIVE_UNMET") {
-      return { label: "Initiative Unmet", color: "text-red-600 bg-red-50 dark:bg-red-900/20" };
+      return {
+        label: "Initiative Unmet",
+        color: "text-red-600 bg-red-50 dark:bg-red-900/20",
+      };
     } else if (task.taskType === "SELF_DEVELOPMENT") {
-      return { label: "Self Development", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20" };
+      return {
+        label: "Self Development",
+        color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+      };
     }
     return { label: "-", color: "text-gray-600" };
   };
@@ -76,7 +102,7 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
   const handleDelete = async () => {
     if (!isEditable) {
-      toast.error("Cannot delete task after creation day");
+      toast.error("You can only delete your own tasks.");
       return;
     }
 
@@ -94,7 +120,7 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
   const handleEdit = () => {
     if (!isEditable) {
-      toast.error("Cannot edit task after creation day");
+      toast.error("You can only edit your own tasks.");
       return;
     }
 
@@ -139,7 +165,9 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
       {/* Objective */}
       <td className="px-4 py-4">
-        <span className={`text-sm font-medium px-2 py-1 rounded ${objectiveStatus.color}`}>
+        <span
+          className={`text-sm font-medium px-2 py-1 rounded ${objectiveStatus.color}`}
+        >
           {objectiveStatus.label}
         </span>
       </td>
@@ -186,8 +214,19 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
       {/* Checkout */}
       <td className="px-4 py-4">
-        <Badge className={STATUS_COLORS[task.checkoutStatus] || STATUS_COLORS.NOT_DONE}>
-          {task.checkoutStatus ? task.checkoutStatus.replace("_", " ") : "Unknown"}
+        <Badge
+          className={
+            STATUS_COLORS[task.checkoutStatus] || STATUS_COLORS.NOT_DONE
+          }
+        >
+          {task.checkoutStatus
+            ? task.checkoutStatus.replace("_", " ")
+            : "Unknown"}
+          {task.checkoutStatus === "DONE" &&
+          task.requiresApproval &&
+          !task.approvedAt
+            ? " (Pending)"
+            : ""}
         </Badge>
       </td>
 
@@ -200,32 +239,34 @@ export function CheckInTableRow({ task, isEditable, onRefetch, onEditTask }: Che
 
       {/* Actions */}
       <td className="px-4 py-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleEdit}
-            disabled={!isEditable || loading}
-            className="text-[#3838EC] hover:text-[#2d2dbd] hover:bg-[#ECECFF]"
-          >
-            <PencilIcon className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDelete}
-            disabled={!isEditable || loading}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <TrashIcon className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-600 hover:text-gray-700"
-          >
-            <ChevronDownIcon className="w-4 h-4" />
-          </Button>
+        <div className="flex items-center gap-2 min-h-9">
+          {isEditable ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEdit}
+                disabled={loading}
+                className="text-[#3838EC] hover:text-[#2d2dbd] hover:bg-[#ECECFF]"
+              >
+                <PencilIcon className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                disabled={loading}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </Button>
+            </>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <LockIcon className="w-3.5 h-3.5" />
+              View only
+            </span>
+          )}
         </div>
       </td>
     </tr>

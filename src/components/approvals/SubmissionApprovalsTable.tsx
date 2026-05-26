@@ -53,9 +53,7 @@ export default function SubmissionApprovalsTable({
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState(
-    listMode === "outbound" ? "all" : "pending",
-  );
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
@@ -104,9 +102,10 @@ export default function SubmissionApprovalsTable({
     },
   );
 
-  // Ensure fresh data after client-side navigation/hydration
+  // Ensure fresh data after client-side navigation/hydration and when filters change
   useEffect(() => {
     if (!user?.employeeId) return;
+    // Force refetch to get latest data, especially after rejections/resubmissions
     refetch();
   }, [
     user?.employeeId,
@@ -578,7 +577,7 @@ export default function SubmissionApprovalsTable({
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setStatusFilter("pending");
+    setStatusFilter("all");
     setCurrentPage(1);
   };
 
@@ -621,8 +620,10 @@ export default function SubmissionApprovalsTable({
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pending">Pending (Submitted)</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
 

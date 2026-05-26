@@ -13,14 +13,16 @@ import { Input } from "@/components/ui/input";
 // Helper function to map backend entry to frontend format
 const mapEntryToFrontend = (entry: any) => ({
   id: entry.logbookEntryId,
-  activity: entry.activity,
-  description: entry.description || "",
-  outcome: entry.outcome || "",
+  activity: entry.activityDescription,
+  description: entry.evidenceDescription || "",
+  outcome: entry.decisionsMade || entry.lessonsLearned || "",
   entryDate: entry.entryDate,
-  attachmentUrl: entry.attachmentUrl || null,
+  attachmentUrl: entry.evidenceUrl || null,
+  status: entry.entryStatus,
+  rejectionReason: entry.rejectionReason || "",
   createdAt: entry.createdAt,
   updatedAt: entry.updatedAt,
-  employee: entry.employee,
+  employee: entry.owner,
 });
 
 export default function LogbookPage() {
@@ -36,7 +38,7 @@ export default function LogbookPage() {
   // Get logbook entries
   const { data, loading, refetch } = useQuery(GET_LOGBOOK_ENTRIES, {
     variables: {
-      employeeUserId: currentUser?.employeeId,
+      ownerUserId: currentUser?.employeeId,
       limit: 100,
       page: 1,
     },
@@ -52,12 +54,13 @@ export default function LogbookPage() {
   // Filter data based on search
   const filteredData = useMemo(() => {
     if (!searchQuery) return entries;
-    
+
     const query = searchQuery.toLowerCase();
-    return entries.filter((item: any) =>
-      item.activity.toLowerCase().includes(query) ||
-      item.description?.toLowerCase().includes(query) ||
-      item.outcome?.toLowerCase().includes(query)
+    return entries.filter(
+      (item: any) =>
+        item.activity.toLowerCase().includes(query) ||
+        item.description?.toLowerCase().includes(query) ||
+        item.outcome?.toLowerCase().includes(query),
     );
   }, [entries, searchQuery]);
 
@@ -65,7 +68,7 @@ export default function LogbookPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  
+
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -104,18 +107,9 @@ export default function LogbookPage() {
             Logbook
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Track your daily activities and outcomes
+            Track your fulfilled tasks and achievements
           </p>
         </div>
-        {hasEntries && (
-          <Button
-            onClick={() => setIsAddEntryOpen(true)}
-            className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-6 py-2 rounded-lg flex items-center gap-2"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Add Entry
-          </Button>
-        )}
       </div>
 
       {loading ? (
@@ -134,11 +128,46 @@ export default function LogbookPage() {
               xmlns="http://www.w3.org/2000/svg"
               className="opacity-80"
             >
-              <rect x="75" y="50" width="150" height="200" rx="10" fill="#E0E7FF" />
-              <rect x="100" y="80" width="100" height="10" rx="5" fill="#5B5BF7" />
-              <rect x="100" y="110" width="80" height="8" rx="4" fill="#BDBDBD" />
-              <rect x="100" y="130" width="90" height="8" rx="4" fill="#BDBDBD" />
-              <rect x="100" y="150" width="70" height="8" rx="4" fill="#BDBDBD" />
+              <rect
+                x="75"
+                y="50"
+                width="150"
+                height="200"
+                rx="10"
+                fill="#E0E7FF"
+              />
+              <rect
+                x="100"
+                y="80"
+                width="100"
+                height="10"
+                rx="5"
+                fill="#5B5BF7"
+              />
+              <rect
+                x="100"
+                y="110"
+                width="80"
+                height="8"
+                rx="4"
+                fill="#BDBDBD"
+              />
+              <rect
+                x="100"
+                y="130"
+                width="90"
+                height="8"
+                rx="4"
+                fill="#BDBDBD"
+              />
+              <rect
+                x="100"
+                y="150"
+                width="70"
+                height="8"
+                rx="4"
+                fill="#BDBDBD"
+              />
               <circle cx="150" cy="200" r="30" fill="#3838EC" opacity="0.2" />
               <path
                 d="M140 200 L148 208 L162 192"
@@ -155,16 +184,8 @@ export default function LogbookPage() {
             No logbook entries yet
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 text-center max-w-md">
-            Start documenting your daily activities, achievements, and learnings
+            Logbook entries are automatically created when you mark tasks as done with fulfilled status (KPI Fulfilled, Initiative Fulfilled, or Self Development Fulfilled)
           </p>
-
-          <Button
-            onClick={() => setIsAddEntryOpen(true)}
-            className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-6 py-2 rounded-lg flex items-center gap-2"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Add Your First Entry
-          </Button>
         </div>
       ) : (
         <div className="flex-1 flex flex-col">
@@ -172,9 +193,10 @@ export default function LogbookPage() {
           <div className="bg-white dark:bg-gray-800 rounded-t-lg border border-gray-200 dark:border-gray-700 p-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {filteredData.length} {filteredData.length === 1 ? 'entry' : 'entries'} found
+                {filteredData.length}{" "}
+                {filteredData.length === 1 ? "entry" : "entries"} found
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <div className="relative flex-1 md:w-64">
                   <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -210,7 +232,7 @@ export default function LogbookPage() {
                 <div className="text-sm text-gray-500">
                   Showing Page {currentPage} of {totalPages}
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -220,28 +242,36 @@ export default function LogbookPage() {
                   >
                     Previous
                   </Button>
-                  
+
                   {[...Array(Math.min(5, totalPages))].map((_, i) => {
                     const pageNum = i + 1;
                     return (
                       <Button
                         key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
+                        variant={
+                          currentPage === pageNum ? "default" : "outline"
+                        }
                         size="sm"
                         onClick={() => setCurrentPage(pageNum)}
-                        className={currentPage === pageNum ? "bg-[#3838EC] hover:bg-[#2d2dbd]" : ""}
+                        className={
+                          currentPage === pageNum
+                            ? "bg-[#3838EC] hover:bg-[#2d2dbd]"
+                            : ""
+                        }
                       >
                         {pageNum}
                       </Button>
                     );
                   })}
-                  
+
                   {totalPages > 5 && <span className="text-gray-500">...</span>}
-                  
+
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     Next

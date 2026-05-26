@@ -11,7 +11,6 @@ import {
   LockIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  ClockIcon,
   CalendarIcon,
 } from "lucide-react";
 import { useMutation } from "@apollo/client";
@@ -27,6 +26,8 @@ interface Task {
   startTime: string;
   endTime: string;
   checkoutStatus: string;
+  requiresApproval?: boolean;
+  approvedAt?: string | null;
   attachment?: string;
   remark?: string;
   linkedKpiName?: string;
@@ -57,11 +58,17 @@ const TASK_TYPE_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   DONE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   NOT_DONE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  POSTPONED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  POSTPONED:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
 };
 
-export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: CheckInTableCardProps) {
+export function CheckInTableCard({
+  task,
+  isEditable,
+  onRefetch,
+  onEditTask,
+}: CheckInTableCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
     refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
@@ -70,15 +77,33 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
     if (task.taskType === "KPI_FULFILLED" || task.isKpiMet) {
-      return { label: "KPI Fulfilled", color: "text-green-600 bg-green-50 dark:bg-green-900/20" };
+      return {
+        label: "KPI Fulfilled",
+        color: "text-green-600 bg-green-50 dark:bg-green-900/20",
+      };
     } else if (task.taskType === "KPI_UNMET") {
-      return { label: "KPI Unmet", color: "text-red-600 bg-red-50 dark:bg-red-900/20" };
-    } else if (task.taskType === "INITIATIVE_FULFILLED" || task.isInitiativeMet) {
-      return { label: "Initiative Fulfilled", color: "text-green-600 bg-green-50 dark:bg-green-900/20" };
+      return {
+        label: "KPI Unmet",
+        color: "text-red-600 bg-red-50 dark:bg-red-900/20",
+      };
+    } else if (
+      task.taskType === "INITIATIVE_FULFILLED" ||
+      task.isInitiativeMet
+    ) {
+      return {
+        label: "Initiative Fulfilled",
+        color: "text-green-600 bg-green-50 dark:bg-green-900/20",
+      };
     } else if (task.taskType === "INITIATIVE_UNMET") {
-      return { label: "Initiative Unmet", color: "text-red-600 bg-red-50 dark:bg-red-900/20" };
+      return {
+        label: "Initiative Unmet",
+        color: "text-red-600 bg-red-50 dark:bg-red-900/20",
+      };
     } else if (task.taskType === "SELF_DEVELOPMENT") {
-      return { label: "Self Development", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20" };
+      return {
+        label: "Self Development",
+        color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+      };
     }
     return { label: "-", color: "text-gray-600" };
   };
@@ -87,7 +112,7 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
 
   const handleDelete = async () => {
     if (!isEditable) {
-      toast.error("Cannot delete task after creation day");
+      toast.error("You can only delete your own tasks.");
       return;
     }
 
@@ -105,7 +130,7 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
 
   const handleEdit = () => {
     if (!isEditable) {
-      toast.error("Cannot edit task after creation day");
+      toast.error("You can only edit your own tasks.");
       return;
     }
 
@@ -127,7 +152,9 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              {!isEditable && <LockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+              {!isEditable && (
+                <LockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              )}
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                 {task.task}
               </h3>
@@ -162,7 +189,9 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
         {/* Key Info */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className={`text-xs font-medium px-2 py-1 rounded ${objectiveStatus.color}`}>
+            <span
+              className={`text-xs font-medium px-2 py-1 rounded ${objectiveStatus.color}`}
+            >
               {objectiveStatus.label}
             </span>
           </div>
@@ -173,8 +202,19 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
             <span>{format(new Date(task.endTime), "MMM d, yyyy")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={STATUS_COLORS[task.checkoutStatus] || STATUS_COLORS.NOT_DONE}>
-              {task.checkoutStatus ? task.checkoutStatus.replace("_", " ") : "Unknown"}
+            <Badge
+              className={
+                STATUS_COLORS[task.checkoutStatus] || STATUS_COLORS.NOT_DONE
+              }
+            >
+              {task.checkoutStatus
+                ? task.checkoutStatus.replace("_", " ")
+                : "Unknown"}
+              {task.checkoutStatus === "DONE" &&
+              task.requiresApproval &&
+              !task.approvedAt
+                ? " (Pending)"
+                : ""}
             </Badge>
             {task.attachment && (
               <div className="flex items-center gap-1 text-[#3838EC] text-xs">
@@ -259,28 +299,35 @@ export function CheckInTableCard({ task, isEditable, onRefetch, onEditTask }: Ch
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-              disabled={!isEditable || loading}
-              className="flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
-            >
-              <PencilIcon className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={!isEditable || loading}
-              className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
-            >
-              <TrashIcon className="w-4 h-4 mr-2" />
-              Delete
-            </Button>
-          </div>
+          {isEditable ? (
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEdit}
+                disabled={loading}
+                className="flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
+              >
+                <PencilIcon className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={loading}
+                className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
+              >
+                <TrashIcon className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pt-2 text-sm text-gray-500 dark:text-gray-400">
+              <LockIcon className="w-4 h-4" />
+              <span>View only — only the task owner can edit or delete.</span>
+            </div>
+          )}
         </div>
       )}
     </div>

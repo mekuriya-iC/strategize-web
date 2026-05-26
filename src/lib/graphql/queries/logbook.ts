@@ -13,6 +13,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
     $ownerUserId: ID
     $page: Int!
     $strategicPeriodId: ID
+    $approverUserId: ID
   ) {
     logbookEntries(
       entryStatus: $entryStatus
@@ -20,6 +21,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
       ownerUserId: $ownerUserId
       page: $page
       strategicPeriodId: $strategicPeriodId
+      approverUserId: $approverUserId
     ) {
       items {
         logbookEntryId

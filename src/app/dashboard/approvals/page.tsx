@@ -49,9 +49,11 @@ export default function ApprovalsPage() {
   const { data: logbookData, loading: logbookLoading, refetch: refetchLogbook } = useQuery(GET_LOGBOOK_ENTRIES, {
     variables: {
       entryStatus: logbookStatusFilter !== "all" ? logbookStatusFilter.toUpperCase() : undefined,
+      approverUserId: user?.employeeId,
       limit: 100,
       page: 1,
     },
+    skip: !user?.employeeId,
   });
 
   const logbookEntries = logbookData?.logbookEntries?.items || [];

@@ -66,17 +66,15 @@ export default function SubmissionApprovalsTable({
     }
 
     // Directors are always division-level approvers
-    if (user?.role === "DIRECTOR" && selectedUnit) {
+    // They approve DEPARTMENT level submissions from departments in their division
+    if (user?.role === "DIRECTOR") {
       return "DIVISION";
     }
 
-    // For managers, determine their level based on what unit they've selected
-    if (user?.role === "MANAGER" && selectedUnit) {
-      if (selectedUnit.type === "division") {
-        return "DIVISION";
-      } else if (selectedUnit.type === "department") {
-        return "DEPARTMENT";
-      }
+    // Managers are always department-level approvers
+    // They approve PERSONNEL level submissions from employees in their department
+    if (user?.role === "MANAGER") {
+      return "DEPARTMENT";
     }
 
     // Default to corporate level for fallback

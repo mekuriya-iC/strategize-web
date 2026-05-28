@@ -88,7 +88,9 @@ export default function CreateKPIForm({
       case "PERCENT":
         return "%";
       case "CURRENCY":
-        return "ETB";
+        return "Million/ETB";
+      case "HOUR":
+        return "hrs";
       case "RATIO":
         return "ratio";
       case "COUNT":

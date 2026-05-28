@@ -38,6 +38,7 @@ interface YearlyTargetInputProps {
   target: string;
   onTargetChange: (value: string) => void;
   disabled?: boolean;
+  unitType?: string;
 }
 
 const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
@@ -45,6 +46,7 @@ const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
   target,
   onTargetChange,
   disabled = false,
+  unitType = "NUMBER",
 }) => (
   <div className="flex items-center space-x-2">
     <span className="font-medium w-24">{year}</span>
@@ -59,10 +61,10 @@ const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
         min="0"
       />
       <span className="absolute right-3 top-2.5 text-gray-500">
-        {formData.unitType === "PERCENT" ? "%" : 
-         formData.unitType === "CURRENCY" ? "Million/ETB" :
-         formData.unitType === "HOUR" ? "hrs" :
-         formData.unitType === "RATIO" ? "ratio" :
+        {unitType === "PERCENT" ? "%" : 
+         unitType === "CURRENCY" ? "Million/ETB" :
+         unitType === "HOUR" ? "hrs" :
+         unitType === "RATIO" ? "ratio" :
          ""}
       </span>
     </div>
@@ -251,6 +253,7 @@ export default function UpdateKPIForm({
                   target={annualTarget || "0"}
                   onTargetChange={handleAnnualTargetChange}
                   disabled={!canEditTargets}
+                  unitType={formData.unitType}
                 />
                 <p className="text-xs text-gray-500 mt-2">
                   Enter the annual target for the strategic period. Corporate KPIs use annual targets only.
@@ -311,6 +314,7 @@ export default function UpdateKPIForm({
                         target={annualTarget || "0"}
                         onTargetChange={handleAnnualTargetChange}
                         disabled={!canEditTargets}
+                        unitType={formData.unitType}
                       />
                     </div>
                   )}

@@ -31,10 +31,10 @@ export default function SessionListView({
     null,
   );
 
-  const isManager = ["MANAGER", "DIRECTOR", "ADMIN"].includes(
+  const isManager = ["MANAGER", "DIRECTOR", "ADMIN", "SUPER_ADMIN"].includes(
     currentUser?.role,
   );
-  const isAdminOrHR = ["ADMIN", "HR"].includes(currentUser?.role);
+  const isAdminOrHR = ["ADMIN", "SUPER_ADMIN", "HR"].includes(currentUser?.role);
 
   // Query for team sessions (as supervisor)
   const {

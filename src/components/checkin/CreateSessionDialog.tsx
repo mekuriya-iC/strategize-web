@@ -12,6 +12,7 @@ import { Calendar, Users } from 'lucide-react';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_EMPLOYEES } from '@/lib/graphql/queries/employees';
 import { GET_DEPARTMENTS } from '@/lib/graphql/queries/departments';
+import { GET_DIVISIONS } from '@/lib/graphql/queries/divisions';
 import { GET_STRATEGIC_PERIODS } from '@/lib/graphql/queries/strategicPeriods';
 import { GET_CHECKINOUT_SESSIONS } from '@/lib/graphql/queries/checkins';
 import { CREATE_CHECKINOUT_SESSION } from '@/lib/graphql/mutations/checkins';
@@ -42,7 +43,7 @@ export default function CreateSessionDialog({
   const organizationId = useOrganizationId();
 
   // Get current user to check role
-  const { data: userData } = useQuery(GET_ME);
+  const { data: userData, loading: userLoading } = useQuery(GET_ME);
   const currentUser = userData?.me;
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN';
 
@@ -50,23 +51,29 @@ export default function CreateSessionDialog({
   console.log('👤 Current User:', currentUser);
   console.log('🔑 Current User ID (employeeId):', currentUserId);
   console.log('👔 Is Admin:', isAdmin);
+  console.log('⏳ User Loading:', userLoading);
 
   // Get all employees (only for admins)
   const { data: employeesData, loading: employeesLoading } = useQuery(GET_EMPLOYEES, {
     variables: { 
       page: 1, 
       limit: 1000,
-      // Filter by department for non-admins
-      ...(isAdmin ? {} : { departmentId: currentUser?.department?.departmentId })
     },
-    skip: !isAdmin && !currentUser?.department?.departmentId,
+    skip: !isAdmin || userLoading, // Skip if not admin or still loading user data
     fetchPolicy: 'cache-and-network',
   });
 
   // Get departments where current user is head (for managers)
   const { data: departmentsData, loading: departmentsLoading } = useQuery(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 1000 },
-    skip: isAdmin, // Skip if admin (they use employees query)
+    skip: isAdmin || userLoading, // Skip if admin (they use employees query) or still loading user
+    fetchPolicy: 'cache-and-network',
+  });
+
+  // Get divisions where current user is head (for division managers)
+  const { data: divisionsData, loading: divisionsLoading } = useQuery(GET_DIVISIONS, {
+    variables: { page: 1, limit: 1000 },
+    skip: isAdmin || userLoading, // Skip if admin (they use employees query) or still loading user
     fetchPolicy: 'cache-and-network',
   });
 
@@ -77,7 +84,7 @@ export default function CreateSessionDialog({
       page: 1, 
       limit: 1000 
     },
-    skip: !currentUserId || isAdmin, // Skip if no user ID or if admin (they don't need this query)
+    skip: !currentUserId || userLoading, // Skip if no user ID or still loading user
     fetchPolicy: 'cache-and-network',
   });
 
@@ -93,15 +100,32 @@ export default function CreateSessionDialog({
 
   const allEmployees = employeesData?.employees?.items || [];
   const departments = departmentsData?.departments?.items || [];
+  const divisions = divisionsData?.divisions?.items || [];
   const periods = periodsData?.strategicPeriods?.items || [];
   const existingSessions = existingSessionsData?.checkinoutSessions?.items || [];
 
-  // Get employees from departments where current user is head (for managers)
+  // Debug logging for data
+  console.log('📊 Data loaded:', {
+    allEmployees: allEmployees.length,
+    departments: departments.length,
+    divisions: divisions.length,
+    existingSessions: existingSessions.length,
+    employeesLoading,
+    departmentsLoading,
+    divisionsLoading,
+    sessionsLoading,
+  });
+
+  // Get employees from departments where current user is head (for department managers)
+  // OR get department managers from divisions where current user is head (for division managers)
   const employeesFromDepartments = useMemo(() => {
     console.log('🔍 Checking departments for manager:', currentUserId);
     console.log('📋 Total departments:', departments.length);
+    console.log('🏢 Total divisions:', divisions.length);
     
     const employeeMap = new Map();
+    
+    // Check if user is a department manager (head of departments)
     departments.forEach((dept: any) => {
       console.log(`  Department: ${dept.name}, Head: ${dept.head?.employeeId} (${dept.head?.fullName})`);
       
@@ -123,15 +147,40 @@ export default function CreateSessionDialog({
       }
     });
     
-    console.log('✨ Total employees found:', employeeMap.size);
+    // Check if user is a division manager (head of divisions)
+    divisions.forEach((division: any) => {
+      console.log(`  Division: ${division.name}, Head: ${division.head?.employeeId} (${division.head?.fullName})`);
+      
+      // Check if current user is the head of this division
+      if (division.head?.employeeId === currentUserId) {
+        console.log(`  ✅ Current user IS head of ${division.name}`);
+        console.log(`  🏢 Departments in division:`, division.departments?.length || 0);
+        
+        // Add all department managers (heads) from departments in this division
+        division.departments?.forEach((dept: any) => {
+          if (dept.head && dept.head.employeeId && dept.head.employeeId !== currentUserId) {
+            // Don't include the division manager themselves
+            console.log(`    Adding department manager: ${dept.head.fullName} (${dept.head.employeeId}) from ${dept.name}`);
+            employeeMap.set(dept.head.employeeId, dept.head);
+          }
+        });
+      } else {
+        console.log(`  ❌ Current user is NOT head of ${division.name}`);
+      }
+    });
+    
+    console.log('✨ Total employees/managers found:', employeeMap.size);
     return Array.from(employeeMap.values());
-  }, [departments, currentUserId]);
+  }, [departments, divisions, currentUserId]);
 
   // Direct reports: Admins see all employees, Managers see employees from their departments
   const directReports = useMemo(() => {
+    console.log('🎯 Computing directReports:', { isAdmin, allEmployeesCount: allEmployees.length, employeesFromDepartmentsCount: employeesFromDepartments.length });
     if (isAdmin) {
+      console.log('  → Using allEmployees for admin');
       return allEmployees;
     }
+    console.log('  → Using employeesFromDepartments for manager');
     return employeesFromDepartments;
   }, [isAdmin, allEmployees, employeesFromDepartments]);
 
@@ -150,9 +199,11 @@ export default function CreateSessionDialog({
 
   // Filter out employees who already have active sessions
   const availableEmployees = useMemo(() => {
-    return directReports.filter((emp: any) => 
+    const available = directReports.filter((emp: any) => 
       !employeesWithActiveSessions.has(emp.employeeId)
     );
+    console.log('✅ Available employees:', available.length, 'out of', directReports.length);
+    return available;
   }, [directReports, employeesWithActiveSessions]);
 
   // Auto-calculate week end date (7 days after start) - REMOVED, now manual
@@ -470,7 +521,7 @@ export default function CreateSessionDialog({
               </Button>
             </div>
 
-            {(employeesLoading || departmentsLoading || sessionsLoading) ? (
+            {(employeesLoading || departmentsLoading || divisionsLoading || sessionsLoading) ? (
               <div className="flex items-center justify-center h-32">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
@@ -525,7 +576,7 @@ export default function CreateSessionDialog({
                 <p className="text-xs text-gray-500 mt-2 text-center px-4 max-w-sm">
                   {isAdmin 
                     ? "No employees found in the system"
-                    : "You need to be assigned as the head of a department with employees to create check-in sessions."}
+                    : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}
                 </p>
               </div>
             )}

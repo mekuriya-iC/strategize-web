@@ -287,7 +287,7 @@ export interface StrategicPeriod {
   status?: string;
   openedAt?: string;
   closedAt?: string;
-  length: number;
+  length?: number; // Calculated on frontend: years between start and end
   createdBy: Employee | null;
   createdAt: string;
   updatedAt: string;
@@ -528,6 +528,8 @@ export interface GetKpiResponse {
 export interface StrategicPeriodsQueryVariables {
   page?: number;
   limit?: number;
+  strategicPlanId?: string;
+  organizationId?: string;
 }
 
 export interface StrategicPeriodQueryVariables {

@@ -140,8 +140,6 @@ export default function EvaluationResults() {
         a.status === EvaluationStatus.SUBMITTED,
     ) || [];
 
-  const hasResults = completedAssessments.length > 0;
-
   const [calculatedScores, setCalculatedScores] = useState<any[]>([]);
   const [overallScore, setOverallScore] = useState(0);
   const [effectiveWeights, setEffectiveWeights] = useState<Record<
@@ -152,6 +150,11 @@ export default function EvaluationResults() {
   const [selectedPeerAssessmentId, setSelectedPeerAssessmentId] = useState<
     string | null
   >(null);
+
+  const hasResults =
+    viewMode === "given"
+      ? completedAssessments.length > 0 && !!selectedPeerAssessmentId
+      : completedAssessments.length > 0;
 
   const weightsSummaryText =
     viewMode !== "received" || !effectiveWeights
@@ -484,7 +487,7 @@ export default function EvaluationResults() {
     }
   };
 
-  // Mock competency scores - in real app, calculate from assessment responses
+  // Competency scores are calculated from submitted assessment responses.
   const competencyScores = calculatedScores.length > 0 ? calculatedScores : [];
 
   if (loading || calculating) {
@@ -639,7 +642,15 @@ export default function EvaluationResults() {
                       : overallScore >= 2.5
                         ? "Needs Improvement"
                         : "Below Expectations"
-                  : `Overall Rating given to ${completedAssessments.find((a: any) => a.competencyAssessmentId === selectedPeerAssessmentId)?.evaluatee.fullName}`}
+                  : selectedPeerAssessmentId
+                    ? `Overall Rating given to ${
+                        completedAssessments.find(
+                          (a: any) =>
+                            a.competencyAssessmentId ===
+                            selectedPeerAssessmentId,
+                        )?.evaluatee.fullName || "selected employee"
+                      }`
+                    : "Select an evaluation to view ratings"}
               </p>
               {viewMode === "received" && completedAssessments.length < 4 && (
                 <p className="text-xs text-amber-600 mt-2 bg-amber-50 inline-block px-3 py-1 rounded-full border border-amber-100">
@@ -675,7 +686,7 @@ export default function EvaluationResults() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Radar Chart Placeholder */}
+            {/* Radar Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-semibold">

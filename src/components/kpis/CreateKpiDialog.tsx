@@ -38,6 +38,7 @@ const MEASUREMENT_UNITS = [
   { value: "percentage", label: "Percentage (%)" },
   { value: "number", label: "Number (#)" },
   { value: "currency", label: "Currency ($)" },
+  { value: "hour", label: "Hours (hrs)" },
   { value: "boolean", label: "Boolean (Yes/No)" },
   { value: "rating", label: "Rating (★)" },
   { value: "custom", label: "Custom" },
@@ -246,7 +247,18 @@ export function CreateKpiDialog({
           {/* Target + Baseline row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Target Value <span className="text-red-500">*</span></Label>
+              <Label>
+                {form.measurementUnit === "percentage" && "Target (%)"}
+                {form.measurementUnit === "currency" && "Target Amount"}
+                {form.measurementUnit === "hour" && "Target Hours"}
+                {form.measurementUnit === "rating" && "Target Rating"}
+                {(!form.measurementUnit || 
+                  (form.measurementUnit !== "percentage" && 
+                   form.measurementUnit !== "currency" && 
+                   form.measurementUnit !== "hour" && 
+                   form.measurementUnit !== "rating")) && "Target Value"}
+                {" "}<span className="text-red-500">*</span>
+              </Label>
               <Input
                 type="number"
                 step="0.01"
@@ -258,7 +270,17 @@ export function CreateKpiDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Baseline Value</Label>
+              <Label>
+                {form.measurementUnit === "percentage" && "Baseline (%)"}
+                {form.measurementUnit === "currency" && "Baseline Amount"}
+                {form.measurementUnit === "hour" && "Baseline Hours"}
+                {form.measurementUnit === "rating" && "Baseline Rating"}
+                {(!form.measurementUnit || 
+                  (form.measurementUnit !== "percentage" && 
+                   form.measurementUnit !== "currency" && 
+                   form.measurementUnit !== "hour" && 
+                   form.measurementUnit !== "rating")) && "Baseline Value"}
+              </Label>
               <Input
                 type="number"
                 step="0.01"

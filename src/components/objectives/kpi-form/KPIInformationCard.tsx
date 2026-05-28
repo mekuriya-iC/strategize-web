@@ -48,7 +48,9 @@ export function KPIInformationCard({
       case "PERCENT":
         return "e.g., 75";
       case "CURRENCY":
-        return "e.g., 1000000 ETB";
+        return "e.g., 1000000 (Million/ETB)";
+      case "HOUR":
+        return "e.g., 300";
       case "RATIO":
         return "e.g., 1.5";
       case "COUNT":
@@ -167,7 +169,8 @@ export function KPIInformationCard({
                   <SelectContent>
                     <SelectItem value="NUMBER">Number (#)</SelectItem>
                     <SelectItem value="PERCENT">Percent (%)</SelectItem>
-                    <SelectItem value="CURRENCY">Currency (ETB)</SelectItem>
+                    <SelectItem value="CURRENCY">Currency (Million/ETB)</SelectItem>
+                    <SelectItem value="HOUR">Hours (hrs)</SelectItem>
                     <SelectItem value="RATIO">Ratio (x:y)</SelectItem>
                     <SelectItem value="COUNT">Count (n)</SelectItem>
                   </SelectContent>

@@ -58,7 +58,13 @@ const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
         step="0.01"
         min="0"
       />
-      <span className="absolute right-3 top-2.5 text-gray-500">million ETB</span>
+      <span className="absolute right-3 top-2.5 text-gray-500">
+        {formData.unitType === "PERCENT" ? "%" : 
+         formData.unitType === "CURRENCY" ? "Million/ETB" :
+         formData.unitType === "HOUR" ? "hrs" :
+         formData.unitType === "RATIO" ? "ratio" :
+         ""}
+      </span>
     </div>
   </div>
 );
@@ -290,7 +296,13 @@ export default function UpdateKPIForm({
                   </span>
                   {isAnnualTargetLocked ? (
                     <span className="text-lg font-bold text-gray-900">
-                      {(assignedAnnualTarget ?? 0).toLocaleString()} {formData.unitType === "PERCENT" ? "%" : "million ETB"}
+                      {(assignedAnnualTarget ?? 0).toLocaleString()} {
+                        formData.unitType === "PERCENT" ? "%" : 
+                        formData.unitType === "CURRENCY" ? "Million/ETB" :
+                        formData.unitType === "HOUR" ? "hrs" :
+                        formData.unitType === "RATIO" ? "ratio" :
+                        ""
+                      }
                     </span>
                   ) : (
                     <div className="w-48">

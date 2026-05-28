@@ -25,6 +25,11 @@ export const DivisionsFragment = gql`
     departments {
       departmentId
       name
+      head {
+        employeeId
+        fullName
+        email
+      }
     }
   }
 `;

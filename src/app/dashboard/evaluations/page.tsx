@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import EvaluationResults from "@/components/evaluations/EvaluationResults";
 import TeamResults from "@/components/evaluations/TeamResults";
 import AdminSetup from "@/components/evaluations/AdminSetup";
 
-export default function EvaluationsPage() {
+function EvaluationsContent() {
   const searchParams = useSearchParams();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useState(
@@ -137,5 +137,13 @@ export default function EvaluationsPage() {
         )}
       </Tabs>
     </div>
+  );
+}
+
+export default function EvaluationsPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <EvaluationsContent />
+    </Suspense>
   );
 }

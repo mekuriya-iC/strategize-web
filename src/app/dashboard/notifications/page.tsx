@@ -103,7 +103,9 @@ export default function NotificationsPage() {
 
   const notifications = data?.notifications?.items || [];
   const meta = data?.notifications?.meta;
-  const unreadCount = notifications.filter((n: any) => n.status === "UNREAD").length;
+  const unreadCount = notifications.filter(
+    (n: any) => n.status === "UNREAD",
+  ).length;
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
@@ -124,7 +126,9 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter((n: any) => n.status === "UNREAD");
+      const unreadNotifications = notifications.filter(
+        (n: any) => n.status === "UNREAD",
+      );
       await Promise.all(
         unreadNotifications.map((notif: any) =>
           updateNotification({
@@ -135,8 +139,8 @@ export default function NotificationsPage() {
                 readAt: new Date().toISOString(),
               },
             },
-          })
-        )
+          }),
+        ),
       );
       refetch();
     } catch (error) {
@@ -160,7 +164,7 @@ export default function NotificationsPage() {
           url = `/dashboard/objectives/${notification.relatedEntityId}`;
           break;
         case "kpi":
-          url = `/dashboard/objectives`;
+          url = `/dashboard/kpis/${notification.relatedEntityId}`;
           break;
         case "checkinoutsession":
           url = `/dashboard/checkin`;
@@ -169,10 +173,19 @@ export default function NotificationsPage() {
           url = `/dashboard/evaluations`;
           break;
         case "approval":
-          url = `/dashboard/approvals`;
+          url =
+            notification.notificationType === "APPROVAL_RESULT"
+              ? `/dashboard/approvals/my-submissions`
+              : `/dashboard/approvals`;
           break;
         default:
-          url = "/dashboard";
+          if (notification.notificationType === "APPROVAL_REQUEST") {
+            url = "/dashboard/approvals";
+          } else if (notification.notificationType === "APPROVAL_RESULT") {
+            url = "/dashboard/approvals/my-submissions";
+          } else {
+            url = "/dashboard";
+          }
       }
 
       router.push(url);
@@ -232,7 +245,7 @@ export default function NotificationsPage() {
               className={cn(
                 "p-6 cursor-pointer transition-all hover:shadow-md border-l-4",
                 getNotificationColor(notification.notificationType),
-                notification.status === "UNREAD" && "shadow-sm"
+                notification.status === "UNREAD" && "shadow-sm",
               )}
             >
               <div className="flex gap-4">
@@ -272,9 +285,12 @@ export default function NotificationsPage() {
                         )}
                         <span>•</span>
                         <span>
-                          {formatDistanceToNow(new Date(notification.createdAt), {
-                            addSuffix: true,
-                          })}
+                          {formatDistanceToNow(
+                            new Date(notification.createdAt),
+                            {
+                              addSuffix: true,
+                            },
+                          )}
                         </span>
                       </div>
                     </div>

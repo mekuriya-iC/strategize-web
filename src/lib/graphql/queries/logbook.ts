@@ -13,6 +13,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
     $ownerUserId: ID
     $page: Int!
     $strategicPeriodId: ID
+    $approverUserId: ID
   ) {
     logbookEntries(
       entryStatus: $entryStatus
@@ -20,6 +21,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
       ownerUserId: $ownerUserId
       page: $page
       strategicPeriodId: $strategicPeriodId
+      approverUserId: $approverUserId
     ) {
       items {
         logbookEntryId
@@ -29,6 +31,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
         kpiTargetValue
         kpiAchievedValue
         kpiCompletionPercent
+        contributionUnit
         evidenceUrl
         evidenceDescription
         decisionsMade
@@ -76,6 +79,7 @@ export const GET_LOGBOOK_ENTRY = gql`
       kpiTargetValue
       kpiAchievedValue
       kpiCompletionPercent
+      contributionUnit
       evidenceUrl
       evidenceDescription
       decisionsMade

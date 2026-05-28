@@ -6,6 +6,7 @@ import {
   CREATE_CHECKINOUT_TASK,
   UPDATE_CHECKINOUT_TASK,
 } from "@/lib/graphql/mutations/checkins";
+
 import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
 import { GET_INITIATIVES } from "@/lib/graphql/queries/initiatives";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
@@ -47,7 +48,13 @@ interface AddTaskDialogProps {
   editingTask?: any;
 }
 
-type TaskType = "KPI_FULFILLED" | "KPI_UNMET" | "INITIATIVE_FULFILLED" | "INITIATIVE_UNMET" | "SELF_DEVELOPMENT" | "UNLINKED";
+type TaskType =
+  | "KPI_FULFILLED"
+  | "KPI_UNMET"
+  | "INITIATIVE_FULFILLED"
+  | "INITIATIVE_UNMET"
+  | "SELF_DEVELOPMENT"
+  | "UNLINKED";
 
 const TASK_TYPES = [
   { value: "KPI_FULFILLED", label: "KPI Fulfilled" },
@@ -59,8 +66,8 @@ const TASK_TYPES = [
 ];
 
 const CHECKOUT_STATUS = [
-  { value: "DONE", label: "Done" },
   { value: "NOT_DONE", label: "Not Done" },
+  { value: "DONE", label: "Done" },
   { value: "POSTPONED", label: "Postponed" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
@@ -77,16 +84,22 @@ export function AddTaskDialog({
   const user = useAuthStore((state) => state.user);
 
   // Mutations
-  const [createTaskMutation, { loading: creating }] = useMutation(CREATE_CHECKINOUT_TASK, {
-    refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
-  });
+  const [createTaskMutation, { loading: creating }] = useMutation(
+    CREATE_CHECKINOUT_TASK,
+    {
+      refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+    },
+  );
 
-  const [updateTaskMutation, { loading: updating }] = useMutation(UPDATE_CHECKINOUT_TASK, {
-    refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
-  });
+  const [updateTaskMutation, { loading: updating }] = useMutation(
+    UPDATE_CHECKINOUT_TASK,
+    {
+      refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+    },
+  );
 
   const mutationLoading = creating || updating;
-  
+
   // Queries
   const { data: kpisData } = useQuery(GET_MY_KPIS, {
     variables: { page: 1, limit: 100 },
@@ -99,9 +112,9 @@ export function AddTaskDialog({
   });
 
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
-     variables: { page: 1, limit: 500 },
-     skip: !open,
-   });
+    variables: { page: 1, limit: 500 },
+    skip: !open,
+  });
 
   const getNextSaturday = (fromDate: Date = new Date()) => {
     const date = new Date(fromDate);
@@ -121,11 +134,15 @@ export function AddTaskDialog({
   const [linkedInitiative, setLinkedInitiative] = useState("");
   const [startDate, setStartDate] = useState<Date>(today);
   const [startTime, setStartTime] = useState<TimeValue>({
-    hour: "07", minute: "00", period: "AM",
+    hour: "07",
+    minute: "00",
+    period: "AM",
   });
   const [endDate, setEndDate] = useState<Date>(getNextSaturday(today));
   const [endTime, setEndTime] = useState<TimeValue>({
-    hour: "07", minute: "00", period: "AM",
+    hour: "07",
+    minute: "00",
+    period: "AM",
   });
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -146,24 +163,30 @@ export function AddTaskDialog({
       setRelatedTo(editingTask.relatedToEmployeeId || "");
       setLinkedKpi(editingTask.linkedKpiId || "");
       setLinkedInitiative(editingTask.linkedInitiativeId || "");
-      
+
       const startDateTime = new Date(editingTask.startTime);
       setStartDate(startDateTime);
       setStartTime({
-        hour: startDateTime.getHours() > 12 ? String(startDateTime.getHours() - 12).padStart(2, '0') : String(startDateTime.getHours() || 12).padStart(2, '0'),
-        minute: String(startDateTime.getMinutes()).padStart(2, '0'),
+        hour:
+          startDateTime.getHours() > 12
+            ? String(startDateTime.getHours() - 12).padStart(2, "0")
+            : String(startDateTime.getHours() || 12).padStart(2, "0"),
+        minute: String(startDateTime.getMinutes()).padStart(2, "0"),
         period: startDateTime.getHours() >= 12 ? "PM" : "AM",
       });
-      
+
       const endDateTime = new Date(editingTask.endTime);
       setEndDate(endDateTime);
       setEndTime({
-        hour: endDateTime.getHours() > 12 ? String(endDateTime.getHours() - 12).padStart(2, '0') : String(endDateTime.getHours() || 12).padStart(2, '0'),
-        minute: String(endDateTime.getMinutes()).padStart(2, '0'),
+        hour:
+          endDateTime.getHours() > 12
+            ? String(endDateTime.getHours() - 12).padStart(2, "0")
+            : String(endDateTime.getHours() || 12).padStart(2, "0"),
+        minute: String(endDateTime.getMinutes()).padStart(2, "0"),
         period: endDateTime.getHours() >= 12 ? "PM" : "AM",
       });
-      
-      setCheckoutStatus(editingTask.checkoutStatus || "");
+
+      setCheckoutStatus(editingTask.checkoutStatus || "NOT_DONE");
       setRemark(editingTask.remark || "");
     } else if (!open) {
       // Reset form when dialog closes
@@ -203,8 +226,14 @@ export function AddTaskDialog({
       const taskData = {
         taskTitle: task.trim(),
         taskLinkType: taskType,
-        linkedKpiId: (taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") ? linkedKpi : null,
-        linkedInitiativeId: (taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET") ? linkedInitiative : null,
+        linkedKpiId:
+          taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET"
+            ? linkedKpi
+            : null,
+        linkedInitiativeId:
+          taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET"
+            ? linkedInitiative
+            : null,
         relatedToEmployeeId: relatedTo || null,
         plannedDescription: description.trim() || null,
         taskStartDate: buildDateTime(startDate, startTime).toISOString(),
@@ -240,11 +269,17 @@ export function AddTaskDialog({
         toast.success("Task created successfully");
       }
 
+      if (taskData.taskStatus === "DONE") {
+        toast.success("Completed task added to logbook as pending approval");
+      }
+
       onSuccess();
       resetForm();
     } catch (error: any) {
       console.error("Task operation error:", error);
-      toast.error(error.message || `Failed to ${editingTask ? "update" : "create"} task`);
+      toast.error(
+        error.message || `Failed to ${editingTask ? "update" : "create"} task`,
+      );
     }
   };
 
@@ -276,7 +311,6 @@ export function AddTaskDialog({
 
         <div className="overflow-y-auto max-h-[80vh] px-6 py-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-
             {/* Task Type */}
             <div className="space-y-3">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -325,7 +359,8 @@ export function AddTaskDialog({
                 </div>
               )}
 
-              {(taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET") && (
+              {(taskType === "INITIATIVE_FULFILLED" ||
+                taskType === "INITIATIVE_UNMET") && (
                 <div className="pt-2">
                   <Label className="text-xs text-gray-500 mb-1 block">
                     Linked Initiative
@@ -349,7 +384,10 @@ export function AddTaskDialog({
 
             {/* Task */}
             <div className="space-y-2">
-              <Label htmlFor="task" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label
+                htmlFor="task"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Task <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -535,7 +573,7 @@ export function AddTaskDialog({
                 className={cn(
                   "flex flex-col items-center justify-center gap-2 p-4 rounded-lg cursor-pointer transition-colors",
                   "border-2 border-dashed border-gray-300 dark:border-gray-600",
-                  "hover:border-[#3838EC] hover:bg-blue-50/30 dark:hover:bg-blue-950/10"
+                  "hover:border-[#3838EC] hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
                 )}
               >
                 <input
@@ -569,7 +607,7 @@ export function AddTaskDialog({
               )}
             </div>
 
-            {/* Checkout - Only visible when editing */}
+            {/* Checkout Status - only shown while editing an existing task */}
             {editingTask && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -577,10 +615,16 @@ export function AddTaskDialog({
                 </Label>
                 <CheckboxSelect
                   options={CHECKOUT_STATUS}
-                  value={checkoutStatus ? [checkoutStatus] : []}
-                  onChange={(vals) => setCheckoutStatus(vals[vals.length - 1] || "")}
+                  value={checkoutStatus ? [checkoutStatus] : ["NOT_DONE"]}
+                  onChange={(vals) =>
+                    setCheckoutStatus(vals[vals.length - 1] || "NOT_DONE")
+                  }
                   placeholder="Select checkout status"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  When editing your task, you can change its status to Not Done,
+                  Done, Postponed, or Cancelled.
+                </p>
               </div>
             )}
 
@@ -614,7 +658,13 @@ export function AddTaskDialog({
             disabled={mutationLoading}
             className="sm:w-auto bg-[#3838EC] hover:bg-[#2d2dbd] text-white"
           >
-            {mutationLoading ? (editingTask ? "Updating..." : "Adding...") : (editingTask ? "Update Task" : "Add Task")}
+            {mutationLoading
+              ? editingTask
+                ? "Updating..."
+                : "Adding..."
+              : editingTask
+                ? "Save Changes"
+                : "Add Task"}
           </Button>
         </div>
       </DialogContent>

@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon, FileIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import {
+  PencilIcon,
+  TrashIcon,
+  FileIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation } from "@apollo/client";
 import { REMOVE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
 import { toast } from "sonner";
+import { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 import { format } from "date-fns";
 
 interface LogbookItem {
@@ -17,6 +24,8 @@ interface LogbookItem {
   outcome: string;
   entryDate: string;
   attachmentUrl?: string | null;
+  status?: string;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
   employee?: any;
@@ -38,6 +47,7 @@ export function LogbookTableRow({
   onEditEntry,
 }: LogbookTableRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [deleteEntry, { loading }] = useMutation(REMOVE_LOGBOOK_ENTRY, {
     refetchQueries: ["GetLogbookEntries"],
   });
@@ -65,6 +75,20 @@ export function LogbookTableRow({
     }
   };
 
+  const getStatusBadge = () => {
+    const status = item.status || "DRAFT";
+    const classes: Record<string, string> = {
+      DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+      SUBMITTED:
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+      APPROVED:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+      REJECTED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    };
+    const label = status === "SUBMITTED" ? "Pending Approval" : status;
+    return <Badge className={classes[status] || classes.DRAFT}>{label}</Badge>;
+  };
+
   return (
     <>
       <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
@@ -89,9 +113,12 @@ export function LogbookTableRow({
 
         {/* Activity */}
         <td className="px-4 py-4">
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            {item.activity}
-          </span>
+          <div className="space-y-1">
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {item.activity}
+            </span>
+            <div>{getStatusBadge()}</div>
+          </div>
         </td>
 
         {/* Description */}
@@ -123,24 +150,19 @@ export function LogbookTableRow({
         {/* Actions */}
         <td className="px-4 py-4">
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleEdit}
-              disabled={loading}
-              className="text-[#3838EC] hover:text-[#2d2dbd] hover:bg-[#ECECFF]"
-            >
-              <PencilIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              disabled={loading}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </Button>
+            {(item.status === "DRAFT" ||
+              item.status === "REJECTED" ||
+              !item.status) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSubmitDialogOpen(true)}
+                disabled={loading}
+                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+              >
+                Submit
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -164,25 +186,47 @@ export function LogbookTableRow({
             <div className="space-y-3 text-sm">
               {item.description && (
                 <div>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Description:</span>
-                  <p className="mt-1 text-gray-600 dark:text-gray-400">{item.description}</p>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Description:
+                  </span>
+                  <p className="mt-1 text-gray-600 dark:text-gray-400">
+                    {item.description}
+                  </p>
+                </div>
+              )}
+              {item.rejectionReason && (
+                <div>
+                  <span className="font-medium text-red-700 dark:text-red-300">
+                    Rejection Reason:
+                  </span>
+                  <p className="mt-1 text-red-600 dark:text-red-300">
+                    {item.rejectionReason}
+                  </p>
                 </div>
               )}
               {item.outcome && (
                 <div>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Outcome:</span>
-                  <p className="mt-1 text-gray-600 dark:text-gray-400">{item.outcome}</p>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Outcome:
+                  </span>
+                  <p className="mt-1 text-gray-600 dark:text-gray-400">
+                    {item.outcome}
+                  </p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Created:</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Created:
+                  </span>
                   <span className="ml-2 text-gray-600 dark:text-gray-400">
                     {format(new Date(item.createdAt), "MMM d, yyyy h:mm a")}
                   </span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Last Updated:</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Last Updated:
+                  </span>
                   <span className="ml-2 text-gray-600 dark:text-gray-400">
                     {format(new Date(item.updatedAt), "MMM d, yyyy h:mm a")}
                   </span>
@@ -192,6 +236,15 @@ export function LogbookTableRow({
           </td>
         </tr>
       )}
+      <SubmitApprovalDialog
+        open={isSubmitDialogOpen}
+        onOpenChange={setIsSubmitDialogOpen}
+        item={item}
+        onSuccess={() => {
+          setIsSubmitDialogOpen(false);
+          onRefetch();
+        }}
+      />
     </>
   );
 }

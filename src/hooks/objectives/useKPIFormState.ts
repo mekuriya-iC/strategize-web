@@ -65,7 +65,7 @@ export const useKPIFormState = ({
 
   // Data fetching
   const { kpi, loading: kpiLoading } = useKPI(
-    kpiId ? { kpiId } : { kpiId: "" }
+    kpiId ? { kpiId } : { kpiId: "" },
   );
   const { kpis, refetch: refetchKPIs } = useKPIs({ page: 1, limit: 1000 });
   const { objective: parentObjective } = useObjective({
@@ -84,7 +84,10 @@ export const useKPIFormState = ({
     period: selectedPeriod,
     annualTimeline,
   };
-  const setStrategicPeriod = (val: { period?: typeof selectedPeriod; annualTimeline?: string }) => {
+  const setStrategicPeriod = (val: {
+    period?: typeof selectedPeriod;
+    annualTimeline?: string;
+  }) => {
     if (val.period) setSelectedPeriod(val.period);
     if (val.annualTimeline) setAnnualTimeline(val.annualTimeline);
   };
@@ -115,7 +118,9 @@ export const useKPIFormState = ({
 
     // 1. Sync Strategic Period if different from current global selection
     if (selectedPeriod?.strategicPeriodId !== period.strategicPeriodId) {
-      kpiLogger.debug("KPI Sync: Updating global strategic period to match objective");
+      kpiLogger.debug(
+        "KPI Sync: Updating global strategic period to match objective",
+      );
       setSelectedPeriod(period);
     }
 
@@ -123,11 +128,19 @@ export const useKPIFormState = ({
     // Only update if current choice is invalid for this target period
     if (!annualTimeline || !options.includes(annualTimeline)) {
       if (options.length > 0) {
-        kpiLogger.debug("KPI Sync: Initializing global timeline for form context");
+        kpiLogger.debug(
+          "KPI Sync: Initializing global timeline for form context",
+        );
         setAnnualTimeline(options[0]);
       }
     }
-  }, [objective, selectedPeriod, annualTimeline, setSelectedPeriod, setAnnualTimeline]);
+  }, [
+    objective,
+    selectedPeriod,
+    annualTimeline,
+    setSelectedPeriod,
+    setAnnualTimeline,
+  ]);
 
   // Computed values
   const isKPIApproved = kpi?.status === "APPROVED";
@@ -175,10 +188,10 @@ export const useKPIFormState = ({
 
     // Fallback to index-based matching
     const parentObjKPIs = parentKPIs.filter(
-      (k) => k.objective?.objectiveId === objective.parent?.objectiveId
+      (k) => k.objective?.objectiveId === objective.parent?.objectiveId,
     );
     const currentObjKPIs = kpis.filter(
-      (k) => k.objective?.objectiveId === objectiveId
+      (k) => k.objective?.objectiveId === objectiveId,
     );
     const kpiIndex = currentObjKPIs.findIndex((k) => k.kpiId === kpiId);
     return parentObjKPIs[kpiIndex] || null;
@@ -193,99 +206,133 @@ export const useKPIFormState = ({
   ]);
 
   // Get remaining allocation (for a specific year if provided)
-  const getRemainingAllocation = useCallback((year?: string): AllocationInfo | null => {
-    const hasParentKpi = kpi?.parent?.kpiId;
-    const hasParentId = parentId;
+  const getRemainingAllocation = useCallback(
+    (year?: string): AllocationInfo | null => {
+      const hasParentKpi = kpi?.parent?.kpiId;
+      const hasParentId = parentId;
 
-    if (!hasParentKpi && !hasParentId) return null;
-    if (!objective?.parent) return null;
+      if (!hasParentKpi && !hasParentId) return null;
+      if (!objective?.parent) return null;
 
-    const parentKpiId = hasParentKpi || hasParentId || "";
-    // Robustly identify the current KPI ID to exclude it from sibling calculations
-    const currentKpiId = kpiId || kpi?.kpiId;
-    const parentKPI = getParentKPI();
+      const parentKpiId = hasParentKpi || hasParentId || "";
+      // Robustly identify the current KPI ID to exclude it from sibling calculations
+      const currentKpiId = kpiId || kpi?.kpiId;
+      const parentKPI = getParentKPI();
 
-    // Use current annual timeline if no year provided
-    const targetYear = year || annualTimeline;
+      // Use current annual timeline if no year provided
+      const targetYear = year || annualTimeline;
 
-    if (!parentKPI) {
-      if (hasParentId && strategicTargetsById?.[hasParentId]) {
-        const parentTargets = strategicTargetsById[hasParentId];
-        // If year provided, get specific year
-        if (targetYear && parentTargets[targetYear] !== undefined) {
-          const val = parentTargets[targetYear];
-          return { available: val, used: 0, remaining: val };
+      if (!parentKPI) {
+        if (hasParentId && strategicTargetsById?.[hasParentId]) {
+          const parentTargets = strategicTargetsById[hasParentId];
+          // If year provided, get specific year
+          if (targetYear && parentTargets[targetYear] !== undefined) {
+            const val = parentTargets[targetYear];
+            return { available: val, used: 0, remaining: val };
+          }
+
+          const totalParent = Object.values(parentTargets).reduce(
+            (sum, t) => sum + t,
+            0,
+          );
+          if (totalParent === 0) return null;
+          return { available: totalParent, used: 0, remaining: totalParent };
         }
-
-        const totalParent = Object.values(parentTargets).reduce((sum, t) => sum + t, 0);
-        if (totalParent === 0) return null;
-        return { available: totalParent, used: 0, remaining: totalParent };
+        return null;
       }
-      return null;
-    }
 
-    // Helper to get sum for a KPI in a specific year
-    const getTargetSumForYear = (k: Kpi, yr: string) => {
-      const targets = k.targets || [];
-      // Check for exact year match
-      const yearTarget = targets.find(t => t.timeline === yr);
-      if (yearTarget) return yearTarget.target;
+      // Helper to get sum for a KPI in a specific year
+      const getTargetSumForYear = (k: Kpi, yr: string) => {
+        const targets = k.targets || [];
+        // Check for exact year match
+        const yearTarget = targets.find((t) => t.timeline === yr);
+        if (yearTarget) return yearTarget.target;
 
-      // Sum quarterly targets for that year
-      return targets
-        .filter(t => t.timeline.startsWith(yr.split("/")[0]) && t.timeline.includes("-Q"))
-        .reduce((sum, t) => sum + t.target, 0);
-    };
+        // Sum quarterly targets for that year
+        return targets
+          .filter(
+            (t) =>
+              t.timeline.startsWith(yr.split("/")[0]) &&
+              t.timeline.includes("-Q"),
+          )
+          .reduce((sum, t) => sum + t.target, 0);
+      };
 
-    if (targetYear) {
-      const parentYearTarget = getTargetSumForYear(parentKPI, targetYear);
-      if (parentYearTarget === 0) return null;
+      if (targetYear) {
+        const parentYearTarget = getTargetSumForYear(parentKPI, targetYear);
+        if (parentYearTarget === 0) return null;
+
+        const siblingKPIs = kpis.filter(
+          (k) =>
+            k.parent?.kpiId === parentKpiId &&
+            k.kpiId !== currentKpiId &&
+            k.kpiId !== undefined,
+        );
+
+        const usedAllocation = siblingKPIs.reduce((total, siblingKpi) => {
+          return total + getTargetSumForYear(siblingKpi, targetYear);
+        }, 0);
+
+        const remaining =
+          Math.round(Math.max(0, parentYearTarget - usedAllocation) * 100) /
+          100;
+        return { available: parentYearTarget, used: usedAllocation, remaining };
+      }
+
+      // Legacy fallback for total strategic period
+      const parentTargetTotal = (parentKPI.targets || []).reduce(
+        (sum, t) => sum + t.target,
+        0,
+      );
+      if (parentTargetTotal === 0) return null;
 
       const siblingKPIs = kpis.filter(
-        (k) => k.parent?.kpiId === parentKpiId && k.kpiId !== currentKpiId && k.kpiId !== undefined
+        (k) =>
+          k.parent?.kpiId === parentKpiId &&
+          k.kpiId !== currentKpiId &&
+          k.kpiId !== undefined,
       );
 
-      const usedAllocation = siblingKPIs.reduce((total, siblingKpi) => {
-        return total + getTargetSumForYear(siblingKpi, targetYear);
+      const usedAllocationTotal = siblingKPIs.reduce((total, siblingKpi) => {
+        return (
+          total +
+          (siblingKpi.targets || []).reduce((sum, t) => sum + t.target, 0)
+        );
       }, 0);
 
-      const remaining = Math.round(Math.max(0, parentYearTarget - usedAllocation) * 100) / 100;
-      return { available: parentYearTarget, used: usedAllocation, remaining };
-    }
-
-    // Legacy fallback for total strategic period
-    const parentTargetTotal = (parentKPI.targets || []).reduce((sum, t) => sum + t.target, 0);
-    if (parentTargetTotal === 0) return null;
-
-    const siblingKPIs = kpis.filter(
-      (k) => k.parent?.kpiId === parentKpiId && k.kpiId !== currentKpiId && k.kpiId !== undefined
-    );
-
-    const usedAllocationTotal = siblingKPIs.reduce((total, siblingKpi) => {
-      return total + (siblingKpi.targets || []).reduce((sum, t) => sum + t.target, 0);
-    }, 0);
-
-    const remainingTotal = Math.max(0, parentTargetTotal - usedAllocationTotal);
-    return { available: parentTargetTotal, used: usedAllocationTotal, remaining: remainingTotal };
-  }, [
-    kpi,
-    parentId,
-    objective?.parent,
-    getParentKPI,
-    strategicTargetsById,
-    kpis,
-    annualTimeline
-  ]);
+      const remainingTotal = Math.max(
+        0,
+        parentTargetTotal - usedAllocationTotal,
+      );
+      return {
+        available: parentTargetTotal,
+        used: usedAllocationTotal,
+        remaining: remainingTotal,
+      };
+    },
+    [
+      kpi,
+      parentId,
+      objective?.parent,
+      getParentKPI,
+      strategicTargetsById,
+      kpis,
+      annualTimeline,
+    ],
+  );
 
   // Weight budget for this objective only
-  const getLevelAllocation = useCallback((): { used: number; remaining: number } => {
+  const getLevelAllocation = useCallback((): {
+    used: number;
+    remaining: number;
+  } => {
     if (!objective?.objectiveId) return { used: 0, remaining: 100 };
 
     const objectiveKpis = (kpis || []).filter(
       (k) =>
         k.objective?.objectiveId === objective.objectiveId &&
         k.status !== "REJECTED" &&
-        k.kpiId !== kpiId
+        k.kpiId !== kpiId,
     );
 
     const used = objectiveKpis.reduce((total, k) => total + (k.weight || 0), 0);
@@ -300,10 +347,10 @@ export const useKPIFormState = ({
   const handleTargetChange = useCallback(
     (index: number, field: "timeline" | "target", value: string) => {
       setTargets((prev) =>
-        prev.map((t, i) => (i === index ? { ...t, [field]: value } : t))
+        prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)),
       );
     },
-    []
+    [],
   );
 
   const addTarget = useCallback(() => {
@@ -316,7 +363,7 @@ export const useKPIFormState = ({
         setTargets((prev) => prev.filter((_, i) => i !== index));
       }
     },
-    [targets.length]
+    [targets.length],
   );
 
   // Load existing KPI data when editing
@@ -326,7 +373,8 @@ export const useKPIFormState = ({
         name: kpi.name,
         baseline: kpi.baseline.toString(),
         weight: kpi.weight.toString(),
-        weightType: kpi.unitType,
+        weightType: kpi.unitType === "PERCENT" ? "PERCENT" : "NUMBER",
+        unitType: kpi.unitType,
       });
 
       if (kpi.parent?.kpiId) {
@@ -336,17 +384,25 @@ export const useKPIFormState = ({
       const tgs =
         kpi.targets.length > 0
           ? kpi.targets.map((t) => ({
-            timeline: t.timeline,
-            target: t.target.toString(),
-          }))
+              timeline: t.timeline,
+              target: t.target.toString(),
+            }))
           : [{ timeline: defaultTimeline, target: "" }];
       setTargets(tgs);
 
       // Sync global annual timeline to the first target of the KPI if editing
       if (tgs.length > 0 && tgs[0].timeline) {
-        const options = objective?.strategicPeriod ? buildYearRanges(objective.strategicPeriod) : [];
-        if (options.includes(tgs[0].timeline) && annualTimeline !== tgs[0].timeline) {
-          kpiLogger.debug("KPI Edit Sync: Updating global timeline to match KPI targets", tgs[0].timeline);
+        const options = objective?.strategicPeriod
+          ? buildYearRanges(objective.strategicPeriod)
+          : [];
+        if (
+          options.includes(tgs[0].timeline) &&
+          annualTimeline !== tgs[0].timeline
+        ) {
+          kpiLogger.debug(
+            "KPI Edit Sync: Updating global timeline to match KPI targets",
+            tgs[0].timeline,
+          );
           setAnnualTimeline(tgs[0].timeline);
         }
       }
@@ -354,7 +410,7 @@ export const useKPIFormState = ({
       if (isQuarterlyMode) {
         const newYearlyQuarters: Record<string, YearlyQuarters> = {};
         const allYears = Array.from(
-          new Set(tgs.map((t) => t.timeline.split("-")[0]))
+          new Set(tgs.map((t) => t.timeline.split("-")[0])),
         );
 
         allYears.forEach((year) => {
@@ -382,13 +438,30 @@ export const useKPIFormState = ({
         setTargets([{ timeline: defaultTimeline, target: "" }]);
       }
 
-      if (isQuarterlyMode && !parentId && Object.keys(yearlyQuarters).length === 0) {
+      if (
+        isQuarterlyMode &&
+        !parentId &&
+        Object.keys(yearlyQuarters).length === 0
+      ) {
         setYearlyQuarters({
-          [defaultTimeline]: { q1: "", q2: "", q3: "", q4: "", parentTarget: 0 }
+          [defaultTimeline]: {
+            q1: "",
+            q2: "",
+            q3: "",
+            q4: "",
+            parentTarget: 0,
+          },
         });
       }
     }
-  }, [isEditing, defaultTimeline, targets, isQuarterlyMode, parentId, yearlyQuarters]);
+  }, [
+    isEditing,
+    defaultTimeline,
+    targets,
+    isQuarterlyMode,
+    parentId,
+    yearlyQuarters,
+  ]);
 
   // Sync yearlyQuarters keys with targets when parentId is NOT set
   useEffect(() => {
@@ -444,11 +517,11 @@ export const useKPIFormState = ({
   useEffect(() => {
     if (prevParentId.current && !parentId) {
       kpiLogger.debug("KPI Mode: Switch to standalone, resetting form data");
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         baseline: "",
         weight: "",
-        name: objective?.name || ""
+        name: objective?.name || "",
       }));
     }
     prevParentId.current = parentId;
@@ -459,14 +532,15 @@ export const useKPIFormState = ({
     // We auto-populate if:
     // 1. It's a new KPI (isEditing is false) and parentId is selected.
     // 2. We're editing but the user changed the parentId from the original one.
-    const isNewParentSelection = isEditing && parentId && parentId !== kpi?.parent?.kpiId;
+    const isNewParentSelection =
+      isEditing && parentId && parentId !== kpi?.parent?.kpiId;
 
     if (parentId && (!isEditing || isNewParentSelection)) {
       const selectedParentKPI = parentKPIs?.find((k) => k.kpiId === parentId);
       if (selectedParentKPI) {
         kpiLogger.debug(
           "Auto-populating from parent KPI:",
-          selectedParentKPI.name
+          selectedParentKPI.name,
         );
 
         setFormData((prev) => ({
@@ -474,7 +548,9 @@ export const useKPIFormState = ({
           baseline: selectedParentKPI.baseline.toString(),
           weight: selectedParentKPI.weight.toString(),
           name: selectedParentKPI.name,
-          weightType: selectedParentKPI.unitType, // Inherit unit type from parent
+          weightType:
+            selectedParentKPI.unitType === "PERCENT" ? "PERCENT" : "NUMBER", // Inherit target aggregation behavior from parent
+          unitType: selectedParentKPI.unitType,
         }));
 
         if (selectedParentKPI.targets && selectedParentKPI.targets.length > 0) {
@@ -485,10 +561,20 @@ export const useKPIFormState = ({
               const parts = target.timeline.split("-");
               if (parts.length === 2 && parts[1].startsWith("Q")) {
                 const year = parts[0];
-                const quarter = parts[1].toLowerCase() as "q1" | "q2" | "q3" | "q4";
+                const quarter = parts[1].toLowerCase() as
+                  | "q1"
+                  | "q2"
+                  | "q3"
+                  | "q4";
 
                 if (!newYearlyQuarters[year]) {
-                  newYearlyQuarters[year] = { q1: "", q2: "", q3: "", q4: "", parentTarget: 0 };
+                  newYearlyQuarters[year] = {
+                    q1: "",
+                    q2: "",
+                    q3: "",
+                    q4: "",
+                    parentTarget: 0,
+                  };
                 }
                 newYearlyQuarters[year][quarter] = target.target.toString();
               } else {
@@ -497,17 +583,23 @@ export const useKPIFormState = ({
 
                 // Auto-distribute logic
                 let q1, q2, q3, q4;
-                if (selectedParentKPI.unitType === "PERCENT") {
+                if (selectedParentKPI.unitType === "PERCENT" || selectedParentKPI.unitType === "HOUR") {
+                  // PERCENT and HOUR: Same value for all quarters (don't split)
                   q1 = q2 = q3 = q4 = targetValue.toString();
                 } else {
+                  // NUMBER, CURRENCY, etc.: Split evenly across quarters
                   const split = Math.round((targetValue / 4) * 100) / 100;
-                  const remainder = Math.round((targetValue - (split * 3)) * 100) / 100;
+                  const remainder =
+                    Math.round((targetValue - split * 3) * 100) / 100;
                   q1 = q2 = q3 = split.toString();
                   q4 = remainder.toString();
                 }
 
                 newYearlyQuarters[year] = {
-                  q1, q2, q3, q4,
+                  q1,
+                  q2,
+                  q3,
+                  q4,
                   parentTarget: targetValue,
                 };
               }

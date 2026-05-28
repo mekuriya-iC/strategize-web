@@ -87,7 +87,7 @@ export const useSubmissionQueries = ({
     refetch: corporateObjRefetch,
   } = useQuery(GET_PENDING_SUBMISSIONS, {
     variables: objectiveSubmissionsQueryVariables("CORPORATE"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch || !shouldFetchAllLevels,
   });
 
@@ -97,7 +97,7 @@ export const useSubmissionQueries = ({
     refetch: divisionObjRefetch,
   } = useQuery(GET_PENDING_SUBMISSIONS, {
     variables: objectiveSubmissionsQueryVariables("DIVISION"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch,
   });
 
@@ -107,7 +107,7 @@ export const useSubmissionQueries = ({
     refetch: departmentObjRefetch,
   } = useQuery(GET_PENDING_SUBMISSIONS, {
     variables: objectiveSubmissionsQueryVariables("DEPARTMENT"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch,
   });
 
@@ -117,7 +117,7 @@ export const useSubmissionQueries = ({
     refetch: personnelObjRefetch,
   } = useQuery(GET_PENDING_SUBMISSIONS, {
     variables: objectiveSubmissionsQueryVariables("PERSONNEL"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch,
   });
 
@@ -127,7 +127,7 @@ export const useSubmissionQueries = ({
     refetch: corporateKpiRefetch,
   } = useQuery(GET_KPI_SUBMISSIONS, {
     variables: kpiSubmissionsQueryVariables("CORPORATE"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch || !shouldFetchAllLevels,
   });
 
@@ -137,7 +137,7 @@ export const useSubmissionQueries = ({
     refetch: divisionKpiRefetch,
   } = useQuery(GET_KPI_SUBMISSIONS, {
     variables: kpiSubmissionsQueryVariables("DIVISION"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch,
   });
 
@@ -147,7 +147,7 @@ export const useSubmissionQueries = ({
     refetch: departmentKpiRefetch,
   } = useQuery(GET_KPI_SUBMISSIONS, {
     variables: kpiSubmissionsQueryVariables("DEPARTMENT"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch,
   });
 
@@ -157,7 +157,7 @@ export const useSubmissionQueries = ({
     refetch: personnelKpiRefetch,
   } = useQuery(GET_KPI_SUBMISSIONS, {
     variables: kpiSubmissionsQueryVariables("PERSONNEL"),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
     skip: !shouldFetch,
   });
 

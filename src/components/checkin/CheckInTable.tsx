@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { format } from "date-fns";
 import { CheckInTableRow } from "./CheckInTableRow";
 import { CheckInTableCard } from "./CheckInTableCard";
 
@@ -14,6 +13,8 @@ interface Task {
   startTime: string;
   endTime: string;
   checkoutStatus: string;
+  requiresApproval?: boolean;
+  approvedAt?: string | null;
   attachment?: string;
   remark?: string;
   linkedKpiName?: string;
@@ -52,6 +53,8 @@ export function CheckInTable({
   filters,
   isEditable = true,
 }: CheckInTableProps) {
+  void createdDate;
+  void endDate;
   // Filter tasks based on search query and filters
   const filteredTasks = useMemo(() => {
     let filtered = tasks;
@@ -59,10 +62,11 @@ export function CheckInTable({
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((task) =>
-        task.task.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query) ||
-        task.relatedTo?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (task) =>
+          task.task.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query) ||
+          task.relatedTo?.toLowerCase().includes(query),
       );
     }
 
@@ -73,8 +77,10 @@ export function CheckInTable({
         filtered = filtered.filter((task) => {
           if (filters.objective === "kpi_unmet") return !task.isKpiMet;
           if (filters.objective === "kpi_fulfilled") return task.isKpiMet;
-          if (filters.objective === "initiative_unmet") return !task.isInitiativeMet;
-          if (filters.objective === "initiative_fulfilled") return task.isInitiativeMet;
+          if (filters.objective === "initiative_unmet")
+            return !task.isInitiativeMet;
+          if (filters.objective === "initiative_fulfilled")
+            return task.isInitiativeMet;
           return true;
         });
       }
@@ -103,7 +109,7 @@ export function CheckInTable({
       // Filter by checkout status
       if (filters.checkoutStatus.length > 0) {
         filtered = filtered.filter((task) =>
-          filters.checkoutStatus.includes(task.checkoutStatus)
+          filters.checkoutStatus.includes(task.checkoutStatus),
         );
       }
     }
@@ -111,22 +117,9 @@ export function CheckInTable({
     return filtered;
   }, [tasks, searchQuery, filters]);
 
-  // Check if task is editable (within session interval)
-  const isTaskEditable = (task: Task) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const sessionStart = new Date(createdDate);
-    sessionStart.setHours(0, 0, 0, 0);
-    
-    const sessionEnd = endDate ? new Date(endDate) : new Date(sessionStart);
-    if (!endDate) {
-      sessionEnd.setDate(sessionStart.getDate() + 6); // Fallback to 1 week
-    }
-    sessionEnd.setHours(23, 59, 59, 999);
-
-    return today >= sessionStart && today <= sessionEnd;
-  };
+  // Action visibility is ownership-based.
+  // If the current viewer owns this session's tasks, show edit/delete actions.
+  // Team members' tasks remain view-only.
 
   return (
     <>
@@ -176,7 +169,7 @@ export function CheckInTable({
                 <CheckInTableRow
                   key={task.id}
                   task={task}
-                  isEditable={isEditable && isTaskEditable(task)}
+                  isEditable={isEditable}
                   onRefetch={onRefetch}
                   onEditTask={onEditTask}
                 />
@@ -192,7 +185,7 @@ export function CheckInTable({
           <CheckInTableCard
             key={task.id}
             task={task}
-            isEditable={isEditable && isTaskEditable(task)}
+            isEditable={isEditable}
             onRefetch={onRefetch}
             onEditTask={onEditTask}
           />

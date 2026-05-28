@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "@apollo/client";
+import { UPDATE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +18,10 @@ import { XIcon, PlusIcon, TrashIcon, UploadIcon } from "lucide-react";
 
 interface LogbookItem {
   id: string;
-  kpiName: string;
-  target: number;
-  percentageCompletion: string;
-  weight: number;
-  approvalStatus: string;
+  activity?: string;
+  description?: string;
+  outcome?: string;
+  attachmentUrl?: string | null;
 }
 
 interface EvidenceItem {
@@ -43,41 +45,80 @@ export function SubmitApprovalDialog({
   onSuccess,
 }: SubmitApprovalDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [description, setDescription] = useState("International Livestock Research Institute/Stress Management and Financial Literacy Training");
-  const [remark, setRemark] = useState("Lorem ipsum dolor sit amet consectetur. Ut mattis varius at ac nulla nascetur amet blandit ultrices. Consectetur");
+  const [description, setDescription] = useState(
+    item.description || item.activity || "",
+  );
+  const [remark, setRemark] = useState(item.outcome || "");
   const [quantity, setQuantity] = useState("");
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([
-    { id: "1", type: "email", value: "Enter email date and subject" }
+    { id: "1", type: "email", value: "Enter email date and subject" },
   ]);
 
   const addEvidenceItem = () => {
     const newItem: EvidenceItem = {
       id: Date.now().toString(),
       type: "file",
-      value: ""
+      value: "",
     };
     setEvidenceItems([...evidenceItems, newItem]);
   };
 
   const removeEvidenceItem = (id: string) => {
-    setEvidenceItems(evidenceItems.filter(item => item.id !== id));
+    setEvidenceItems(evidenceItems.filter((item) => item.id !== id));
   };
 
-  const updateEvidenceItem = (id: string, field: keyof EvidenceItem, value: any) => {
-    setEvidenceItems(evidenceItems.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+  const updateEvidenceItem = (
+    id: string,
+    field: keyof EvidenceItem,
+    value: any,
+  ) => {
+    setEvidenceItems(
+      evidenceItems.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item,
+      ),
+    );
   };
+
+  const [updateLogbookEntry] = useMutation(UPDATE_LOGBOOK_ENTRY, {
+    refetchQueries: ["GetLogbookEntries"],
+  });
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+
+    try {
+      const evidenceDescription = evidenceItems
+        .map((evidence) => `${evidence.type}: ${evidence.value}`)
+        .filter(Boolean)
+        .join("\n");
+
+      const parsedQuantity = quantity ? Number(quantity) : null;
+
+      await updateLogbookEntry({
+        variables: {
+          input: {
+            logbookEntryId: item.id,
+            entryStatus: "SUBMITTED",
+            submittedAt: new Date().toISOString(),
+            evidenceDescription: description || evidenceDescription || null,
+            decisionsMade: remark || null,
+            contributionUnit: quantity || null,
+            kpiCompletionPercent:
+              parsedQuantity !== null && Number.isFinite(parsedQuantity)
+                ? parsedQuantity
+                : null,
+          },
+        },
+      });
+
+      toast.success("Logbook entry submitted for approval");
       onSuccess();
       onOpenChange(false);
-    }, 1000);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit for approval");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderEvidenceInput = (evidence: EvidenceItem) => {
@@ -85,9 +126,9 @@ export function SubmitApprovalDialog({
       case "file":
         return (
           <div className="space-y-2">
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+            <label className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-[#3838EC] transition-colors">
               <UploadIcon className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-blue-600 cursor-pointer">
+              <p className="text-sm text-blue-600">
                 Click or drag here to upload file
               </p>
               <p className="text-xs text-gray-500">Upload</p>
@@ -97,12 +138,12 @@ export function SubmitApprovalDialog({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    updateEvidenceItem(evidence.id, 'file', file);
-                    updateEvidenceItem(evidence.id, 'value', file.name);
+                    updateEvidenceItem(evidence.id, "file", file);
+                    updateEvidenceItem(evidence.id, "value", file.name);
                   }
                 }}
               />
-            </div>
+            </label>
             {evidence.file && (
               <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
                 <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
@@ -110,8 +151,8 @@ export function SubmitApprovalDialog({
                 </span>
                 <button
                   onClick={() => {
-                    updateEvidenceItem(evidence.id, 'file', undefined);
-                    updateEvidenceItem(evidence.id, 'value', '');
+                    updateEvidenceItem(evidence.id, "file", undefined);
+                    updateEvidenceItem(evidence.id, "value", "");
                   }}
                   className="text-red-500 hover:text-red-700"
                 >
@@ -121,25 +162,29 @@ export function SubmitApprovalDialog({
             )}
           </div>
         );
-      
+
       case "email":
         return (
           <Input
             placeholder="Enter email date and subject"
             value={evidence.value}
-            onChange={(e) => updateEvidenceItem(evidence.id, 'value', e.target.value)}
+            onChange={(e) =>
+              updateEvidenceItem(evidence.id, "value", e.target.value)
+            }
           />
         );
-      
+
       case "drive_link":
         return (
           <Input
             placeholder="Enter drive link"
             value={evidence.value}
-            onChange={(e) => updateEvidenceItem(evidence.id, 'value', e.target.value)}
+            onChange={(e) =>
+              updateEvidenceItem(evidence.id, "value", e.target.value)
+            }
           />
         );
-      
+
       case "certificate":
         return (
           <div className="space-y-2">
@@ -149,17 +194,19 @@ export function SubmitApprovalDialog({
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  updateEvidenceItem(evidence.id, 'file', file);
-                  updateEvidenceItem(evidence.id, 'value', file.name);
+                  updateEvidenceItem(evidence.id, "file", file);
+                  updateEvidenceItem(evidence.id, "value", file.name);
                 }
               }}
             />
             {evidence.file && (
-              <p className="text-xs text-gray-500">Selected: {evidence.file.name}</p>
+              <p className="text-xs text-gray-500">
+                Selected: {evidence.file.name}
+              </p>
             )}
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -232,7 +279,10 @@ export function SubmitApprovalDialog({
               {/* Evidence Items */}
               <div className="space-y-4">
                 {evidenceItems.map((evidence, index) => (
-                  <div key={evidence.id} className="space-y-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div
+                    key={evidence.id}
+                    className="space-y-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Evidence of Performance
@@ -258,46 +308,78 @@ export function SubmitApprovalDialog({
                           name={`evidence-${evidence.id}`}
                           value="file"
                           checked={evidence.type === "file"}
-                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          onChange={(e) =>
+                            updateEvidenceItem(
+                              evidence.id,
+                              "type",
+                              e.target.value as any,
+                            )
+                          }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">File</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          File
+                        </span>
                       </label>
-                      
+
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           name={`evidence-${evidence.id}`}
                           value="email"
                           checked={evidence.type === "email"}
-                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          onChange={(e) =>
+                            updateEvidenceItem(
+                              evidence.id,
+                              "type",
+                              e.target.value as any,
+                            )
+                          }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Email</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Email
+                        </span>
                       </label>
-                      
+
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           name={`evidence-${evidence.id}`}
                           value="drive_link"
                           checked={evidence.type === "drive_link"}
-                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          onChange={(e) =>
+                            updateEvidenceItem(
+                              evidence.id,
+                              "type",
+                              e.target.value as any,
+                            )
+                          }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Drive Link</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Drive Link
+                        </span>
                       </label>
-                      
+
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           name={`evidence-${evidence.id}`}
                           value="certificate"
                           checked={evidence.type === "certificate"}
-                          onChange={(e) => updateEvidenceItem(evidence.id, 'type', e.target.value as any)}
+                          onChange={(e) =>
+                            updateEvidenceItem(
+                              evidence.id,
+                              "type",
+                              e.target.value as any,
+                            )
+                          }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Certificate</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Certificate
+                        </span>
                       </label>
                     </div>
 

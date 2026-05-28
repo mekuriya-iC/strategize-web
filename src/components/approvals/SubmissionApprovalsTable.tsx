@@ -53,9 +53,7 @@ export default function SubmissionApprovalsTable({
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState(
-    listMode === "outbound" ? "all" : "pending",
-  );
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
@@ -68,17 +66,15 @@ export default function SubmissionApprovalsTable({
     }
 
     // Directors are always division-level approvers
-    if (user?.role === "DIRECTOR" && selectedUnit) {
+    // They approve DEPARTMENT level submissions from departments in their division
+    if (user?.role === "DIRECTOR") {
       return "DIVISION";
     }
 
-    // For managers, determine their level based on what unit they've selected
-    if (user?.role === "MANAGER" && selectedUnit) {
-      if (selectedUnit.type === "division") {
-        return "DIVISION";
-      } else if (selectedUnit.type === "department") {
-        return "DEPARTMENT";
-      }
+    // Managers are always department-level approvers
+    // They approve PERSONNEL level submissions from employees in their department
+    if (user?.role === "MANAGER") {
+      return "DEPARTMENT";
     }
 
     // Default to corporate level for fallback
@@ -104,9 +100,10 @@ export default function SubmissionApprovalsTable({
     },
   );
 
-  // Ensure fresh data after client-side navigation/hydration
+  // Ensure fresh data after client-side navigation/hydration and when filters change
   useEffect(() => {
     if (!user?.employeeId) return;
+    // Force refetch to get latest data, especially after rejections/resubmissions
     refetch();
   }, [
     user?.employeeId,
@@ -578,7 +575,7 @@ export default function SubmissionApprovalsTable({
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setStatusFilter("pending");
+    setStatusFilter("all");
     setCurrentPage(1);
   };
 
@@ -621,8 +618,10 @@ export default function SubmissionApprovalsTable({
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pending">Pending (Submitted)</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
 

@@ -191,10 +191,11 @@ export default function ObjectiveDetailPage() {
     setShowAddKPI(true);
   };
 
-  const handleKPISuccess = () => {
+  const handleKPISuccess = async () => {
     setShowAddKPI(false);
     setEditingKPI(null);
-    refetch();
+    await refetch();
+    await refetchObjective();
   };
 
   // KPI Selection handlers

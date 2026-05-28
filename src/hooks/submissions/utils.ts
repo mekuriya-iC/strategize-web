@@ -247,26 +247,26 @@ export const filterSubmissionsByHierarchy = (
   return submissions.filter((submission) => {
     switch (approverRole) {
       case "CORPORATE":
-        // Always show DIVISION level submissions
+        // Corporate (CEO/Super Admin) should ONLY see DIVISION level submissions
         if (submission.level === "DIVISION") {
           return true;
         }
         // For DEPARTMENT level, only show if the department has no division above it
+        // (orphaned departments that report directly to corporate)
         if (submission.level === "DEPARTMENT") {
           const deptId = getDepartmentIdFromSubmission(submission);
           // If we can't determine the department, show it (safe default)
           // If the department has no division, show it
           return !deptId || departmentsWithoutDivision.has(deptId);
         }
-        // Always show PERSONNEL level submissions for Corporate Approvers in the new tab
-        if (submission.level === "PERSONNEL") {
-          return true;
-        }
+        // Do NOT show PERSONNEL level submissions to corporate
+        // Those should only be visible to department managers
         return false;
 
       case "DIVISION":
         if (selectedUnitType === "division" && selectedUnitId) {
-          // For DEPARTMENT level submissions, only show if the department belongs to the selected division
+          // Division managers should ONLY see DEPARTMENT level submissions
+          // They should NOT see individual PERSONNEL submissions
           if (submission.level === "DEPARTMENT") {
             const deptId = getDepartmentIdFromSubmission(submission);
             // If we can determine the department, check if it belongs to the selected division
@@ -276,14 +276,8 @@ export const filterSubmissionsByHierarchy = (
             // If we can't determine the department, don't show it (safer for division approvers)
             return false;
           }
-          // For PERSONNEL level, check if it's within the division's departments
-          if (submission.level === "PERSONNEL") {
-            const deptId = getDepartmentIdFromSubmission(submission);
-            if (deptId) {
-              return departmentsInSelectedDivision.has(deptId);
-            }
-            return false;
-          }
+          // Do NOT show PERSONNEL level submissions to division managers
+          // Those should only be visible to department managers
         }
         return false;
 

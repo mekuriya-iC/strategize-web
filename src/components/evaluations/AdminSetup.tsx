@@ -38,6 +38,7 @@ import EditEvaluationCycleDialog from "./dialogs/EditEvaluationCycleDialog";
 import EditIndicatorDialog from "./dialogs/EditIndicatorDialog";
 import AssignEvaluatorsDialog from "./dialogs/AssignEvaluatorsDialog";
 import CompetencyIndicatorsList from "./CompetencyIndicatorsList";
+import CycleStatusTabs from "./CycleStatusTabs";
 import { toast } from "sonner";
 
 export default function AdminSetup() {
@@ -77,7 +78,15 @@ export default function AdminSetup() {
   const [supervisorWeight, setSupervisorWeight] = useState(35);
   const [subordinateWeight, setSubordinateWeight] = useState(15);
 
-  const { cycles, loading: cyclesLoading } = useEvaluationCycles(1, 20);
+  const { cycles, loading: cyclesLoading } = useEvaluationCycles(
+    1,
+    20,
+    "",
+    EvaluationCycleStatus.ACTIVE,
+  );
+  const hasActiveCycle = cycles?.some(
+    (cycle: any) => cycle.status === EvaluationCycleStatus.ACTIVE,
+  );
   const organizationId = getOrganizationId();
   const { coreCompetencies, loading: coreLoading } = useCoreCompetencies(
     1,
@@ -401,6 +410,7 @@ export default function AdminSetup() {
       <CreateEvaluationCycleDialog
         open={createCycleOpen}
         onOpenChange={setCreateCycleOpen}
+        hasActiveCycle={hasActiveCycle}
       />
       <CreateCoreCompetencyDialog
         open={createCoreCompetencyOpen}
@@ -698,95 +708,32 @@ export default function AdminSetup() {
             </div>
             <Button
               className="gap-2 bg-indigo-600 hover:bg-indigo-700"
-              onClick={() => setCreateCycleOpen(true)}
+              onClick={() => {
+                if (hasActiveCycle) {
+                  toast.error(
+                    "Complete the active evaluation cycle before creating another one.",
+                  );
+                  return;
+                }
+                setCreateCycleOpen(true);
+              }}
+              disabled={hasActiveCycle}
+              title={
+                hasActiveCycle
+                  ? "Complete the active cycle before creating another one"
+                  : undefined
+              }
             >
               <Plus className="h-4 w-4" />
               Create Cycle
             </Button>
           </div>
 
-          {cyclesLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-600">Loading cycles...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {cycles && cycles.length > 0 ? (
-                cycles.map((cycle: any) => (
-                  <Card
-                    key={cycle.evaluationCycleId}
-                    className="hover:shadow-md transition-shadow"
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-base font-semibold">
-                            {cycle.name}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {new Date(cycle.startDate).toLocaleDateString()} -{" "}
-                            {new Date(cycle.endDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Badge
-                          className={
-                            cycle.status === EvaluationCycleStatus.ACTIVE
-                              ? "bg-green-100 text-green-700"
-                              : cycle.status === EvaluationCycleStatus.UPCOMING
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-700"
-                          }
-                        >
-                          {cycle.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {cycle.description && (
-                        <p className="text-sm text-gray-600 mb-4">
-                          {cycle.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleEditCycle(cycle)}
-                        >
-                          <Edit2 className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleOpenAssignEvaluators(cycle)}
-                        >
-                          <Users className="h-4 w-4 mr-2" />
-                          Assign
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <Card className="col-span-2">
-                  <CardContent className="py-12 text-center">
-                    <p className="text-gray-500">
-                      No evaluation cycles configured
-                    </p>
-                    <Button variant="outline" className="mt-4">
-                      Create Your First Cycle
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
+          {/* Cycle Status Tabs */}
+          <CycleStatusTabs
+            onEditCycle={handleEditCycle}
+            onAssignEvaluators={handleOpenAssignEvaluators}
+          />
         </TabsContent>
 
         {/* Weights Tab */}

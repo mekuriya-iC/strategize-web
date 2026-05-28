@@ -72,9 +72,6 @@ export default function CreateIndicatorDialog({
       toast.success("Indicator created successfully");
       onOpenChange(false);
       resetForm();
-
-      // Trigger a page reload to refresh the indicators list
-      window.location.reload();
     } catch (error: any) {
       toast.error(error.message || "Failed to create indicator");
     } finally {

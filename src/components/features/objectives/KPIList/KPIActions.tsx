@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,27 +8,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  Users,
-  ShieldAlert,
-  Send,
-} from "lucide-react";
+import { Edit, Trash2, MoreHorizontal, Send, Eye } from "lucide-react";
 import DeleteKpiDialog from "@/components/objectives/DeleteKpiDialog";
-import AssignKPIDialog from "@/components/objectives/AssignKPIDialog";
 import SubmitDialog from "@/components/submissions/SubmitDialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Kpi } from "@/types/graphql";
-import { useAuthStore } from "@/stores";
 import usePermissions from "@/hooks/permissions/usePermissions";
-import { canAssignDownstream } from "@/lib/objectives/cascadeApproval";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
 import { isKpiSubmittable } from "@/lib/objectives/submissionLevel";
 
@@ -47,32 +32,21 @@ const KPIActions: React.FC<KPIActionsProps> = ({
   currentObjectiveType,
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const router = useRouter();
 
   const { role } = usePermissions();
-  const user = useAuthStore((state) => state.user);
-
-  const isKpiApproved = kpi.status === "APPROVED";
   const isObjectiveApproved = kpi.objective?.status === "APPROVED";
 
   const isAssigned = React.useMemo(() => {
     return allKpis.some((other) => other.parent?.kpiId === kpi.kpiId);
   }, [allKpis, kpi.kpiId]);
 
-  // Rule 1 & 2: Assignment requirements
-  const objective = kpi.objective;
-  const objectiveContext = objective
+  const objectiveContext = kpi.objective
     ? {
-        ...objective,
-        parentId: objective.parent?.objectiveId ?? null,
+        ...kpi.objective,
+        parentId: kpi.objective.parent?.objectiveId ?? null,
       }
     : null;
-
-  const assignGate = objectiveContext
-    ? canAssignDownstream(objectiveContext, [kpi])
-    : { allowed: false };
-
-  const canAssign = !isAssigned && isKpiApproved && assignGate.allowed;
 
   const isCorporate = objectiveContext
     ? isTopLevelCorporateObjective(objectiveContext)
@@ -112,6 +86,14 @@ const KPIActions: React.FC<KPIActionsProps> = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            onClick={() => router.push(`/dashboard/kpis/${kpi.kpiId}`)}
+            className="cursor-pointer"
+          >
+            <Eye className="mr-2 h-4 w-4 text-gray-500" />
+            <span>View KPI</span>
+          </DropdownMenuItem>
+
           {!isReadOnly && !isCascaded ? (
             <DropdownMenuItem
               onClick={() => onEdit(kpi.kpiId)}
@@ -125,61 +107,6 @@ const KPIActions: React.FC<KPIActionsProps> = ({
               {isReadOnly ? "Read-only (Approved)" : "Edit disabled (Cascaded)"}
             </div>
           )}
-
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-full">
-                  <DropdownMenuItem
-                    onClick={() => canAssign && setShowAssignDialog(true)}
-                    disabled={!canAssign}
-                    className={`cursor-pointer ${!canAssign ? "opacity-50 grayscale" : ""}`}
-                  >
-                    <Users
-                      className={`mr-2 h-4 w-4 ${canAssign ? "text-purple-500" : "text-gray-400"}`}
-                    />
-                    <span>Assign KPI</span>
-                    {!canAssign && (
-                      <ShieldAlert className="ml-auto h-3 w-3 text-amber-500" />
-                    )}
-                  </DropdownMenuItem>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent
-                side="left"
-                className="bg-amber-50 text-amber-800 border-amber-200 p-3 max-w-[200px]"
-              >
-                {isAssigned ? (
-                  <p className="font-semibold text-purple-700">
-                    Already Assigned.
-                  </p>
-                ) : (
-                  <>
-                    <p className="font-semibold">Workflow incomplete:</p>
-                    <p className="text-xs mt-1">
-                      • KPI:{" "}
-                      {kpi.status ? kpi.status.replace("_", " ") : "Unknown"}{" "}
-                      {isKpiApproved ? "✓" : "×"}
-                    </p>
-                    {!isCascaded && (
-                      <p className="text-xs">
-                        • Objective:{" "}
-                        {kpi.objective?.status
-                          ? kpi.objective.status.replace("_", " ")
-                          : "N/A"}{" "}
-                        {isObjectiveApproved ? "✓" : "×"}
-                      </p>
-                    )}
-                    <p className="text-[10px] mt-2 italic">
-                      {isCascaded
-                        ? "This KPI must be APPROVED to assign."
-                        : "KPI and Objective must be APPROVED to assign."}
-                    </p>
-                  </>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
 
           {/* Submit for Approval Rule: Only if not already approved or pending */}
           {isKpiSubmittable(kpi.status) && (
@@ -230,13 +157,6 @@ const KPIActions: React.FC<KPIActionsProps> = ({
         kpiId={kpi.kpiId}
         kpiName={kpi.name}
         onDeleteSuccess={onRefresh}
-      />
-
-      <AssignKPIDialog
-        open={showAssignDialog}
-        onOpenChange={setShowAssignDialog}
-        kpi={kpi}
-        onSuccess={onRefresh}
       />
     </>
   );

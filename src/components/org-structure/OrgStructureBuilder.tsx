@@ -41,7 +41,9 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
   const { saveOrgChart, loading: saving } = useOrgChartMutations();
   const [zoom, setZoom] = useState(100);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState<OrgNodeData | null>(null);
   
   const [orgStructure, setOrgStructure] = useState<OrgNodeData>({
     id: "root",
@@ -128,13 +130,70 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
     toast.success("Node deleted");
   };
 
+  const handleEditNode = (nodeId: string) => {
+    // Find the node to edit
+    const findNode = (node: OrgNodeData): OrgNodeData | null => {
+      if (node.id === nodeId) return node;
+      for (const child of node.children) {
+        const found = findNode(child);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const nodeToEdit = findNode(orgStructure);
+    if (nodeToEdit) {
+      setSelectedNodeForEdit(nodeToEdit);
+      setShowEditDialog(true);
+    }
+  };
+
+  const handleUpdateNode = (name: string, subtitle: string) => {
+    if (!selectedNodeForEdit) {
+      toast.error("No node selected for editing");
+      return;
+    }
+
+    // Update node in structure
+    const updateNodeInTree = (node: OrgNodeData): OrgNodeData => {
+      if (node.id === selectedNodeForEdit.id) {
+        return {
+          ...node,
+          name,
+          subtitle,
+        };
+      }
+      return {
+        ...node,
+        children: node.children.map(updateNodeInTree),
+      };
+    };
+
+    const updatedStructure = updateNodeInTree(orgStructure);
+    setOrgStructure(updatedStructure);
+    
+    // Close dialog and reset state
+    setShowEditDialog(false);
+    setSelectedNodeForEdit(null);
+    
+    // Show success toast
+    setTimeout(() => {
+      toast.success("Node updated successfully!");
+    }, 100);
+  };
+
   const handleSave = async () => {
     try {
+      console.log("🎯 Saving org structure from builder");
       await saveOrgChart([toInput(orgStructure)]);
       sessionStorage.setItem("orgStructure", JSON.stringify(orgStructure));
+      console.log("✅ Org structure saved, navigating to /setup/strategic-plan");
       toast.success("Organization structure saved!");
-      router.push("/strategy-period");
-    } catch {
+      
+      // Navigate to the setup wizard to create strategic plan, pillars, and periods
+      window.location.href = "/setup/strategic-plan";
+    } catch (error) {
+      console.error("❌ Error saving org structure:", error);
       // error already toasted by the hook
     }
   };
@@ -151,9 +210,7 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
           color={node.color}
           level={node.level}
           onAddChild={() => handleAddChild(node.id)}
-          onEdit={() => {
-            // Edit functionality for node ${node.id}
-          }}
+          onEdit={() => handleEditNode(node.id)}
           onDelete={node.level > 0 ? () => handleDeleteNode(node.id) : undefined}
         />
         
@@ -281,6 +338,21 @@ export default function OrgStructureBuilder({ topEntityName }: OrgStructureBuild
         onAdd={(name, subtitle) => {
           handleAddNode(name, subtitle);
         }}
+      />
+
+      <AddNodeDialog
+        isOpen={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setSelectedNodeForEdit(null);
+        }}
+        onAdd={(name, subtitle) => {
+          handleUpdateNode(name, subtitle);
+        }}
+        initialName={selectedNodeForEdit?.name}
+        initialSubtitle={selectedNodeForEdit?.subtitle}
+        title="Edit Node"
+        submitLabel="Update"
       />
     </>
   );

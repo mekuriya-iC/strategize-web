@@ -26,7 +26,6 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 export default function ObjectiveForm() {
   const router = useRouter();
   const { createObjective, updateObjective, loading } = useObjectiveMutations();
-  const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods();
   const { strategicPlans, loading: plansLoading } = useStrategicPlansQuery();
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
   const user = useAuthStore((state) => state.user);
@@ -37,6 +36,13 @@ export default function ObjectiveForm() {
   // Get the active strategic plan and organizationId
   const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
   const organizationId = activeStrategicPlan?.organization?.organizationId || "";
+
+  // Fetch strategic periods filtered by the active strategic plan
+  const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods({
+    page: 1,
+    limit: 100, // Fetch more periods to ensure we get all
+    strategicPlanId: activeStrategicPlan?.strategicPlanId,
+  });
 
   // Fetch strategic pillars from the active plan
   const { strategicPillars, loading: pillarsLoading } = useStrategicPillars(
@@ -56,6 +62,30 @@ export default function ObjectiveForm() {
   );
   const [strategicPeriodValue, setStrategicPeriodValue] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasManuallySelected, setHasManuallySelected] = useState(false); // Track manual selection
+
+  // Debug logging
+  useEffect(() => {
+    console.log("📊 Strategic Periods loaded:", {
+      count: strategicPeriods.length,
+      loading: periodsLoading,
+      activeStrategicPlanId: activeStrategicPlan?.strategicPlanId,
+      periods: strategicPeriods.map(p => ({
+        id: p.strategicPeriodId,
+        name: p.name,
+        type: p.periodType,
+        status: p.status,
+      })),
+    });
+  }, [strategicPeriods, periodsLoading, activeStrategicPlan]);
+
+  useEffect(() => {
+    console.log("🎯 Selected period value changed:", {
+      value: strategicPeriodValue,
+      exists: strategicPeriods.some(p => p.strategicPeriodId === strategicPeriodValue),
+      periodName: strategicPeriods.find(p => p.strategicPeriodId === strategicPeriodValue)?.name,
+    });
+  }, [strategicPeriodValue, strategicPeriods]);
 
   // Only CORPORATE objectives can be created directly
   // Division/Department/Personnel objectives are created through cascade/assignment
@@ -64,16 +94,88 @@ export default function ObjectiveForm() {
   ];
 
   useEffect(() => {
+    // Don't auto-select if periods are still loading or user has manually selected
+    if (periodsLoading || strategicPeriods.length === 0 || hasManuallySelected) {
+      return;
+    }
+
     if (selected?.period) {
-      setStrategicPeriodValue(selected.period.strategicPeriodId);
-    } else if (strategicPeriods.length > 0 && !strategicPeriodValue) {
-      // Auto-select the first ANNUAL period if no period is selected
-      const firstAnnualPeriod = strategicPeriods.find(p => p.periodType === 'ANNUAL');
-      if (firstAnnualPeriod) {
-        setStrategicPeriodValue(firstAnnualPeriod.strategicPeriodId);
+      // If there's a selected period from the store, use it only if it exists in the current list
+      const periodExists = strategicPeriods.find(
+        p => p.strategicPeriodId === selected.period.strategicPeriodId
+      );
+      if (periodExists) {
+        setStrategicPeriodValue(selected.period.strategicPeriodId);
+      } else {
+        console.warn("⚠️ Selected period from store not found in available periods, will auto-select");
+        // Don't clear, let the auto-selection below handle it
       }
     }
-  }, [selected, strategicPeriods, strategicPeriodValue]);
+    
+    // Only auto-select if no value is set
+    if (!strategicPeriodValue) {
+      // Priority 1: Find the current active period
+      const activePeriod = strategicPeriods.find(p => 
+        p.status?.toUpperCase() === 'ACTIVE'
+      );
+      
+      // Priority 2: Find the first ANNUAL period (best for corporate objectives)
+      const firstAnnualPeriod = strategicPeriods.find(p => 
+        p.periodType?.toUpperCase() === 'ANNUAL'
+      );
+      
+      // Priority 3: First period in the list
+      const periodToSelect = activePeriod || firstAnnualPeriod || strategicPeriods[0];
+      
+      if (periodToSelect) {
+        console.log("🎯 Auto-selecting period:", {
+          name: periodToSelect.name,
+          id: periodToSelect.strategicPeriodId,
+          type: periodToSelect.periodType,
+          status: periodToSelect.status,
+          reason: activePeriod ? 'active' : firstAnnualPeriod ? 'first annual' : 'first available'
+        });
+        setStrategicPeriodValue(periodToSelect.strategicPeriodId);
+      }
+    }
+  }, [selected, strategicPeriods, strategicPeriodValue, periodsLoading, hasManuallySelected]);
+
+  // Helper function to calculate period length in years
+  const calculatePeriodLength = (startDate: string, endDate: string): number => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.round(diffDays / 365);
+  };
+
+  // Filter periods based on objective type for better UX
+  const getRecommendedPeriods = () => {
+    if (!objectiveType) return strategicPeriods;
+    
+    // Corporate objectives should use ANNUAL periods
+    if (objectiveType === 'CORPORATE') {
+      const annualPeriods = strategicPeriods.filter(p => 
+        p.periodType?.toUpperCase() === 'ANNUAL'
+      );
+      // If no annual periods, show all
+      return annualPeriods.length > 0 ? annualPeriods : strategicPeriods;
+    }
+    
+    // Division/Department objectives can use QUARTERLY or ANNUAL
+    if (objectiveType === 'DIVISION' || objectiveType === 'DEPARTMENT') {
+      const relevantPeriods = strategicPeriods.filter(p => 
+        p.periodType?.toUpperCase() === 'ANNUAL' || 
+        p.periodType?.toUpperCase() === 'QUARTERLY'
+      );
+      return relevantPeriods.length > 0 ? relevantPeriods : strategicPeriods;
+    }
+    
+    // Personnel objectives can use any period type
+    return strategicPeriods;
+  };
+
+  const filteredPeriods = getRecommendedPeriods();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +204,20 @@ export default function ObjectiveForm() {
       toast.error("No active strategic plan found. Please contact your administrator.");
       return;
     }
+
+    // Validate that the selected period exists
+    const selectedPeriodExists = strategicPeriods.find(
+      p => p.strategicPeriodId === strategicPeriodValue
+    );
+    
+    if (!selectedPeriodExists) {
+      toast.error("Selected strategic period is invalid. Please select a valid period.");
+      console.error("❌ Invalid period ID:", strategicPeriodValue);
+      console.error("Available periods:", strategicPeriods.map(p => p.strategicPeriodId));
+      return;
+    }
+
+    console.log("✅ Validation passed, all required fields present");
 
     setIsSubmitting(true);
 
@@ -135,12 +251,19 @@ export default function ObjectiveForm() {
       }
 
       console.log("🎯 Creating objective with input:", inputData);
+      console.log("📋 Selected period:", selectedPeriodExists);
 
       const created = await createObjective({
         input: inputData,
       });
 
-      console.log("✅ Objective created:", created);
+      console.log("✅ Objective created:", {
+        objectiveId: created?.objectiveId,
+        title: created?.title,
+        strategicPeriodId: strategicPeriodValue,
+        selectedPeriod: selectedPeriodExists,
+      });
+      
       toast.success("Objective created successfully!");
       
       // Clear session storage
@@ -152,11 +275,20 @@ export default function ObjectiveForm() {
       }
       
       // Wait a bit for backend to process before redirecting
-      await new Promise(resolve => setTimeout(resolve, 300));
-      router.push("/dashboard");
-    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Redirect to objectives page to see the created objective
+      router.push("/dashboard/objectives");
+    } catch (error: any) {
       console.error("❌ Error creating objective:", error);
-      toast.error("Failed to create objective. Please try again.");
+      
+      // Check for foreign key constraint error
+      if (error?.message?.includes('foreign key constraint') || 
+          error?.message?.includes('FK_504432a198fb1db8a723c02e98e')) {
+        toast.error("The selected strategic period is invalid or has been deleted. Please select a different period.");
+      } else {
+        toast.error(error?.message || "Failed to create objective. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -300,9 +432,18 @@ export default function ObjectiveForm() {
           {/* Strategic Period */}
           <div>
             <Label className="block font-medium mb-2">Strategic Period *</Label>
+            {objectiveType === 'CORPORATE' && filteredPeriods.length < strategicPeriods.length && (
+              <p className="text-xs text-blue-600 mb-2">
+                💡 Showing annual periods (recommended for corporate objectives)
+              </p>
+            )}
             <Select
               value={strategicPeriodValue}
-              onValueChange={(val) => setStrategicPeriodValue(val)}
+              onValueChange={(val) => {
+                console.log("🔄 Period selection changed to:", val);
+                setStrategicPeriodValue(val);
+                setHasManuallySelected(true); // Mark as manually selected
+              }}
             >
               <SelectTrigger className="max-w-xl">
                 <SelectValue placeholder="Select strategic period" />
@@ -312,28 +453,54 @@ export default function ObjectiveForm() {
                   <SelectItem value="loading" disabled>
                     Loading periods...
                   </SelectItem>
+                ) : filteredPeriods.length === 0 ? (
+                  <SelectItem value="no-periods" disabled>
+                    No strategic periods found
+                  </SelectItem>
                 ) : (
-                  strategicPeriods.map((period) => (
-                    <SelectItem
-                      key={period.strategicPeriodId}
-                      value={period.strategicPeriodId}
-                    >
-                      {new Date(period.startDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        year: "numeric",
-                      })}{" "}
-                      {" - "}
-                      {new Date(period.endDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        year: "numeric",
-                      })}{" "}
-                      {" ("}
-                      {period.length} {period.length === 1 ? "year" : "years"})
-                    </SelectItem>
-                  ))
+                  filteredPeriods.map((period) => {
+                    const isActive = period.status?.toUpperCase() === 'ACTIVE';
+                    const periodTypeLabel = period.periodType?.toUpperCase() === 'ANNUAL' ? '📅' : 
+                                           period.periodType?.toUpperCase() === 'QUARTERLY' ? '📊' : 
+                                           period.periodType?.toUpperCase() === 'MONTHLY' ? '📆' : '';
+                    
+                    const displayText = `${periodTypeLabel} ${period.name} (${new Date(period.startDate).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })} - ${new Date(period.endDate).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })})${isActive ? ' • ACTIVE' : ''}`;
+                    
+                    return (
+                      <SelectItem
+                        key={period.strategicPeriodId}
+                        value={period.strategicPeriodId}
+                        className={isActive ? 'font-semibold bg-green-50' : ''}
+                      >
+                        {displayText}
+                      </SelectItem>
+                    );
+                  })
                 )}
               </SelectContent>
             </Select>
+            {filteredPeriods.length === 0 && !periodsLoading && (
+              <p className="text-xs text-red-500 mt-1">
+                No strategic periods found. Please create periods first in the strategic plan setup.
+              </p>
+            )}
+            {filteredPeriods.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                {filteredPeriods.length} period{filteredPeriods.length !== 1 ? 's' : ''} available
+                {strategicPeriodValue && ` • Selected: ${filteredPeriods.find(p => p.strategicPeriodId === strategicPeriodValue)?.name || 'Unknown'}`}
+              </p>
+            )}
+            <p className="text-xs text-gray-600 mt-2">
+              📅 Annual • 📊 Quarterly • 📆 Monthly
+            </p>
           </div>
 
           {/* Note about KPIs */}
@@ -364,6 +531,7 @@ export default function ObjectiveForm() {
               loading ||
               isSubmitting ||
               plansLoading ||
+              periodsLoading ||
               !objectiveName.trim() ||
               !objectiveType ||
               !strategicPeriodValue ||

@@ -583,11 +583,11 @@ export const useKPIFormState = ({
 
                 // Auto-distribute logic
                 let q1, q2, q3, q4;
-                if (selectedParentKPI.unitType === "PERCENT" || selectedParentKPI.unitType === "HOUR") {
-                  // PERCENT and HOUR: Same value for all quarters (don't split)
+                if (selectedParentKPI.unitType === "PERCENT") {
+                  // PERCENT: Same value for all quarters (don't split)
                   q1 = q2 = q3 = q4 = targetValue.toString();
                 } else {
-                  // NUMBER, CURRENCY, etc.: Split evenly across quarters
+                  // NUMBER, CURRENCY, RATIO, COUNT: Split evenly across quarters
                   const split = Math.round((targetValue / 4) * 100) / 100;
                   const remainder =
                     Math.round((targetValue - split * 3) * 100) / 100;

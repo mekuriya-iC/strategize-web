@@ -44,11 +44,16 @@ export default function OrganizationTemplateGrid() {
 
     setSavingId(templateId);
     try {
+      console.log("🎯 Saving org chart template:", templateId);
       await saveOrgChart([rootNode]);
       sessionStorage.setItem("selectedOrgTemplate", templateId);
+      console.log("✅ Org chart saved, navigating to /setup/strategic-plan");
       toast.success(`${selectedTemplate?.title} structure created`);
-      router.push("/setup/strategic-plan");
-    } catch {
+      
+      // Use window.location for full navigation to ensure clean state
+      window.location.href = "/setup/strategic-plan";
+    } catch (error) {
+      console.error("❌ Error saving org chart:", error);
       // error already toasted by the hook
     } finally {
       setSavingId(null);

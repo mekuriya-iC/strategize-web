@@ -7,9 +7,21 @@ interface AddNodeDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (name: string, subtitle: string) => void;
+  initialName?: string;
+  initialSubtitle?: string;
+  title?: string;
+  submitLabel?: string;
 }
 
-export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogProps) {
+export default function AddNodeDialog({ 
+  isOpen, 
+  onClose, 
+  onAdd,
+  initialName = "",
+  initialSubtitle = "",
+  title = "Add New Node",
+  submitLabel = "Add Node"
+}: AddNodeDialogProps) {
   const [name, setName] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -19,18 +31,24 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
     setMounted(true);
   }, []);
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes or set initial values when it opens
   useEffect(() => {
     if (!isOpen) {
       setName("");
       setSubtitle("");
     } else {
+      // Set initial values if provided (for edit mode)
+      setName(initialName);
+      setSubtitle(initialSubtitle);
+      
       // Focus input after a small delay
       setTimeout(() => {
         inputRef.current?.focus();
+        // Select all text for easy editing
+        inputRef.current?.select();
       }, 100);
     }
-  }, [isOpen]);
+  }, [isOpen, initialName, initialSubtitle]);
 
   const handleSubmit = () => {
     if (name.trim()) {
@@ -80,7 +98,7 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
 
         {/* Header */}
         <h2 className="text-lg font-semibold mb-4 text-[#11181C] dark:text-gray-100">
-          Add New Node
+          {title}
         </h2>
 
         {/* Form */}
@@ -134,7 +152,7 @@ export default function AddNodeDialog({ isOpen, onClose, onAdd }: AddNodeDialogP
               onClick={handleSubmit}
               className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add Node
+              {submitLabel}
             </button>
           </div>
         </div>

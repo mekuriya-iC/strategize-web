@@ -6,10 +6,12 @@ export default function StartFromScratchButton() {
   const router = useRouter();
   
   const handleStartFromScratch = () => {
+    console.log("🎯 User chose to start from scratch");
     // Store that user chose to start from scratch
     sessionStorage.setItem("selectedOrgTemplate", "scratch");
     
-    // Navigate to add org structure page
+    console.log("✅ Navigating to /org-structure/new");
+    // Navigate to add org structure page - after creating structure, user should go to /setup/strategic-plan
     router.push("/org-structure/new");
   };
 

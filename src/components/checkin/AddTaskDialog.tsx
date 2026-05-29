@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -46,6 +47,7 @@ interface AddTaskDialogProps {
   onSuccess: () => void;
   sessionId?: string;
   editingTask?: any;
+  session?: any; // Add session prop to check lock status
 }
 
 type TaskType =
@@ -80,8 +82,17 @@ export function AddTaskDialog({
   onSuccess,
   sessionId,
   editingTask,
+  session,
 }: AddTaskDialogProps) {
   const user = useAuthStore((state) => state.user);
+
+  // Check if session is locked
+  useEffect(() => {
+    if (open && session?.isLocked && !editingTask) {
+      toast.error("This session is locked. No tasks can be added or edited.");
+      onOpenChange(false);
+    }
+  }, [open, session, editingTask, onOpenChange]);
 
   // Mutations
   const [createTaskMutation, { loading: creating }] = useMutation(
@@ -147,6 +158,8 @@ export function AddTaskDialog({
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [remark, setRemark] = useState("");
+  const [isMidWeekTask, setIsMidWeekTask] = useState(false);
+  const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
 
   // ✅ Track popover open states separately so they don't conflict
   const [startDateOpen, setStartDateOpen] = useState(false);
@@ -222,6 +235,15 @@ export function AddTaskDialog({
       return;
     }
 
+    // Validation for unmet tasks being marked as done
+    const isUnmetTask = ["KPI_UNMET", "INITIATIVE_UNMET", "SELF_DEVELOPMENT_UNMET"].includes(taskType);
+    if (checkoutStatus === "DONE" && isUnmetTask) {
+      if (!attachment || !remark.trim()) {
+        toast.error("Attachment and remark are required when marking unmet tasks as done");
+        return;
+      }
+    }
+
     try {
       const taskData = {
         taskTitle: task.trim(),
@@ -242,6 +264,7 @@ export function AddTaskDialog({
         evidenceUrl: attachment?.name || null,
         challenges: remark.trim() || null,
         requiresApproval: false,
+        isMidWeekTask: isMidWeekTask,
       };
 
       if (editingTask) {
@@ -269,8 +292,10 @@ export function AddTaskDialog({
         toast.success("Task created successfully");
       }
 
-      if (taskData.taskStatus === "DONE") {
-        toast.success("Completed task added to logbook as pending approval");
+      // Show logbook message for fulfilled tasks
+      const fulfilledTypes = ["KPI_FULFILLED", "INITIATIVE_FULFILLED", "SELF_DEVELOPMENT_FULFILLED"];
+      if (fulfilledTypes.includes(taskType)) {
+        toast.success("Task added to logbook for approval");
       }
 
       onSuccess();
@@ -298,6 +323,7 @@ export function AddTaskDialog({
     setCheckoutStatus("");
     setAttachment(null);
     setRemark("");
+    setIsMidWeekTask(false);
   };
 
   return (
@@ -397,6 +423,24 @@ export function AddTaskDialog({
                 onChange={(e) => setTask(e.target.value)}
                 className="h-10 text-sm"
               />
+              
+              {/* Mid-Week Task Checkbox */}
+              {!editingTask && (
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox
+                    id="midWeekTask"
+                    checked={isMidWeekTask}
+                    onCheckedChange={(checked) => setIsMidWeekTask(checked as boolean)}
+                    disabled={!isMidWeekTask && midWeekTaskCount >= 3}
+                  />
+                  <label
+                    htmlFor="midWeekTask"
+                    className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                  >
+                    Mid-Week Task ({midWeekTaskCount}/3)
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Description */}

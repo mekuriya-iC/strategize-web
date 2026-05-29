@@ -66,6 +66,14 @@ export const GET_KPIS = gql`
           timeline
           target
         }
+        latestUpdate {
+          kpiUpdateId
+          achievedValue
+          progressPercentage
+          progressStatus
+          reportingDate
+          notes
+        }
       }
       meta {
         currentPage
@@ -241,6 +249,14 @@ export const GET_MY_KPIS = gql`
         targets {
           timeline
           target
+        }
+        latestUpdate {
+          kpiUpdateId
+          achievedValue
+          progressPercentage
+          progressStatus
+          reportingDate
+          notes
         }
       }
       meta {

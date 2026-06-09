@@ -3,7 +3,6 @@ import { gql } from '@apollo/client';
 /**
  * Employees fragment
  * Contains all common fields for employees
- * Note: departments field removed to avoid null errors for employees without departments
  */
 export const EmployeesFragment = gql`
   fragment EmployeesFragment on Employee {
@@ -17,7 +16,16 @@ export const EmployeesFragment = gql`
     phoneNumber
     picture
     startDate
+    organizationalUnit
     createdAt
     updatedAt
+    departments {
+      departmentId
+      name
+      division {
+        divisionId
+        name
+      }
+    }
   }
 `;

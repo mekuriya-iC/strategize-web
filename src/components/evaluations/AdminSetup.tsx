@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit2, Trash2, Users } from "lucide-react";
 import {
   Select,
@@ -73,10 +74,16 @@ export default function AdminSetup() {
   // Weight configuration state
   const [selectedWeightCycleId, setSelectedWeightCycleId] =
     useState<string>("");
-  const [selfWeight, setSelfWeight] = useState(20);
-  const [peerWeight, setPeerWeight] = useState(30);
-  const [supervisorWeight, setSupervisorWeight] = useState(35);
-  const [subordinateWeight, setSubordinateWeight] = useState(15);
+  
+  // Individual weight states with enable/disable
+  const [selfEnabled, setSelfEnabled] = useState(true);
+  const [selfWeight, setSelfWeight] = useState(5);
+  const [peerEnabled, setPeerEnabled] = useState(true);
+  const [peerWeight, setPeerWeight] = useState(5);
+  const [supervisorEnabled, setSupervisorEnabled] = useState(true);
+  const [supervisorWeight, setSupervisorWeight] = useState(10);
+  const [subordinateEnabled, setSubordinateEnabled] = useState(true);
+  const [subordinateWeight, setSubordinateWeight] = useState(5);
 
   const { cycles, loading: cyclesLoading } = useEvaluationCycles(
     1,
@@ -87,6 +94,13 @@ export default function AdminSetup() {
   const hasActiveCycle = cycles?.some(
     (cycle: any) => cycle.status === EvaluationCycleStatus.ACTIVE,
   );
+  
+  // Get the selected cycle to access totalEvaluationWeight (must be after cycles hook)
+  const selectedWeightCycle = cycles?.find(
+    (c: any) => c.evaluationCycleId === selectedWeightCycleId
+  );
+  const requiredWeight = selectedWeightCycle?.totalEvaluationWeight || 25;
+  
   const organizationId = getOrganizationId();
   const { coreCompetencies, loading: coreLoading } = useCoreCompetencies(
     1,
@@ -101,7 +115,7 @@ export default function AdminSetup() {
   );
   const { removeCompetency, removeIndicator, removeCoreCompetency } =
     useCompetencyMutations(organizationId);
-  const { createWeightConfig } = useEvaluationWeightMutations();
+  const { bulkUpdateWeights } = useEvaluationWeightMutations();
 
   // Group competencies by core competency
   const groupedCompetencies = competencies?.reduce((acc: any, comp: any) => {
@@ -364,40 +378,51 @@ export default function AdminSetup() {
       return;
     }
 
-    const totalWeight =
-      selfWeight + peerWeight + supervisorWeight + subordinateWeight;
-    if (totalWeight !== 100) {
-      toast.error(`Total weight must equal 100% (currently ${totalWeight}%)`);
+    // Calculate total weight from enabled evaluators only
+    const enabledWeights = [
+      selfEnabled ? selfWeight : 0,
+      peerEnabled ? peerWeight : 0,
+      supervisorEnabled ? supervisorWeight : 0,
+      subordinateEnabled ? subordinateWeight : 0,
+    ];
+    const totalWeight = enabledWeights.reduce((sum, w) => sum + w, 0);
+
+    if (Math.abs(totalWeight - requiredWeight) > 0.01) {
+      toast.error(
+        `Total weight must equal ${requiredWeight}% (currently ${totalWeight.toFixed(2)}%)`
+      );
       return;
     }
 
     try {
-      // Persist as 4 separate weight configs (one per relation type)
-      await Promise.all([
-        createWeightConfig({
-          evaluationCycleId: selectedWeightCycleId,
-          relationType: EvaluationRelationType.SELF,
-          weightPercent: selfWeight,
-        }),
-        createWeightConfig({
-          evaluationCycleId: selectedWeightCycleId,
-          relationType: EvaluationRelationType.PEER,
-          weightPercent: peerWeight,
-        }),
-        createWeightConfig({
-          evaluationCycleId: selectedWeightCycleId,
-          relationType: EvaluationRelationType.SUPERVISOR,
-          weightPercent: supervisorWeight,
-        }),
-        createWeightConfig({
-          evaluationCycleId: selectedWeightCycleId,
-          relationType: EvaluationRelationType.SUBORDINATE,
-          weightPercent: subordinateWeight,
-        }),
-      ]);
-      toast.success("Weight configuration saved successfully");
+      await bulkUpdateWeights({
+        evaluationCycleId: selectedWeightCycleId,
+        weights: [
+          {
+            relationType: EvaluationRelationType.SELF,
+            weightPercent: selfEnabled ? selfWeight : 0,
+            isEnabled: selfEnabled,
+          },
+          {
+            relationType: EvaluationRelationType.PEER,
+            weightPercent: peerEnabled ? peerWeight : 0,
+            isEnabled: peerEnabled,
+          },
+          {
+            relationType: EvaluationRelationType.SUPERVISOR,
+            weightPercent: supervisorEnabled ? supervisorWeight : 0,
+            isEnabled: supervisorEnabled,
+          },
+          {
+            relationType: EvaluationRelationType.SUBORDINATE,
+            weightPercent: subordinateEnabled ? subordinateWeight : 0,
+            isEnabled: subordinateEnabled,
+          },
+        ],
+      });
     } catch (error: any) {
-      toast.error(error.message || "Failed to save weights");
+      // Error already handled by mutation hook
+      console.error("Failed to save weights:", error);
     }
   };
 
@@ -463,6 +488,7 @@ export default function AdminSetup() {
           onOpenChange={setAssignEvaluatorsOpen}
           evaluationCycleId={selectedCycleForAssignment.evaluationCycleId}
           evaluationCycleName={selectedCycleForAssignment.name}
+          totalEvaluationWeight={selectedCycleForAssignment.totalEvaluationWeight || 25}
         />
       )}
 
@@ -743,7 +769,12 @@ export default function AdminSetup() {
               Evaluation Weights
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Configure how different evaluator types are weighted
+              Configure how different evaluator types are weighted. 
+              {selectedWeightCycle && (
+                <span className="font-medium text-indigo-600">
+                  {" "}Total must equal {requiredWeight}%
+                </span>
+              )}
             </p>
           </div>
 
@@ -770,7 +801,7 @@ export default function AdminSetup() {
                             key={cycle.evaluationCycleId}
                             value={cycle.evaluationCycleId}
                           >
-                            {cycle.name}
+                            {cycle.name} (Base Weight: {cycle.totalEvaluationWeight || 25}%)
                           </SelectItem>
                         ))
                       ) : (
@@ -784,11 +815,23 @@ export default function AdminSetup() {
 
                 {/* Weight Inputs */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
+                  {/* Self Evaluation */}
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <Checkbox
+                      id="self-enabled"
+                      checked={selfEnabled}
+                      onCheckedChange={(checked) => {
+                        setSelfEnabled(!!checked);
+                        if (!checked) setSelfWeight(0);
+                      }}
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="self-enabled"
+                        className="font-medium text-gray-900 cursor-pointer"
+                      >
                         Self Evaluation
-                      </p>
+                      </label>
                       <p className="text-sm text-gray-600">
                         Employee's self-assessment
                       </p>
@@ -798,21 +841,35 @@ export default function AdminSetup() {
                         type="number"
                         value={selfWeight}
                         onChange={(e) =>
-                          setSelfWeight(parseInt(e.target.value) || 0)
+                          setSelfWeight(parseFloat(e.target.value) || 0)
                         }
-                        className="w-20 text-center"
+                        className="w-24 text-center"
                         min="0"
-                        max="100"
+                        max={requiredWeight}
+                        step="0.01"
+                        disabled={!selfEnabled}
                       />
-                      <span className="text-gray-600">%</span>
+                      <span className="text-gray-600 w-4">%</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
+                  {/* Peer Evaluation */}
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <Checkbox
+                      id="peer-enabled"
+                      checked={peerEnabled}
+                      onCheckedChange={(checked) => {
+                        setPeerEnabled(!!checked);
+                        if (!checked) setPeerWeight(0);
+                      }}
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="peer-enabled"
+                        className="font-medium text-gray-900 cursor-pointer"
+                      >
                         Peer Evaluation
-                      </p>
+                      </label>
                       <p className="text-sm text-gray-600">
                         Feedback from colleagues
                       </p>
@@ -822,21 +879,35 @@ export default function AdminSetup() {
                         type="number"
                         value={peerWeight}
                         onChange={(e) =>
-                          setPeerWeight(parseInt(e.target.value) || 0)
+                          setPeerWeight(parseFloat(e.target.value) || 0)
                         }
-                        className="w-20 text-center"
+                        className="w-24 text-center"
                         min="0"
-                        max="100"
+                        max={requiredWeight}
+                        step="0.01"
+                        disabled={!peerEnabled}
                       />
-                      <span className="text-gray-600">%</span>
+                      <span className="text-gray-600 w-4">%</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
+                  {/* Supervisor Evaluation */}
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <Checkbox
+                      id="supervisor-enabled"
+                      checked={supervisorEnabled}
+                      onCheckedChange={(checked) => {
+                        setSupervisorEnabled(!!checked);
+                        if (!checked) setSupervisorWeight(0);
+                      }}
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="supervisor-enabled"
+                        className="font-medium text-gray-900 cursor-pointer"
+                      >
                         Supervisor Evaluation
-                      </p>
+                      </label>
                       <p className="text-sm text-gray-600">
                         Manager's assessment
                       </p>
@@ -846,21 +917,35 @@ export default function AdminSetup() {
                         type="number"
                         value={supervisorWeight}
                         onChange={(e) =>
-                          setSupervisorWeight(parseInt(e.target.value) || 0)
+                          setSupervisorWeight(parseFloat(e.target.value) || 0)
                         }
-                        className="w-20 text-center"
+                        className="w-24 text-center"
                         min="0"
-                        max="100"
+                        max={requiredWeight}
+                        step="0.01"
+                        disabled={!supervisorEnabled}
                       />
-                      <span className="text-gray-600">%</span>
+                      <span className="text-gray-600 w-4">%</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
+                  {/* Subordinate Evaluation */}
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <Checkbox
+                      id="subordinate-enabled"
+                      checked={subordinateEnabled}
+                      onCheckedChange={(checked) => {
+                        setSubordinateEnabled(!!checked);
+                        if (!checked) setSubordinateWeight(0);
+                      }}
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="subordinate-enabled"
+                        className="font-medium text-gray-900 cursor-pointer"
+                      >
                         Subordinate Evaluation
-                      </p>
+                      </label>
                       <p className="text-sm text-gray-600">
                         Feedback from direct reports
                       </p>
@@ -870,27 +955,55 @@ export default function AdminSetup() {
                         type="number"
                         value={subordinateWeight}
                         onChange={(e) =>
-                          setSubordinateWeight(parseInt(e.target.value) || 0)
+                          setSubordinateWeight(parseFloat(e.target.value) || 0)
                         }
-                        className="w-20 text-center"
+                        className="w-24 text-center"
                         min="0"
-                        max="100"
+                        max={requiredWeight}
+                        step="0.01"
+                        disabled={!subordinateEnabled}
                       />
-                      <span className="text-gray-600">%</span>
+                      <span className="text-gray-600 w-4">%</span>
                     </div>
                   </div>
 
+                  {/* Total Weight Display */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <p className="font-semibold text-gray-900">Total Weight</p>
-                    <p
-                      className={`text-2xl font-bold ${totalWeight === 100 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {totalWeight}%
-                    </p>
+                    <div>
+                      <p className="font-semibold text-gray-900">Total Weight</p>
+                      <p className="text-xs text-gray-500">
+                        Sum of enabled evaluators
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`text-2xl font-bold ${
+                          Math.abs((selfEnabled ? selfWeight : 0) + 
+                                   (peerEnabled ? peerWeight : 0) + 
+                                   (supervisorEnabled ? supervisorWeight : 0) + 
+                                   (subordinateEnabled ? subordinateWeight : 0) - 
+                                   requiredWeight) < 0.01
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {((selfEnabled ? selfWeight : 0) + 
+                          (peerEnabled ? peerWeight : 0) + 
+                          (supervisorEnabled ? supervisorWeight : 0) + 
+                          (subordinateEnabled ? subordinateWeight : 0)).toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Required: {requiredWeight}%
+                      </p>
+                    </div>
                   </div>
-                  {totalWeight !== 100 && (
+                  {Math.abs((selfEnabled ? selfWeight : 0) + 
+                           (peerEnabled ? peerWeight : 0) + 
+                           (supervisorEnabled ? supervisorWeight : 0) + 
+                           (subordinateEnabled ? subordinateWeight : 0) - 
+                           requiredWeight) >= 0.01 && (
                     <p className="text-sm text-red-600">
-                      Total weight must equal 100%
+                      Total weight must equal {requiredWeight}%
                     </p>
                   )}
                 </div>
@@ -900,7 +1013,14 @@ export default function AdminSetup() {
                 <Button
                   className="bg-indigo-600 hover:bg-indigo-700"
                   onClick={handleSaveWeights}
-                  disabled={!selectedWeightCycleId || totalWeight !== 100}
+                  disabled={
+                    !selectedWeightCycleId || 
+                    Math.abs((selfEnabled ? selfWeight : 0) + 
+                            (peerEnabled ? peerWeight : 0) + 
+                            (supervisorEnabled ? supervisorWeight : 0) + 
+                            (subordinateEnabled ? subordinateWeight : 0) - 
+                            requiredWeight) >= 0.01
+                  }
                 >
                   Save Weights
                 </Button>

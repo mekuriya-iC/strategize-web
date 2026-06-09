@@ -63,7 +63,6 @@ export default function CreateIndicatorDialog({
     try {
       await createIndicator({
         competencyId,
-        organizationId,
         description,
         ratingScaleMin: min,
         ratingScaleMax: max,

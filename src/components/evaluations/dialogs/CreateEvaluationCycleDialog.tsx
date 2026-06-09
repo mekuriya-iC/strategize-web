@@ -33,6 +33,7 @@ export default function CreateEvaluationCycleDialog({
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [totalEvaluationWeight, setTotalEvaluationWeight] = useState("25");
   const [loading, setLoading] = useState(false);
 
   const { createCycle } = useEvaluationCycleMutations();
@@ -57,6 +58,12 @@ export default function CreateEvaluationCycleDialog({
       return;
     }
 
+    const weight = parseFloat(totalEvaluationWeight);
+    if (isNaN(weight) || weight < 1 || weight > 100) {
+      toast.error("Total evaluation weight must be between 1% and 100%");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -67,6 +74,7 @@ export default function CreateEvaluationCycleDialog({
         endDate,
         status: EvaluationCycleStatus.ACTIVE,
         organizationId: getOrganizationId(),
+        totalEvaluationWeight: parseFloat(totalEvaluationWeight),
       });
 
       toast.success("Evaluation cycle created successfully");
@@ -84,6 +92,7 @@ export default function CreateEvaluationCycleDialog({
     setDescription("");
     setStartDate("");
     setEndDate("");
+    setTotalEvaluationWeight("25");
   };
 
   return (
@@ -144,6 +153,29 @@ export default function CreateEvaluationCycleDialog({
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="totalEvaluationWeight">
+              Total 360 Evaluation Weight <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="totalEvaluationWeight"
+                type="number"
+                value={totalEvaluationWeight}
+                onChange={(e) => setTotalEvaluationWeight(e.target.value)}
+                min="1"
+                max="100"
+                step="0.01"
+                required
+                className="flex-1"
+              />
+              <span className="text-gray-600">%</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Total weight for 360 evaluation. All enabled evaluator types must sum to this value. (Default: 25%)
+            </p>
           </div>
 
           <DialogFooter>

@@ -55,10 +55,7 @@ export const useEvaluationCycleMutations = () => {
     onError: (error) => {
       toast.error(`Failed to create cycle: ${error.message}`);
     },
-    refetchQueries: [{ 
-      query: GET_EVALUATION_CYCLES,
-      variables: { page: 1, limit: 20, search: '' }
-    }],
+    refetchQueries: ['GetEvaluationCycles'],
     awaitRefetchQueries: true,
   });
 
@@ -66,10 +63,7 @@ export const useEvaluationCycleMutations = () => {
     onError: (error) => {
       toast.error(`Failed to update cycle: ${error.message}`);
     },
-    refetchQueries: [{ 
-      query: GET_EVALUATION_CYCLES,
-      variables: { page: 1, limit: 20, search: '' }
-    }],
+    refetchQueries: ['GetEvaluationCycles'],
     awaitRefetchQueries: true,
   });
 
@@ -77,10 +71,7 @@ export const useEvaluationCycleMutations = () => {
     onError: (error) => {
       toast.error(`Failed to remove cycle: ${error.message}`);
     },
-    refetchQueries: [{ 
-      query: GET_EVALUATION_CYCLES,
-      variables: { page: 1, limit: 20, search: '' }
-    }],
+    refetchQueries: ['GetEvaluationCycles'],
     awaitRefetchQueries: true,
   });
 

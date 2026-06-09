@@ -30,16 +30,21 @@ interface AssignEvaluatorsDialogProps {
   onOpenChange: (open: boolean) => void;
   evaluationCycleId: string;
   evaluationCycleName: string;
+  totalEvaluationWeight: number; // Add this prop
 }
 
 interface EmployeeAssignment {
   employee: any;
   assignSelf: boolean;
+  selfWeight: number;
   // If true, we assign exactly one supervisor evaluator (supervisorEvaluatorId)
   assignSupervisor: boolean;
   supervisorEvaluatorId?: string | null;
+  supervisorWeight: number;
   peers: string[];
+  peerWeight: number;
   subordinates: string[];
+  subordinateWeight: number;
 }
 
 export default function AssignEvaluatorsDialog({
@@ -47,6 +52,7 @@ export default function AssignEvaluatorsDialog({
   onOpenChange,
   evaluationCycleId,
   evaluationCycleName,
+  totalEvaluationWeight = 25, // Default to 25%
 }: AssignEvaluatorsDialogProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
@@ -94,19 +100,25 @@ export default function AssignEvaluatorsDialog({
   useEffect(() => {
     if (employees.length > 0 && Object.keys(assignments).length === 0) {
       const initialAssignments: Record<string, EmployeeAssignment> = {};
+      const defaultWeight = totalEvaluationWeight / 4; // Equal distribution by default
+      
       employees.forEach((emp: any) => {
         initialAssignments[emp.employeeId] = {
           employee: emp,
-          assignSelf: true, // Default: everyone does self-assessment
+          assignSelf: true,
+          selfWeight: defaultWeight,
           assignSupervisor: false,
           supervisorEvaluatorId: null,
+          supervisorWeight: defaultWeight,
           peers: [],
+          peerWeight: defaultWeight,
           subordinates: [],
+          subordinateWeight: defaultWeight,
         };
       });
       setAssignments(initialAssignments);
     }
-  }, [employees, assignments]);
+  }, [employees, assignments, totalEvaluationWeight]);
 
   const handleToggleSelf = (employeeId: string) => {
     setAssignments((prev) => ({
@@ -187,8 +199,78 @@ export default function AssignEvaluatorsDialog({
     });
   };
 
+  // Weight setters
+  const handleSetSelfWeight = (employeeId: string, weight: number) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        selfWeight: weight,
+      },
+    }));
+  };
+
+  const handleSetSupervisorWeight = (employeeId: string, weight: number) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        supervisorWeight: weight,
+      },
+    }));
+  };
+
+  const handleSetPeerWeight = (employeeId: string, weight: number) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        peerWeight: weight,
+      },
+    }));
+  };
+
+  const handleSetSubordinateWeight = (employeeId: string, weight: number) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        subordinateWeight: weight,
+      },
+    }));
+  };
+
+  // Weight calculation helpers
+  const getEmployeeWeightSum = (employeeId: string): number => {
+    const assignment = assignments[employeeId];
+    if (!assignment) return 0;
+
+    let sum = 0;
+    if (assignment.assignSelf) sum += assignment.selfWeight;
+    if (assignment.assignSupervisor && assignment.supervisorEvaluatorId) {
+      sum += assignment.supervisorWeight;
+    }
+    if (assignment.peers.length > 0) sum += assignment.peerWeight;
+    if (assignment.subordinates.length > 0) sum += assignment.subordinateWeight;
+
+    return Math.round(sum * 100) / 100;
+  };
+
+  const isWeightValid = (employeeId: string): boolean => {
+    const sum = getEmployeeWeightSum(employeeId);
+    return Math.abs(sum - totalEvaluationWeight) < 0.01;
+  };
+
   const handleBulkAssign = async (evaluateeId?: string) => {
     setSaving(true);
+    
+    // Validate weights before sending
+    if (evaluateeId && !isWeightValid(evaluateeId)) {
+      toast.error(`Weight sum must equal ${totalEvaluationWeight}%`);
+      setSaving(false);
+      return;
+    }
+
     let successCount = 0;
     let errorCount = 0;
 
@@ -200,9 +282,17 @@ export default function AssignEvaluatorsDialog({
       for (const [id, assignment] of Object.entries(targetAssignments)) {
         if (!assignment) continue;
 
+        // Validate weight for each employee
+        if (!isWeightValid(id)) {
+          toast.error(`${assignment.employee.fullName}: Weight sum must equal ${totalEvaluationWeight}%`);
+          errorCount++;
+          continue;
+        }
+
         const assessmentsToCreate: Array<{
           evaluatorUserId: string;
           relationType: EvaluationRelationType;
+          weightPercent: number;
         }> = [];
 
         // Self assessment
@@ -210,6 +300,7 @@ export default function AssignEvaluatorsDialog({
           assessmentsToCreate.push({
             evaluatorUserId: id,
             relationType: EvaluationRelationType.SELF,
+            weightPercent: assignment.selfWeight,
           });
         }
 
@@ -218,23 +309,30 @@ export default function AssignEvaluatorsDialog({
           assessmentsToCreate.push({
             evaluatorUserId: assignment.supervisorEvaluatorId,
             relationType: EvaluationRelationType.SUPERVISOR,
+            weightPercent: assignment.supervisorWeight,
           });
         }
 
         // Peer assessments
-        for (const peerId of assignment.peers) {
-          assessmentsToCreate.push({
-            evaluatorUserId: peerId,
-            relationType: EvaluationRelationType.PEER,
-          });
+        if (assignment.peers.length > 0) {
+          for (const peerId of assignment.peers) {
+            assessmentsToCreate.push({
+              evaluatorUserId: peerId,
+              relationType: EvaluationRelationType.PEER,
+              weightPercent: assignment.peerWeight,
+            });
+          }
         }
 
         // Subordinate assessments
-        for (const subordinateId of assignment.subordinates) {
-          assessmentsToCreate.push({
-            evaluatorUserId: subordinateId,
-            relationType: EvaluationRelationType.SUBORDINATE,
-          });
+        if (assignment.subordinates.length > 0) {
+          for (const subordinateId of assignment.subordinates) {
+            assessmentsToCreate.push({
+              evaluatorUserId: subordinateId,
+              relationType: EvaluationRelationType.SUBORDINATE,
+              weightPercent: assignment.subordinateWeight,
+            });
+          }
         }
 
         // Create all assessments for this employee
@@ -247,6 +345,7 @@ export default function AssignEvaluatorsDialog({
                   evaluatorUserId: assessment.evaluatorUserId,
                   evaluationCycleId,
                   relationType: assessment.relationType,
+                  weightPercent: assessment.weightPercent,
                 },
               },
             });
@@ -262,7 +361,7 @@ export default function AssignEvaluatorsDialog({
       }
 
       if (errorCount === 0) {
-        toast.success(`Successfully assigned evaluators`);
+        toast.success(`Successfully assigned evaluators with weights`);
         if (evaluateeId) {
           setStep("select");
           setSelectedEmployeeId(null);
@@ -311,6 +410,9 @@ export default function AssignEvaluatorsDialog({
           <DialogTitle>Assign Evaluators - {evaluationCycleName}</DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
             Configure who evaluates whom for this evaluation cycle
+            <span className="font-medium text-indigo-600">
+              {" "}(Total Weight: {totalEvaluationWeight}%)
+            </span>
           </p>
         </DialogHeader>
 
@@ -467,7 +569,7 @@ export default function AssignEvaluatorsDialog({
                   <Label className="text-base font-semibold">
                     Self Assessment
                   </Label>
-                  <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Checkbox
                       id={`self-${selectedEmployeeId}`}
                       checked={
@@ -482,10 +584,29 @@ export default function AssignEvaluatorsDialog({
                     />
                     <label
                       htmlFor={`self-${selectedEmployeeId}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                     >
                       Assign self-assessment
                     </label>
+                    {selectedEmployeeId && assignments[selectedEmployeeId]?.assignSelf && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={assignments[selectedEmployeeId]?.selfWeight || 0}
+                          onChange={(e) =>
+                            handleSetSelfWeight(
+                              selectedEmployeeId,
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-20 text-center"
+                          min="0"
+                          max={totalEvaluationWeight}
+                          step="0.01"
+                        />
+                        <span className="text-sm text-gray-600">%</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -501,7 +622,7 @@ export default function AssignEvaluatorsDialog({
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Checkbox
                           id={`sup-${selectedEmployeeId}`}
                           checked={
@@ -524,6 +645,25 @@ export default function AssignEvaluatorsDialog({
                         >
                           Assign supervisor assessment
                         </label>
+                        {selectedEmployeeId && assignments[selectedEmployeeId]?.assignSupervisor && (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={assignments[selectedEmployeeId]?.supervisorWeight || 0}
+                              onChange={(e) =>
+                                handleSetSupervisorWeight(
+                                  selectedEmployeeId,
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 text-center"
+                              min="0"
+                              max={totalEvaluationWeight}
+                              step="0.01"
+                            />
+                            <span className="text-sm text-gray-600">%</span>
+                          </div>
+                        )}
                       </div>
 
                       {selectedEmployeeId &&
@@ -573,9 +713,30 @@ export default function AssignEvaluatorsDialog({
 
                 {/* Peer Assessments */}
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">
-                    Peer Assessments
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">
+                      Peer Assessments
+                    </Label>
+                    {selectedEmployeeId && assignments[selectedEmployeeId]?.peers.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={assignments[selectedEmployeeId]?.peerWeight || 0}
+                          onChange={(e) =>
+                            handleSetPeerWeight(
+                              selectedEmployeeId,
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-20 text-center"
+                          min="0"
+                          max={totalEvaluationWeight}
+                          step="0.01"
+                        />
+                        <span className="text-sm text-gray-600">%</span>
+                      </div>
+                    )}
+                  </div>
 
                   {peerOptions.length === 0 ? (
                     <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
@@ -623,12 +784,35 @@ export default function AssignEvaluatorsDialog({
 
                 {/* Subordinate Assessments */}
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">
-                    Subordinate Assessments (360°)
-                  </Label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Select direct reports to provide upward feedback
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-semibold">
+                        Subordinate Assessments (360°)
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Select direct reports to provide upward feedback
+                      </p>
+                    </div>
+                    {selectedEmployeeId && assignments[selectedEmployeeId]?.subordinates.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={assignments[selectedEmployeeId]?.subordinateWeight || 0}
+                          onChange={(e) =>
+                            handleSetSubordinateWeight(
+                              selectedEmployeeId,
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-20 text-center"
+                          min="0"
+                          max={totalEvaluationWeight}
+                          step="0.01"
+                        />
+                        <span className="text-sm text-gray-600">%</span>
+                      </div>
+                    )}
+                  </div>
 
                   {subordinateOptions.length === 0 ? (
                     <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
@@ -674,6 +858,40 @@ export default function AssignEvaluatorsDialog({
                     </div>
                   )}
                 </div>
+
+                {/* Weight Summary */}
+                {selectedEmployeeId && (
+                  <div className="mt-6 p-4 border rounded-lg bg-white">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">Total Weight</span>
+                      <span
+                        className={`text-2xl font-bold ${
+                          isWeightValid(selectedEmployeeId)
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {getEmployeeWeightSum(selectedEmployeeId)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Required:</span>
+                      <span className="font-medium">{totalEvaluationWeight}%</span>
+                    </div>
+                    {!isWeightValid(selectedEmployeeId) && (
+                      <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        Weight sum must equal {totalEvaluationWeight}%
+                      </p>
+                    )}
+                    {isWeightValid(selectedEmployeeId) && (
+                      <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Weight configuration is valid
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </div>
@@ -692,17 +910,25 @@ export default function AssignEvaluatorsDialog({
             </div>
           ) : (
             <div className="flex w-full justify-between items-center">
-              <p className="text-sm text-gray-500 italic">
-                {getEmployeeAssignmentCount(selectedEmployeeId || "")} evaluators
-                selected for {selectedEmployee?.fullName}
-              </p>
+              <div className="text-sm">
+                <p className="text-gray-500">
+                  {getEmployeeAssignmentCount(selectedEmployeeId || "")} evaluators selected
+                </p>
+                {selectedEmployeeId && (
+                  <p className={`font-medium ${
+                    isWeightValid(selectedEmployeeId) ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    Weight: {getEmployeeWeightSum(selectedEmployeeId)}% / {totalEvaluationWeight}%
+                  </p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep("select")}>
                   Back
                 </Button>
                 <Button
                   className="bg-indigo-600 hover:bg-indigo-700"
-                  disabled={saving}
+                  disabled={saving || (selectedEmployeeId ? !isWeightValid(selectedEmployeeId) : false)}
                   onClick={() => handleBulkAssign(selectedEmployeeId || "")}
                 >
                   {saving ? "Saving..." : "Save & Confirm"}

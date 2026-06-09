@@ -66,6 +66,7 @@ export default function CreateIndicatorDialog({
         description,
         ratingScaleMin: min,
         ratingScaleMax: max,
+        organizationId: getOrganizationId(),
       });
 
       toast.success("Indicator created successfully");

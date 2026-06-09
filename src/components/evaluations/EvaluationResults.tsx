@@ -345,11 +345,7 @@ export default function EvaluationResults() {
                 No Results Yet
               </h3>
               <p className="text-gray-500">
-                {viewMode === "received"
-                  ? targetEmployeeId === user?.employeeId
-                    ? "Results will be available after you complete your evaluations and they are reviewed."
-                    : "No completed evaluations found for this employee."
-                  : "You haven't completed any peer evaluations in this cycle yet."}
+                You haven't completed any peer evaluations in this cycle yet.
               </p>
             </div>
           </CardContent>
@@ -375,111 +371,18 @@ export default function EvaluationResults() {
                         : "text-red-600"
                 }`}
               >
-                {viewMode === "received"
-                  ? overallScore >= 4.5
-                    ? "Exceeds Expectations"
-                    : overallScore >= 3.5
-                      ? "Meets Expectations"
-                      : overallScore >= 2.5
-                        ? "Needs Improvement"
-                        : "Below Expectations"
-                  : selectedPeerAssessmentId
-                    ? `Overall Rating given to ${
-                        completedAssessments.find(
-                          (a: any) =>
-                            a.competencyAssessmentId ===
-                            selectedPeerAssessmentId,
-                        )?.evaluatee.fullName || "selected employee"
-                      }`
-                    : "Select an evaluation to view ratings"}
+                {selectedPeerAssessmentId
+                  ? `Overall Rating given to ${
+                      completedAssessments.find(
+                        (a: any) =>
+                          a.competencyAssessmentId ===
+                          selectedPeerAssessmentId,
+                      )?.evaluatee.fullName || "selected employee"
+                    }`
+                  : "Select an evaluation to view ratings"}
               </p>
-              {viewMode === "received" && completedAssessments.length < 4 && (
-                <p className="text-xs text-amber-600 mt-2 bg-amber-50 inline-block px-3 py-1 rounded-full border border-amber-100">
-                  Note: This is a partial score based on{" "}
-                  {completedAssessments.length} completed evaluation
-                  {completedAssessments.length !== 1 ? "s" : ""}.
-                </p>
-              )}
             </div>
           </div>
-
-          {/* Weighted 360 Score Card - Only for received mode */}
-          {viewMode === "received" && total360Weight > 0 && (
-            <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-teal-50">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-green-800 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  360° Evaluation Weighted Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="inline-flex items-baseline gap-2">
-                      <span className="text-5xl font-bold text-green-600">
-                        {weighted360Score.toFixed(2)}%
-                      </span>
-                      <span className="text-2xl text-gray-600">
-                        out of {total360Weight.toFixed(1)}%
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                      Your weighted 360 evaluation contribution to overall performance
-                    </p>
-                  </div>
-
-                  {/* Individual evaluator breakdown */}
-                  {effectiveWeights && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                      {columns.map((col) => {
-                        const weight = effectiveWeights[col] || 0;
-                        if (weight === 0) return null;
-                        
-                        // Calculate average score for this relation type across all competencies
-                        const avgScore = competencyScores.length > 0
-                          ? competencyScores.reduce((sum, c) => sum + (c.breakdown[col] || 0), 0) / competencyScores.length
-                          : 0;
-                        
-                        // Convert from 0-5 scale to percentage, then multiply by weight
-                        const weightedContribution = (avgScore / 5) * weight;
-
-                        return (
-                          <div
-                            key={col}
-                            className="bg-white rounded-lg p-3 border border-green-100 shadow-sm"
-                          >
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">
-                              {relationLabel(col)}
-                            </p>
-                            <p className="text-lg font-bold text-green-600">
-                              {weightedContribution.toFixed(2)}%
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {avgScore.toFixed(1)}/5 × {weight}%
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Progress towards maximum</span>
-                      <span>{((weighted360Score / total360Weight) * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-green-500 to-teal-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min((weighted360Score / total360Weight) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Core Competency Scores Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -641,24 +544,11 @@ export default function EvaluationResults() {
                         <th className="text-left py-3 px-2 font-medium text-gray-500 uppercase text-xs">
                           Core Competency
                         </th>
-                        {viewMode === "received" ? (
-                          <>
-                            {columns.map((col) => (
-                              <th
-                                key={col}
-                                className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs"
-                              >
-                                {relationLabel(col)}
-                              </th>
-                            ))}
-                          </>
-                        ) : (
-                          <th className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs">
-                            Rating I Gave
-                          </th>
-                        )}
                         <th className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs">
-                          {viewMode === "received" ? "Wtd." : "Score"}
+                          Rating I Gave
+                        </th>
+                        <th className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs">
+                          Score
                         </th>
                       </tr>
                     </thead>
@@ -673,25 +563,9 @@ export default function EvaluationResults() {
                               {coreCompetency.name}
                             </span>
                           </td>
-                          {viewMode === "received" ? (
-                            <>
-                              {columns.map((col) => {
-                                const v = coreCompetency.breakdown[col];
-                                return (
-                                  <td
-                                    key={`${coreCompetency.name}-${col}`}
-                                    className="text-center py-3 px-2 text-gray-900"
-                                  >
-                                    {v > 0 ? v.toFixed(1) : "-"}
-                                  </td>
-                                );
-                              })}
-                            </>
-                          ) : (
-                            <td className="text-center py-3 px-2 text-gray-900 font-medium">
-                              {coreCompetency.breakdown.given.toFixed(1)}
-                            </td>
-                          )}
+                          <td className="text-center py-3 px-2 text-gray-900 font-medium">
+                            {coreCompetency.breakdown.given.toFixed(1)}
+                          </td>
                           <td className="text-center py-3 px-2">
                             <span
                               className={`font-semibold ${coreCompetency.color}`}
@@ -703,24 +577,12 @@ export default function EvaluationResults() {
                       ))}
                     </tbody>
                   </table>
-                  {viewMode === "received" && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 font-medium mb-1 uppercase">
-                        Applied Weights
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {weightsSummaryText || "Weights unavailable"}
-                      </p>
-                    </div>
-                  )}
-                  {viewMode === "given" && (
-                    <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                      <p className="text-xs text-indigo-700 font-medium">
-                        These are the ratings you submitted for this peer during
-                        the current evaluation cycle.
-                      </p>
-                    </div>
-                  )}
+                  <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <p className="text-xs text-indigo-700 font-medium">
+                      These are the ratings you submitted for this peer during
+                      the current evaluation cycle.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -1,0 +1,91 @@
+import { gql } from "@apollo/client";
+
+/**
+ * KPI Scorecard Queries
+ */
+
+export const GET_TOTAL_SCORECARD_SCORE = gql`
+  query GetTotalScorecardScore(
+    $level: ScorecardLevel!
+    $entityId: ID!
+    $periodId: ID!
+  ) {
+    totalScorecardScore(
+      level: $level
+      entityId: $entityId
+      periodId: $periodId
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        aggregatedKpiScoreId
+        kpi {
+          kpiId
+          name
+          description
+        }
+        level
+        actualValue
+        targetValue
+        weight
+        cap
+        achievementRate
+        cappedRate
+        score
+        calculatedAt
+      }
+    }
+  }
+`;
+
+export const GET_KPI_SCORES_BY_ENTITY = gql`
+  query GetKpiScoresByEntity(
+    $level: ScorecardLevel!
+    $entityId: ID!
+    $periodId: ID!
+  ) {
+    kpiScoresByEntity(
+      level: $level
+      entityId: $entityId
+      periodId: $periodId
+    ) {
+      aggregatedKpiScoreId
+      kpi {
+        kpiId
+        name
+        description
+        measurementUnit
+      }
+      level
+      actualValue
+      targetValue
+      weight
+      cap
+      achievementRate
+      cappedRate
+      score
+      calculatedAt
+    }
+  }
+`;
+
+export const GET_CASCADE_MAPPINGS_BY_PERIOD = gql`
+  query GetCascadeMappingsByPeriod($periodId: ID!) {
+    cascadeMappingsByPeriod(periodId: $periodId) {
+      kpiCascadeMappingId
+      sourceKpi {
+        kpiId
+        name
+      }
+      sourceLevel
+      targetKpi {
+        kpiId
+        name
+      }
+      targetLevel
+      isActive
+      createdAt
+    }
+  }
+`;

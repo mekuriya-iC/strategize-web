@@ -106,12 +106,12 @@ const POSTPONED_TASK_STATUSES = new Set(["POSTPONED", "DEFERRED"]);
 const APPROVED_LOGBOOK_STATUSES = new Set(["APPROVED"]);
 const PENDING_LOGBOOK_STATUSES = new Set(["SUBMITTED", "PENDING", "DRAFT"]);
 const REJECTED_LOGBOOK_STATUSES = new Set(["REJECTED"]);
+// NOTE: These are actual KPI *progress* statuses, NOT definition workflow statuses.
+// KPI workflow statuses (NOT_SUBMITTED, PENDING, APPROVED, REJECTED) should NOT be here.
 const GOOD_KPI_STATUSES = new Set([
   "ON_TRACK",
   "ACHIEVED",
   "COMPLETED",
-  "ACTIVE",
-  "APPROVED",
 ]);
 const RISK_KPI_STATUSES = new Set([
   "AT_RISK",
@@ -119,6 +119,13 @@ const RISK_KPI_STATUSES = new Set([
   "OFF_TRACK",
   "MISSED",
   "OVERDUE",
+]);
+// Workflow/definition statuses that should NOT be treated as progress indicators
+const KPI_WORKFLOW_STATUSES = new Set([
+  "NOT_SUBMITTED",
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
 ]);
 
 const COLORS = {
@@ -180,13 +187,30 @@ function getKpiCompletion(kpi: UnknownRecord) {
     return Math.max(0, Math.min(100, explicitProgress));
   }
 
+  // Try to calculate progress from achieved value vs target
+  if (latestUpdate?.achievedValue != null && kpi.targetValue) {
+    const baseline = Number(kpi.baselineValue) || 0;
+    const target = Number(kpi.targetValue);
+    const achieved = Number(latestUpdate.achievedValue);
+    const range = target - baseline;
+    if (range !== 0) {
+      const calculated = ((achieved - baseline) / range) * 100;
+      return Math.max(0, Math.min(100, calculated));
+    }
+  }
+
+  // Check for actual progress statuses (NOT workflow statuses like APPROVED/PENDING)
   const status = normalizeStatus(
     getString(kpi, "targetStatus") || getString(kpi, "status"),
   );
-  if (GOOD_KPI_STATUSES.has(status)) return 100;
-  if (RISK_KPI_STATUSES.has(status)) return 40;
-  if (status === "NOT_STARTED" || status === "DRAFT") return 0;
-  return 50;
+  // Only map genuine progress statuses, not workflow ones
+  if (!KPI_WORKFLOW_STATUSES.has(status)) {
+    if (GOOD_KPI_STATUSES.has(status)) return 100;
+    if (RISK_KPI_STATUSES.has(status)) return 40;
+  }
+
+  // No progress data — KPI has not been started
+  return 0;
 }
 
 function isInCurrentPeriod(date?: string | null) {
@@ -533,16 +557,20 @@ export default function PerformanceReport({
     const kpiCompletionValues = scopedKpis.map(getKpiCompletion);
     const averageKpiCompletion = average(kpiCompletionValues);
     const kpisOnTrack = scopedKpis.filter((kpi) => {
-      const status = normalizeStatus(
-        getString(kpi, "targetStatus") || getString(kpi, "status"),
+      const latestUpdate = getNestedRecord(kpi, "latestUpdate");
+      const progressStatus = normalizeStatus(
+        getString(latestUpdate, "progressStatus"),
       );
-      return GOOD_KPI_STATUSES.has(status) || getKpiCompletion(kpi) >= 100;
+      // Only count as on-track if there's actual progress evidence
+      return GOOD_KPI_STATUSES.has(progressStatus) || getKpiCompletion(kpi) >= 100;
     }).length;
     const kpisAtRisk = scopedKpis.filter((kpi) => {
-      const status = normalizeStatus(
-        getString(kpi, "targetStatus") || getString(kpi, "status"),
+      const latestUpdate = getNestedRecord(kpi, "latestUpdate");
+      const progressStatus = normalizeStatus(
+        getString(latestUpdate, "progressStatus"),
       );
-      return RISK_KPI_STATUSES.has(status) || getKpiCompletion(kpi) < 50;
+      return RISK_KPI_STATUSES.has(progressStatus) ||
+        (getKpiCompletion(kpi) > 0 && getKpiCompletion(kpi) < 50);
     }).length;
 
     const objectiveStatusCounts = scopedObjectives.reduce<{
@@ -690,10 +718,12 @@ export default function PerformanceReport({
       );
       metric.objectives = employeeObjectives.length;
       metric.atRiskKpis = employeeKpis.filter((kpi) => {
-        const status = normalizeStatus(
-          getString(kpi, "targetStatus") || getString(kpi, "status"),
+        const latestUpdate = getNestedRecord(kpi, "latestUpdate");
+        const progressStatus = normalizeStatus(
+          getString(latestUpdate, "progressStatus"),
         );
-        return RISK_KPI_STATUSES.has(status) || getKpiCompletion(kpi) < 50;
+        return RISK_KPI_STATUSES.has(progressStatus) ||
+          (getKpiCompletion(kpi) > 0 && getKpiCompletion(kpi) < 50);
       }).length;
       metric.pendingLogbooks = employeeLogbooks.filter((entry) =>
         PENDING_LOGBOOK_STATUSES.has(

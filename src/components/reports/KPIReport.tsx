@@ -69,8 +69,19 @@ export default function KPIReport({ onExport }: KPIReportProps) {
       return Math.max(0, Math.min(100, explicitProgress));
     }
 
-    const status = (kpi.targetStatus || kpi.status || "UNKNOWN").toUpperCase();
-    if (status === "APPROVED" || status === "COMPLETED") return 100;
+    // Try to calculate progress from achieved value vs target
+    if (latestUpdate?.achievedValue != null && kpi.targetValue) {
+      const baseline = kpi.baselineValue || 0;
+      const target = kpi.targetValue;
+      const achieved = latestUpdate.achievedValue;
+      const range = target - baseline;
+      if (range !== 0) {
+        const calculated = ((achieved - baseline) / range) * 100;
+        return Math.max(0, Math.min(100, calculated));
+      }
+    }
+
+    // No progress data available — KPI has not been started
     return 0;
   };
 
@@ -79,9 +90,14 @@ export default function KPIReport({ onExport }: KPIReportProps) {
     if (latestUpdate?.progressStatus) {
       return latestUpdate.progressStatus.toUpperCase();
     }
-    const status = (kpi.targetStatus || kpi.status || "NOT_STARTED").toUpperCase();
-    if (status === "APPROVED") return "COMPLETED";
-    return status;
+
+    // Derive status from actual completion when no explicit progress status exists
+    // NOTE: kpi.status / kpi.targetStatus are definition approval statuses
+    // (NOT_SUBMITTED, PENDING, APPROVED, REJECTED) — NOT progress indicators
+    const completion = getKpiCompletion(kpi);
+    if (completion >= 100) return "COMPLETED";
+    if (completion > 0) return "ON_TRACK";
+    return "NOT_STARTED";
   };
 
   const getStatusBadgeStyles = (status: string) => {
@@ -498,7 +514,7 @@ export default function KPIReport({ onExport }: KPIReportProps) {
                 const completion = getKpiCompletion(kpi);
                 const progressStatus = getKpiProgressStatus(kpi);
                 const latestUpdate = kpi.latestUpdate;
-                const achieved = latestUpdate?.achievedValue || kpi.baselineValue || 0;
+                const achieved = latestUpdate != null ? (latestUpdate.achievedValue ?? 0) : 0;
                 const target = kpi.targetValue;
                 const baseline = kpi.baselineValue || 0;
                 

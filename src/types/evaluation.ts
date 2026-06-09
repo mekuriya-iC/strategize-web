@@ -169,6 +169,7 @@ export interface CreateEvaluationCycleInput {
   status?: EvaluationCycleStatus;
   strategicPeriodId?: string;
   organizationId: string;
+  totalEvaluationWeight?: number;
 }
 
 export interface UpdateEvaluationCycleInput {

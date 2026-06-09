@@ -117,7 +117,7 @@ export default function Employee360Results() {
 
     try {
       console.log('[360 Results] Starting calculation with assessments:', submittedAssessments.length);
-      console.log('[360 Results] Assessment details:', submittedAssessments.map(a => ({
+      console.log('[360 Results] Assessment details:', submittedAssessments.map((a: any) => ({
         id: a.competencyAssessmentId,
         type: a.relationType,
         weight: a.weightPercent,

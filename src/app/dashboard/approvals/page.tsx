@@ -46,10 +46,11 @@ export default function ApprovalsPage() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
   // Get logbook entries for approval
+  // NOTE: Backend returns ALL entries (filtered by status), frontend should filter by hierarchy
+  // For now, we fetch all SUBMITTED entries and the user's role/permissions determine what they can approve
   const { data: logbookData, loading: logbookLoading, refetch: refetchLogbook } = useQuery(GET_LOGBOOK_ENTRIES, {
     variables: {
       entryStatus: logbookStatusFilter !== "all" ? logbookStatusFilter.toUpperCase() : undefined,
-      approverUserId: user?.employeeId,
       limit: 100,
       page: 1,
     },

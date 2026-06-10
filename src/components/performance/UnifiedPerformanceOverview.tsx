@@ -99,7 +99,7 @@ export default function UnifiedPerformanceOverview({
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {performanceData.employee.title || "No title"} 
-            {performanceData.employee.department && ` • ${performanceData.employee.department.name}`}
+            {performanceData.employee.departments?.[0] && ` • ${performanceData.employee.departments[0].name}`}
           </p>
         </div>
       </div>

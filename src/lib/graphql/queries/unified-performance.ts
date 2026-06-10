@@ -2,11 +2,11 @@ import { gql } from "@apollo/client";
 
 export const GET_EMPLOYEE_PERFORMANCE = gql`
   query GetEmployeePerformance(
-    $employeeId: String!
-    $organizationId: String!
-    $strategicPeriodId: String
-    $departmentId: String
-    $divisionId: String
+    $employeeId: ID!
+    $organizationId: ID!
+    $strategicPeriodId: ID
+    $departmentId: ID
+    $divisionId: ID
   ) {
     employeePerformance: unifiedEmployeePerformance(
       filters: {
@@ -20,12 +20,11 @@ export const GET_EMPLOYEE_PERFORMANCE = gql`
       employeeId
       employee {
         employeeId
-        userId
         fullName
         email
         title
         picture
-        department {
+        departments {
           departmentId
           name
         }
@@ -71,10 +70,10 @@ export const GET_EMPLOYEE_PERFORMANCE = gql`
 
 export const GET_TEAM_PERFORMANCE = gql`
   query GetTeamPerformance(
-    $organizationId: String!
-    $strategicPeriodId: String
-    $departmentId: String
-    $divisionId: String
+    $organizationId: ID!
+    $strategicPeriodId: ID
+    $departmentId: ID
+    $divisionId: ID
     $includeInactive: Boolean
   ) {
     teamPerformance: unifiedTeamPerformance(
@@ -90,12 +89,11 @@ export const GET_TEAM_PERFORMANCE = gql`
         employeeId
         employee {
           employeeId
-          userId
           fullName
           email
           title
           picture
-          department {
+          departments {
             departmentId
             name
           }
@@ -144,7 +142,6 @@ export const GET_TEAM_PERFORMANCE = gql`
         employeeId
         employee {
           employeeId
-          userId
           fullName
           email
           title
@@ -162,13 +159,15 @@ export const GET_PERFORMANCE_WEIGHT_CONFIGS = gql`
   query GetPerformanceWeightConfigs($organizationId: String!) {
     performanceWeightConfigs(organizationId: $organizationId) {
       unifiedPerformanceWeightConfigId
-      organizationId
-      strategicPeriodId
       kpiWeight
       competencyWeight
       activityWeight
       isActive
       notes
+      strategicPeriod {
+        strategicPeriodId
+        name
+      }
       createdAt
       updatedAt
     }
@@ -185,13 +184,15 @@ export const GET_PERFORMANCE_WEIGHT_CONFIG = gql`
       strategicPeriodId: $strategicPeriodId
     ) {
       unifiedPerformanceWeightConfigId
-      organizationId
-      strategicPeriodId
       kpiWeight
       competencyWeight
       activityWeight
       isActive
       notes
+      strategicPeriod {
+        strategicPeriodId
+        name
+      }
       createdAt
       updatedAt
     }

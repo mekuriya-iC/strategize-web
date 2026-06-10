@@ -3,7 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import { Building2, TrendingUp, Target, Award, AlertCircle } from "lucide-react";
+import {
+  Building2,
+  TrendingUp,
+  Target,
+  Award,
+  AlertCircle,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_TOTAL_SCORECARD_SCORE } from "@/lib/graphql/queries/kpi-scorecard";
@@ -44,7 +50,11 @@ interface ScorecardData {
   kpiScores: KpiScore[];
 }
 
-export default function DepartmentScorecard() {
+export default function DepartmentScorecard({
+  capFinalScore = false,
+}: {
+  capFinalScore?: boolean;
+}) {
   const { user } = useAuth();
   const { can } = usePermissions();
   const canReadAll = can("evaluations:read_all");
@@ -89,10 +99,11 @@ export default function DepartmentScorecard() {
         level: "DEPARTMENT",
         entityId: selectedDepartmentId,
         periodId: selectedPeriodId,
+        capFinalScore,
       },
       skip: !selectedDepartmentId || !selectedPeriodId,
       fetchPolicy: "network-only",
-    }
+    },
   );
 
   const scorecard: ScorecardData | undefined =
@@ -105,9 +116,13 @@ export default function DepartmentScorecard() {
     return "text-red-600";
   };
 
-  const getAchievementBadge = (rate: number): { label: string; variant: any } => {
-    if (rate >= 1.3) return { label: "Exceeds Expectations", variant: "default" };
-    if (rate >= 1.0) return { label: "Meets Expectations", variant: "secondary" };
+  const getAchievementBadge = (
+    rate: number,
+  ): { label: string; variant: any } => {
+    if (rate >= 1.3)
+      return { label: "Exceeds Expectations", variant: "default" };
+    if (rate >= 1.0)
+      return { label: "Meets Expectations", variant: "secondary" };
     if (rate >= 0.75) return { label: "Needs Improvement", variant: "outline" };
     return { label: "Below Expectations", variant: "destructive" };
   };
@@ -121,11 +136,11 @@ export default function DepartmentScorecard() {
   };
 
   const selectedDepartment = departments.find(
-    (d: any) => d.departmentId === selectedDepartmentId
+    (d: any) => d.departmentId === selectedDepartmentId,
   );
 
   const selectedPeriod = periods.find(
-    (p: any) => p.strategicPeriodId === selectedPeriodId
+    (p: any) => p.strategicPeriodId === selectedPeriodId,
   );
 
   if (!canReadAll) {
@@ -146,7 +161,9 @@ export default function DepartmentScorecard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Department KPI Scorecard</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Department KPI Scorecard
+          </h2>
           <p className="text-muted-foreground">
             Track department-level KPI performance
           </p>
@@ -160,7 +177,9 @@ export default function DepartmentScorecard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Department Selector */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Department</label>
+              <label className="text-sm font-medium mb-2 block">
+                Department
+              </label>
               <Select
                 value={selectedDepartmentId}
                 onValueChange={setSelectedDepartmentId}
@@ -170,7 +189,10 @@ export default function DepartmentScorecard() {
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((dept: any) => (
-                    <SelectItem key={dept.departmentId} value={dept.departmentId}>
+                    <SelectItem
+                      key={dept.departmentId}
+                      value={dept.departmentId}
+                    >
                       {dept.name} - {dept.division?.name || "No Division"}
                     </SelectItem>
                   ))}
@@ -180,14 +202,22 @@ export default function DepartmentScorecard() {
 
             {/* Period Selector */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Strategic Period</label>
-              <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+              <label className="text-sm font-medium mb-2 block">
+                Strategic Period
+              </label>
+              <Select
+                value={selectedPeriodId}
+                onValueChange={setSelectedPeriodId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select period" />
                 </SelectTrigger>
                 <SelectContent>
                   {periods.map((period: any) => (
-                    <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
+                    <SelectItem
+                      key={period.strategicPeriodId}
+                      value={period.strategicPeriodId}
+                    >
                       {period.name} {period.isActive ? "(Active)" : ""}
                     </SelectItem>
                   ))}
@@ -216,7 +246,8 @@ export default function DepartmentScorecard() {
               No KPI scorecard data found for this department and period.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Make sure department KPIs are assigned, cascade mappings are created, and scores have been calculated.
+              Make sure department KPIs are assigned, cascade mappings are
+              created, and scores have been calculated.
             </p>
           </CardContent>
         </Card>
@@ -230,7 +261,9 @@ export default function DepartmentScorecard() {
             {/* Total Score Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Score</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Score
+                </CardTitle>
                 <Award className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -241,7 +274,9 @@ export default function DepartmentScorecard() {
                   out of {formatNumber(scorecard.maxPossibleScore)}% possible
                 </p>
                 <Progress
-                  value={(scorecard.totalScore / scorecard.maxPossibleScore) * 100}
+                  value={
+                    (scorecard.totalScore / scorecard.maxPossibleScore) * 100
+                  }
                   className="mt-2"
                 />
               </CardContent>
@@ -250,17 +285,28 @@ export default function DepartmentScorecard() {
             {/* Achievement Rate Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Achievement Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Achievement Rate
+                </CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${getAchievementColor(scorecard.percentageAchieved / 100)}`}>
+                <div
+                  className={`text-2xl font-bold ${getAchievementColor(scorecard.percentageAchieved / 100)}`}
+                >
                   {formatNumber(scorecard.percentageAchieved)}%
                 </div>
-                <p className="text-xs text-muted-foreground">of weighted targets</p>
+                <p className="text-xs text-muted-foreground">
+                  of weighted targets
+                </p>
                 <div className="mt-2">
-                  <Badge {...getAchievementBadge(scorecard.percentageAchieved / 100)}>
-                    {getAchievementBadge(scorecard.percentageAchieved / 100).label}
+                  <Badge
+                    {...getAchievementBadge(scorecard.percentageAchieved / 100)}
+                  >
+                    {
+                      getAchievementBadge(scorecard.percentageAchieved / 100)
+                        .label
+                    }
                   </Badge>
                 </div>
               </CardContent>
@@ -269,14 +315,25 @@ export default function DepartmentScorecard() {
             {/* Total KPIs Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active KPIs</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Active KPIs
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{scorecard.kpiScores.length}</div>
-                <p className="text-xs text-muted-foreground">KPIs tracked this period</p>
+                <div className="text-2xl font-bold">
+                  {scorecard.kpiScores.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  KPIs tracked this period
+                </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Last calculated: {scorecard.kpiScores[0] ? new Date(scorecard.kpiScores[0].calculatedAt).toLocaleDateString() : "N/A"}
+                  Last calculated:{" "}
+                  {scorecard.kpiScores[0]
+                    ? new Date(
+                        scorecard.kpiScores[0].calculatedAt,
+                      ).toLocaleDateString()
+                    : "N/A"}
                 </p>
               </CardContent>
             </Card>
@@ -293,9 +350,13 @@ export default function DepartmentScorecard() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
-                      <th className="text-right p-3 font-medium">Actual (Aggregated)</th>
+                      <th className="text-right p-3 font-medium">
+                        Actual (Aggregated)
+                      </th>
                       <th className="text-right p-3 font-medium">Target</th>
-                      <th className="text-right p-3 font-medium">Achievement</th>
+                      <th className="text-right p-3 font-medium">
+                        Achievement
+                      </th>
                       <th className="text-right p-3 font-medium">Weight</th>
                       <th className="text-right p-3 font-medium">Cap</th>
                       <th className="text-right p-3 font-medium">Score</th>
@@ -304,11 +365,16 @@ export default function DepartmentScorecard() {
                   </thead>
                   <tbody>
                     {scorecard.kpiScores.map((kpiScore) => {
-                      const achievementPercent = (kpiScore.achievementRate * 100);
-                      const badge = getAchievementBadge(kpiScore.achievementRate);
-                      
+                      const achievementPercent = kpiScore.achievementRate * 100;
+                      const badge = getAchievementBadge(
+                        kpiScore.achievementRate,
+                      );
+
                       return (
-                        <tr key={kpiScore.aggregatedKpiScoreId} className="border-b hover:bg-muted/50">
+                        <tr
+                          key={kpiScore.aggregatedKpiScoreId}
+                          className="border-b hover:bg-muted/50"
+                        >
                           <td className="p-3">
                             <div>
                               <p className="font-medium">{kpiScore.kpi.name}</p>
@@ -328,7 +394,9 @@ export default function DepartmentScorecard() {
                           <td className="text-right p-3">
                             {formatNumber(kpiScore.targetValue)}
                           </td>
-                          <td className={`text-right p-3 font-medium ${getAchievementColor(kpiScore.achievementRate)}`}>
+                          <td
+                            className={`text-right p-3 font-medium ${getAchievementColor(kpiScore.achievementRate)}`}
+                          >
                             {formatPercentage(kpiScore.achievementRate)}
                           </td>
                           <td className="text-right p-3">
@@ -363,8 +431,13 @@ export default function DepartmentScorecard() {
                         {formatNumber(scorecard.totalScore)}%
                       </td>
                       <td className="text-right p-3">
-                        <Badge {...getAchievementBadge(scorecard.totalScore / 100)}>
-                          {getAchievementBadge(scorecard.totalScore / 100).label}
+                        <Badge
+                          {...getAchievementBadge(scorecard.totalScore / 100)}
+                        >
+                          {
+                            getAchievementBadge(scorecard.totalScore / 100)
+                              .label
+                          }
                         </Badge>
                       </td>
                     </tr>
@@ -374,24 +447,31 @@ export default function DepartmentScorecard() {
 
               {/* Formula Explanation */}
               <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="text-sm font-semibold mb-2">How Department Scores are Calculated</h4>
+                <h4 className="text-sm font-semibold mb-2">
+                  How Department Scores are Calculated
+                </h4>
                 <p className="text-xs text-muted-foreground">
-                  <strong>Formula:</strong> Score = Weight × min(Actual / Target, Cap)
+                  <strong>Formula:</strong> Score = Weight × min(Actual /
+                  Target, Cap)
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  • <strong>Actual:</strong> Sum of individual employee actual values (NOT scores) mapped to this department KPI
+                  • <strong>Actual:</strong> Sum of individual employee actual
+                  values (NOT scores) mapped to this department KPI
                 </p>
                 <p className="text-xs text-muted-foreground">
                   • <strong>Target:</strong> Department's assigned target value
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  • <strong>Weight:</strong> Percentage contribution to department total score
+                  • <strong>Weight:</strong> Percentage contribution to
+                  department total score
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  • <strong>Cap:</strong> Maximum achievement rate (e.g., 150% means max 1.5x of weight)
+                  • <strong>Cap:</strong> Maximum achievement rate (e.g., 150%
+                  means max 1.5x of weight)
                 </p>
                 <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                  ⚠️ Key: Department scores are calculated using department-level targets, NOT individual targets!
+                  ⚠️ Key: Department scores are calculated using
+                  department-level targets, NOT individual targets!
                 </p>
               </div>
             </CardContent>

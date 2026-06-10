@@ -149,10 +149,21 @@ export default function KPIReport({ onExport }: KPIReportProps) {
   const filteredKpis = rawKpis.filter((kpi: any) => {
     if (kpi.isDeleted) return false;
     
-    // Level filter
-    if (levelFilter !== "all" && kpi.objective?.level !== levelFilter) {
-      return false;
+    // Level filter - when set to a specific level, show only KPIs at that cascade level
+    // "all" = show only root KPIs (those without a parent)
+    // "CORPORATE/DIVISION/DEPARTMENT/EMPLOYEE" = filter by objective level
+    if (levelFilter === "all") {
+      // Show only root KPIs (original KPIs without parent)
+      if (kpi.parent != null && kpi.parent.kpiId) {
+        return false;
+      }
+    } else {
+      // Filter by the objective's level
+      if (kpi.objective?.level !== levelFilter) {
+        return false;
+      }
     }
+    
     // Search query filter
     if (
       searchQuery &&
@@ -295,11 +306,11 @@ export default function KPIReport({ onExport }: KPIReportProps) {
               <SelectValue placeholder="Filter by level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="CORPORATE">Corporate</SelectItem>
-              <SelectItem value="DIVISION">Division</SelectItem>
-              <SelectItem value="DEPARTMENT">Department</SelectItem>
-              <SelectItem value="EMPLOYEE">Employee</SelectItem>
+              <SelectItem value="all">Root KPIs Only</SelectItem>
+              <SelectItem value="CORPORATE">Corporate Level</SelectItem>
+              <SelectItem value="DIVISION">Division Level</SelectItem>
+              <SelectItem value="DEPARTMENT">Department Level</SelectItem>
+              <SelectItem value="EMPLOYEE">Employee Level</SelectItem>
             </SelectContent>
           </Select>
         </div>

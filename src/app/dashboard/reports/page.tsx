@@ -8,9 +8,10 @@ import {
   DepartmentReport,
   MySubmissionsReport,
 } from "@/components/reports";
+import KPICascadeView from "@/components/reports/KPICascadeView";
 import { exportReport } from "@/lib/utils/exportReport";
 import { toast } from "sonner";
-import { TrendingUp, Target, Building2, Send } from "lucide-react";
+import { TrendingUp, Target, Building2, Send, GitBranch } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores";
 
@@ -19,7 +20,7 @@ function ReportsContent() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
 
-  const fullAccessRoles = new Set(["SUPER_ADMIN", "HR", "CEO"]);
+  const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
   const hasFullAccess =
     !!user?.role && fullAccessRoles.has(user.role as string);
 
@@ -62,7 +63,7 @@ function ReportsContent() {
         className="space-y-6"
       >
         <TabsList
-          className={`grid w-full ${hasFullAccess ? "grid-cols-4" : "grid-cols-2"} lg:w-auto lg:inline-grid`}
+          className={`grid w-full ${hasFullAccess ? "grid-cols-5" : "grid-cols-2"} lg:w-auto lg:inline-grid`}
         >
           <TabsTrigger value="performance" className="gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -74,6 +75,10 @@ function ReportsContent() {
               <TabsTrigger value="kpi" className="gap-2">
                 <Target className="h-4 w-4" />
                 <span className="hidden sm:inline">KPIs</span>
+              </TabsTrigger>
+              <TabsTrigger value="kpi-cascade" className="gap-2">
+                <GitBranch className="h-4 w-4" />
+                <span className="hidden sm:inline">KPI Cascade</span>
               </TabsTrigger>
               <TabsTrigger value="department" className="gap-2">
                 <Building2 className="h-4 w-4" />
@@ -100,6 +105,10 @@ function ReportsContent() {
               <KPIReport
                 onExport={(data) => handleExport(data, "kpi-report")}
               />
+            </TabsContent>
+
+            <TabsContent value="kpi-cascade" className="space-y-6">
+              <KPICascadeView />
             </TabsContent>
 
             <TabsContent value="department" className="space-y-6">

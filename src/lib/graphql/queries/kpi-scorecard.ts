@@ -9,14 +9,18 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
     $level: ScorecardLevel!
     $entityId: ID!
     $periodId: ID!
+    $capFinalScore: Boolean
   ) {
     totalScorecardScore(
       level: $level
       entityId: $entityId
       periodId: $periodId
+      capFinalScore: $capFinalScore
     ) {
       totalScore
+      uncappedTotalScore
       maxPossibleScore
+      finalScoreCapApplied
       percentageAchieved
       kpiScores {
         aggregatedKpiScoreId
@@ -45,11 +49,7 @@ export const GET_KPI_SCORES_BY_ENTITY = gql`
     $entityId: ID!
     $periodId: ID!
   ) {
-    kpiScoresByEntity(
-      level: $level
-      entityId: $entityId
-      periodId: $periodId
-    ) {
+    kpiScoresByEntity(level: $level, entityId: $entityId, periodId: $periodId) {
       aggregatedKpiScoreId
       kpi {
         kpiId

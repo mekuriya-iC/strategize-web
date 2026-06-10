@@ -10,6 +10,12 @@ export const CALCULATE_KPI_SCORES = gql`
   }
 `;
 
+export const AUTO_CREATE_CASCADE_MAPPINGS = gql`
+  mutation AutoCreateCascadeMappings($periodId: ID!) {
+    autoCreateCascadeMappings(periodId: $periodId)
+  }
+`;
+
 export const CREATE_CASCADE_MAPPING = gql`
   mutation CreateCascadeMapping($input: CreateCascadeMappingInput!) {
     createCascadeMapping(input: $input) {

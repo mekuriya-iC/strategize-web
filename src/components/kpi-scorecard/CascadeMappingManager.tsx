@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { useOrganizationId } from "@/hooks/useOrganizationId";
 import {
   Network,
   Plus,
@@ -19,6 +20,7 @@ import {
   GET_TOTAL_SCORECARD_SCORE,
 } from "@/lib/graphql/queries/kpi-scorecard";
 import {
+  AUTO_CREATE_CASCADE_MAPPINGS,
   CREATE_CASCADE_MAPPING,
   DELETE_CASCADE_MAPPING,
 } from "@/lib/graphql/mutations/kpi-scorecard";
@@ -75,6 +77,7 @@ interface CascadeMapping {
 export default function CascadeMappingManager() {
   // const { can } = usePermissions();
   const canManage = true; // TODO: Add proper permission check when KPI scorecard permissions are defined
+  const organizationId = useOrganizationId();
 
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -103,6 +106,12 @@ export default function CascadeMappingManager() {
       setSelectedPeriodId(activePeriod.strategicPeriodId);
     }
   }, [activePeriod, selectedPeriodId]);
+
+  useEffect(() => {
+    if (targetLevel === "CORPORATE" && organizationId && !targetEntityId) {
+      setTargetEntityId(organizationId);
+    }
+  }, [organizationId, targetEntityId, targetLevel]);
 
   // Fetch cascade mappings
   const {
@@ -146,6 +155,21 @@ export default function CascadeMappingManager() {
   const divisions = divisionsData?.divisions?.items || [];
 
   // Mutations
+  const [autoCreateMappings, { loading: autoCreateLoading }] = useMutation(
+    AUTO_CREATE_CASCADE_MAPPINGS,
+    {
+      onCompleted: () => {
+        toast.success(
+          "Cascade mappings have been auto-created where matches were found",
+        );
+        refetchMappings();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to auto-create cascade mappings");
+      },
+    },
+  );
+
   const [createMapping, { loading: createLoading }] = useMutation(
     CREATE_CASCADE_MAPPING,
     {
@@ -158,7 +182,7 @@ export default function CascadeMappingManager() {
       onError: (error) => {
         toast.error(error.message || "Failed to create cascade mapping");
       },
-    }
+    },
   );
 
   const [deleteMapping, { loading: deleteLoading }] = useMutation(
@@ -173,7 +197,7 @@ export default function CascadeMappingManager() {
       onError: (error) => {
         toast.error(error.message || "Failed to delete cascade mapping");
       },
-    }
+    },
   );
 
   const resetForm = () => {
@@ -206,7 +230,7 @@ export default function CascadeMappingManager() {
 
     if (sourceIndex >= targetIndex) {
       toast.error(
-        "Source level must be lower than target level (e.g., Individual → Department → Division)"
+        "Source level must be lower than target level (e.g., Individual → Department → Division)",
       );
       return;
     }
@@ -224,6 +248,15 @@ export default function CascadeMappingManager() {
         },
       },
     });
+  };
+
+  const handleAutoCreateMappings = () => {
+    if (!selectedPeriodId) {
+      toast.error("Please select a strategic period first");
+      return;
+    }
+
+    autoCreateMappings({ variables: { periodId: selectedPeriodId } });
   };
 
   const handleDeleteClick = (mappingId: string) => {
@@ -249,6 +282,8 @@ export default function CascadeMappingManager() {
         return "secondary";
       case "DIVISION":
         return "outline";
+      case "CORPORATE":
+        return "default";
       default:
         return "default";
     }
@@ -275,6 +310,10 @@ export default function CascadeMappingManager() {
         return departments;
       case "DIVISION":
         return divisions;
+      case "CORPORATE":
+        return organizationId
+          ? [{ organizationId, name: "Corporate / Organization" }]
+          : [];
       default:
         return [];
     }
@@ -356,6 +395,19 @@ export default function CascadeMappingManager() {
                 <RefreshCw className="h-4 w-4" />
               </Button>
 
+              <Button
+                onClick={handleAutoCreateMappings}
+                disabled={autoCreateLoading || !selectedPeriodId}
+                variant="outline"
+              >
+                {autoCreateLoading ? (
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Network className="mr-2 h-4 w-4" />
+                )}
+                Auto-create
+              </Button>
+
               <Dialog
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
@@ -386,13 +438,20 @@ export default function CascadeMappingManager() {
                         <label className="text-sm font-medium mb-2 block">
                           Source Level *
                         </label>
-                        <Select value={sourceLevel} onValueChange={setSourceLevel}>
+                        <Select
+                          value={sourceLevel}
+                          onValueChange={setSourceLevel}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select level" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                            <SelectItem value="DEPARTMENT">Department</SelectItem>
+                            <SelectItem value="INDIVIDUAL">
+                              Individual
+                            </SelectItem>
+                            <SelectItem value="DEPARTMENT">
+                              Department
+                            </SelectItem>
                             <SelectItem value="DIVISION">Division</SelectItem>
                           </SelectContent>
                         </Select>
@@ -467,12 +526,22 @@ export default function CascadeMappingManager() {
                         <label className="text-sm font-medium mb-2 block">
                           Target Level *
                         </label>
-                        <Select value={targetLevel} onValueChange={setTargetLevel}>
+                        <Select
+                          value={targetLevel}
+                          onValueChange={(value) => {
+                            setTargetLevel(value);
+                            setTargetEntityId(
+                              value === "CORPORATE" ? organizationId : "",
+                            );
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select level" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="DEPARTMENT">Department</SelectItem>
+                            <SelectItem value="DEPARTMENT">
+                              Department
+                            </SelectItem>
                             <SelectItem value="DIVISION">Division</SelectItem>
                             <SelectItem value="CORPORATE">Corporate</SelectItem>
                           </SelectContent>
@@ -497,7 +566,8 @@ export default function CascadeMappingManager() {
                                   const id =
                                     entity.employeeId ||
                                     entity.departmentId ||
-                                    entity.divisionId;
+                                    entity.divisionId ||
+                                    entity.organizationId;
                                   const name = entity.fullName || entity.name;
                                   return (
                                     <SelectItem key={id} value={id}>
@@ -557,7 +627,10 @@ export default function CascadeMappingManager() {
                     >
                       Cancel
                     </Button>
-                    <Button onClick={handleCreateMapping} disabled={createLoading}>
+                    <Button
+                      onClick={handleCreateMapping}
+                      disabled={createLoading}
+                    >
                       {createLoading ? (
                         <>
                           <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -607,9 +680,7 @@ export default function CascadeMappingManager() {
       {!mappingsLoading && mappings.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>
-              Cascade Mappings ({mappings.length})
-            </CardTitle>
+            <CardTitle>Cascade Mappings ({mappings.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -633,9 +704,15 @@ export default function CascadeMappingManager() {
                       {/* Source */}
                       <td className="p-3">
                         <div className="space-y-1">
-                          <p className="font-medium">{mapping.sourceKpi.name}</p>
+                          <p className="font-medium">
+                            {mapping.sourceKpi.name}
+                          </p>
                           <div className="flex items-center gap-2">
-                            <Badge variant={getLevelBadgeVariant(mapping.sourceLevel)}>
+                            <Badge
+                              variant={getLevelBadgeVariant(
+                                mapping.sourceLevel,
+                              )}
+                            >
                               {mapping.sourceLevel}
                             </Badge>
                           </div>
@@ -650,9 +727,15 @@ export default function CascadeMappingManager() {
                       {/* Target */}
                       <td className="p-3">
                         <div className="space-y-1">
-                          <p className="font-medium">{mapping.targetKpi.name}</p>
+                          <p className="font-medium">
+                            {mapping.targetKpi.name}
+                          </p>
                           <div className="flex items-center gap-2">
-                            <Badge variant={getLevelBadgeVariant(mapping.targetLevel)}>
+                            <Badge
+                              variant={getLevelBadgeVariant(
+                                mapping.targetLevel,
+                              )}
+                            >
                               {mapping.targetLevel}
                             </Badge>
                           </div>
@@ -700,8 +783,8 @@ export default function CascadeMappingManager() {
                 How Cascade Mappings Work
               </h4>
               <p className="text-xs text-muted-foreground mb-2">
-                Cascade mappings define how KPI actuals flow from lower levels to
-                higher levels. When scores are calculated:
+                Cascade mappings define how KPI actuals flow from lower levels
+                to higher levels. When scores are calculated:
               </p>
               <ol className="text-xs text-muted-foreground space-y-1 ml-4">
                 <li>

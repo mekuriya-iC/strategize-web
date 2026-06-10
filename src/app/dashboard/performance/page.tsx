@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@apollo/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -12,7 +18,14 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, TrendingUp, Award, Target, Users, Loader2 } from "lucide-react";
+import {
+  Search,
+  TrendingUp,
+  Award,
+  Target,
+  Users,
+  Loader2,
+} from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import { GET_TEAM_PERFORMANCE } from "@/lib/graphql/queries/unified-performance";
@@ -21,35 +34,59 @@ import UnifiedPerformanceOverview from "@/components/performance/UnifiedPerforma
 
 export default function PerformancePage() {
   const [search, setSearch] = useState("");
-  const [periodFilter, setPeriodFilter] = useState<string>("all");
-  const [activeView, setActiveView] = useState<"my-performance" | "team-performance">("my-performance");
-  
+  const [periodFilter, setPeriodFilter] = useState<string>("");
+
   const user = useAuthStore((state) => state.user);
   const userRole = user?.role as string | undefined;
-  const hasTeamView = userRole && ["SUPER_ADMIN", "ADMIN", "HR", "CEO", "DIRECTOR", "MANAGER"].includes(userRole);
+  const hasTeamView =
+    !!userRole &&
+    ["SUPER_ADMIN", "ADMIN", "HR", "CEO", "DIRECTOR", "MANAGER"].includes(
+      userRole,
+    );
+
+  // Default to team performance for managers/admins, my performance for employees
+  const [activeView, setActiveView] = useState<
+    "my-performance" | "team-performance"
+  >("my-performance");
 
   // Fetch strategic periods for filter
   const { data: periodsData } = useQuery(GET_STRATEGIC_PERIODS, {
     variables: { page: 1, limit: 20 },
   });
   const periods = periodsData?.strategicPeriods?.items || [];
+  const activePeriod = periods.find((period: any) => period.isActive);
+
+  useEffect(() => {
+    if (!periodFilter && activePeriod?.strategicPeriodId) {
+      setPeriodFilter(activePeriod.strategicPeriodId);
+    }
+  }, [activePeriod, periodFilter]);
+
+  useEffect(() => {
+    if (hasTeamView) {
+      setActiveView("team-performance");
+    }
+  }, [hasTeamView]);
 
   // Fetch team performance if viewing team
-  const { data: teamData, loading: teamLoading } = useQuery(GET_TEAM_PERFORMANCE, {
-    variables: {
-      organizationId: user?.organizationId,
-      strategicPeriodId: periodFilter !== "all" ? periodFilter : undefined,
-      includeInactive: false,
+  const { data: teamData, loading: teamLoading } = useQuery(
+    GET_TEAM_PERFORMANCE,
+    {
+      variables: {
+        organizationId: user?.organizationId,
+        strategicPeriodId: periodFilter !== "all" ? periodFilter : undefined,
+        includeInactive: false,
+      },
+      skip: !user?.organizationId || activeView !== "team-performance",
     },
-    skip: !user?.organizationId || activeView !== "team-performance",
-  });
+  );
 
   const teamPerformance = teamData?.teamPerformance;
   const teamResults = teamPerformance?.results || [];
 
   // Filter by search
   const filteredResults = teamResults.filter((result: any) =>
-    result.employee.fullName.toLowerCase().includes(search.toLowerCase())
+    result.employee.fullName.toLowerCase().includes(search.toLowerCase()),
   );
 
   const getScoreColor = (score: number) => {
@@ -61,10 +98,14 @@ export default function PerformancePage() {
   };
 
   const getScoreBadge = (percentage: number) => {
-    if (percentage >= 90) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
-    if (percentage >= 80) return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
-    if (percentage >= 70) return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-    if (percentage >= 60) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+    if (percentage >= 90)
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+    if (percentage >= 80)
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+    if (percentage >= 70)
+      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+    if (percentage >= 60)
+      return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
     return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
   };
 
@@ -89,13 +130,17 @@ export default function PerformancePage() {
           Unified Performance System
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Combined performance metrics from KPIs, 360° evaluations, and activity data
+          Combined performance metrics from KPIs, 360° evaluations, and activity
+          data
         </p>
       </div>
 
       {/* View Toggle */}
       {hasTeamView ? (
-        <Tabs value={activeView} onValueChange={(value) => setActiveView(value as any)}>
+        <Tabs
+          value={activeView}
+          onValueChange={(value) => setActiveView(value as any)}
+        >
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="my-performance">My Performance</TabsTrigger>
             <TabsTrigger value="team-performance">Team Performance</TabsTrigger>
@@ -107,7 +152,9 @@ export default function PerformancePage() {
               <UnifiedPerformanceOverview
                 employeeId={user.employeeId}
                 organizationId={user.organizationId}
-                strategicPeriodId={periodFilter !== "all" ? periodFilter : undefined}
+                strategicPeriodId={
+                  periodFilter !== "all" ? periodFilter : undefined
+                }
               />
             )}
           </TabsContent>
@@ -132,7 +179,10 @@ export default function PerformancePage() {
                 <SelectContent>
                   <SelectItem value="all">All Periods</SelectItem>
                   {periods.map((period: any) => (
-                    <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
+                    <SelectItem
+                      key={period.strategicPeriodId}
+                      value={period.strategicPeriodId}
+                    >
                       {period.name}
                     </SelectItem>
                   ))}
@@ -145,51 +195,78 @@ export default function PerformancePage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Team Size</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Team Size
+                    </CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{teamResults.length}</div>
-                    <p className="text-xs text-muted-foreground">Team members</p>
+                    <div className="text-2xl font-bold">
+                      {teamResults.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Team members
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Average Score
+                    </CardTitle>
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold ${getScoreColor(teamPerformance.averageScore)}`}>
+                    <div
+                      className={`text-2xl font-bold ${getScoreColor(teamPerformance.averageScore)}`}
+                    >
                       {teamPerformance.averageScore.toFixed(1)}%
                     </div>
-                    <p className="text-xs text-muted-foreground">Team average</p>
+                    <p className="text-xs text-muted-foreground">
+                      Team average
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Top Score</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Top Score
+                    </CardTitle>
                     <Award className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold ${getScoreColor(teamPerformance.highestScore)}`}>
+                    <div
+                      className={`text-2xl font-bold ${getScoreColor(teamPerformance.highestScore)}`}
+                    >
                       {teamPerformance.highestScore.toFixed(1)}%
                     </div>
-                    <p className="text-xs text-muted-foreground">Highest performer</p>
+                    <p className="text-xs text-muted-foreground">
+                      Highest performer
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Excellence Rate</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Excellence Rate
+                    </CardTitle>
                     <Target className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-emerald-600">
                       {teamResults.length > 0
-                        ? ((teamResults.filter((r: any) => r.overallPercentage >= 90).length / teamResults.length) * 100).toFixed(0)
-                        : 0}%
+                        ? (
+                            (teamResults.filter(
+                              (r: any) => r.overallPercentage >= 90,
+                            ).length /
+                              teamResults.length) *
+                            100
+                          ).toFixed(0)
+                        : 0}
+                      %
                     </div>
                     <p className="text-xs text-muted-foreground">Score ≥ 90%</p>
                   </CardContent>
@@ -219,12 +296,18 @@ export default function PerformancePage() {
                         {teamPerformance.topPerformer.employee.fullName}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {teamPerformance.topPerformer.employee.title || "No title"}
+                        {teamPerformance.topPerformer.employee.title ||
+                          "No title"}
                       </p>
                     </div>
                     <div className="text-right">
-                      <div className={`text-3xl font-bold ${getScoreColor(teamPerformance.topPerformer.overallPercentage)}`}>
-                        {teamPerformance.topPerformer.overallPercentage.toFixed(1)}%
+                      <div
+                        className={`text-3xl font-bold ${getScoreColor(teamPerformance.topPerformer.overallPercentage)}`}
+                      >
+                        {teamPerformance.topPerformer.overallPercentage.toFixed(
+                          1,
+                        )}
+                        %
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         {teamPerformance.topPerformer.rating}
@@ -238,8 +321,12 @@ export default function PerformancePage() {
             {/* Team Results */}
             <Card>
               <CardHeader>
-                <CardTitle>Team Performance ({filteredResults.length})</CardTitle>
-                <CardDescription>Unified performance scores for all team members</CardDescription>
+                <CardTitle>
+                  Team Performance ({filteredResults.length})
+                </CardTitle>
+                <CardDescription>
+                  Unified performance scores for all team members
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {filteredResults.length === 0 ? (
@@ -251,7 +338,8 @@ export default function PerformancePage() {
                       No performance data
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Performance results will appear here once team members have data
+                      Performance results will appear here once team members
+                      have data
                     </p>
                   </div>
                 ) : (
@@ -273,31 +361,53 @@ export default function PerformancePage() {
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             {result.employee.title || "No title"}
-                            {result.employee.department && ` • ${result.employee.department.name}`}
+                            {result.employee.departments?.[0] &&
+                              ` • ${result.employee.departments[0].name}`}
                           </p>
                         </div>
                         <div className="grid grid-cols-4 gap-4 text-center">
                           <div>
                             <p className="text-xs text-gray-500 mb-1">KPI</p>
-                            <p className={`font-semibold ${getScoreColor(result.breakdown.kpiScore.percentageAchieved)}`}>
-                              {result.breakdown.kpiScore.percentageAchieved.toFixed(0)}%
+                            <p
+                              className={`font-semibold ${getScoreColor(result.breakdown.kpiScore.percentageAchieved)}`}
+                            >
+                              {result.breakdown.kpiScore.percentageAchieved.toFixed(
+                                0,
+                              )}
+                              %
                             </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">360°</p>
-                            <p className={`font-semibold ${getScoreColor(result.breakdown.competencyScore.percentageAchieved)}`}>
-                              {result.breakdown.competencyScore.percentageAchieved.toFixed(0)}%
+                            <p
+                              className={`font-semibold ${getScoreColor(result.breakdown.competencyScore.percentageAchieved)}`}
+                            >
+                              {result.breakdown.competencyScore.percentageAchieved.toFixed(
+                                0,
+                              )}
+                              %
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500 mb-1">Activity</p>
-                            <p className={`font-semibold ${getScoreColor(result.breakdown.activityScore.percentageAchieved)}`}>
-                              {result.breakdown.activityScore.percentageAchieved.toFixed(0)}%
+                            <p className="text-xs text-gray-500 mb-1">
+                              Activity
+                            </p>
+                            <p
+                              className={`font-semibold ${getScoreColor(result.breakdown.activityScore.percentageAchieved)}`}
+                            >
+                              {result.breakdown.activityScore.percentageAchieved.toFixed(
+                                0,
+                              )}
+                              %
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500 mb-1">Overall</p>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${getScoreBadge(result.overallPercentage)}`}>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Overall
+                            </p>
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${getScoreBadge(result.overallPercentage)}`}
+                            >
                               {result.overallPercentage.toFixed(0)}%
                             </span>
                           </div>
@@ -321,7 +431,10 @@ export default function PerformancePage() {
               <SelectContent>
                 <SelectItem value="all">All Periods</SelectItem>
                 {periods.map((period: any) => (
-                  <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
+                  <SelectItem
+                    key={period.strategicPeriodId}
+                    value={period.strategicPeriodId}
+                  >
                     {period.name}
                   </SelectItem>
                 ))}
@@ -333,7 +446,9 @@ export default function PerformancePage() {
             <UnifiedPerformanceOverview
               employeeId={user.employeeId}
               organizationId={user.organizationId}
-              strategicPeriodId={periodFilter !== "all" ? periodFilter : undefined}
+              strategicPeriodId={
+                periodFilter !== "all" ? periodFilter : undefined
+              }
             />
           )}
         </div>

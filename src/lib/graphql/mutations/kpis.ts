@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * KPI Mutations
@@ -152,11 +152,14 @@ export const APPROVE_KPI_UPDATE = gql`
 
 // Create KPI assignment mutations
 export const CREATE_KPI_ASSIGNMENT_EMPLOYEE = gql`
-  mutation CreateKpiAssignmentEmployee($input: CreateKpiAssignmentEmployeeInput!) {
+  mutation CreateKpiAssignmentEmployee(
+    $input: CreateKpiAssignmentEmployeeInput!
+  ) {
     createKpiAssignmentEmployee(createKpiAssignmentEmployeeInput: $input) {
       kpiAssignmentEmployeeId
       targetValue
       weight
+      cap
       createdAt
       kpi {
         kpiId
@@ -181,11 +184,14 @@ export const CREATE_KPI_ASSIGNMENT_EMPLOYEE = gql`
 `;
 
 export const CREATE_KPI_ASSIGNMENT_DEPARTMENT = gql`
-  mutation CreateKpiAssignmentDepartment($input: CreateKpiAssignmentDepartmentInput!) {
+  mutation CreateKpiAssignmentDepartment(
+    $input: CreateKpiAssignmentDepartmentInput!
+  ) {
     createKpiAssignmentDepartment(createKpiAssignmentDepartmentInput: $input) {
       kpiAssignmentDepartmentId
       targetValue
       weight
+      cap
       createdAt
       kpi {
         kpiId
@@ -209,11 +215,14 @@ export const CREATE_KPI_ASSIGNMENT_DEPARTMENT = gql`
 `;
 
 export const CREATE_KPI_ASSIGNMENT_DIVISION = gql`
-  mutation CreateKpiAssignmentDivision($input: CreateKpiAssignmentDivisionInput!) {
+  mutation CreateKpiAssignmentDivision(
+    $input: CreateKpiAssignmentDivisionInput!
+  ) {
     createKpiAssignmentDivision(createKpiAssignmentDivisionInput: $input) {
       kpiAssignmentDivisionId
       targetValue
       weight
+      cap
       createdAt
       kpi {
         kpiId
@@ -236,15 +245,49 @@ export const CREATE_KPI_ASSIGNMENT_DIVISION = gql`
   }
 `;
 
+export const CREATE_KPI_ASSIGNMENT_CORPORATE = gql`
+  mutation CreateKpiAssignmentCorporate(
+    $input: CreateKpiAssignmentCorporateInput!
+  ) {
+    createKpiAssignmentCorporate(createKpiAssignmentCorporateInput: $input) {
+      kpiAssignmentCorporateId
+      targetValue
+      weight
+      cap
+      createdAt
+      kpi {
+        kpiId
+        name
+        measurementUnit
+      }
+      organization {
+        organizationId
+        name
+      }
+      assignedBy {
+        employeeId
+        fullName
+      }
+      strategicPeriod {
+        strategicPeriodId
+        name
+      }
+    }
+  }
+`;
+
 // Aliases for backward compatibility
 export const ASSIGN_KPI_TO_EMPLOYEE = CREATE_KPI_ASSIGNMENT_EMPLOYEE;
 export const ASSIGN_KPI_TO_DEPARTMENT = CREATE_KPI_ASSIGNMENT_DEPARTMENT;
 export const ASSIGN_KPI_TO_DIVISION = CREATE_KPI_ASSIGNMENT_DIVISION;
+export const ASSIGN_KPI_TO_CORPORATE = CREATE_KPI_ASSIGNMENT_CORPORATE;
 
 // Remove KPI assignment from employee
 export const REMOVE_KPI_ASSIGNMENT_EMPLOYEE = gql`
   mutation RemoveKpiAssignmentEmployee($kpiAssignmentEmployeeId: ID!) {
-    removeKpiAssignmentEmployee(kpiAssignmentEmployeeId: $kpiAssignmentEmployeeId) {
+    removeKpiAssignmentEmployee(
+      kpiAssignmentEmployeeId: $kpiAssignmentEmployeeId
+    ) {
       kpiAssignmentEmployeeId
     }
   }
@@ -253,7 +296,9 @@ export const REMOVE_KPI_ASSIGNMENT_EMPLOYEE = gql`
 // Remove KPI assignment from department
 export const REMOVE_KPI_ASSIGNMENT_DEPARTMENT = gql`
   mutation RemoveKpiAssignmentDepartment($kpiAssignmentDepartmentId: ID!) {
-    removeKpiAssignmentDepartment(kpiAssignmentDepartmentId: $kpiAssignmentDepartmentId) {
+    removeKpiAssignmentDepartment(
+      kpiAssignmentDepartmentId: $kpiAssignmentDepartmentId
+    ) {
       kpiAssignmentDepartmentId
     }
   }
@@ -262,7 +307,9 @@ export const REMOVE_KPI_ASSIGNMENT_DEPARTMENT = gql`
 // Remove KPI assignment from division
 export const REMOVE_KPI_ASSIGNMENT_DIVISION = gql`
   mutation RemoveKpiAssignmentDivision($kpiAssignmentDivisionId: ID!) {
-    removeKpiAssignmentDivision(kpiAssignmentDivisionId: $kpiAssignmentDivisionId) {
+    removeKpiAssignmentDivision(
+      kpiAssignmentDivisionId: $kpiAssignmentDivisionId
+    ) {
       kpiAssignmentDivisionId
     }
   }
@@ -322,10 +369,21 @@ export const CREATE_SHARED_KPI = gql`
   }
 `;
 
+export const REMOVE_KPI_ASSIGNMENT_CORPORATE = gql`
+  mutation RemoveKpiAssignmentCorporate($kpiAssignmentCorporateId: ID!) {
+    removeKpiAssignmentCorporate(
+      kpiAssignmentCorporateId: $kpiAssignmentCorporateId
+    ) {
+      kpiAssignmentCorporateId
+    }
+  }
+`;
 
 // Shared KPI Participants
 export const CREATE_SHARED_KPI_PARTICIPANT = gql`
-  mutation CreateSharedKpiParticipant($input: CreateSharedKpiParticipantInput!) {
+  mutation CreateSharedKpiParticipant(
+    $input: CreateSharedKpiParticipantInput!
+  ) {
     createSharedKpiParticipant(createSharedKpiParticipantInput: $input) {
       sharedKpiParticipantId
       contributionWeight
@@ -352,7 +410,9 @@ export const CREATE_SHARED_KPI_PARTICIPANT = gql`
 `;
 
 export const UPDATE_SHARED_KPI_PARTICIPANT = gql`
-  mutation UpdateSharedKpiParticipant($input: UpdateSharedKpiParticipantInput!) {
+  mutation UpdateSharedKpiParticipant(
+    $input: UpdateSharedKpiParticipantInput!
+  ) {
     updateSharedKpiParticipant(updateSharedKpiParticipantInput: $input) {
       sharedKpiParticipantId
       contributionWeight
@@ -363,7 +423,9 @@ export const UPDATE_SHARED_KPI_PARTICIPANT = gql`
 
 export const REMOVE_SHARED_KPI_PARTICIPANT = gql`
   mutation RemoveSharedKpiParticipant($sharedKpiParticipantId: ID!) {
-    removeSharedKpiParticipant(sharedKpiParticipantId: $sharedKpiParticipantId) {
+    removeSharedKpiParticipant(
+      sharedKpiParticipantId: $sharedKpiParticipantId
+    ) {
       sharedKpiParticipantId
     }
   }

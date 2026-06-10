@@ -7,11 +7,12 @@ import {
   KPIReport,
   DepartmentReport,
   MySubmissionsReport,
+  KPIPerformanceAnalytics,
 } from "@/components/reports";
 import KPICascadeView from "@/components/reports/KPICascadeView";
 import { exportReport } from "@/lib/utils/exportReport";
 import { toast } from "sonner";
-import { TrendingUp, Target, Building2, Send, GitBranch } from "lucide-react";
+import { TrendingUp, Target, Building2, Send, GitBranch, BarChart3 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores";
 
@@ -63,7 +64,7 @@ function ReportsContent() {
         className="space-y-6"
       >
         <TabsList
-          className={`grid w-full ${hasFullAccess ? "grid-cols-5" : "grid-cols-2"} lg:w-auto lg:inline-grid`}
+          className={`grid w-full ${hasFullAccess ? "grid-cols-6" : "grid-cols-2"} lg:w-auto lg:inline-grid`}
         >
           <TabsTrigger value="performance" className="gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -72,6 +73,10 @@ function ReportsContent() {
 
           {hasFullAccess && (
             <>
+              <TabsTrigger value="kpi-analytics" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">KPI Analytics</span>
+              </TabsTrigger>
               <TabsTrigger value="kpi" className="gap-2">
                 <Target className="h-4 w-4" />
                 <span className="hidden sm:inline">KPIs</span>
@@ -101,6 +106,12 @@ function ReportsContent() {
 
         {hasFullAccess && (
           <>
+            <TabsContent value="kpi-analytics" className="space-y-6">
+              <KPIPerformanceAnalytics
+                onExport={(data) => handleExport(data, "kpi-performance-analytics")}
+              />
+            </TabsContent>
+
             <TabsContent value="kpi" className="space-y-6">
               <KPIReport
                 onExport={(data) => handleExport(data, "kpi-report")}

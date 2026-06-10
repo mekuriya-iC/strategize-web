@@ -34,10 +34,21 @@ import UnifiedPerformanceOverview from "@/components/performance/UnifiedPerforma
 
 export default function PerformancePage() {
   const [search, setSearch] = useState("");
-  const [periodFilter, setPeriodFilter] = useState<string>("");
+  const [periodFilter, setPeriodFilter] = useState<string | undefined>(undefined);
 
   const user = useAuthStore((state) => state.user);
   const userRole = user?.role as string | undefined;
+  
+  console.log('PerformancePage render:', {
+    user: user ? {
+      employeeId: user.employeeId,
+      organizationId: user.organizationId,
+      role: user.role,
+      fullName: user.fullName,
+    } : null,
+    periodFilter,
+  });
+  
   const hasTeamView =
     !!userRole &&
     ["SUPER_ADMIN", "ADMIN", "HR", "CEO", "DIRECTOR", "MANAGER"].includes(
@@ -172,9 +183,9 @@ export default function PerformancePage() {
                   className="pl-9"
                 />
               </div>
-              <Select value={periodFilter} onValueChange={setPeriodFilter}>
+              <Select value={periodFilter || ""} onValueChange={(val) => setPeriodFilter(val || undefined)}>
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by period" />
+                  <SelectValue placeholder={activePeriod ? `${activePeriod.name} (Active)` : "Filter by period"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Periods</SelectItem>
@@ -183,7 +194,7 @@ export default function PerformancePage() {
                       key={period.strategicPeriodId}
                       value={period.strategicPeriodId}
                     >
-                      {period.name}
+                      {period.name} {period.isActive ? "(Active)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -424,9 +435,9 @@ export default function PerformancePage() {
         // Non-manager/admin view - only my performance
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-3">
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <Select value={periodFilter || ""} onValueChange={(val) => setPeriodFilter(val || undefined)}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filter by period" />
+                <SelectValue placeholder={activePeriod ? `${activePeriod.name} (Active)` : "Filter by period"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Periods</SelectItem>
@@ -435,14 +446,20 @@ export default function PerformancePage() {
                     key={period.strategicPeriodId}
                     value={period.strategicPeriodId}
                   >
-                    {period.name}
+                    {period.name} {period.isActive ? "(Active)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {user?.employeeId && user?.organizationId && (
+          {!user?.employeeId || !user?.organizationId ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Loading user data...
+              </p>
+            </div>
+          ) : (
             <UnifiedPerformanceOverview
               employeeId={user.employeeId}
               organizationId={user.organizationId}

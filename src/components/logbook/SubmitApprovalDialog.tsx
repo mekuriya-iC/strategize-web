@@ -102,8 +102,7 @@ export function SubmitApprovalDialog({
             submittedAt: new Date().toISOString(),
             evidenceDescription: description || evidenceDescription || null,
             decisionsMade: remark || null,
-            contributionUnit: quantity || null,
-            kpiCompletionPercent:
+            kpiAchievedValue:
               parsedQuantity !== null && Number.isFinite(parsedQuantity)
                 ? parsedQuantity
                 : null,
@@ -390,17 +389,21 @@ export function SubmitApprovalDialog({
               </div>
             </div>
 
-            {/* Quantity/% */}
+            {/* KPI Achievement Value */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Quantity/%
+                KPI Achievement Value
               </Label>
               <Input
-                type="text"
-                placeholder="Enter quantity or percentage"
+                type="number"
+                step="0.01"
+                placeholder="Enter achievement value (e.g., 50, 75.5, 100)"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Enter the actual value you achieved for this KPI (not a percentage)
+              </p>
             </div>
           </div>
         </div>

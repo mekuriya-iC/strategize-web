@@ -235,6 +235,17 @@ export function AddTaskDialog({
       return;
     }
 
+    // Validate end date is within session range
+    if (session) {
+      const sessionEndDate = new Date(session.endDate);
+      const taskEndDateTime = buildDateTime(endDate, endTime);
+      
+      if (taskEndDateTime > sessionEndDate) {
+        toast.error(`Task end date cannot be after session end date (${format(sessionEndDate, "MMM d, yyyy")})`);
+        return;
+      }
+    }
+
     // Validation for unmet tasks being marked as done
     const isUnmetTask = ["KPI_UNMET", "INITIATIVE_UNMET", "SELF_DEVELOPMENT_UNMET"].includes(taskType);
     if (checkoutStatus === "DONE" && isUnmetTask) {
@@ -302,9 +313,15 @@ export function AddTaskDialog({
       resetForm();
     } catch (error: any) {
       console.error("Task operation error:", error);
-      toast.error(
-        error.message || `Failed to ${editingTask ? "update" : "create"} task`,
-      );
+      
+      // Check if error is about date validation from backend
+      if (error.message?.includes("end date") || error.message?.includes("session")) {
+        toast.error(error.message);
+      } else {
+        toast.error(
+          error.message || `Failed to ${editingTask ? "update" : "create"} task`,
+        );
+      }
     }
   };
 
@@ -483,7 +500,7 @@ export function AddTaskDialog({
               </Label>
               <div className="flex gap-2">
                 {/* ✅ Calendar Popover */}
-                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen} modal={true}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -495,12 +512,10 @@ export function AddTaskDialog({
                       </span>
                     </Button>
                   </PopoverTrigger>
-                  {/* ✅ modal=false prevents Radix Dialog from blocking popover */}
                   <PopoverContent
-                    className="w-auto p-0"
+                    className="w-auto p-0 z-[9999]"
                     align="start"
-                    // ✅ Render inside dialog but with high z-index
-                    style={{ zIndex: 99999 }}
+                    sideOffset={5}
                   >
                     <Calendar
                       mode="single"
@@ -515,7 +530,7 @@ export function AddTaskDialog({
                 </Popover>
 
                 {/* ✅ Time Popover */}
-                <Popover open={startTimeOpen} onOpenChange={setStartTimeOpen}>
+                <Popover open={startTimeOpen} onOpenChange={setStartTimeOpen} modal={true}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -528,9 +543,9 @@ export function AddTaskDialog({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent
-                    className="w-auto p-0"
+                    className="w-auto p-0 z-[9999]"
                     align="start"
-                    style={{ zIndex: 99999 }}
+                    sideOffset={5}
                   >
                     <TimePicker
                       value={startTime}
@@ -548,7 +563,7 @@ export function AddTaskDialog({
                 End Date & Time
               </Label>
               <div className="flex gap-2">
-                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen} modal={true}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -561,9 +576,9 @@ export function AddTaskDialog({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent
-                    className="w-auto p-0"
+                    className="w-auto p-0 z-[9999]"
                     align="start"
-                    style={{ zIndex: 99999 }}
+                    sideOffset={5}
                   >
                     <Calendar
                       mode="single"
@@ -580,7 +595,7 @@ export function AddTaskDialog({
                   </PopoverContent>
                 </Popover>
 
-                <Popover open={endTimeOpen} onOpenChange={setEndTimeOpen}>
+                <Popover open={endTimeOpen} onOpenChange={setEndTimeOpen} modal={true}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -593,9 +608,9 @@ export function AddTaskDialog({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent
-                    className="w-auto p-0"
+                    className="w-auto p-0 z-[9999]"
                     align="start"
-                    style={{ zIndex: 99999 }}
+                    sideOffset={5}
                   >
                     <TimePicker
                       value={endTime}

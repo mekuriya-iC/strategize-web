@@ -79,3 +79,24 @@ export const DEACTIVATE_STRATEGIC_PLAN = gql`
     }
   }
 `;
+
+export const ARCHIVE_STRATEGIC_PLAN = gql`
+  mutation ArchiveStrategicPlan($strategicPlanId: ID!) {
+    archiveStrategicPlan(strategicPlanId: $strategicPlanId) {
+      strategicPlanId
+      title
+      archivedAt
+      isActive
+    }
+  }
+`;
+
+export const UNARCHIVE_STRATEGIC_PLAN = gql`
+  mutation UnarchiveStrategicPlan($strategicPlanId: ID!) {
+    unarchiveStrategicPlan(strategicPlanId: $strategicPlanId) {
+      strategicPlanId
+      title
+      archivedAt
+    }
+  }
+`;

@@ -4,6 +4,43 @@ import { gql } from "@apollo/client";
  * KPI Scorecard Queries
  */
 
+export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
+  query GetRealtimeIndividualScorecard(
+    $employeeId: ID!
+    $periodId: ID!
+    $capFinalScore: Boolean
+  ) {
+    realtimeIndividualScorecard(
+      employeeId: $employeeId
+      periodId: $periodId
+      capFinalScore: $capFinalScore
+    ) {
+      totalScore
+      uncappedTotalScore
+      maxPossibleScore
+      finalScoreCapApplied
+      percentageAchieved
+      kpiScores {
+        aggregatedKpiScoreId
+        kpi {
+          kpiId
+          name
+          description
+        }
+        level
+        actualValue
+        targetValue
+        weight
+        cap
+        achievementRate
+        cappedRate
+        score
+        calculatedAt
+      }
+    }
+  }
+`;
+
 export const GET_TOTAL_SCORECARD_SCORE = gql`
   query GetTotalScorecardScore(
     $level: ScorecardLevel!

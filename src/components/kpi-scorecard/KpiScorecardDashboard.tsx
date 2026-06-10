@@ -2,19 +2,15 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import { Calculator, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useMutation, useQuery } from "@apollo/client";
-import { CALCULATE_KPI_SCORES } from "@/lib/graphql/mutations/kpi-scorecard";
+import { useQuery } from "@apollo/client";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import IndividualScorecard from "./IndividualScorecard";
 import DepartmentScorecard from "./DepartmentScorecard";
 import DivisionScorecard from "./DivisionScorecard";
 import CorporateScorecard from "./CorporateScorecard";
 import CascadeMappingManager from "./CascadeMappingManager";
-import { toast } from "sonner";
 
 export default function KpiScorecardDashboard() {
   const { can } = usePermissions();
@@ -22,10 +18,9 @@ export default function KpiScorecardDashboard() {
   const canReadAll = can("evaluations:read_all");
 
   const [activeTab, setActiveTab] = useState("individual");
-  const [isCalculating, setIsCalculating] = useState(false);
   const [capFinalScore, setCapFinalScore] = useState(false);
 
-  // Fetch active period for calculation
+  // Fetch active period for display
   const { data: periodsData } = useQuery(GET_STRATEGIC_PERIODS, {
     variables: { page: 1, limit: 50 },
   });
@@ -33,47 +28,17 @@ export default function KpiScorecardDashboard() {
   const periods = periodsData?.strategicPeriods?.items || [];
   const activePeriod = periods.find((p: any) => p.isActive);
 
-  const [calculateScores] = useMutation(CALCULATE_KPI_SCORES);
-
-  const handleCalculateScores = async () => {
-    if (!activePeriod) {
-      toast.error("Please activate a strategic period first");
-      return;
-    }
-
-    setIsCalculating(true);
-
-    try {
-      await calculateScores({
-        variables: {
-          periodId: activePeriod.strategicPeriodId,
-        },
-      });
-
-      toast.success(
-        "KPI scores have been calculated successfully for the active period",
-      );
-
-      // Refresh the current view
-      window.location.reload();
-    } catch (error: any) {
-      console.error("Error calculating scores:", error);
-      toast.error(
-        error.message || "Failed to calculate KPI scores. Please try again",
-      );
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header with Calculate Button */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">KPI Scorecard</h1>
           <p className="text-muted-foreground">
             Track and analyze KPI performance across all organizational levels
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            ✨ Scores are calculated automatically from approved logbook entries in real-time
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -86,25 +51,6 @@ export default function KpiScorecardDashboard() {
             />
             Cap final result at 100%
           </label>
-          {canManageKpis && (
-            <Button
-              onClick={handleCalculateScores}
-              disabled={isCalculating || !activePeriod}
-              size="lg"
-            >
-              {isCalculating ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Calculating...
-                </>
-              ) : (
-                <>
-                  <Calculator className="mr-2 h-4 w-4" />
-                  Calculate Scores
-                </>
-              )}
-            </Button>
-          )}
         </div>
       </div>
 

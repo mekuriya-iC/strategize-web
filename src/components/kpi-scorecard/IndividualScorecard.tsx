@@ -6,7 +6,7 @@ import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { TrendingUp, Target, Award, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
-import { GET_TOTAL_SCORECARD_SCORE } from "@/lib/graphql/queries/kpi-scorecard";
+import { GET_REALTIME_INDIVIDUAL_SCORECARD } from "@/lib/graphql/queries/kpi-scorecard";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import {
@@ -88,23 +88,22 @@ export default function IndividualScorecard({
 
   const employees = employeesData?.employees?.items || [];
 
-  // Fetch scorecard data
+  // Fetch scorecard data - REAL-TIME CALCULATION
   const { data: scorecardData, loading: scorecardLoading } = useQuery(
-    GET_TOTAL_SCORECARD_SCORE,
+    GET_REALTIME_INDIVIDUAL_SCORECARD,
     {
       variables: {
-        level: "INDIVIDUAL",
-        entityId: selectedEmployeeId,
+        employeeId: selectedEmployeeId,
         periodId: selectedPeriodId,
         capFinalScore,
       },
       skip: !selectedEmployeeId || !selectedPeriodId,
-      fetchPolicy: "network-only",
+      fetchPolicy: "network-only", // Always fetch fresh data
     },
   );
 
   const scorecard: ScorecardData | undefined =
-    scorecardData?.totalScorecardScore;
+    scorecardData?.realtimeIndividualScorecard;
 
   const getAchievementColor = (rate: number): string => {
     if (rate >= 1.0) return "text-green-600";
@@ -205,7 +204,7 @@ export default function IndividualScorecard({
                 onValueChange={setSelectedPeriodId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select period" />
+                  <SelectValue placeholder={activePeriod ? `${activePeriod.name} (Active)` : "Select period"} />
                 </SelectTrigger>
                 <SelectContent>
                   {periods.map((period: any) => (
@@ -238,10 +237,13 @@ export default function IndividualScorecard({
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              No KPI scorecard data found for this period.
+              No KPI assignments found for this period.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Make sure KPIs are assigned and scores have been calculated.
+              KPIs must be assigned to you with targets and weights to see your scorecard.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Scores are calculated automatically from your approved logbook entries.
             </p>
           </CardContent>
         </Card>

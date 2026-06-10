@@ -42,6 +42,7 @@ export interface LoginEmployeeInput {
 }
 
 export interface CreateEmployeeInput {
+  organizationId?: string;
   email: string;
   fullName: string;
   password: string;

@@ -29,6 +29,14 @@ export default function UnifiedPerformanceOverview({
 }: UnifiedPerformanceOverviewProps) {
   const [activeTab, setActiveTab] = useState("overview");
 
+  console.log('UnifiedPerformanceOverview props:', {
+    employeeId,
+    organizationId,
+    strategicPeriodId,
+    departmentId,
+    divisionId,
+  });
+
   const { data, loading, error } = useQuery(GET_EMPLOYEE_PERFORMANCE, {
     variables: {
       employeeId,
@@ -38,6 +46,13 @@ export default function UnifiedPerformanceOverview({
       divisionId,
     },
     skip: !employeeId || !organizationId,
+    fetchPolicy: 'network-only', // Force fresh data
+    onError: (err) => {
+      console.error('GET_EMPLOYEE_PERFORMANCE error:', err);
+    },
+    onCompleted: (data) => {
+      console.log('GET_EMPLOYEE_PERFORMANCE data:', data);
+    },
   });
 
   const performanceData = data?.employeePerformance;

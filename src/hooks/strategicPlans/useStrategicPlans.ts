@@ -10,6 +10,8 @@ import {
   REMOVE_STRATEGIC_PILLAR,
   ACTIVATE_STRATEGIC_PLAN,
   DEACTIVATE_STRATEGIC_PLAN,
+  ARCHIVE_STRATEGIC_PLAN,
+  UNARCHIVE_STRATEGIC_PLAN,
 } from '@/lib/graphql/mutations/strategicPlans';
 
 export interface StrategicPlan {
@@ -20,6 +22,7 @@ export interface StrategicPlan {
   endDate: string;
   isActive: boolean;
   version?: string;
+  archivedAt?: string | null;
   createdAt: string;
   organization: {
     organizationId: string;
@@ -133,6 +136,18 @@ export const useStrategicPlanMutations = () => {
     refetchQueries: [GET_STRATEGIC_PLANS, GET_STRATEGIC_PLAN],
   });
 
+  const [archiveStrategicPlan] = useMutation(ARCHIVE_STRATEGIC_PLAN, {
+    onCompleted: () => toast.success('Strategic Plan archived successfully'),
+    onError: (error) => toast.error(`Failed to archive plan: ${error.message}`),
+    refetchQueries: [GET_STRATEGIC_PLANS, GET_STRATEGIC_PLAN],
+  });
+
+  const [unarchiveStrategicPlan] = useMutation(UNARCHIVE_STRATEGIC_PLAN, {
+    onCompleted: () => toast.success('Strategic Plan unarchived successfully'),
+    onError: (error) => toast.error(`Failed to unarchive plan: ${error.message}`),
+    refetchQueries: [GET_STRATEGIC_PLANS, GET_STRATEGIC_PLAN],
+  });
+
   return {
     createStrategicPlan: async (input: any) => {
       const { data } = await createStrategicPlan({ variables: { input } });
@@ -165,6 +180,14 @@ export const useStrategicPlanMutations = () => {
     deactivateStrategicPlan: async (strategicPlanId: string) => {
       const { data } = await deactivateStrategicPlan({ variables: { strategicPlanId } });
       return data?.updateStrategicPlan;
+    },
+    archiveStrategicPlan: async (strategicPlanId: string) => {
+      const { data } = await archiveStrategicPlan({ variables: { strategicPlanId } });
+      return data?.archiveStrategicPlan;
+    },
+    unarchiveStrategicPlan: async (strategicPlanId: string) => {
+      const { data } = await unarchiveStrategicPlan({ variables: { strategicPlanId } });
+      return data?.unarchiveStrategicPlan;
     },
   };
 };

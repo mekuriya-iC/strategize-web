@@ -91,15 +91,13 @@ export default function OnboardingPage() {
   // Only SUPER_ADMIN and ADMIN see template selection
   const isSuperAdminOrAdmin =
     user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
-  
-  // Calculate total steps based on whether org creation is needed
+
+  // Calculate total steps based on user role and org status
   let totalSteps = 2; // Default: password + complete
   if (needsOrgCreation) {
-    totalSteps = 2; // org + password (then redirect to /organization-template)
+    totalSteps = 4; // org + password + template + complete
   } else if (isSuperAdminOrAdmin) {
-    totalSteps = 1; // password only (then redirect to /organization-template)
-  } else {
-    totalSteps = 2; // password + complete
+    totalSteps = 3; // password + template + complete
   }
 
   const templates = [
@@ -206,17 +204,17 @@ export default function OnboardingPage() {
       if (meData?.me) {
         setUser(meData.me);
       } else if (user) {
-        // Keep existing user shape from store types when /me is unavailable.
         setUser(user);
       }
 
       toast.success("Password changed successfully");
 
-      // Redirect to existing organization template page for SUPER_ADMIN/ADMIN
+      // Move to next step or redirect
       if (isSuperAdminOrAdmin) {
-        window.location.assign("/organization-template");
+        setStep(step + 1);
       } else {
-        setStep(2);
+        // Regular users skip template selection
+        setStep(totalSteps);
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to change password");
@@ -418,16 +416,68 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Complete Step (for non-admin users only) */}
-          {step === 2 && !isSuperAdminOrAdmin && (
+          {/* Template Selection Step */}
+          {isSuperAdminOrAdmin &&
+            ((step === 2 && !needsOrgCreation) || (step === 3 && needsOrgCreation)) && (
+              <div className="space-y-4">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold mb-2">
+                    Choose Organization Structure
+                  </h3>
+                  <p className="text-gray-600">
+                    Select the structure that best fits your organization
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => setSelectedTemplate(template.id)}
+                      className={`p-6 border-2 rounded-lg text-left transition-all ${
+                        selectedTemplate === template.id
+                          ? "border-indigo-600 bg-indigo-50"
+                          : "border-gray-200 hover:border-indigo-300"
+                      }`}
+                    >
+                      <template.icon className="h-8 w-8 mb-3 text-indigo-600" />
+                      <h4 className="font-semibold mb-1">{template.name}</h4>
+                      <p className="text-sm text-gray-600">{template.desc}</p>
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  onClick={handleTemplateSelect}
+                  className="w-full"
+                  disabled={!selectedTemplate}
+                >
+                  Continue
+                </Button>
+              </div>
+            )}
+
+          {/* Complete Step */}
+          {step === totalSteps && (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Setup Complete!</h3>
                 <p className="text-gray-600">
-                  Your password has been changed. You can now access the dashboard.
+                  {isSuperAdminOrAdmin
+                    ? "You can now access your dashboard and complete the remaining setup steps"
+                    : "Your password has been changed. You can now access the dashboard."}
                 </p>
               </div>
+              {isSuperAdminOrAdmin && (
+                <div className="bg-indigo-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Next Steps:</h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li>✓ Create Strategic Plan & Pillars</li>
+                    <li>✓ Build Organization Structure</li>
+                    <li>✓ Add Employees & Positions</li>
+                    <li>✓ Set Corporate Objectives & KPIs</li>
+                  </ul>
+                </div>
+              )}
               <Button onClick={completeOnboarding} className="w-full">
                 Go to Dashboard
               </Button>

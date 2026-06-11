@@ -282,6 +282,66 @@ export const ASSIGN_KPI_TO_DEPARTMENT = CREATE_KPI_ASSIGNMENT_DEPARTMENT;
 export const ASSIGN_KPI_TO_DIVISION = CREATE_KPI_ASSIGNMENT_DIVISION;
 export const ASSIGN_KPI_TO_CORPORATE = CREATE_KPI_ASSIGNMENT_CORPORATE;
 
+// Bulk assignment mutations
+export const BULK_ASSIGN_KPI_TO_EMPLOYEES = gql`
+  mutation BulkAssignKpiToEmployees($input: BulkAssignKpiToEmployeesInput!) {
+    bulkAssignKpiToEmployees(input: $input) {
+      kpiAssignmentEmployeeId
+      userId
+      targetValue
+      weight
+      parentWeightAllocation
+      cap
+      kpi {
+        kpiId
+        name
+      }
+    }
+  }
+`;
+
+export const BULK_ASSIGN_KPI_TO_DEPARTMENTS = gql`
+  mutation BulkAssignKpiToDepartments($input: BulkAssignKpiToDepartmentsInput!) {
+    bulkAssignKpiToDepartments(input: $input) {
+      kpiAssignmentDepartmentId
+      departmentId
+      targetValue
+      weight
+      parentWeightAllocation
+      cap
+      kpi {
+        kpiId
+        name
+      }
+      department {
+        departmentId
+        name
+      }
+    }
+  }
+`;
+
+export const BULK_ASSIGN_KPI_TO_DIVISIONS = gql`
+  mutation BulkAssignKpiToDivisions($input: BulkAssignKpiToDivisionsInput!) {
+    bulkAssignKpiToDivisions(input: $input) {
+      kpiAssignmentDivisionId
+      divisionId
+      targetValue
+      weight
+      parentWeightAllocation
+      cap
+      kpi {
+        kpiId
+        name
+      }
+      division {
+        divisionId
+        name
+      }
+    }
+  }
+`;
+
 // Remove KPI assignment from employee
 export const REMOVE_KPI_ASSIGNMENT_EMPLOYEE = gql`
   mutation RemoveKpiAssignmentEmployee($kpiAssignmentEmployeeId: ID!) {

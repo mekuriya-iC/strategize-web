@@ -14,6 +14,7 @@ export { default as KpiPerformanceChart } from "./KpiPerformanceChart";
 
 // Assignment
 export { default as KpiAssignmentDialog } from "./KpiAssignmentDialog";
+export { default as BulkKpiAssignmentDialog } from "./BulkKpiAssignmentDialog";
 
 // Shared KPIs
 export { default as SharedKpiParticipants } from "./SharedKpiParticipants";

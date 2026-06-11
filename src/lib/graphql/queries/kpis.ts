@@ -345,6 +345,8 @@ export const GET_KPI_ASSIGNMENTS_EMPLOYEE = gql`
         kpiAssignmentEmployeeId
         targetValue
         weight
+        parentWeightAllocation
+        cap
         createdAt
         updatedAt
         kpi {
@@ -397,6 +399,8 @@ export const GET_KPI_ASSIGNMENTS_DEPARTMENT = gql`
         kpiAssignmentDepartmentId
         targetValue
         weight
+        parentWeightAllocation
+        cap
         createdAt
         updatedAt
         kpi {
@@ -447,6 +451,8 @@ export const GET_KPI_ASSIGNMENTS_DIVISION = gql`
         kpiAssignmentDivisionId
         targetValue
         weight
+        parentWeightAllocation
+        cap
         createdAt
         updatedAt
         kpi {

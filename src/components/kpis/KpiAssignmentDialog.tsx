@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Building2, Users, User } from "lucide-react";
+import { UserPlus, Building2, Users, User, Info, Check } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
   CREATE_KPI_ASSIGNMENT_EMPLOYEE,
@@ -35,6 +35,13 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { toast } from "sonner";
 import { parseGraphQLError } from "@/utils/errorParsing";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface KpiAssignmentDialogProps {
   kpi: {
@@ -61,7 +68,9 @@ export default function KpiAssignmentDialog({
   const [selectedId, setSelectedId] = useState("");
   const [targetValue, setTargetValue] = useState(kpi.targetValue.toString());
   const [weight, setWeight] = useState("100");
+  const [parentWeightAllocation, setParentWeightAllocation] = useState("");
   const [cap, setCap] = useState("1.5");
+  const [useCustomParentWeight, setUseCustomParentWeight] = useState(false);
 
   // Fetch employees - filter by department for non-admins
   const user = useAuthStore((state) => state.user);
@@ -167,6 +176,8 @@ export default function KpiAssignmentDialog({
     setSelectedId("");
     setTargetValue(kpi.targetValue.toString());
     setWeight("100");
+    setParentWeightAllocation("");
+    setUseCustomParentWeight(false);
     setCap("1.5");
     onSuccess?.();
   };
@@ -180,9 +191,17 @@ export default function KpiAssignmentDialog({
     const target = parseFloat(targetValue);
     const weightValue = parseFloat(weight);
     const capValue = parseFloat(cap);
+    const parentWeightValue = useCustomParentWeight && parentWeightAllocation 
+      ? parseFloat(parentWeightAllocation) 
+      : weightValue;
 
     if (isNaN(target) || isNaN(weightValue) || isNaN(capValue)) {
       toast.error("Please enter valid numbers");
+      return;
+    }
+
+    if (useCustomParentWeight && isNaN(parentWeightValue)) {
+      toast.error("Please enter a valid parent weight allocation");
       return;
     }
 
@@ -201,6 +220,7 @@ export default function KpiAssignmentDialog({
               strategicPeriodId,
               targetValue: target,
               weight: weightValue,
+              parentWeightAllocation: useCustomParentWeight ? parentWeightValue : undefined,
               cap: capValue,
             },
           },
@@ -214,6 +234,7 @@ export default function KpiAssignmentDialog({
               strategicPeriodId,
               targetValue: target,
               weight: weightValue,
+              parentWeightAllocation: useCustomParentWeight ? parentWeightValue : undefined,
               cap: capValue,
             },
           },
@@ -227,6 +248,7 @@ export default function KpiAssignmentDialog({
               strategicPeriodId,
               targetValue: target,
               weight: weightValue,
+              parentWeightAllocation: useCustomParentWeight ? parentWeightValue : undefined,
               cap: capValue,
             },
           },
@@ -414,10 +436,22 @@ export default function KpiAssignmentDialog({
           </div>
 
           {/* Weight */}
-          <div className="space-y-2">
-            <Label htmlFor="weight">
-              Weight (%) <span className="text-red-500">*</span>
-            </Label>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="weight">
+                Weight (%) <span className="text-red-500">*</span>
+              </Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="w-4 h-4 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Local weight used for internal performance tracking at this level</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="weight"
               type="number"
@@ -425,12 +459,100 @@ export default function KpiAssignmentDialog({
               min="0"
               max="100"
               value={weight}
-              onChange={(e) => setWeight(e.target.value)}
+              onChange={(e) => {
+                setWeight(e.target.value);
+                // Auto-sync parent weight if not using custom
+                if (!useCustomParentWeight) {
+                  setParentWeightAllocation(e.target.value);
+                }
+              }}
             />
             <p className="text-xs text-gray-500">
-              Contribution weight for this assignment
+              Local weight shown at this organizational level
             </p>
           </div>
+
+          {/* Parent Weight Allocation (Only for non-corporate) */}
+          {assignmentType !== "CORPORATE" && (
+            <div className="space-y-3 border-l-2 border-blue-200 pl-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-r py-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="useCustomParentWeight"
+                  checked={useCustomParentWeight}
+                  onCheckedChange={(checked) => {
+                    setUseCustomParentWeight(checked as boolean);
+                    if (!checked) {
+                      // Reset to match local weight
+                      setParentWeightAllocation(weight);
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="useCustomParentWeight"
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  Set different parent weight allocation
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-4 h-4 text-blue-600" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p className="font-semibold mb-1">Parent Weight Allocation</p>
+                        <p className="text-xs">
+                          This is the weight contribution to the parent level when achieving 100%. 
+                          Allows flexible local weight management while maintaining cascade integrity.
+                        </p>
+                        <p className="text-xs mt-2">
+                          Example: Department shows 8% locally but contributes 6% to division.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+              </div>
+
+              {useCustomParentWeight && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="parentWeightAllocation">
+                      Parent Weight Allocation (%)
+                    </Label>
+                    <Input
+                      id="parentWeightAllocation"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={parentWeightAllocation}
+                      onChange={(e) => setParentWeightAllocation(e.target.value)}
+                      placeholder={weight}
+                    />
+                  </div>
+                  <div className="flex items-start gap-2 text-xs bg-blue-100 dark:bg-blue-900/40 p-2 rounded">
+                    <Info className="w-3 h-3 mt-0.5 flex-shrink-0 text-blue-600" />
+                    <div>
+                      <p className="font-medium">Weight Cascade</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Local: {weight}% (shown at this level) →{" "}
+                        {assignmentType === "EMPLOYEE" && "Department"}
+                        {assignmentType === "DEPARTMENT" && "Division"}
+                        {assignmentType === "DIVISION" && "Corporate"}
+                        : {parentWeightAllocation || weight}% (contribution to parent)
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!useCustomParentWeight && (
+                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                  <Check className="w-3 h-3 text-green-600" />
+                  <span>Parent weight will match local weight ({weight}%)</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Cap */}
           <div className="space-y-2">

@@ -61,6 +61,50 @@ const GET_CORPORATE_SCORECARD = gql`
   }
 `;
 
+// Query to get division assignments with parent weights
+const GET_DIVISION_ASSIGNMENTS = gql`
+  query GetDivisionAssignments($divisionId: ID!, $periodId: ID!) {
+    kpiAssignmentsDivision(
+      divisionId: $divisionId
+      strategicPeriodId: $periodId
+      page: 1
+      limit: 100
+    ) {
+      items {
+        kpiAssignmentDivisionId
+        weight
+        parentWeightAllocation
+        kpi {
+          kpiId
+          name
+        }
+      }
+    }
+  }
+`;
+
+// Query to get department assignments with parent weights
+const GET_DEPARTMENT_ASSIGNMENTS = gql`
+  query GetDepartmentAssignments($departmentId: ID!, $periodId: ID!) {
+    kpiAssignmentsDepartment(
+      departmentId: $departmentId
+      strategicPeriodId: $periodId
+      page: 1
+      limit: 100
+    ) {
+      items {
+        kpiAssignmentDepartmentId
+        weight
+        parentWeightAllocation
+        kpi {
+          kpiId
+          name
+        }
+      }
+    }
+  }
+`;
+
 const GET_DIVISIONS = gql`
   query GetDivisions {
     divisions {
@@ -267,6 +311,15 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
     fetchPolicy: "cache-and-network",
   });
 
+  // Fetch division assignments for parent weights
+  const { data: divisionAssignmentsData } = useQuery(GET_DIVISION_ASSIGNMENTS, {
+    variables: {
+      divisionId: selectedDivisionId,
+      periodId: selectedPeriodId,
+    },
+    skip: selectedDivisionId === "all" || !selectedPeriodId,
+  });
+
   // Fetch departments
   const { data: departmentsData } = useQuery(GET_DEPARTMENTS, {
     variables: {
@@ -309,10 +362,34 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
     fetchPolicy: "cache-and-network",
   });
 
+  // Fetch department assignments for parent weights
+  const { data: departmentAssignmentsData } = useQuery(GET_DEPARTMENT_ASSIGNMENTS, {
+    variables: {
+      departmentId: selectedDepartmentId,
+      periodId: selectedPeriodId,
+    },
+    skip: selectedDepartmentId === "all" || !selectedPeriodId,
+  });
+
   const corporateScorecard = corporateData?.realtimeCorporateScorecard;
   const divisionScorecard = divisionData?.realtimeDivisionScorecard;
   const departmentScorecard = departmentData?.realtimeDepartmentScorecard;
   const employeePerformance = employeeKpiData?.unifiedEmployeePerformance;
+
+  // Create maps for assignments
+  const divisionAssignmentMap = new Map(
+    (divisionAssignmentsData?.kpiAssignmentsDivision?.items || []).map((a: any) => [
+      a.kpi.kpiId,
+      a,
+    ])
+  );
+
+  const departmentAssignmentMap = new Map(
+    (departmentAssignmentsData?.kpiAssignmentsDepartment?.items || []).map((a: any) => [
+      a.kpi.kpiId,
+      a,
+    ])
+  );
 
   const getPerformanceColor = (percentage: number) => {
     if (percentage >= 90) return "text-emerald-600 dark:text-emerald-400";
@@ -559,19 +636,38 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
               <Progress value={divisionScorecard.percentageAchieved} className="h-3" />
             </div>
             <div className="grid gap-2">
-              {divisionScorecard.kpiScores.map((kpiScore: any, index: number) => (
-                <div key={index} className="p-3 rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-sm">{kpiScore.kpi.name}</span>
-                    <span className={`font-bold ${getPerformanceColor((kpiScore.achievementRate * 100))}`}>
-                      {(kpiScore.achievementRate * 100).toFixed(1)}%
-                    </span>
+              {divisionScorecard.kpiScores.map((kpiScore: any, index: number) => {
+                const assignment = divisionAssignmentMap.get(kpiScore.kpi.kpiId);
+                const hasParentWeight =
+                  assignment &&
+                  assignment.parentWeightAllocation !== null &&
+                  assignment.parentWeightAllocation !== assignment.weight;
+
+                return (
+                  <div key={index} className="p-3 rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-sm">{kpiScore.kpi.name}</span>
+                      <span className={`font-bold ${getPerformanceColor((kpiScore.achievementRate * 100))}`}>
+                        {(kpiScore.achievementRate * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {kpiScore.actualValue.toFixed(2)} / {kpiScore.targetValue} {kpiScore.kpi.measurementUnit}
+                    </div>
+                    {hasParentWeight && (
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <Badge variant="outline" className="text-xs">
+                          {assignment.weight.toFixed(1)}% Local
+                        </Badge>
+                        <ArrowUpRight className="w-3 h-3 text-purple-500" />
+                        <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                          {assignment.parentWeightAllocation.toFixed(1)}% to Corporate
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    {kpiScore.actualValue.toFixed(2)} / {kpiScore.targetValue} {kpiScore.kpi.measurementUnit}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -607,19 +703,38 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
               <Progress value={departmentScorecard.percentageAchieved} className="h-3" />
             </div>
             <div className="grid gap-2">
-              {departmentScorecard.kpiScores.map((kpiScore: any, index: number) => (
-                <div key={index} className="p-3 rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-sm">{kpiScore.kpi.name}</span>
-                    <span className={`font-bold ${getPerformanceColor((kpiScore.achievementRate * 100))}`}>
-                      {(kpiScore.achievementRate * 100).toFixed(1)}%
-                    </span>
+              {departmentScorecard.kpiScores.map((kpiScore: any, index: number) => {
+                const assignment = departmentAssignmentMap.get(kpiScore.kpi.kpiId);
+                const hasParentWeight =
+                  assignment &&
+                  assignment.parentWeightAllocation !== null &&
+                  assignment.parentWeightAllocation !== assignment.weight;
+
+                return (
+                  <div key={index} className="p-3 rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-sm">{kpiScore.kpi.name}</span>
+                      <span className={`font-bold ${getPerformanceColor((kpiScore.achievementRate * 100))}`}>
+                        {(kpiScore.achievementRate * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {kpiScore.actualValue.toFixed(2)} / {kpiScore.targetValue} {kpiScore.kpi.measurementUnit}
+                    </div>
+                    {hasParentWeight && (
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <Badge variant="outline" className="text-xs">
+                          {assignment.weight.toFixed(1)}% Local
+                        </Badge>
+                        <ArrowUpRight className="w-3 h-3 text-amber-500" />
+                        <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                          {assignment.parentWeightAllocation.toFixed(1)}% to Division
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    {kpiScore.actualValue.toFixed(2)} / {kpiScore.targetValue} {kpiScore.kpi.measurementUnit}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

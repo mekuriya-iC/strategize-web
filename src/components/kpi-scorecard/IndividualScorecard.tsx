@@ -3,10 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import { TrendingUp, Target, Award, AlertCircle } from "lucide-react";
+import { TrendingUp, Target, Award, AlertCircle, ArrowRight, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_REALTIME_INDIVIDUAL_SCORECARD } from "@/lib/graphql/queries/kpi-scorecard";
+import { GET_KPI_ASSIGNMENTS_EMPLOYEE } from "@/lib/graphql/queries/kpis";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import {
@@ -102,8 +103,26 @@ export default function IndividualScorecard({
     },
   );
 
+  // Fetch KPI assignments to get parentWeightAllocation
+  const { data: assignmentsData } = useQuery(GET_KPI_ASSIGNMENTS_EMPLOYEE, {
+    variables: {
+      employeeId: selectedEmployeeId,
+      strategicPeriodId: selectedPeriodId,
+      page: 1,
+      limit: 1000,
+    },
+    skip: !selectedEmployeeId || !selectedPeriodId,
+  });
+
   const scorecard: ScorecardData | undefined =
     scorecardData?.realtimeIndividualScorecard;
+
+  const assignments = assignmentsData?.kpiAssignmentsEmployee?.items || [];
+
+  // Create a map of kpiId to assignment for quick lookup
+  const assignmentMap = new Map(
+    assignments.map((a: any) => [a.kpi.kpiId, a])
+  );
 
   const getAchievementColor = (rate: number): string => {
     if (rate >= 1.0) return "text-green-600";
@@ -352,7 +371,9 @@ export default function IndividualScorecard({
                       <th className="text-right p-3 font-medium">
                         Achievement
                       </th>
-                      <th className="text-right p-3 font-medium">Weight</th>
+                      <th className="text-right p-3 font-medium">
+                        Weight Allocation
+                      </th>
                       <th className="text-right p-3 font-medium">Cap</th>
                       <th className="text-right p-3 font-medium">Score</th>
                       <th className="text-right p-3 font-medium">Progress</th>
@@ -364,6 +385,11 @@ export default function IndividualScorecard({
                       const badge = getAchievementBadge(
                         kpiScore.achievementRate,
                       );
+                      const assignment = assignmentMap.get(kpiScore.kpi.kpiId);
+                      const hasParentWeight =
+                        assignment &&
+                        assignment.parentWeightAllocation !== null &&
+                        assignment.parentWeightAllocation !== assignment.weight;
 
                       return (
                         <tr
@@ -397,7 +423,30 @@ export default function IndividualScorecard({
                             {formatPercentage(kpiScore.achievementRate)}
                           </td>
                           <td className="text-right p-3">
-                            {formatNumber(kpiScore.weight)}%
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="flex items-center gap-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {formatNumber(kpiScore.weight)}%
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Local
+                                </span>
+                              </div>
+                              {hasParentWeight && (
+                                <div className="flex items-center gap-1">
+                                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                  >
+                                    {formatNumber(assignment.parentWeightAllocation)}%
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    To Dept
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="text-right p-3">
                             {formatPercentage(kpiScore.cap)}
@@ -443,7 +492,7 @@ export default function IndividualScorecard({
               </div>
 
               {/* Formula Explanation */}
-              <div className="mt-6 p-4 bg-muted rounded-lg">
+              <div className="mt-6 p-4 bg-muted rounded-lg space-y-3">
                 <h4 className="text-sm font-semibold mb-2">
                   How Scores are Calculated
                 </h4>
@@ -466,6 +515,30 @@ export default function IndividualScorecard({
                   • <strong>Cap:</strong> Maximum achievement rate (e.g., 150%
                   means max 1.5x of weight)
                 </p>
+
+                {/* Weight Allocation Explanation */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Understanding Weight Allocation
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Each KPI can have two weight values:
+                  </p>
+                  <div className="ml-4 mt-2 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      • <strong>Local Weight:</strong> Used for your personal performance tracking and scorecard display
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      • <strong>Parent Contribution:</strong> The weight sent to your department when you achieve 100%
+                    </p>
+                  </div>
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-900">
+                    <p className="text-xs text-blue-900 dark:text-blue-100">
+                      <strong>Example:</strong> Your KPI shows 8% locally for your tracking, but contributes 6% to the department when fully achieved. This allows flexible local display while maintaining proper cascade aggregation.
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -41,6 +41,27 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
   }
 `;
 
+export const GET_KPI_ASSIGNMENT_EMPLOYEE_WITH_WEIGHTS = gql`
+  query GetKpiAssignmentEmployee($employeeId: ID!, $periodId: ID!) {
+    kpiAssignmentEmployees(
+      filters: { employeeId: $employeeId, strategicPeriodId: $periodId }
+    ) {
+      items {
+        kpiAssignmentEmployeeId
+        kpi {
+          kpiId
+          name
+          description
+        }
+        targetValue
+        weight
+        parentWeightAllocation
+        cap
+      }
+    }
+  }
+`;
+
 export const GET_TOTAL_SCORECARD_SCORE = gql`
   query GetTotalScorecardScore(
     $level: ScorecardLevel!

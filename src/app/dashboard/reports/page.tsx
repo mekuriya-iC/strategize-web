@@ -1,18 +1,15 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  PerformanceReport,
-  KPIReport,
-  DepartmentReport,
   MySubmissionsReport,
   KPIPerformanceAnalytics,
 } from "@/components/reports";
-import KPICascadeView from "@/components/reports/KPICascadeView";
+import UnifiedPerformanceReport from "@/components/reports/UnifiedPerformanceReport";
 import { exportReport } from "@/lib/utils/exportReport";
 import { toast } from "sonner";
-import { TrendingUp, Target, Building2, Send, GitBranch, BarChart3 } from "lucide-react";
+import { TrendingUp, Target, Send, Activity } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores";
 
@@ -24,9 +21,36 @@ function ReportsContent() {
   const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
   const hasFullAccess =
     !!user?.role && fullAccessRoles.has(user.role as string);
+  
+  const managerRoles = new Set(["MANAGER", "DIRECTOR", "CEO", "SUPER_ADMIN", "ADMIN", "HR"]);
+  const isManager = !!user?.role && managerRoles.has(user.role as string);
 
-  const initialTab = searchParams.get("tab") || "performance";
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // Determine default tab based on role
+  const getDefaultTab = () => {
+    const paramTab = searchParams.get("tab");
+    if (paramTab) return paramTab;
+    
+    if (hasFullAccess) return "kpi-performance";
+    if (isManager) return "performance";
+    return "individual";
+  };
+
+  const [activeTab, setActiveTab] = useState<string>("");
+
+  // Set default tab when user loads
+  useEffect(() => {
+    if (user && !activeTab) {
+      setActiveTab(getDefaultTab());
+    }
+  }, [user, activeTab]);
+
+  // Update tab when it changes via search params
+  useEffect(() => {
+    const paramTab = searchParams.get("tab");
+    if (paramTab && paramTab !== activeTab) {
+      setActiveTab(paramTab);
+    }
+  }, [searchParams]);
 
   const handleExport = (data: any, reportName: string) => {
     try {
@@ -47,102 +71,104 @@ function ReportsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Reports & Analytics
+            Performance & Reports
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {hasFullAccess
-              ? "Comprehensive insights into organizational performance and metrics"
-              : "Personal performance overview and submission history"}
+              ? "Complete organizational performance analytics and KPI tracking"
+              : isManager
+              ? "Team performance overview and personal metrics"
+              : "Your personal performance metrics and achievement history"}
           </p>
         </div>
       </div>
 
       {/* Report Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-6"
-      >
-        <TabsList
-          className={`grid w-full ${hasFullAccess ? "grid-cols-6" : "grid-cols-2"} lg:w-auto lg:inline-grid`}
+      {activeTab && (
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
         >
-          <TabsTrigger value="performance" className="gap-2">
-            <TrendingUp className="h-4 w-4" />
-            <span className="hidden sm:inline">Performance</span>
-          </TabsTrigger>
-
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 lg:w-auto">
+          {/* KPI Performance - Full access only */}
           {hasFullAccess && (
-            <>
-              <TabsTrigger value="kpi-analytics" className="gap-2">
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">KPI Analytics</span>
-              </TabsTrigger>
-              <TabsTrigger value="kpi" className="gap-2">
-                <Target className="h-4 w-4" />
-                <span className="hidden sm:inline">KPIs</span>
-              </TabsTrigger>
-              <TabsTrigger value="kpi-cascade" className="gap-2">
-                <GitBranch className="h-4 w-4" />
-                <span className="hidden sm:inline">KPI Cascade</span>
-              </TabsTrigger>
-              <TabsTrigger value="department" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Departments</span>
-              </TabsTrigger>
-            </>
+            <TabsTrigger value="kpi-performance" className="gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">KPI Performance</span>
+              <span className="sm:hidden">KPI</span>
+            </TabsTrigger>
           )}
 
-          <TabsTrigger value="my-submissions" className="gap-2">
+          {/* Unified Performance - All users */}
+          <TabsTrigger value="performance" className="gap-2">
+            <Activity className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isManager ? "Team Performance" : "My Performance"}
+            </span>
+            <span className="sm:hidden">Performance</span>
+          </TabsTrigger>
+
+          {/* Individual Performance - All users */}
+          <TabsTrigger value="individual" className="gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <span className="hidden sm:inline">Individual View</span>
+            <span className="sm:hidden">Individual</span>
+          </TabsTrigger>
+
+          {/* My Submissions - All users */}
+          <TabsTrigger value="submissions" className="gap-2">
             <Send className="h-4 w-4" />
             <span className="hidden sm:inline">My Submissions</span>
+            <span className="sm:hidden">Submissions</span>
           </TabsTrigger>
         </TabsList>
 
+        {/* KPI Performance Analytics (Full Access Only) */}
+        {hasFullAccess && (
+          <TabsContent value="kpi-performance" className="space-y-6">
+            <KPIPerformanceAnalytics
+              onExport={(data) => handleExport(data, "kpi-performance-analytics")}
+            />
+          </TabsContent>
+        )}
+
+        {/* Unified Performance (All Users - Role-Based) */}
         <TabsContent value="performance" className="space-y-6">
-          <PerformanceReport
-            onExport={(data) => handleExport(data, "performance-report")}
+          <UnifiedPerformanceReport
+            viewMode={isManager ? "team" : "personal"}
+            onExport={(data) => handleExport(data, "unified-performance-report")}
           />
         </TabsContent>
 
-        {hasFullAccess && (
-          <>
-            <TabsContent value="kpi-analytics" className="space-y-6">
-              <KPIPerformanceAnalytics
-                onExport={(data) => handleExport(data, "kpi-performance-analytics")}
-              />
-            </TabsContent>
+        {/* Individual Performance View (All Users) */}
+        <TabsContent value="individual" className="space-y-6">
+          <UnifiedPerformanceReport
+            viewMode="personal"
+            onExport={(data) => handleExport(data, "individual-performance-report")}
+          />
+        </TabsContent>
 
-            <TabsContent value="kpi" className="space-y-6">
-              <KPIReport
-                onExport={(data) => handleExport(data, "kpi-report")}
-              />
-            </TabsContent>
-
-            <TabsContent value="kpi-cascade" className="space-y-6">
-              <KPICascadeView />
-            </TabsContent>
-
-            <TabsContent value="department" className="space-y-6">
-              <DepartmentReport
-                onExport={(data) => handleExport(data, "department-report")}
-              />
-            </TabsContent>
-          </>
-        )}
-
-        <TabsContent value="my-submissions" className="space-y-6">
+        {/* My Submissions (All Users) */}
+        <TabsContent value="submissions" className="space-y-6">
           <MySubmissionsReport
             onExport={(data) => handleExport(data, "my-submissions-report")}
           />
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 }
 
 /**
- * Reports & Analytics Page
- * Comprehensive reporting system with multiple report types
+ * Performance & Reports Page
+ * Comprehensive, role-based performance reporting system
+ * 
+ * Access Levels:
+ * - Full Access (SUPER_ADMIN, ADMIN, HR, CEO): KPI Analytics + All Reports
+ * - Managers (MANAGER, DIRECTOR): Team Performance + Personal Reports
+ * - Employees: Personal Performance + Submissions Only
  */
 export default function ReportsPage() {
   return (

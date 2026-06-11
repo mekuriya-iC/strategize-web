@@ -1,4 +1,5 @@
 // Dashboard Components
+export { default as AdvancedKPIDashboard } from './AdvancedKPIDashboard';
 export { default as AnalyticsCard } from './AnalyticsCard';
 export { default as AnalyticsSummary } from './AnalyticsSummary';
 export { default as ChartCard } from './ChartCard';

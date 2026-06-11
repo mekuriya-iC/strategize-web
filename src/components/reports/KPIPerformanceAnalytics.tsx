@@ -155,6 +155,61 @@ const GET_PERIODS = gql`
   }
 `;
 
+const GET_EMPLOYEES = gql`
+  query GetEmployees($page: Int, $limit: Int, $search: String) {
+    employees(page: $page, limit: $limit, search: $search) {
+      items {
+        employeeId
+        fullName
+        email
+        title
+      }
+    }
+  }
+`;
+
+const GET_EMPLOYEE_KPI_PERFORMANCE = gql`
+  query GetEmployeeKpiPerformance($filters: UnifiedPerformanceFilters!) {
+    unifiedEmployeePerformance(filters: $filters) {
+      employeeId
+      employee {
+        employeeId
+        fullName
+        email
+        title
+      }
+      strategicPeriodId
+      totalScore
+      maxPossibleScore
+      overallPercentage
+      rating
+      breakdown {
+        kpiScore {
+          rawScore
+          maxScore
+          percentageAchieved
+          weight
+          weightedScore
+        }
+        competencyScore {
+          rawScore
+          maxScore
+          percentageAchieved
+          weight
+          weightedScore
+        }
+        activityScore {
+          rawScore
+          maxScore
+          percentageAchieved
+          weight
+          weightedScore
+        }
+      }
+    }
+  }
+`;
+
 interface KPIPerformanceAnalyticsProps {
   onExport?: (data: any) => void;
 }
@@ -164,6 +219,11 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("all");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("all");
+
+  // Check if user has full access
+  const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
+  const hasFullAccess = !!user?.role && fullAccessRoles.has(user.role as string);
 
   // Fetch periods
   const { data: periodsData } = useQuery(GET_PERIODS);
@@ -176,8 +236,8 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
     return now >= start && now <= end;
   });
 
-  // Auto-select active period
-  if (!selectedPeriodId && activePeriod) {
+  // Auto-select active period (only once)
+  if (!selectedPeriodId && activePeriod && activePeriod.strategicPeriodId) {
     setSelectedPeriodId(activePeriod.strategicPeriodId);
   }
 
@@ -189,7 +249,7 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       capFinalScore: false,
     },
     skip: !user?.organizationId || !selectedPeriodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
   });
 
   // Fetch divisions
@@ -204,7 +264,7 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       capFinalScore: false,
     },
     skip: selectedDivisionId === "all" || !selectedPeriodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
   });
 
   // Fetch departments
@@ -215,6 +275,29 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
   });
   const departments = departmentsData?.departments?.items || [];
 
+  // Fetch employees (for full access users)
+  const { data: employeesData } = useQuery(GET_EMPLOYEES, {
+    variables: {
+      page: 1,
+      limit: 500,
+    },
+    skip: !hasFullAccess,
+  });
+  const employees = employeesData?.employees?.items || [];
+
+  // Fetch individual employee KPI performance
+  const { data: employeeKpiData, loading: employeeKpiLoading } = useQuery(GET_EMPLOYEE_KPI_PERFORMANCE, {
+    variables: {
+      filters: {
+        employeeId: selectedEmployeeId,
+        strategicPeriodId: selectedPeriodId,
+        organizationId: user?.organizationId,
+      },
+    },
+    skip: selectedEmployeeId === "all" || !selectedPeriodId || !hasFullAccess,
+    fetchPolicy: "cache-and-network",
+  });
+
   // Fetch department scorecard
   const { data: departmentData, loading: departmentLoading } = useQuery(GET_DEPARTMENT_SCORECARD, {
     variables: {
@@ -223,12 +306,13 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       capFinalScore: false,
     },
     skip: selectedDepartmentId === "all" || !selectedPeriodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
   });
 
   const corporateScorecard = corporateData?.realtimeCorporateScorecard;
   const divisionScorecard = divisionData?.realtimeDivisionScorecard;
   const departmentScorecard = departmentData?.realtimeDepartmentScorecard;
+  const employeePerformance = employeeKpiData?.unifiedEmployeePerformance;
 
   const getPerformanceColor = (percentage: number) => {
     if (percentage >= 90) return "text-emerald-600 dark:text-emerald-400";
@@ -256,14 +340,36 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
     onExport?.(reportData);
   };
 
-  if (corporateLoading) {
+  // Show loading only on initial load, not when period changes
+  if (corporateLoading && !corporateScorecard) {
     return (
       <div className="space-y-4">
-        <div className="animate-pulse space-y-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-64 bg-gray-200 dark:bg-gray-800 rounded-xl" />
-          ))}
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading KPI performance data...</p>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!selectedPeriodId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-600 dark:text-gray-400">
+          Please select a period to view KPI performance data.
+        </p>
+      </div>
+    );
+  }
+
+  if (!corporateScorecard) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-600 dark:text-gray-400">
+          No KPI performance data available for the selected period.
+        </p>
       </div>
     );
   }
@@ -302,8 +408,10 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
 
           <Select
             value={selectedDepartmentId}
-            onValueChange={setSelectedDepartmentId}
-            disabled={selectedDivisionId === "all"}
+            onValueChange={(val) => {
+              setSelectedDepartmentId(val);
+              setSelectedEmployeeId("all"); // Reset employee when department changes
+            }}
           >
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Departments" />
@@ -317,6 +425,26 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
               ))}
             </SelectContent>
           </Select>
+
+          {/* Employee Selector - Only for full access users */}
+          {hasFullAccess && (
+            <Select
+              value={selectedEmployeeId}
+              onValueChange={setSelectedEmployeeId}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All Employees" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Employees</SelectItem>
+                {employees.map((emp: any) => (
+                  <SelectItem key={emp.employeeId} value={emp.employeeId}>
+                    {emp.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <Button onClick={handleExport} variant="outline">
@@ -492,6 +620,130 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Individual Employee KPI Performance */}
+      {hasFullAccess && selectedEmployeeId !== "all" && employeePerformance && (
+        <Card className="border-2 border-indigo-200 dark:border-indigo-900/40 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 border-b border-indigo-100 dark:border-indigo-900/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-500 rounded-lg">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Individual Employee Performance</CardTitle>
+                  <CardDescription>
+                    {employeePerformance.employee.fullName} • {employeePerformance.employee.title}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <ArrowUpRight className="h-4 w-4 text-indigo-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">Contributing to Department</span>
+                <Badge className={`text-lg py-1 px-4 ${getPerformanceStatus(employeePerformance.overallPercentage).color}`}>
+                  {employeePerformance.rating}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* Overall Score */}
+            <div className="mb-6">
+              <div className="flex items-baseline justify-between mb-3">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Overall Performance Score
+                </span>
+                <span className={`text-4xl font-bold ${getPerformanceColor(employeePerformance.overallPercentage)}`}>
+                  {employeePerformance.overallPercentage.toFixed(1)}%
+                </span>
+              </div>
+              <Progress value={employeePerformance.overallPercentage} className="h-3 mb-2" />
+              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                <span>Score: {employeePerformance.totalScore.toFixed(2)}</span>
+                <span>Max: {employeePerformance.maxPossibleScore.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Performance Breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* KPI Score */}
+              <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-900/30 bg-blue-50/30 dark:bg-blue-950/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">KPI Performance</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                  {employeePerformance.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
+                </div>
+                <Progress value={employeePerformance.breakdown.kpiScore.percentageAchieved} className="h-2 mb-1" />
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  Weight: {employeePerformance.breakdown.kpiScore.weight}%
+                </div>
+              </div>
+
+              {/* Competency Score */}
+              <div className="p-4 rounded-lg border border-purple-200 dark:border-purple-900/30 bg-purple-50/30 dark:bg-purple-950/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Competency (360°)</span>
+                </div>
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                  {employeePerformance.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
+                </div>
+                <Progress value={employeePerformance.breakdown.competencyScore.percentageAchieved} className="h-2 mb-1" />
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  Weight: {employeePerformance.breakdown.competencyScore.weight}%
+                </div>
+              </div>
+
+              {/* Activity Score */}
+              <div className="p-4 rounded-lg border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-950/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Activity Metrics</span>
+                </div>
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                  {employeePerformance.breakdown.activityScore.percentageAchieved.toFixed(1)}%
+                </div>
+                <Progress value={employeePerformance.breakdown.activityScore.percentageAchieved} className="h-2 mb-1" />
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  Weight: {employeePerformance.breakdown.activityScore.weight}%
+                </div>
+              </div>
+            </div>
+
+            {/* Cascade Visualization */}
+            <div className="mt-6 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 border border-gray-200 dark:border-gray-800">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <ChevronRight className="h-4 w-4" />
+                KPI Cascade Contribution
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <User className="h-3 w-3" />
+                  <span>Individual Achievement</span>
+                  <ArrowUpRight className="h-3 w-3 ml-auto text-indigo-500" />
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 pl-4">
+                  <Users className="h-3 w-3" />
+                  <span>Aggregates to Department KPIs</span>
+                  <ArrowUpRight className="h-3 w-3 ml-auto text-amber-500" />
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 pl-8">
+                  <Layers className="h-3 w-3" />
+                  <span>Contributes to Division Goals</span>
+                  <ArrowUpRight className="h-3 w-3 ml-auto text-purple-500" />
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 pl-12">
+                  <Building2 className="h-3 w-3" />
+                  <span>Impacts Corporate Objectives</span>
+                  <TrendingUp className="h-3 w-3 ml-auto text-blue-500" />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

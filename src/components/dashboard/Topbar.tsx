@@ -92,9 +92,9 @@ export default function Topbar() {
           <span className="font-medium text-gray-700 dark:text-gray-100 truncate">
             {getPageName(pathname)}
           </span>
-          {/* Strategic Period Selector - Hidden on mobile, visible on tablet+ */}
-          <div className="hidden md:block">
-            <StrategicPeriodSelector className="w-44 ml-4" />
+          {/* Strategic Period Selector with Year + Quarter - Hidden on mobile, visible on tablet+ */}
+          <div className="hidden md:block ml-4">
+            <StrategicPeriodSelector />
           </div>
           <div className="hidden lg:block">
             <OrgUnitSelector />

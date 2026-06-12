@@ -39,7 +39,7 @@ export const getYearlyTotals = (targets: Kpi["targets"], kpi?: Partial<Kpi>) => 
     for (const year in quarterlySums) {
         if (!totals[year]) {
             const total =
-                unitType === "PERCENT" && quarterlyCounts[year] > 0
+                (unitType === "PERCENT" || unitType === "RATIO") && quarterlyCounts[year] > 0
                     ? quarterlySums[year] / quarterlyCounts[year]
                     : quarterlySums[year];
             totals[year] = Math.round(total * 100) / 100;

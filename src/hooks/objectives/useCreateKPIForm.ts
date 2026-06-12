@@ -115,7 +115,7 @@ export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }
                 }
 
                 const TOLERANCE = 0.01;
-                const isPercent = formData.unitType === "PERCENT";
+                const isPercent = formData.unitType === "PERCENT" || formData.unitType === "RATIO";
                 const plannedVal = isPercent ? (sum / 4) : sum;
                 if (Math.abs(plannedVal - annualValue) > TOLERANCE) {
                     throw new Error(

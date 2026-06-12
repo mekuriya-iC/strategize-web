@@ -27,6 +27,7 @@ export default function EditEvaluationCycleDialog({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<EvaluationCycleStatus>(EvaluationCycleStatus.UPCOMING);
+  const [totalEvaluationWeight, setTotalEvaluationWeight] = useState('25');
   const [loading, setLoading] = useState(false);
 
   const { updateCycle } = useEvaluationCycleMutations();
@@ -38,6 +39,7 @@ export default function EditEvaluationCycleDialog({
       setStartDate(cycle.startDate || '');
       setEndDate(cycle.endDate || '');
       setStatus(cycle.status || EvaluationCycleStatus.UPCOMING);
+      setTotalEvaluationWeight(cycle.totalEvaluationWeight?.toString() || '25');
     }
   }, [cycle]);
 
@@ -54,17 +56,31 @@ export default function EditEvaluationCycleDialog({
       return;
     }
 
+    const weight = parseFloat(totalEvaluationWeight);
+    if (isNaN(weight) || weight < 1 || weight > 100) {
+      toast.error('Total evaluation weight must be between 1% and 100%');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await updateCycle({
+      // Only include fields that should be updated
+      const updateData: any = {
         evaluationCycleId: cycle.evaluationCycleId,
         name,
         description,
         startDate,
         endDate,
-        status,
-      });
+        totalEvaluationWeight: parseFloat(totalEvaluationWeight),
+      };
+
+      // Only include status if it has changed
+      if (status !== cycle.status) {
+        updateData.status = status;
+      }
+
+      await updateCycle(updateData);
 
       toast.success('Evaluation cycle updated successfully');
       onOpenChange(false);
@@ -146,6 +162,29 @@ export default function EditEvaluationCycleDialog({
                 <SelectItem value={EvaluationCycleStatus.ARCHIVED}>Archived</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="totalEvaluationWeight">
+              Total 360 Evaluation Weight <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="totalEvaluationWeight"
+                type="number"
+                value={totalEvaluationWeight}
+                onChange={(e) => setTotalEvaluationWeight(e.target.value)}
+                min="1"
+                max="100"
+                step="0.01"
+                required
+                className="flex-1"
+              />
+              <span className="text-gray-600">%</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Total weight for 360 evaluation. Configure individual evaluator weights in Weight Configuration tab.
+            </p>
           </div>
 
           <DialogFooter>

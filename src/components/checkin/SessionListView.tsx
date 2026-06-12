@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Calendar, Users, Search, Plus, Eye, Trash2 } from "lucide-react";
+import { Calendar, Users, Search, Plus, Eye, Trash2, Lock, Unlock } from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
-import { REMOVE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
+import { REMOVE_CHECKINOUT_SESSION, UPDATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 
 interface SessionListViewProps {
@@ -114,6 +114,18 @@ export default function SessionListView({
       } else {
         toast.error(error.message || "Failed to delete session");
       }
+    },
+  });
+
+  const [updateSession] = useMutation(UPDATE_CHECKINOUT_SESSION, {
+    onCompleted: () => {
+      toast.success("Session updated successfully");
+      refetchTeam();
+      refetchOwn();
+      refetchAll();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update session");
     },
   });
 
@@ -237,6 +249,21 @@ export default function SessionListView({
     }
   };
 
+  const handleToggleLock = async (sessionId: string, currentLockState: boolean) => {
+    try {
+      await updateSession({
+        variables: {
+          input: {
+            checkinoutSessionId: sessionId,
+            isLocked: !currentLockState,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Failed to toggle lock:", error);
+    }
+  };
+
   const filterSessions = (sessions: any[]) => {
     if (!searchQuery) return sessions;
     return sessions.filter((session: any) => {
@@ -260,6 +287,8 @@ export default function SessionListView({
     // Handle null employee gracefully
     const employeeName = session.employee?.fullName || "Unknown Employee";
     const supervisorName = session.supervisor?.fullName || "Unknown Supervisor";
+    const isSessionOwner = session.supervisor?.employeeId === currentUser?.employeeId;
+    const isLocked = session.isLocked || false;
 
     return (
       <Card
@@ -269,9 +298,16 @@ export default function SessionListView({
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                {sprintTitle}
-              </h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {sprintTitle}
+                </h3>
+                {isLocked && (
+                  <div title="Session is locked">
+                    <Lock className="h-4 w-4 text-amber-600" />
+                  </div>
+                )}
+              </div>
               {showEmployee && (
                 <p className="text-sm text-gray-600">
                   Employee: <span className="font-medium">{employeeName}</span>
@@ -289,6 +325,15 @@ export default function SessionListView({
               {session.overallStatus}
             </Badge>
           </div>
+
+          {isLocked && (
+            <div className="mb-4 p-2 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-xs text-amber-800 flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                This session is locked. No tasks can be added or edited.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
             <div className="flex items-center gap-1">
@@ -317,8 +362,21 @@ export default function SessionListView({
               <Eye className="h-4 w-4 mr-2" />
               View Session
             </Button>
-            {(isAdminOrHR ||
-              session.supervisor?.employeeId === currentUser?.employeeId) && (
+            {isSessionOwner && (
+              <Button
+                size="sm"
+                variant="outline"
+                className={isLocked ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}
+                onClick={() => handleToggleLock(session.checkinoutSessionId, isLocked)}
+              >
+                {isLocked ? (
+                  <Unlock className="h-4 w-4" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            {(isAdminOrHR || isSessionOwner) && (
               <Button
                 size="sm"
                 variant="outline"

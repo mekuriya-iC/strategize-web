@@ -312,10 +312,12 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
 
   // Helper: aggregate targets into yearly totals
   const getYearlyTotals = (
-    targets: Array<{ timeline: string; target: number }> = []
+    targets: Array<{ timeline: string; target: number }> = [],
+    unitType?: string
   ) => {
     const totals: Record<string, number> = {};
     const quarterlySums: Record<string, number> = {};
+    const quarterlyCounts: Record<string, number> = {};
     const yearsWithExplicitTotal: Set<string> = new Set();
 
     // First, find explicit yearly totals
@@ -327,19 +329,25 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
       }
     }
 
-    // Then, sum quarters for years that DON'T have an explicit total
+    // Then, sum/count quarters for years that DON'T have an explicit total
     for (const t of targets) {
       const [year, quarter] = t.timeline.split("-");
       if (quarter && !yearsWithExplicitTotal.has(year)) {
         quarterlySums[year] =
           (quarterlySums[year] || 0) + Number(t.target || 0);
+        quarterlyCounts[year] = (quarterlyCounts[year] || 0) + 1;
       }
     }
 
-    // Merge the quarterly sums into the main totals object (rounded to 2 decimal places)
+    // Merge the quarterly values into the main totals object
+    // For PERCENT and RATIO, use average; for others, use sum
+    const isAverageable = unitType === "PERCENT" || unitType === "RATIO";
     for (const year in quarterlySums) {
       if (!totals[year]) {
-        totals[year] = Math.round(quarterlySums[year] * 100) / 100;
+        const total = isAverageable && quarterlyCounts[year] > 0
+          ? quarterlySums[year] / quarterlyCounts[year]
+          : quarterlySums[year];
+        totals[year] = Math.round(total * 100) / 100;
       }
     }
 
@@ -1225,7 +1233,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                               ) {
                                                 const { years, totals } =
                                                   getYearlyTotals(
-                                                    childKpi.targets
+                                                    childKpi.targets,
+                                                    childKpi.unitType
                                                   );
                                                 if (years.length === 0)
                                                   return (

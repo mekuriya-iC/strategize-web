@@ -159,7 +159,9 @@ export function useUpdateKPIState({
           if (quarterlyTargets.length > 0) {
             const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
             const derived =
-              kpi.unitType === "PERCENT" ? sum / quarterlyTargets.length : sum;
+              kpi.unitType === "PERCENT" || kpi.unitType === "RATIO" 
+                ? sum / quarterlyTargets.length 
+                : sum;
             setAnnualTarget(derived.toString());
           } else {
             // Fallback: use first target value if it matches strategic period year prefix
@@ -344,7 +346,7 @@ export function useUpdateKPIState({
 
               // Initialize quarterly breakdown by distributing the annual target
               const quarterlyValue =
-                parentKpi.unitType === "PERCENT"
+                parentKpi.unitType === "PERCENT" || parentKpi.unitType === "RATIO"
                   ? parentAnnualTarget.target
                   : (parentAnnualTarget.target / 4).toFixed(2);
 
@@ -366,8 +368,8 @@ export function useUpdateKPIState({
               );
 
               if (parentQuarterlyTargets.length > 0) {
-                // Calculate the average for PERCENT or sum for NUMBER
-                const isPercent = parentKpi.unitType === "PERCENT";
+                // Calculate the average for PERCENT/RATIO or sum for NUMBER/CURRENCY/COUNT
+                const isPercent = parentKpi.unitType === "PERCENT" || parentKpi.unitType === "RATIO";
                 const total = parentQuarterlyTargets.reduce(
                   (sum, t) => sum + t.target,
                   0,

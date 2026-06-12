@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { useKpiMutations, type Kpi } from "@/hooks/kpis/useKpis";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,6 +69,7 @@ const defaultForm = {
   weight: "",
   strategicObjectiveId: "",
   customUnitLabel: "",
+  parentId: "", // For KPI cascade/hierarchy
 };
 
 export function CreateKpiDialog({
@@ -95,6 +97,7 @@ export function CreateKpiDialog({
         weight: editKpi.weight?.toString() || "",
         strategicObjectiveId: editKpi.objective?.objectiveId || "",
         customUnitLabel: editKpi.customUnitLabel || "",
+        parentId: (editKpi as any).parentId || "", // Parent KPI for cascade
       });
     } else {
       setForm(defaultForm);
@@ -111,6 +114,19 @@ export function CreateKpiDialog({
     label: o.title,
     description: o.level || undefined,
   }));
+
+  // Fetch KPIs for parent selection
+  const { data: kpiData } = useQuery(GET_KPIS, {
+    variables: { page: 1, limit: 500 },
+    fetchPolicy: "cache-and-network",
+  });
+  const availableParentKpis = (kpiData?.kpis?.items || [])
+    .filter((k: any) => !isEdit || k.kpiId !== editKpi?.kpiId) // Don't show self as parent
+    .map((k: any) => ({
+      value: k.kpiId,
+      label: k.name,
+      description: k.assigneeType || "Corporate",
+    }));
 
   const isLoading = isEdit ? mutLoading.update : mutLoading.create;
   const isValid = form.name && form.measurementUnit && form.frequency && form.targetValue;
@@ -131,6 +147,7 @@ export function CreateKpiDialog({
         weight: form.weight ? parseFloat(form.weight) : undefined,
         strategicObjectiveId: form.strategicObjectiveId || undefined,
         customUnitLabel: form.measurementUnit === "custom" ? form.customUnitLabel || undefined : undefined,
+        parentId: form.parentId || undefined, // Include parent KPI for cascade aggregation
       };
 
       if (isEdit && editKpi) {
@@ -320,6 +337,23 @@ export function CreateKpiDialog({
               options={objectives}
               clearable
             />
+          </div>
+
+          {/* Parent KPI (for cascade aggregation) */}
+          <div className="space-y-2">
+            <Label>Parent KPI</Label>
+            <SearchableSelect
+              value={form.parentId}
+              onValueChange={set("parentId")}
+              placeholder="Select parent KPI (optional)"
+              searchPlaceholder="Search KPIs..."
+              emptyMessage="No KPIs found"
+              options={availableParentKpis}
+              clearable
+            />
+            <p className="text-xs text-muted-foreground">
+              Select a parent KPI to enable automatic cascade aggregation. When this KPI is achieved, it contributes to the parent KPI.
+            </p>
           </div>
 
           <DialogFooter>

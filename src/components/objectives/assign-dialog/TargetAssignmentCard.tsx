@@ -50,16 +50,47 @@ export function TargetAssignmentCard() {
   };
 
   // Helper: Get yearly total from targets
-  const getYearlyTotalFromTargets = (targets: Array<{ timeline: string; target: number }>): number => {
+  const getYearlyTotalFromTargets = (
+    targets: Array<{ timeline: string; target: number }>,
+    unitType?: string
+  ): number => {
     if (!targets || targets.length === 0) return 0;
-    const targetsByYear = new Map<string, number>();
+    
+    const yearlyTargets = new Map<string, number[]>();
+    
     targets.forEach((target) => {
-      const year = target.timeline.split("-")[0];
-      const currentTotal = targetsByYear.get(year) || 0;
-      targetsByYear.set(year, currentTotal + target.target);
+      const timeline = target.timeline;
+      // Check if it's a quarterly target (contains "-Q")
+      if (timeline.includes("-Q")) {
+        const year = timeline.split("-")[0];
+        if (!yearlyTargets.has(year)) {
+          yearlyTargets.set(year, []);
+        }
+        yearlyTargets.get(year)!.push(target.target);
+      } else {
+        // It's an annual target, use it directly
+        const year = timeline;
+        if (!yearlyTargets.has(year)) {
+          yearlyTargets.set(year, [target.target]);
+        }
+      }
     });
-    const yearlyTotals = Array.from(targetsByYear.values());
-    const total = yearlyTotals.reduce((sum, total) => sum + total, 0);
+    
+    // Calculate total: for PERCENT/RATIO use average of quarters, for others use sum
+    let total = 0;
+    const isAverageable = unitType === "PERCENT" || unitType === "RATIO";
+    
+    yearlyTargets.forEach((values) => {
+      if (values.length === 1) {
+        // Single annual value
+        total += values[0];
+      } else {
+        // Multiple quarterly values
+        const sum = values.reduce((acc, val) => acc + val, 0);
+        total += isAverageable ? sum / values.length : sum;
+      }
+    });
+    
     return Math.round(total * 100) / 100;
   };
 
@@ -124,7 +155,7 @@ export function TargetAssignmentCard() {
 
           const kpiType = detectKPIType(kpi);
           const cleanName = kpi.name;
-          const parentTarget = roundValue(getYearlyTotalFromTargets(kpi.targets || []));
+          const parentTarget = roundValue(getYearlyTotalFromTargets(kpi.targets || [], kpi.unitType));
           const totalAssigned = roundValue(getTotalAssignedTarget(kpiId));
           const unitLabel = getDetailedUnitLabel(kpi);
           const assignmentMethod = getAssignmentMethodDescription(kpi);

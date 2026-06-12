@@ -156,6 +156,7 @@ export const useKpiMutations = () => {
       weight?: number;
       strategicObjectiveId?: string;
       customUnitLabel?: string;
+      parentId?: string;
     }) => {
       const result = await createKpiMutation({
         variables: { input },
@@ -175,6 +176,7 @@ export const useKpiMutations = () => {
       strategicObjectiveId?: string;
       isActive?: boolean;
       customUnitLabel?: string;
+      parentId?: string;
     }) => {
       const result = await updateKpiMutation({
         variables: { input },

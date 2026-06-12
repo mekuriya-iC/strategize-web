@@ -24,7 +24,7 @@ const isCurrentPeriod = (period: StrategicPeriod): boolean => {
  */
 export const useAutoSelectStrategicPeriod = () => {
   const { strategicPeriods, loading } = useStrategicPeriods();
-  const { selectedPeriod, setSelectedPeriod } = useStrategicPeriodStore();
+  const { selectedPeriod, selectPeriodWithTimeline } = useStrategicPeriodStore();
 
   useEffect(() => {
     // Don't auto-select if still loading or no periods available
@@ -60,18 +60,27 @@ export const useAutoSelectStrategicPeriod = () => {
     const periodToSelect = activePeriod || currentPeriod || firstAnnualPeriod || strategicPeriods[0];
     
     if (periodToSelect) {
+      // Format annual timeline
+      const start = new Date(periodToSelect.startDate);
+      const end = new Date(periodToSelect.endDate);
+      const startYear = start.getFullYear();
+      const endYear = end.getFullYear();
+      const annualTimeline = `${startYear}/${endYear.toString().slice(-2)}`;
+      
       console.log('🎯 Auto-selecting strategic period:', {
         name: periodToSelect.name,
         id: periodToSelect.strategicPeriodId,
         status: periodToSelect.status,
+        annualTimeline,
         reason: activePeriod ? 'active status' : 
                 currentPeriod ? 'current by date' : 
                 firstAnnualPeriod ? 'first annual' : 
                 'first available'
       });
-      setSelectedPeriod(periodToSelect);
+      
+      selectPeriodWithTimeline(periodToSelect, annualTimeline);
     }
-  }, [strategicPeriods, loading, selectedPeriod, setSelectedPeriod]);
+  }, [strategicPeriods, loading, selectedPeriod, selectPeriodWithTimeline]);
 
   return {
     loading,

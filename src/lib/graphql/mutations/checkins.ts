@@ -40,6 +40,7 @@ export const UPDATE_CHECKINOUT_SESSION = gql`
       overallRating
       supervisorComment
       supervisorReviewAt
+      isLocked
       updatedAt
     }
   }
@@ -74,6 +75,8 @@ export const CREATE_CHECKINOUT_TASK = gql`
       challenges
       nextSteps
       requiresApproval
+      isMidWeekTask
+      logbookStatus
       taskStartDate
       taskEndDate
       createdAt
@@ -101,6 +104,8 @@ export const UPDATE_CHECKINOUT_TASK = gql`
       challenges
       nextSteps
       requiresApproval
+      isMidWeekTask
+      logbookStatus
       taskStartDate
       taskEndDate
       updatedAt

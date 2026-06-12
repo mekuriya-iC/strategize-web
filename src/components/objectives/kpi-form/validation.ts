@@ -86,7 +86,10 @@ export const getAssignedTarget = (
 
     if (quarterlyTargets.length > 0) {
       const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
-      return kpi.unitType === "PERCENT" ? sum / quarterlyTargets.length : sum;
+      // PERCENT and RATIO: average across quarters, others: sum
+      return kpi.unitType === "PERCENT" || kpi.unitType === "RATIO" 
+        ? sum / quarterlyTargets.length 
+        : sum;
     }
   }
 
@@ -107,7 +110,9 @@ export const validateQuarterlyBreakdown = (
   let assignedTarget = getAssignedTarget(year, kpi, strategicTargetsById, yearlyQuarters);
   const currentSum = calculateQuarterlySum(year, yearlyQuarters);
   const unitLabel = kpi ? getDetailedUnitLabel(kpi) : (weightType === "PERCENT" ? "%" : "units");
-  const isPercent = kpi?.unitType ? kpi.unitType === "PERCENT" : weightType === "PERCENT";
+  const isPercent = kpi?.unitType 
+    ? (kpi.unitType === "PERCENT" || kpi.unitType === "RATIO") 
+    : weightType === "PERCENT";
 
   // If no assigned target found from direct mapping, fallback to remaining allocation
   if (assignedTarget === null && remainingAllocation !== null) {

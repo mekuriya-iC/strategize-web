@@ -2,6 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Kpi } from "@/types/graphql";
 import { getYearlyTotals, getQuartersByYear } from "@/utils/strategic/kpi-math";
+import { getUnitLabel, formatKpiValue } from "@/utils/kpi-format";
 
 interface KPITargetsCellProps {
     kpi: Kpi;
@@ -27,7 +28,9 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                 {years.map((y) => (
                     <div key={y} className="flex flex-col border-l-2 border-gray-100 pl-2">
                         <span className="text-[10px] text-gray-400 uppercase font-bold">{y}</span>
-                        <span className="text-sm font-medium">{totals[y]}</span>
+                        <span className="text-sm font-medium">
+                            {formatKpiValue(totals[y], kpi.unitType || "NUMBER", { compact: true })}
+                        </span>
                     </div>
                 ))}
             </div>
@@ -73,15 +76,21 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                     <span className="text-gray-400 text-xs font-medium tracking-wider uppercase mb-1">{y}</span>
                     <div className="flex flex-col gap-1 mb-2">
                         <div className="flex items-center gap-2">
-                            <span className="text-gray-900 font-medium">{Number(totals[y]).toFixed(1)}</span>
-                            <Badge variant="outline" className="text-[10px] scale-90">{kpi.unitType === "NUMBER" ? "Num" : "%"}</Badge>
+                            <span className="text-gray-900 font-medium">
+                                {formatKpiValue(totals[y], kpi.unitType || "NUMBER", { showUnit: false })}
+                            </span>
+                            <Badge variant="outline" className="text-[10px] scale-90">
+                                {getUnitLabel(kpi.unitType || "NUMBER")}
+                            </Badge>
                         </div>
 
                         {/* Division KPI / Strategic Goal reference */}
                         {kpi.objective?.type === "DIVISION" && kpi.parent?.kpiId && strategicTargetsById?.[kpi.parent.kpiId]?.[y] !== undefined && (
                             <div className="mt-1 flex flex-col gap-0.5 border-l-2 border-purple-200 pl-2 bg-purple-50/30 rounded-r-sm py-1">
                                 <span className="text-[9px] uppercase font-bold text-purple-400 tracking-tight">Strategic Goal</span>
-                                <span className="text-[11px] font-bold text-purple-700">{Number(strategicTargetsById[kpi.parent.kpiId][y]).toFixed(1)}</span>
+                                <span className="text-[11px] font-bold text-purple-700">
+                                    {formatKpiValue(strategicTargetsById[kpi.parent.kpiId][y], kpi.unitType || "NUMBER", { showUnit: false })}
+                                </span>
                             </div>
                         )}
 
@@ -101,7 +110,9 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
 
                                 return (
                                     <div className="text-[10px] text-gray-400">
-                                        {isPercent ? "Avg" : "Sum"}: <span className="font-medium text-blue-600">{Math.round(result * 100) / 100}</span>
+                                        {isPercent ? "Avg" : "Sum"}: <span className="font-medium text-blue-600">
+                                            {formatKpiValue(result, kpi.unitType || "NUMBER", { showUnit: false })}
+                                        </span>
                                     </div>
                                 );
                             }
@@ -117,7 +128,9 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                                     return (
                                         <div key={qKey} className="flex justify-between items-center gap-1.5 min-w-[35px]">
                                             <span className="text-[9px] text-gray-400 font-bold uppercase">{qKey}</span>
-                                            <span className="text-[10px] font-medium text-gray-600">{Number(val).toFixed(isPercent ? 1 : 0)}</span>
+                                            <span className="text-[10px] font-medium text-gray-600">
+                                                {formatKpiValue(val, kpi.unitType || "NUMBER", { showUnit: false, decimals: isPercent ? 1 : 0 })}
+                                            </span>
                                         </div>
                                     );
                                 })}

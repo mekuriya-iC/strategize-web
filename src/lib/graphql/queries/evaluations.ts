@@ -23,6 +23,7 @@ export const GET_EVALUATION_CYCLES = gql`
         startDate
         endDate
         status
+        totalEvaluationWeight
         strategicPeriod {
           strategicPeriodId
           name
@@ -52,6 +53,7 @@ export const GET_EVALUATION_CYCLE = gql`
       startDate
       endDate
       status
+      totalEvaluationWeight
       strategicPeriod {
         strategicPeriodId
         name
@@ -91,6 +93,7 @@ export const GET_COMPETENCY_ASSESSMENTS = gql`
         competencyAssessmentId
         status
         relationType
+        weightPercent
         overallComment
         submittedAt
         evaluatee {
@@ -181,6 +184,11 @@ export const GET_ASSESSMENT_RESPONSES = gql`
             competencyId
             name
             description
+            coreCompetency {
+              coreCompetencyId
+              name
+              description
+            }
           }
         }
         assessment {
@@ -230,7 +238,7 @@ export const GET_COMPETENCY_ASSESSMENT_EVALUATOR_OPTIONS = gql`
 
 export const GET_DEFAULT_WEIGHTS = gql`
   query GetDefaultWeights($evaluationCycleId: ID!, $evaluateeUserId: ID!) {
-    getDefaultWeights(
+    getDefaultWeightsV2(
       evaluationCycleId: $evaluationCycleId
       evaluateeUserId: $evaluateeUserId
     ) {
@@ -258,9 +266,11 @@ export const GET_EVALUATION_WEIGHT_CONFIGS = gql`
         evaluationWeightConfigId
         relationType
         weightPercent
+        isEnabled
         evaluationCycle {
           evaluationCycleId
           name
+          totalEvaluationWeight
         }
         createdBy {
           employeeId
@@ -276,3 +286,25 @@ export const GET_EVALUATION_WEIGHT_CONFIGS = gql`
     }
   }
 `;
+
+export const GET_EVALUATION_WEIGHTS_FOR_CYCLE = gql`
+  query GetEvaluationWeightsForCycle($evaluationCycleId: ID!) {
+    getEvaluationWeightsForCycle(evaluationCycleId: $evaluationCycleId) {
+      configs {
+        evaluationWeightConfigId
+        relationType
+        weightPercent
+        isEnabled
+        evaluationCycle {
+          evaluationCycleId
+          name
+          totalEvaluationWeight
+        }
+      }
+      totalWeight
+      isValid
+      message
+    }
+  }
+`;
+

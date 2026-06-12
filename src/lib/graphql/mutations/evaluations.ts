@@ -12,6 +12,7 @@ export const CREATE_EVALUATION_CYCLE = gql`
       startDate
       endDate
       status
+      totalEvaluationWeight
       createdAt
     }
   }
@@ -26,6 +27,7 @@ export const UPDATE_EVALUATION_CYCLE = gql`
       startDate
       endDate
       status
+      totalEvaluationWeight
       updatedAt
     }
   }
@@ -49,6 +51,7 @@ export const CREATE_COMPETENCY_ASSESSMENT = gql`
       competencyAssessmentId
       status
       relationType
+      weightPercent
       evaluatee {
         employeeId
         fullName
@@ -156,6 +159,30 @@ export const REMOVE_EVALUATION_WEIGHT_CONFIG = gql`
   mutation RemoveEvaluationWeightConfig($evaluationWeightConfigId: ID!) {
     removeEvaluationWeightConfig(evaluationWeightConfigId: $evaluationWeightConfigId) {
       evaluationWeightConfigId
+    }
+  }
+`;
+
+/**
+ * Bulk Update Evaluation Weights Mutation
+ */
+export const BULK_UPDATE_EVALUATION_WEIGHTS = gql`
+  mutation BulkUpdateEvaluationWeights($bulkUpdateWeightsInput: BulkUpdateWeightsInput!) {
+    bulkUpdateEvaluationWeights(bulkUpdateWeightsInput: $bulkUpdateWeightsInput) {
+      configs {
+        evaluationWeightConfigId
+        relationType
+        weightPercent
+        isEnabled
+        evaluationCycle {
+          evaluationCycleId
+          name
+          totalEvaluationWeight
+        }
+      }
+      totalWeight
+      isValid
+      message
     }
   }
 `;

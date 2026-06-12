@@ -34,6 +34,7 @@ export const GET_CHECKINOUT_SESSIONS = gql`
         overallRating
         supervisorComment
         supervisorReviewAt
+        isLocked
         createdAt
         updatedAt
         employee {
@@ -78,6 +79,7 @@ export const GET_CHECKINOUT_SESSION = gql`
       overallRating
       supervisorComment
       supervisorReviewAt
+      isLocked
       createdAt
       updatedAt
       employee {
@@ -134,6 +136,8 @@ export const GET_CHECKINOUT_TASKS = gql`
         challenges
         nextSteps
         requiresApproval
+        isMidWeekTask
+        logbookStatus
         taskStartDate
         taskEndDate
         approvedAt
@@ -189,6 +193,8 @@ export const GET_CHECKINOUT_TASK = gql`
       challenges
       nextSteps
       requiresApproval
+      isMidWeekTask
+      logbookStatus
       taskStartDate
       taskEndDate
       approvedAt

@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client";
 import {
   GET_ASSESSMENT_RESPONSES,
-  GET_DEFAULT_WEIGHTS,
 } from "@/lib/graphql/queries/evaluations";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import {
@@ -23,16 +22,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import Employee360Results from "./Employee360Results";
+import Employee360SummaryTable from "./Employee360SummaryTable";
+
 export default function EvaluationResults() {
   const { user } = useAuth();
   const { can } = usePermissions();
   const client = useApolloClient();
-  const [targetEmployeeId, setTargetEmployeeId] = useState<string>(
-    user?.employeeId || "",
-  );
-  const [viewMode, setViewMode] = useState<"received" | "given">("received");
-
+  
+  // Only HR/Super Admin can view other employees' results
   const canReadAll = can("evaluations:read_all");
+  
+  // Default view mode: "given" for regular employees, "received" for HR/Admin
+  const [viewMode, setViewMode] = useState<"received" | "given" | "summary">(
+    canReadAll ? "summary" : "given"
+  );
+
+  // Enforce: Regular employees cannot view "received" or "summary" mode
+  useEffect(() => {
+    if (!canReadAll && (viewMode === "received" || viewMode === "summary")) {
+      setViewMode("given");
+    }
+  }, [canReadAll, viewMode]);
 
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
@@ -46,12 +57,15 @@ export default function EvaluationResults() {
     EvaluationCycleStatus.ACTIVE,
   );
   const activeCycle = cycles?.[0];
+  
+  // Get the cycle's totalEvaluationWeight (e.g., 30%)
+  const cycleTotal360Weight = activeCycle?.totalEvaluationWeight || 25;
 
   const { assessments, loading } = useCompetencyAssessments(
     1,
     100,
     activeCycle?.evaluationCycleId,
-    viewMode === "received" ? targetEmployeeId : undefined,
+    undefined, // evaluateeUserId not needed for "given" mode
     viewMode === "given" ? user?.employeeId : undefined,
   );
 
@@ -59,49 +73,8 @@ export default function EvaluationResults() {
     activeCycle?.evaluationCycleId,
   );
 
-  // Normalized weights (always totals 100 across enabled categories for the target employee)
-  const { data: defaultWeightsData } = useQuery(GET_DEFAULT_WEIGHTS, {
-    variables: {
-      evaluationCycleId: activeCycle?.evaluationCycleId,
-      evaluateeUserId: targetEmployeeId,
-    },
-    skip:
-      !activeCycle?.evaluationCycleId ||
-      !targetEmployeeId ||
-      viewMode !== "received",
-    fetchPolicy: "cache-and-network",
-  });
-
-  const enabledWeights: Array<{ relationType: string; weightPercent: number }> =
-    defaultWeightsData?.getDefaultWeights?.weights || [];
-
-  const relationOrder: Record<string, number> = {
-    self: 0,
-    peer: 1,
-    supervisor: 2,
-    subordinate: 3,
-  };
-
-  const sortedEnabledWeights = [...enabledWeights].sort(
-    (a, b) =>
-      (relationOrder[a.relationType] ?? 99) -
-      (relationOrder[b.relationType] ?? 99),
-  );
-
-  const colsFromWeights = sortedEnabledWeights
-    .map((w) => w.relationType)
-    .filter(
-      (rt): rt is "self" | "peer" | "supervisor" | "subordinate" =>
-        rt === "self" ||
-        rt === "peer" ||
-        rt === "supervisor" ||
-        rt === "subordinate",
-    );
-
-  const columns: Array<"self" | "peer" | "supervisor" | "subordinate"> =
-    viewMode === "received" && colsFromWeights.length > 0
-      ? colsFromWeights
-      : ["self", "peer", "supervisor", "subordinate"];
+  // Remove the defaultWeightsData query - not needed anymore for received mode
+  // since Employee360Results handles its own data fetching
 
   const relationLabel = (rt: string) => {
     switch (rt) {
@@ -142,10 +115,6 @@ export default function EvaluationResults() {
 
   const [calculatedScores, setCalculatedScores] = useState<any[]>([]);
   const [overallScore, setOverallScore] = useState(0);
-  const [effectiveWeights, setEffectiveWeights] = useState<Record<
-    string,
-    number
-  > | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [selectedPeerAssessmentId, setSelectedPeerAssessmentId] = useState<
     string | null
@@ -154,14 +123,7 @@ export default function EvaluationResults() {
   const hasResults =
     viewMode === "given"
       ? completedAssessments.length > 0 && !!selectedPeerAssessmentId
-      : completedAssessments.length > 0;
-
-  const weightsSummaryText =
-    viewMode !== "received" || !effectiveWeights
-      ? ""
-      : columns
-          .map((c) => `${relationLabel(c)}: ${effectiveWeights[c] ?? 0}%`)
-          .join(" · ");
+      : false; // Received mode handled by Employee360Results
 
   useEffect(() => {
     if (completedAssessments.length === 0 || !activeCycle) {
@@ -170,20 +132,19 @@ export default function EvaluationResults() {
       return;
     }
 
-    if (viewMode === "received") {
-      calculateScores();
-    } else if (selectedPeerAssessmentId) {
-      calculateSingleAssessmentScores(selectedPeerAssessmentId);
-    } else if (completedAssessments.length > 0) {
-      // Default to first peer assessment if none selected
-      setSelectedPeerAssessmentId(
-        completedAssessments[0].competencyAssessmentId,
-      );
+    if (viewMode === "given") {
+      if (selectedPeerAssessmentId) {
+        calculateSingleAssessmentScores(selectedPeerAssessmentId);
+      } else if (completedAssessments.length > 0) {
+        // Default to first peer assessment if none selected
+        setSelectedPeerAssessmentId(
+          completedAssessments[0].competencyAssessmentId,
+        );
+      }
     }
   }, [
     completedAssessments.length,
     activeCycle?.evaluationCycleId,
-    targetEmployeeId,
     viewMode,
     selectedPeerAssessmentId,
   ]);
@@ -274,219 +235,6 @@ export default function EvaluationResults() {
     }
   };
 
-  const calculateScores = async () => {
-    setCalculating(true);
-
-    try {
-      // 1. Fetch all responses for completed assessments
-      const allResponses: any[] = [];
-      for (const assessment of completedAssessments) {
-        const { data } = await client.query({
-          query: GET_ASSESSMENT_RESPONSES,
-          variables: {
-            assessmentId: assessment.competencyAssessmentId,
-            page: 1,
-            limit: 1000,
-          },
-          fetchPolicy: "network-only",
-        });
-
-        allResponses.push({
-          assessment,
-          responses: data?.assessmentResponses?.items || [],
-        });
-      }
-
-      // 2. Group responses by competency and relation type
-      const scoresByCompetency: Record<string, any> = {};
-
-      allResponses.forEach(({ assessment, responses }) => {
-        const relationType = assessment.relationType;
-
-        responses.forEach((response: any) => {
-          const competencyId = response.indicator?.competency?.competencyId;
-          const competencyName = response.indicator?.competency?.name;
-
-          if (!competencyId || !competencyName) return;
-
-          if (!scoresByCompetency[competencyId]) {
-            scoresByCompetency[competencyId] = {
-              name: competencyName,
-              self: [],
-              peer: [],
-              supervisor: [],
-              subordinate: [],
-            };
-          }
-
-          const key = relationType.toLowerCase();
-          if (scoresByCompetency[competencyId][key]) {
-            scoresByCompetency[competencyId][key].push(response.rating);
-          }
-        });
-      });
-
-      // 3. Calculate averages
-      const average = (arr: number[]) =>
-        arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-
-      const competencyScores = Object.entries(scoresByCompetency).map(
-        ([id, scores]: [string, any]) => {
-          const breakdown = {
-            self: average(scores.self),
-            peer: average(scores.peer),
-            supervisor: average(scores.supervisor),
-            subordinate: average(scores.subordinate),
-            weighted: 0,
-          };
-
-          return {
-            competencyId: id,
-            name: scores.name,
-            breakdown,
-            score: 0, // Will be calculated after applying weights
-          };
-        },
-      );
-
-      // 4. Apply weights
-      const weights: Record<string, number> = {
-        self: 20,
-        peer: 30,
-        supervisor: 35,
-        subordinate: 15,
-      };
-
-      // Prefer backend-normalized weights for the target employee (correct 100% across enabled categories)
-      if (sortedEnabledWeights.length > 0) {
-        for (const w of sortedEnabledWeights) {
-          weights[w.relationType] = Number(w.weightPercent);
-        }
-      } else if (weightConfigs && weightConfigs.length > 0) {
-        // Fallback to configured weights if normalized weights are unavailable
-        weightConfigs.forEach((config: any) => {
-          weights[config.relationType.toLowerCase()] = config.weightPercent;
-        });
-      }
-
-      competencyScores.forEach((comp) => {
-        // Calculate weighted score only using categories that have data
-        let totalWeight = 0;
-        let weightedSum = 0;
-
-        if (comp.breakdown.self > 0) {
-          weightedSum += comp.breakdown.self * weights.self;
-          totalWeight += weights.self;
-        }
-        if (comp.breakdown.peer > 0) {
-          weightedSum += comp.breakdown.peer * weights.peer;
-          totalWeight += weights.peer;
-        }
-        if (comp.breakdown.supervisor > 0) {
-          weightedSum += comp.breakdown.supervisor * weights.supervisor;
-          totalWeight += weights.supervisor;
-        }
-        if (comp.breakdown.subordinate > 0) {
-          weightedSum += comp.breakdown.subordinate * weights.subordinate;
-          totalWeight += weights.subordinate;
-        }
-
-        comp.breakdown.weighted =
-          totalWeight > 0 ? weightedSum / totalWeight : 0;
-        comp.score = comp.breakdown.weighted;
-      });
-
-      // We display the backend-normalized weights (assigned categories) when available.
-      // If not available, fall back to the prior "renormalize by available data" behavior.
-      const hasSelf = competencyScores.some((c) => c.breakdown.self > 0);
-      const hasPeer = competencyScores.some((c) => c.breakdown.peer > 0);
-      const hasSupervisor = competencyScores.some(
-        (c) => c.breakdown.supervisor > 0,
-      );
-      const hasSubordinate = competencyScores.some(
-        (c) => c.breakdown.subordinate > 0,
-      );
-
-      let displayedWeights: Record<string, number>;
-      if (sortedEnabledWeights.length > 0) {
-        displayedWeights = {
-          self: weights.self,
-          peer: weights.peer,
-          supervisor: weights.supervisor,
-          subordinate: weights.subordinate,
-        };
-      } else {
-        const usedTotal =
-          (hasSelf ? weights.self : 0) +
-          (hasPeer ? weights.peer : 0) +
-          (hasSupervisor ? weights.supervisor : 0) +
-          (hasSubordinate ? weights.subordinate : 0);
-
-        displayedWeights = {
-          self:
-            usedTotal > 0 && hasSelf
-              ? Math.round((weights.self / usedTotal) * 100)
-              : 0,
-          peer:
-            usedTotal > 0 && hasPeer
-              ? Math.round((weights.peer / usedTotal) * 100)
-              : 0,
-          supervisor:
-            usedTotal > 0 && hasSupervisor
-              ? Math.round((weights.supervisor / usedTotal) * 100)
-              : 0,
-          subordinate:
-            usedTotal > 0 && hasSubordinate
-              ? Math.round((weights.subordinate / usedTotal) * 100)
-              : 0,
-        };
-      }
-
-      // 5. Calculate overall score
-      const overall =
-        competencyScores.length > 0
-          ? average(competencyScores.map((c) => c.score))
-          : 0;
-
-      // 6. Add colors for display
-      const colors = [
-        {
-          color: "text-indigo-600",
-          bgColor: "bg-indigo-50",
-          borderColor: "border-indigo-200",
-        },
-        {
-          color: "text-teal-600",
-          bgColor: "bg-teal-50",
-          borderColor: "border-teal-200",
-        },
-        {
-          color: "text-amber-600",
-          bgColor: "bg-amber-50",
-          borderColor: "border-amber-200",
-        },
-        {
-          color: "text-purple-600",
-          bgColor: "bg-purple-50",
-          borderColor: "border-purple-200",
-        },
-      ];
-
-      const scoresToDisplay = competencyScores.map((comp, idx) => ({
-        ...comp,
-        ...colors[idx % colors.length],
-      }));
-
-      setCalculatedScores(scoresToDisplay);
-      setOverallScore(overall);
-      setEffectiveWeights(displayedWeights);
-    } catch (error) {
-      console.error("Error calculating scores:", error);
-    } finally {
-      setCalculating(false);
-    }
-  };
-
   // Competency scores are calculated from submitted assessment responses.
   const competencyScores = calculatedScores.length > 0 ? calculatedScores : [];
 
@@ -503,19 +251,33 @@ export default function EvaluationResults() {
 
   return (
     <div className="space-y-6">
-      {/* View Mode Toggle */}
+      {/* View Mode Toggle - Hide admin views for regular employees */}
       <div className="flex justify-center">
         <div className="inline-flex p-1 bg-gray-100 rounded-lg border border-gray-200">
-          <button
-            onClick={() => setViewMode("received")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              viewMode === "received"
-                ? "bg-white text-indigo-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            My 360 Results
-          </button>
+          {canReadAll && (
+            <>
+              <button
+                onClick={() => setViewMode("summary")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                  viewMode === "summary"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                All Employees Summary
+              </button>
+              <button
+                onClick={() => setViewMode("received")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                  viewMode === "received"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Individual 360 Results
+              </button>
+            </>
+          )}
           <button
             onClick={() => setViewMode("given")}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
@@ -529,36 +291,15 @@ export default function EvaluationResults() {
         </div>
       </div>
 
-      {/* Employee Selector for Admins/HR (only in received mode) */}
-      {canReadAll && viewMode === "received" && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-indigo-600" />
-                <h3 className="font-medium text-gray-900">View Results For:</h3>
-              </div>
-              <Select
-                value={targetEmployeeId}
-                onValueChange={setTargetEmployeeId}
-              >
-                <SelectTrigger className="w-full sm:w-[300px]">
-                  <SelectValue placeholder="Select an employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employeesData?.employees?.items.map((emp: any) => (
-                    <SelectItem key={emp.employeeId} value={emp.employeeId}>
-                      {emp.fullName} ({emp.title})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Peer Selector for 'given' mode */}
+      {/* Render different content based on view mode */}
+      {viewMode === "summary" ? (
+        <Employee360SummaryTable />
+      ) : viewMode === "received" ? (
+        <Employee360Results />
+      ) : (
+        // "Given" mode content stays the same
+        <>
+          {/* Peer Selector for 'given' mode */}
       {viewMode === "given" && completedAssessments.length > 0 && (
         <Card>
           <CardContent className="pt-6">
@@ -604,11 +345,7 @@ export default function EvaluationResults() {
                 No Results Yet
               </h3>
               <p className="text-gray-500">
-                {viewMode === "received"
-                  ? targetEmployeeId === user?.employeeId
-                    ? "Results will be available after you complete your evaluations and they are reviewed."
-                    : "No completed evaluations found for this employee."
-                  : "You haven't completed any peer evaluations in this cycle yet."}
+                You haven't completed any peer evaluations in this cycle yet.
               </p>
             </div>
           </CardContent>
@@ -634,51 +371,36 @@ export default function EvaluationResults() {
                         : "text-red-600"
                 }`}
               >
-                {viewMode === "received"
-                  ? overallScore >= 4.5
-                    ? "Exceeds Expectations"
-                    : overallScore >= 3.5
-                      ? "Meets Expectations"
-                      : overallScore >= 2.5
-                        ? "Needs Improvement"
-                        : "Below Expectations"
-                  : selectedPeerAssessmentId
-                    ? `Overall Rating given to ${
-                        completedAssessments.find(
-                          (a: any) =>
-                            a.competencyAssessmentId ===
-                            selectedPeerAssessmentId,
-                        )?.evaluatee.fullName || "selected employee"
-                      }`
-                    : "Select an evaluation to view ratings"}
+                {selectedPeerAssessmentId
+                  ? `Overall Rating given to ${
+                      completedAssessments.find(
+                        (a: any) =>
+                          a.competencyAssessmentId ===
+                          selectedPeerAssessmentId,
+                      )?.evaluatee.fullName || "selected employee"
+                    }`
+                  : "Select an evaluation to view ratings"}
               </p>
-              {viewMode === "received" && completedAssessments.length < 4 && (
-                <p className="text-xs text-amber-600 mt-2 bg-amber-50 inline-block px-3 py-1 rounded-full border border-amber-100">
-                  Note: This is a partial score based on{" "}
-                  {completedAssessments.length} completed evaluation
-                  {completedAssessments.length !== 1 ? "s" : ""}.
-                </p>
-              )}
             </div>
           </div>
 
-          {/* Competency Scores Grid */}
+          {/* Core Competency Scores Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {competencyScores.map((competency) => (
+            {competencyScores.map((coreCompetency) => (
               <Card
-                key={competency.name}
-                className={`border-2 ${competency.borderColor}`}
+                key={coreCompetency.name}
+                className={`border-2 ${coreCompetency.borderColor}`}
               >
                 <CardContent className="pt-6">
                   <div
-                    className={`w-12 h-12 rounded-lg ${competency.bgColor} flex items-center justify-center mb-3`}
+                    className={`w-12 h-12 rounded-lg ${coreCompetency.bgColor} flex items-center justify-center mb-3`}
                   >
-                    <span className={`text-2xl font-bold ${competency.color}`}>
-                      {competency.score.toFixed(1)}
+                    <span className={`text-2xl font-bold ${coreCompetency.color}`}>
+                      {coreCompetency.score.toFixed(1)}
                     </span>
                   </div>
                   <h3 className="font-medium text-gray-900 text-sm leading-tight">
-                    {competency.name}
+                    {coreCompetency.name}
                   </h3>
                 </CardContent>
               </Card>
@@ -820,93 +542,54 @@ export default function EvaluationResults() {
                     <thead>
                       <tr className="border-b border-gray-200">
                         <th className="text-left py-3 px-2 font-medium text-gray-500 uppercase text-xs">
-                          Competency
+                          Core Competency
                         </th>
-                        {viewMode === "received" ? (
-                          <>
-                            {columns.map((col) => (
-                              <th
-                                key={col}
-                                className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs"
-                              >
-                                {relationLabel(col)}
-                              </th>
-                            ))}
-                          </>
-                        ) : (
-                          <th className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs">
-                            Rating I Gave
-                          </th>
-                        )}
                         <th className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs">
-                          {viewMode === "received" ? "Wtd." : "Score"}
+                          Rating I Gave
+                        </th>
+                        <th className="text-center py-3 px-2 font-medium text-gray-500 uppercase text-xs">
+                          Score
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {competencyScores.map((competency) => (
+                      {competencyScores.map((coreCompetency) => (
                         <tr
-                          key={competency.name}
+                          key={coreCompetency.name}
                           className="border-b border-gray-100"
                         >
                           <td className="py-3 px-2">
-                            <span className={`font-medium ${competency.color}`}>
-                              {competency.name}
+                            <span className={`font-medium ${coreCompetency.color}`}>
+                              {coreCompetency.name}
                             </span>
                           </td>
-                          {viewMode === "received" ? (
-                            <>
-                              {columns.map((col) => {
-                                const v = competency.breakdown[col];
-                                return (
-                                  <td
-                                    key={`${competency.name}-${col}`}
-                                    className="text-center py-3 px-2 text-gray-900"
-                                  >
-                                    {v > 0 ? v.toFixed(1) : "-"}
-                                  </td>
-                                );
-                              })}
-                            </>
-                          ) : (
-                            <td className="text-center py-3 px-2 text-gray-900 font-medium">
-                              {competency.breakdown.given.toFixed(1)}
-                            </td>
-                          )}
+                          <td className="text-center py-3 px-2 text-gray-900 font-medium">
+                            {coreCompetency.breakdown.given.toFixed(1)}
+                          </td>
                           <td className="text-center py-3 px-2">
                             <span
-                              className={`font-semibold ${competency.color}`}
+                              className={`font-semibold ${coreCompetency.color}`}
                             >
-                              {competency.score.toFixed(1)}
+                              {coreCompetency.score.toFixed(1)}
                             </span>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {viewMode === "received" && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 font-medium mb-1 uppercase">
-                        Applied Weights
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {weightsSummaryText || "Weights unavailable"}
-                      </p>
-                    </div>
-                  )}
-                  {viewMode === "given" && (
-                    <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                      <p className="text-xs text-indigo-700 font-medium">
-                        These are the ratings you submitted for this peer during
-                        the current evaluation cycle.
-                      </p>
-                    </div>
-                  )}
+                  <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <p className="text-xs text-indigo-700 font-medium">
+                      These are the ratings you submitted for this peer during
+                      the current evaluation cycle.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
         </>
+        )}
+      </>
       )}
     </div>
   );

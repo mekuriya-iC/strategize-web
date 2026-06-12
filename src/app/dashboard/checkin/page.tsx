@@ -202,12 +202,23 @@ function EmployeeTaskCard({
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
+                  // Check if session is locked
+                  if (session.isLocked) {
+                    toast.error("This session is locked. No tasks can be added or edited.");
+                    return;
+                  }
                   onAddTask(session.checkinoutSessionId);
                 }}
-                className="h-9 px-3 text-[#3838EC] hover:bg-[#3838EC]/10 font-bold gap-2 rounded-lg border border-[#3838EC]/20 shadow-sm"
+                disabled={session.isLocked}
+                className={cn(
+                  "h-9 px-3 font-bold gap-2 rounded-lg border shadow-sm",
+                  session.isLocked
+                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                    : "text-[#3838EC] hover:bg-[#3838EC]/10 border-[#3838EC]/20"
+                )}
               >
                 <PlusIcon className="w-4 h-4" />
-                Add My Task
+                {session.isLocked ? "Session Locked" : "Add My Task"}
               </Button>
             )}
           </div>
@@ -422,15 +433,13 @@ export default function CheckInPage() {
     return employeeSessions[0] || supervisedSessions[0] || null;
   }, [allSessions, employeeSessions, supervisedSessions, selectedSessionId]);
 
-  // isManagerMode: True if the current user is the supervisor of the current session
-  // or if they have supervised sessions for this week.
+  // isManagerMode: True ONLY if the current user is the supervisor of the current session
+  // This determines whether to show team view or individual view
   const isManagerMode = useMemo(() => {
     if (!currentSession || !currentUser) return false;
-    return (
-      currentSession.supervisor?.employeeId === currentUser.employeeId ||
-      supervisedSessions.length > 0
-    );
-  }, [currentSession, currentUser, supervisedSessions]);
+    // Only show manager mode if user is the supervisor of THIS session
+    return currentSession.supervisor?.employeeId === currentUser.employeeId;
+  }, [currentSession, currentUser]);
 
   // Helper to normalize dates for comparison (ignoring time components)
   const normalizeDate = (dateStr: string) => {
@@ -441,33 +450,30 @@ export default function CheckInPage() {
   };
 
   // Find all team sessions for the same week as currentSession
+  // IMPORTANT: Only show team view if the current user is the SUPERVISOR of the current session
   const teamSessions = useMemo(() => {
     if (!currentSession || !currentUser) return [];
 
+    // Check if current user is the supervisor of the current session
+    const isCurrentSessionSupervisor = currentSession.supervisor?.employeeId === currentUser.employeeId;
+    
+    // If not the supervisor, only show own session (employee view)
+    if (!isCurrentSessionSupervisor) {
+      const myOwnSession = employeeSessions.find(
+        (s: any) => s.checkinoutSessionId === currentSession.checkinoutSessionId
+      );
+      return myOwnSession ? [myOwnSession] : [];
+    }
+
+    // If supervisor, show all supervised sessions for this week
     const weekStart = normalizeDate(currentSession.weekStartDate);
 
-    // 1. Get all sessions supervised by the current user for this week
+    // Get all sessions supervised by the current user for this week
     const supervisedThisWeek = supervisedSessions.filter(
       (s: any) => normalizeDate(s.weekStartDate) === weekStart,
     );
 
-    // 2. Get the current user's own session for this week (even if their supervisor is different)
-    const myOwnSession = employeeSessions.find(
-      (s: any) => normalizeDate(s.weekStartDate) === weekStart,
-    );
-
-    // Combine them, ensuring the current user's session is at the top
-    const combined = [...supervisedThisWeek];
-    if (
-      myOwnSession &&
-      !combined.find(
-        (s) => s.checkinoutSessionId === myOwnSession.checkinoutSessionId,
-      )
-    ) {
-      combined.unshift(myOwnSession);
-    }
-
-    return combined;
+    return supervisedThisWeek;
   }, [supervisedSessions, employeeSessions, currentSession, currentUser]);
 
   useEffect(() => {
@@ -1293,6 +1299,7 @@ export default function CheckInPage() {
         }}
         sessionId={targetSessionId || undefined}
         editingTask={editingTask}
+        session={allSessions.find((s: any) => s.checkinoutSessionId === targetSessionId)}
       />
 
       {/* Filter Dialog */}

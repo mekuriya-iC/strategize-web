@@ -63,10 +63,10 @@ export default function CreateIndicatorDialog({
     try {
       await createIndicator({
         competencyId,
-        organizationId,
         description,
         ratingScaleMin: min,
         ratingScaleMax: max,
+        organizationId: getOrganizationId(),
       });
 
       toast.success("Indicator created successfully");

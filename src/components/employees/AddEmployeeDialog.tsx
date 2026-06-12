@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
 import { uploadFile, validateImageFile } from "@/utils/fileUpload";
 import { parseGraphQLError } from "@/utils/errorParsing";
+import { useAuthStore } from "@/stores";
 import {
   CreateEmployeeInput,
   EmployeeRole,
@@ -62,6 +63,8 @@ interface FormErrors {
 
 const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children, onSuccess }) => {
   const [open, setOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
@@ -178,6 +181,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children, onSucce
     }
 
     const input: CreateEmployeeInput = {
+      organizationId: user?.organizationId || undefined, // Auto-set from current user
       fullName: formData.fullName,
       email: formData.email,
       phoneNumber: formData.phoneNumber,

@@ -17,9 +17,10 @@ import {
   useSystemConfigurationByOrg,
   useSystemConfigurationMutations,
 } from "@/hooks/systemConfiguration/useSystemConfiguration";
-import { Settings, Clock, Calendar, Star, Mail, FileText, Users, Loader2, Save, Database } from "lucide-react";
+import { Settings, Clock, Calendar, Star, Mail, FileText, Users, Loader2, Save, Database, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import FixAssigneeType from "@/components/admin/FixAssigneeType";
+import WeightConfigManager from "@/components/performance/WeightConfigManager";
 import { toast } from "sonner";
 
 const DAYS_OF_WEEK = [
@@ -67,7 +68,7 @@ const TIMEZONES = [
 export default function SystemConfigPage() {
   const { user } = useAuth();
   // TODO: Get organizationId from proper source when organization field is added to Employee type
-  const organizationId = "";
+  const organizationId = user?.organizationId || "";
 
   const { configuration, loading, refetch } = useSystemConfigurationByOrg(organizationId);
   const { createConfiguration, updateConfiguration, loading: mutationLoading } =
@@ -440,6 +441,19 @@ export default function SystemConfigPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Performance Weights Configuration */}
+      {organizationId && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Performance Weights
+            </h2>
+          </div>
+          <WeightConfigManager organizationId={organizationId} />
+        </div>
+      )}
 
       {/* Data Management Tools - Always show */}
       <Card>

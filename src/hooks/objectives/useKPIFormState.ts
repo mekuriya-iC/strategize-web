@@ -583,11 +583,13 @@ export const useKPIFormState = ({
 
                 // Auto-distribute logic
                 let q1, q2, q3, q4;
-                if (selectedParentKPI.unitType === "PERCENT") {
-                  // PERCENT: Same value for all quarters (don't split)
+                if (selectedParentKPI.unitType === "PERCENT" || selectedParentKPI.unitType === "RATIO") {
+                  // PERCENT & RATIO: Same value for all quarters (don't split)
+                  // e.g., 90% customer satisfaction should be 90% in Q1, Q2, Q3, Q4, not 360% total
                   q1 = q2 = q3 = q4 = targetValue.toString();
                 } else {
-                  // NUMBER, CURRENCY, RATIO, COUNT: Split evenly across quarters
+                  // NUMBER, CURRENCY, COUNT: Split evenly across quarters
+                  // e.g., $100M revenue = $25M per quarter
                   const split = Math.round((targetValue / 4) * 100) / 100;
                   const remainder =
                     Math.round((targetValue - split * 3) * 100) / 100;

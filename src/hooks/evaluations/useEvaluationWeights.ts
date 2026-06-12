@@ -1,10 +1,14 @@
 import { useQuery, useMutation } from "@apollo/client";
 import { toast } from "sonner";
 import { EvaluationRelationType } from "@/types/evaluation";
-import { GET_EVALUATION_WEIGHT_CONFIGS } from "@/lib/graphql/queries/evaluations";
+import { 
+  GET_EVALUATION_WEIGHT_CONFIGS,
+  GET_EVALUATION_WEIGHTS_FOR_CYCLE 
+} from "@/lib/graphql/queries/evaluations";
 import {
   CREATE_EVALUATION_WEIGHT_CONFIG,
   UPDATE_EVALUATION_WEIGHT_CONFIG,
+  BULK_UPDATE_EVALUATION_WEIGHTS,
 } from "@/lib/graphql/mutations/evaluations";
 
 export const useEvaluationWeightConfigs = (
@@ -30,16 +34,49 @@ export const useEvaluationWeightConfigs = (
   };
 };
 
+export const useEvaluationWeightsForCycle = (evaluationCycleId?: string) => {
+  const { data, loading, error, refetch } = useQuery(
+    GET_EVALUATION_WEIGHTS_FOR_CYCLE,
+    {
+      variables: { evaluationCycleId },
+      skip: !evaluationCycleId,
+      fetchPolicy: "cache-and-network",
+    },
+  );
+
+  return {
+    configs: data?.getEvaluationWeightsForCycle?.configs || [],
+    totalWeight: data?.getEvaluationWeightsForCycle?.totalWeight || 0,
+    isValid: data?.getEvaluationWeightsForCycle?.isValid || false,
+    message: data?.getEvaluationWeightsForCycle?.message || "",
+    loading,
+    error,
+    refetch,
+  };
+};
+
 type CreateEvaluationWeightConfigInput = {
   evaluationCycleId: string;
   relationType: EvaluationRelationType;
   weightPercent: number;
+  isEnabled?: boolean;
 };
 
 type UpdateEvaluationWeightConfigInput =
   Partial<CreateEvaluationWeightConfigInput> & {
     evaluationWeightConfigId: string;
   };
+
+type EvaluatorWeightInput = {
+  relationType: EvaluationRelationType;
+  weightPercent: number;
+  isEnabled: boolean;
+};
+
+type BulkUpdateWeightsInput = {
+  evaluationCycleId: string;
+  weights: EvaluatorWeightInput[];
+};
 
 export const useEvaluationWeightMutations = () => {
   const [createWeightConfig] = useMutation(CREATE_EVALUATION_WEIGHT_CONFIG, {
@@ -74,6 +111,24 @@ export const useEvaluationWeightMutations = () => {
     awaitRefetchQueries: true,
   });
 
+  const [bulkUpdateWeights] = useMutation(BULK_UPDATE_EVALUATION_WEIGHTS, {
+    onCompleted: (data) => {
+      if (data?.bulkUpdateEvaluationWeights?.isValid) {
+        toast.success("Weight configuration saved successfully");
+      } else {
+        toast.warning(data?.bulkUpdateEvaluationWeights?.message || "Weight configuration saved with warnings");
+      }
+    },
+    onError: (error) => {
+      toast.error(`Failed to save weights: ${error.message}`);
+    },
+    refetchQueries: [
+      GET_EVALUATION_WEIGHT_CONFIGS,
+      GET_EVALUATION_WEIGHTS_FOR_CYCLE,
+    ],
+    awaitRefetchQueries: true,
+  });
+
   return {
     createWeightConfig: async (input: CreateEvaluationWeightConfigInput) => {
       const result = await createWeightConfig({
@@ -86,6 +141,12 @@ export const useEvaluationWeightMutations = () => {
         variables: { updateEvaluationWeightConfigInput: input },
       });
       return result.data?.updateEvaluationWeightConfig;
+    },
+    bulkUpdateWeights: async (input: BulkUpdateWeightsInput) => {
+      const result = await bulkUpdateWeights({
+        variables: { bulkUpdateWeightsInput: input },
+      });
+      return result.data?.bulkUpdateEvaluationWeights;
     },
   };
 };

@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Target, Search, Plus, Eye, MoreVertical, Edit, Trash, Power, PowerOff, AlertCircle } from "lucide-react";
+import { Target, Search, Plus, Eye, MoreVertical, Edit, Trash, Power, PowerOff, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -46,18 +46,23 @@ export default function StrategicPlansPage() {
     createStrategicPlan, 
     removeStrategicPlan, 
     activateStrategicPlan, 
-    deactivateStrategicPlan 
+    deactivateStrategicPlan,
+    archiveStrategicPlan,
+    unarchiveStrategicPlan
   } = useStrategicPlanMutations();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  
+  // Role-based access: SUPER_ADMIN and ADMIN (CEO) can edit/archive/activate
+  const canEdit = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+  const canView = true; // Everyone can view
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", startDate: "", endDate: "" });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
-  const activePlan = strategicPlans.find(plan => plan.isActive);
+  const activePlan = strategicPlans.find(plan => plan.isActive && !plan.archivedAt);
   const hasActivePlan = !!activePlan;
 
   const handleCreate = async () => {
@@ -99,6 +104,22 @@ export default function StrategicPlansPage() {
     }
   };
 
+  const handleArchive = async (strategicPlanId: string) => {
+    try {
+      await archiveStrategicPlan(strategicPlanId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUnarchive = async (strategicPlanId: string) => {
+    try {
+      await unarchiveStrategicPlan(strategicPlanId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleDelete = async () => {
     if (!planToDelete) return;
     try {
@@ -133,22 +154,24 @@ export default function StrategicPlansPage() {
             </div>
           </div>
         </div>
-        <Button 
-          onClick={() => setCreateOpen(true)} 
-          className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-          disabled={hasActivePlan}
-        >
-          <Plus className="w-4 h-4" />
-          Create Plan
-        </Button>
+        {canEdit && (
+          <Button 
+            onClick={() => setCreateOpen(true)} 
+            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={hasActivePlan}
+          >
+            <Plus className="w-4 h-4" />
+            Create Plan
+          </Button>
+        )}
       </div>
 
       {hasActivePlan && (
-        <Alert className="bg-green-50 border-green-200">
+        <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-900">
           <AlertCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
+          <AlertDescription className="text-green-800 dark:text-green-300">
             <strong>{activePlan.title}</strong> is currently the active strategic plan. 
-            {isSuperAdmin && " You can deactivate it to create a new plan."}
+            {canEdit && " You can deactivate it to create a new plan."}
           </AlertDescription>
         </Alert>
       )}
@@ -185,7 +208,7 @@ export default function StrategicPlansPage() {
             ) : strategicPlans.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                  No strategic plans found. Create one to get started.
+                  No strategic plans found. {canEdit && "Create one to get started."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -201,9 +224,17 @@ export default function StrategicPlansPage() {
                     {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={plan.isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}>
-                      {plan.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <div className="flex gap-2">
+                      {plan.archivedAt ? (
+                        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                          Archived
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className={plan.isActive ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900' : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}>
+                          {plan.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -217,27 +248,43 @@ export default function StrategicPlansPage() {
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        {isSuperAdmin && (
+                        {canEdit && (
                           <>
                             <DropdownMenuSeparator />
-                            {plan.isActive ? (
-                              <DropdownMenuItem onClick={() => handleDeactivate(plan.strategicPlanId)}>
-                                <PowerOff className="w-4 h-4 mr-2" />
-                                Deactivate
+                            {!plan.archivedAt && (
+                              <>
+                                {plan.isActive ? (
+                                  <DropdownMenuItem onClick={() => handleDeactivate(plan.strategicPlanId)}>
+                                    <PowerOff className="w-4 h-4 mr-2" />
+                                    Deactivate
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleActivate(plan.strategicPlanId)}
+                                    disabled={hasActivePlan}
+                                  >
+                                    <Power className="w-4 h-4 mr-2" />
+                                    Activate
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => router.push(`/dashboard/strategic-plans/${plan.strategicPlanId}/edit`)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuSeparator />
+                            {plan.archivedAt ? (
+                              <DropdownMenuItem onClick={() => handleUnarchive(plan.strategicPlanId)}>
+                                <ArchiveRestore className="w-4 h-4 mr-2" />
+                                Unarchive
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem 
-                                onClick={() => handleActivate(plan.strategicPlanId)}
-                                disabled={hasActivePlan}
-                              >
-                                <Power className="w-4 h-4 mr-2" />
-                                Activate
+                              <DropdownMenuItem onClick={() => handleArchive(plan.strategicPlanId)}>
+                                <Archive className="w-4 h-4 mr-2" />
+                                Archive
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => router.push(`/dashboard/strategic-plans/${plan.strategicPlanId}/edit`)}>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(plan.strategicPlanId)}
@@ -259,7 +306,8 @@ export default function StrategicPlansPage() {
       </div>
 
       {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      {canEdit && (
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Strategic Plan</DialogTitle>
@@ -268,9 +316,9 @@ export default function StrategicPlansPage() {
             </DialogDescription>
           </DialogHeader>
           {hasActivePlan && (
-            <Alert className="bg-yellow-50 border-yellow-200">
+            <Alert className="bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-900">
               <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-800">
+              <AlertDescription className="text-yellow-800 dark:text-yellow-300">
                 An active strategic plan already exists. Please deactivate it before creating a new one.
               </AlertDescription>
             </Alert>
@@ -303,10 +351,12 @@ export default function StrategicPlansPage() {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {canEdit && (
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -322,7 +372,8 @@ export default function StrategicPlansPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+        </AlertDialog>
+      )}
     </div>
   );
 }

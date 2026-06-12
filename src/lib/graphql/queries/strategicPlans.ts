@@ -11,6 +11,7 @@ export const GET_STRATEGIC_PLANS = gql`
         endDate
         isActive
         version
+        archivedAt
         createdAt
         organization {
           organizationId
@@ -38,6 +39,7 @@ export const GET_STRATEGIC_PLAN = gql`
       endDate
       isActive
       version
+      archivedAt
       createdAt
       organization {
         organizationId

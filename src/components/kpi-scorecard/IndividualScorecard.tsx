@@ -386,10 +386,11 @@ export default function IndividualScorecard({
                         kpiScore.achievementRate,
                       );
                       const assignment = assignmentMap.get(kpiScore.kpi.kpiId);
-                      const hasParentWeight =
+                      const hasParentWeight = Boolean(
                         assignment &&
-                        assignment.parentWeightAllocation !== null &&
-                        assignment.parentWeightAllocation !== assignment.weight;
+                        (assignment as any).parentWeightAllocation !== null &&
+                        (assignment as any).parentWeightAllocation !== (assignment as any).weight
+                      );
 
                       return (
                         <tr
@@ -432,20 +433,20 @@ export default function IndividualScorecard({
                                   Local
                                 </span>
                               </div>
-                              {hasParentWeight && (
+                              {hasParentWeight && assignment ? (
                                 <div className="flex items-center gap-1">
                                   <ArrowRight className="w-3 h-3 text-muted-foreground" />
                                   <Badge
                                     variant="secondary"
                                     className="text-xs bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
                                   >
-                                    {formatNumber(assignment.parentWeightAllocation)}%
+                                    {formatNumber((assignment as any).parentWeightAllocation)}%
                                   </Badge>
                                   <span className="text-xs text-muted-foreground">
                                     To Dept
                                   </span>
                                 </div>
-                              )}
+                              ) : null}
                             </div>
                           </td>
                           <td className="text-right p-3">

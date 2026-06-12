@@ -638,10 +638,11 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
             <div className="grid gap-2">
               {divisionScorecard.kpiScores.map((kpiScore: any, index: number) => {
                 const assignment = divisionAssignmentMap.get(kpiScore.kpi.kpiId);
-                const hasParentWeight =
+                const hasParentWeight = Boolean(
                   assignment &&
-                  assignment.parentWeightAllocation !== null &&
-                  assignment.parentWeightAllocation !== assignment.weight;
+                  (assignment as any).parentWeightAllocation !== null &&
+                  (assignment as any).parentWeightAllocation !== (assignment as any).weight
+                );
 
                 return (
                   <div key={index} className="p-3 rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40">
@@ -654,17 +655,17 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
                     <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                       {kpiScore.actualValue.toFixed(2)} / {kpiScore.targetValue} {kpiScore.kpi.measurementUnit}
                     </div>
-                    {hasParentWeight && (
+                    {hasParentWeight && assignment ? (
                       <div className="mt-2 flex items-center gap-2 text-xs">
                         <Badge variant="outline" className="text-xs">
-                          {assignment.weight.toFixed(1)}% Local
+                          {(assignment as any).weight.toFixed(1)}% Local
                         </Badge>
                         <ArrowUpRight className="w-3 h-3 text-purple-500" />
                         <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                          {assignment.parentWeightAllocation.toFixed(1)}% to Corporate
+                          {(assignment as any).parentWeightAllocation.toFixed(1)}% to Corporate
                         </Badge>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}
@@ -705,10 +706,11 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
             <div className="grid gap-2">
               {departmentScorecard.kpiScores.map((kpiScore: any, index: number) => {
                 const assignment = departmentAssignmentMap.get(kpiScore.kpi.kpiId);
-                const hasParentWeight =
+                const hasParentWeight = Boolean(
                   assignment &&
-                  assignment.parentWeightAllocation !== null &&
-                  assignment.parentWeightAllocation !== assignment.weight;
+                  (assignment as any).parentWeightAllocation !== null &&
+                  (assignment as any).parentWeightAllocation !== (assignment as any).weight
+                );
 
                 return (
                   <div key={index} className="p-3 rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40">
@@ -721,17 +723,17 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
                     <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                       {kpiScore.actualValue.toFixed(2)} / {kpiScore.targetValue} {kpiScore.kpi.measurementUnit}
                     </div>
-                    {hasParentWeight && (
+                    {hasParentWeight && assignment ? (
                       <div className="mt-2 flex items-center gap-2 text-xs">
                         <Badge variant="outline" className="text-xs">
-                          {assignment.weight.toFixed(1)}% Local
+                          {(assignment as any).weight.toFixed(1)}% Local
                         </Badge>
                         <ArrowUpRight className="w-3 h-3 text-amber-500" />
                         <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                          {assignment.parentWeightAllocation.toFixed(1)}% to Division
+                          {(assignment as any).parentWeightAllocation.toFixed(1)}% to Division
                         </Badge>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}

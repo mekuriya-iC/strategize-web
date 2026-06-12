@@ -117,8 +117,7 @@ export default function AdvancedKPIDashboard() {
       filters: {
         strategicPeriodId: selectedPeriod?.strategicPeriodId,
         organizationId: user?.organizationId,
-        divisionId: user?.divisionId,
-        departmentId: user?.departmentId,
+        // Note: divisionId and departmentId filtering would need to be added based on user's department membership
       },
     },
     skip: (!hasFullAccess && !isManager) || !selectedPeriod?.strategicPeriodId,

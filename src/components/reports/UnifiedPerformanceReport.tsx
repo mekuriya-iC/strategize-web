@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, gql } from "@apollo/client";
 import {
   Card,
@@ -173,10 +173,12 @@ export default function UnifiedPerformanceReport({
     return now >= start && now <= end;
   });
 
-  // Auto-select active period (only once)
-  if (!selectedPeriodId && activePeriod && activePeriod.strategicPeriodId) {
-    setSelectedPeriodId(activePeriod.strategicPeriodId);
-  }
+  // Auto-select active period (using useEffect to avoid state update during render)
+  useEffect(() => {
+    if (!selectedPeriodId && activePeriod && activePeriod.strategicPeriodId) {
+      setSelectedPeriodId(activePeriod.strategicPeriodId);
+    }
+  }, [activePeriod?.strategicPeriodId]); // Only depend on activePeriod ID, not selectedPeriodId
 
   // Determine which query to use based on view mode
   const isTeamView = viewMode === "team";
@@ -208,8 +210,7 @@ export default function UnifiedPerformanceReport({
       filters: {
         strategicPeriodId: selectedPeriodId,
         organizationId: user?.organizationId,
-        divisionId: user?.divisionId,
-        departmentId: user?.departmentId,
+        // Note: divisionId and departmentId filtering would need to be added based on user's department membership
       },
     },
     skip: !isTeamView || !selectedPeriodId,

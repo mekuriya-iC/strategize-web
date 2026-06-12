@@ -3,7 +3,7 @@ import {
   GET_CORPORATE_KPI_WITH_DIVISION_CONTRIBUTIONS,
   GET_DIVISION_KPI_WITH_DEPARTMENT_CONTRIBUTIONS,
   GET_DEPARTMENT_KPI_WITH_EMPLOYEE_CONTRIBUTIONS,
-} from '@/graphql/queries/kpiWeightAchievement';
+} from '@/lib/graphql/queries/kpiWeightAchievement';
 
 export interface KpiContributor {
   contributorId: string;

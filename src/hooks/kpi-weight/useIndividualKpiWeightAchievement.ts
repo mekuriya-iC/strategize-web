@@ -1,5 +1,5 @@
 import { useQuery } from '@apollo/client';
-import { GET_INDIVIDUAL_KPI_WEIGHT_ACHIEVEMENT } from '@/graphql/queries/kpiWeightAchievement';
+import { GET_INDIVIDUAL_KPI_WEIGHT_ACHIEVEMENT } from '@/lib/graphql/queries/kpiWeightAchievement';
 
 export interface IndividualKpiWeightItem {
   kpiId: string;

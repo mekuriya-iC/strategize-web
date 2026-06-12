@@ -53,7 +53,7 @@ export default function StrategicPeriodSelector({
   className = "",
 }: StrategicPeriodSelectorProps) {
   const { strategicPeriods, loading } = useStrategicPeriods();
-  const { selectedPeriod, setSelectedPeriod } = useStrategicPeriodStore();
+  const { selectedPeriod, setSelectedPeriod, selectPeriodWithTimeline } = useStrategicPeriodStore();
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const [selectedValue, setSelectedValue] = useState<string>("");
@@ -125,7 +125,8 @@ export default function StrategicPeriodSelector({
     const periodToSelect = activePeriod || currentPeriod || annualPeriod || periodsForYear[0];
     
     if (periodToSelect) {
-      setSelectedPeriod(periodToSelect);
+      // Set both period and annual timeline
+      selectPeriodWithTimeline(periodToSelect, yearLabel);
       setSelectedValue(periodToSelect.strategicPeriodId);
       
       if (periodToSelect.periodType?.toLowerCase() === "quarterly") {
@@ -145,12 +146,14 @@ export default function StrategicPeriodSelector({
     const period = strategicPeriods.find((p) => p.strategicPeriodId === periodId);
     if (!period) return;
 
-    setSelectedPeriod(period);
+    // Set both period and annual timeline
+    const yearLabel = formatPeriodLabel(period);
+    selectPeriodWithTimeline(period, yearLabel);
     setSelectedValue(periodId);
     setSelectedQuarter(periodId);
     
     const quarter = getQuarterLabel(period);
-    toast.success(`Switched to ${quarter} ${selectedYear}`);
+    toast.success(`Switched to ${quarter} ${yearLabel}`);
   };
 
   const handlePeriodChange = (value: string) => {

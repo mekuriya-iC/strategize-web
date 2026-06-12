@@ -8,9 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
 import { format, addYears, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import { useMutation } from '@apollo/client';
@@ -36,7 +33,7 @@ export default function StrategicPlanSetupPage() {
   const [createPlan, { loading }] = useMutation(CREATE_STRATEGIC_PLAN);
 
   const currentYear = new Date().getFullYear();
-  const [planDurationYears, setPlanDurationYears] = useState<2 | 3 | 4 | 5>(5);
+  const [planDurationYears, setPlanDurationYears] = useState<2 | 3 | 4 | 5 | null>(5);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -57,10 +54,24 @@ export default function StrategicPlanSetupPage() {
   };
 
   const handleStartDateChange = (date: Date) => {
+    setFormData((prev) => {
+      const newFormData = { ...prev, startDate: date };
+      
+      // Only auto-adjust end date if a duration is selected
+      if (planDurationYears !== null) {
+        newFormData.endDate = applyPlanDuration(date, planDurationYears);
+      }
+      
+      return newFormData;
+    });
+  };
+
+  const handleEndDateChange = (date: Date) => {
+    // When user manually sets end date, clear the duration selection
+    setPlanDurationYears(null);
     setFormData((prev) => ({
       ...prev,
-      startDate: date,
-      endDate: applyPlanDuration(date, planDurationYears),
+      endDate: date,
     }));
   };
 
@@ -69,6 +80,11 @@ export default function StrategicPlanSetupPage() {
 
     if (!formData.title) {
       toast.error('Plan title is required');
+      return;
+    }
+
+    if (formData.endDate <= formData.startDate) {
+      toast.error('End date must be after start date');
       return;
     }
 
@@ -149,7 +165,7 @@ export default function StrategicPlanSetupPage() {
 
               {/* Plan duration */}
               <div className="space-y-2">
-                <Label>Plan duration</Label>
+                <Label>Plan duration (optional)</Label>
                 <div className="grid grid-cols-4 gap-2">
                   {([2, 3, 4, 5] as const).map((years) => (
                     <Button
@@ -163,58 +179,50 @@ export default function StrategicPlanSetupPage() {
                   ))}
                 </div>
                 <p className="text-sm text-gray-500">
-                  End date follows your start date and duration. You can fine-tune it below.
+                  Select a duration to auto-calculate end date, or set custom dates below.
                 </p>
               </div>
 
               {/* Date Range */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>
+                  <Label htmlFor="startDate">
                     Start Date <span className="text-red-500">*</span>
                   </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(formData.startDate, 'PPP')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.startDate}
-                        onSelect={(date) => date && handleStartDateChange(date)}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={format(formData.startDate, 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      if (!isNaN(date.getTime())) {
+                        handleStartDateChange(date);
+                      }
+                    }}
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>
+                  <Label htmlFor="endDate">
                     End Date <span className="text-red-500">*</span>
                   </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(formData.endDate, 'PPP')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.endDate}
-                        onSelect={(date) => date && setFormData({ ...formData, endDate: date })}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={format(formData.endDate, 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      if (!isNaN(date.getTime())) {
+                        handleEndDateChange(date);
+                      }
+                    }}
+                    min={format(formData.startDate, 'yyyy-MM-dd')}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Must be after start date. {planDurationYears === null && 'Custom duration selected.'}
+                  </p>
                 </div>
               </div>
 

@@ -93,11 +93,13 @@ export default function WeightConfigManager({ organizationId }: WeightConfigMana
   });
 
   const handleCreate = (formData: any) => {
+    // Remove isActive from create input - backend doesn't accept it on creation
+    const { isActive, ...createData } = formData;
     createConfig({
       variables: {
         input: {
           organizationId,
-          ...formData,
+          ...createData,
         },
       },
     });

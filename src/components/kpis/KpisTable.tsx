@@ -39,8 +39,11 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  UserPlus,
 } from "lucide-react";
 import { CreateKpiDialog } from "@/components/kpis/CreateKpiDialog";
+import KpiAssignmentDialog from "@/components/kpis/KpiAssignmentDialog";
+import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 
 interface KpisTableProps {
   kpis: Kpi[];
@@ -80,9 +83,11 @@ const kpiTypeConfig: Record<string, { label: string; className: string }> = {
 export default function KpisTable({ kpis, loading, organizationId }: KpisTableProps) {
   const router = useRouter();
   const { deleteKpi, loading: mutLoading } = useKpiMutations();
+  const selectedPeriod = useSelectedStrategicPeriod();
 
   const [deleteKpiItem, setDeleteKpiItem] = useState<Kpi | null>(null);
   const [editKpi, setEditKpi] = useState<Kpi | null>(null);
+  const [assignKpi, setAssignKpi] = useState<Kpi | null>(null);
 
   const handleDelete = async () => {
     if (!deleteKpiItem) return;
@@ -251,6 +256,15 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignKpi(kpi);
+                          }}
+                          disabled={!selectedPeriod}
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" /> Assign
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           className="text-red-600"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -276,6 +290,22 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
           onOpenChange={(open: boolean) => { if (!open) setEditKpi(null); }}
           organizationId={organizationId}
           editKpi={editKpi}
+        />
+      )}
+
+      {/* Assignment Dialog */}
+      {assignKpi && selectedPeriod && (
+        <KpiAssignmentDialog
+          kpi={{
+            kpiId: assignKpi.kpiId,
+            name: assignKpi.name,
+            targetValue: assignKpi.targetValue,
+            measurementUnit: assignKpi.measurementUnit,
+          }}
+          strategicPeriodId={selectedPeriod.strategicPeriodId}
+          onSuccess={() => setAssignKpi(null)}
+          open={!!assignKpi}
+          onOpenChange={(open: boolean) => { if (!open) setAssignKpi(null); }}
         />
       )}
 

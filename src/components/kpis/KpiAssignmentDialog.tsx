@@ -53,6 +53,8 @@ interface KpiAssignmentDialogProps {
   strategicPeriodId: string;
   onSuccess?: () => void;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function KpiAssignmentDialog({
@@ -60,8 +62,15 @@ export default function KpiAssignmentDialog({
   strategicPeriodId,
   onSuccess,
   trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: KpiAssignmentDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
+  
   const [assignmentType, setAssignmentType] = useState<
     "EMPLOYEE" | "DEPARTMENT" | "DIVISION" | "CORPORATE"
   >("EMPLOYEE");

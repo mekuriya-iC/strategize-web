@@ -260,11 +260,11 @@ export function AddTaskDialog({
         taskTitle: task.trim(),
         taskLinkType: taskType,
         linkedKpiId:
-          taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET"
+          (taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") && linkedKpi
             ? linkedKpi
             : null,
         linkedInitiativeId:
-          taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET"
+          (taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET") && linkedInitiative
             ? linkedInitiative
             : null,
         relatedToEmployeeId: relatedTo || null,

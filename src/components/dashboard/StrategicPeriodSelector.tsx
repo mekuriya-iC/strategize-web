@@ -79,11 +79,10 @@ export default function StrategicPeriodSelector({
     
     const periodsForYear = strategicPeriods.filter((period) => {
       const label = formatPeriodLabel(period);
-      return label === selectedYear;
+      return label === selectedYear && period.periodType?.toLowerCase() === "quarterly";
     });
 
     const quarters = periodsForYear
-      .filter((p) => p.periodType?.toLowerCase() === "quarterly")
       .map((p) => ({
         label: getQuarterLabel(p),
         value: p.strategicPeriodId,

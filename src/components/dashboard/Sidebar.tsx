@@ -479,6 +479,32 @@ const navCategories: NavCategory[] = [
         ),
       },
       {
+        label: "Semi-Annual Report",
+        href: "/dashboard/semi-annual-report",
+        permission: "nav:reports",
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-current"
+          >
+            <path
+              d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M7 6H13M7 10H10M7 14H13"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        ),
+      },
+      {
         label: "My Submissions",
         href: "/dashboard/reports?tab=my-submissions",
         permission: "nav:reports",
@@ -533,6 +559,28 @@ const navCategories: NavCategory[] = [
             height={16}
             className="sidebar-icon-filter"
           />
+        ),
+      },
+      {
+        label: "Semi-Annual Config",
+        href: "/dashboard/semi-annual-config",
+        permission: "nav:admin",
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-current"
+          >
+            <path
+              d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15.5L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <circle cx="10" cy="10" r="3" fill="currentColor" fillOpacity="0.2" />
+          </svg>
         ),
       },
       {

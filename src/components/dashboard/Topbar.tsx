@@ -53,6 +53,8 @@ export default function Topbar() {
     if (path.startsWith("/dashboard/departments")) return "Departments";
     if (path.startsWith("/dashboard/employees")) return "Employees";
     if (path.startsWith("/dashboard/reports")) return "Reports";
+    if (path.startsWith("/dashboard/semi-annual-report")) return "Semi-Annual Report";
+    if (path.startsWith("/dashboard/semi-annual-config")) return "Semi-Annual Configuration";
     if (path.startsWith("/dashboard/approvals/my-submissions"))
       return "My Submissions";
     if (path.startsWith("/dashboard/approvals")) return "Approvals";

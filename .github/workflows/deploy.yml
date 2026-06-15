@@ -34,4 +34,11 @@ jobs:
       - name: Run New Container
         run: |
           sudo fuser -k 4410/tcp || true
-          docker run -d --network host -p 4410:4410 strategize-web:latest
+          # Cap the container at 50% of the host's total CPU capacity.
+          CPU_LIMIT=$(awk "BEGIN { printf \"%.2f\", $(nproc) * 0.5 }")
+          echo "Limiting container CPU to ${CPU_LIMIT} cores (50% of $(nproc) host cores)"
+          docker run -d \
+            --network host \
+            -p 4410:4410 \
+            --cpus="${CPU_LIMIT}" \
+            strategize-web:latest

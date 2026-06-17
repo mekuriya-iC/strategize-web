@@ -61,6 +61,78 @@ const GET_CORPORATE_SCORECARD = gql`
   }
 `;
 
+const GET_DIVISION_SCORECARD = gql`
+  query GetDivisionScorecardForCharts($divisionId: ID!, $periodId: ID!) {
+    realtimeDivisionScorecard(
+      divisionId: $divisionId
+      periodId: $periodId
+      capFinalScore: false
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        kpi {
+          kpiId
+          name
+        }
+        level
+        actualValue
+        targetValue
+        achievementRate
+      }
+    }
+  }
+`;
+
+const GET_DEPARTMENT_SCORECARD = gql`
+  query GetDepartmentScorecardForCharts($departmentId: ID!, $periodId: ID!) {
+    realtimeDepartmentScorecard(
+      departmentId: $departmentId
+      periodId: $periodId
+      capFinalScore: false
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        kpi {
+          kpiId
+          name
+        }
+        level
+        actualValue
+        targetValue
+        achievementRate
+      }
+    }
+  }
+`;
+
+const GET_INDIVIDUAL_SCORECARD = gql`
+  query GetIndividualScorecardForCharts($employeeId: ID!, $periodId: ID!) {
+    realtimeIndividualScorecard(
+      employeeId: $employeeId
+      periodId: $periodId
+      capFinalScore: false
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        kpi {
+          kpiId
+          name
+        }
+        level
+        actualValue
+        targetValue
+        achievementRate
+      }
+    }
+  }
+`;
+
 const GET_TEAM_PERFORMANCE_STATS = gql`
   query GetTeamPerformanceForCharts($filters: UnifiedPerformanceFilters!) {
     unifiedTeamPerformance(filters: $filters) {
@@ -87,6 +159,10 @@ export default function ChartsSection() {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [topN, setTopN] = useState<number>(5);
 
+  const primaryDept = user?.departments?.[0];
+  const userDepartmentId = primaryDept?.departmentId;
+  const userDivisionId = (primaryDept as any)?.division?.divisionId;
+
   const roleSelectedUnit =
     (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
       ? {
@@ -105,30 +181,59 @@ export default function ChartsSection() {
 
   const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
   const hasFullAccess = !!user?.role && fullAccessRoles.has(user.role as string);
-  
-  const managerRoles = new Set(["MANAGER", "DIRECTOR"]);
-  const isManager = !!user?.role && managerRoles.has(user.role as string);
+  const isDirector = user?.role === "DIRECTOR";
+  const isManager = user?.role === "MANAGER" || user?.role === "COORDINATOR";
+  const isLeadershipRole = hasFullAccess || isDirector || isManager;
 
-  // Fetch corporate scorecard for full access users
-  const { data: corporateData } = useQuery(GET_CORPORATE_SCORECARD, {
-    variables: {
-      organizationId: user?.organizationId,
-      periodId: selectedPeriod?.strategicPeriodId,
-    },
-    skip: !hasFullAccess || !selectedPeriod?.strategicPeriodId,
+  // Determine scorecard query dynamically
+  let scorecardQuery = GET_CORPORATE_SCORECARD;
+  let scorecardVariables: any = {
+    periodId: selectedPeriod?.strategicPeriodId,
+  };
+
+  if (hasFullAccess) {
+    scorecardQuery = GET_CORPORATE_SCORECARD;
+    scorecardVariables.organizationId = user?.organizationId;
+  } else if (isDirector && userDivisionId) {
+    scorecardQuery = GET_DIVISION_SCORECARD;
+    scorecardVariables.divisionId = userDivisionId;
+  } else if (isManager && userDepartmentId) {
+    scorecardQuery = GET_DEPARTMENT_SCORECARD;
+    scorecardVariables.departmentId = userDepartmentId;
+  } else {
+    scorecardQuery = GET_INDIVIDUAL_SCORECARD;
+    scorecardVariables.employeeId = user?.employeeId;
+  }
+
+  // Fetch scorecard for charts based on role
+  const { data: scorecardData } = useQuery(scorecardQuery, {
+    variables: scorecardVariables,
+    skip: !selectedPeriod?.strategicPeriodId || (hasFullAccess ? !user?.organizationId : (isDirector ? !userDivisionId : (isManager ? !userDepartmentId : !user?.employeeId))),
     fetchPolicy: "cache-and-network",
   });
 
+  const scorecard =
+    scorecardData?.realtimeCorporateScorecard ||
+    scorecardData?.realtimeDivisionScorecard ||
+    scorecardData?.realtimeDepartmentScorecard ||
+    scorecardData?.realtimeIndividualScorecard;
+
   // Fetch team performance for managers and full access
+  let teamFilters: any = {
+    strategicPeriodId: selectedPeriod?.strategicPeriodId,
+    organizationId: user?.organizationId,
+  };
+  if (isDirector && userDivisionId) {
+    teamFilters.divisionId = userDivisionId;
+  } else if (isManager && userDepartmentId) {
+    teamFilters.departmentId = userDepartmentId;
+  }
+
   const { data: teamData } = useQuery(GET_TEAM_PERFORMANCE_STATS, {
     variables: {
-      filters: {
-        strategicPeriodId: selectedPeriod?.strategicPeriodId,
-        organizationId: user?.organizationId,
-        // Note: divisionId and departmentId filtering would need to be added based on user's department membership
-      },
+      filters: teamFilters,
     },
-    skip: (!hasFullAccess && !isManager) || !selectedPeriod?.strategicPeriodId,
+    skip: !isLeadershipRole || !selectedPeriod?.strategicPeriodId,
     fetchPolicy: "cache-and-network",
   });
 
@@ -140,11 +245,10 @@ export default function ChartsSection() {
 
   // Build advanced analytics from scorecard data
   const advancedAnalytics = useMemo(() => {
-    if (!corporateData?.realtimeCorporateScorecard) {
+    if (!scorecard) {
       return null;
     }
 
-    const scorecard = corporateData.realtimeCorporateScorecard;
     let kpiScores = scorecard.kpiScores || [];
 
     // Apply filters
@@ -225,7 +329,7 @@ export default function ChartsSection() {
         filtered: kpiScores.length,
       },
     };
-  }, [corporateData, performanceFilter, levelFilter, topN]);
+  }, [scorecard, performanceFilter, levelFilter, topN]);
 
   // Team performance distribution
   const teamAnalytics = useMemo(() => {
@@ -444,8 +548,8 @@ export default function ChartsSection() {
             />
           </div>
 
-          {/* Advanced Charts - Full Access Users */}
-          {hasFullAccess && advancedAnalytics && (
+          {/* Advanced Charts - Leadership Roles */}
+          {isLeadershipRole && advancedAnalytics && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard
@@ -553,8 +657,8 @@ export default function ChartsSection() {
             </>
           )}
 
-          {/* Team Performance Charts - Managers and Full Access */}
-          {(hasFullAccess || isManager) && teamAnalytics && (
+          {/* Team Performance Charts - Leadership Roles */}
+          {isLeadershipRole && teamAnalytics && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard

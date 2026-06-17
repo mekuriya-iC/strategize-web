@@ -7,6 +7,7 @@ import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import { GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
+import { GET_INITIATIVES } from "@/lib/graphql/queries/initiatives";
 import type {
   PaginatedDivisions,
   PaginatedDepartments,
@@ -141,6 +142,15 @@ export const useAnalytics = (
     variables: { page: 1, limit: 1000 },
     fetchPolicy: "cache-and-network",
     skip: !!selectedUnit, // Skip when a specific unit is selected
+  });
+
+  const {
+    data: initiativesData,
+    loading: initiativesLoading,
+    error: initiativesError,
+  } = useQuery(GET_INITIATIVES, {
+    variables: { page: 1, limit: 1000 },
+    fetchPolicy: "cache-and-network",
   });
 
   // Scoped queries for Directors/Managers who can't access global data
@@ -334,6 +344,7 @@ export const useAnalytics = (
       employeesLoading ||
       objectivesLoading ||
       kpisLoading ||
+      initiativesLoading ||
       scopedDivisionLoading ||
       scopedDepartmentLoading;
     const error =
@@ -342,9 +353,13 @@ export const useAnalytics = (
       employeesError?.message ||
       objectivesError?.message ||
       kpisError?.message ||
+      initiativesError?.message ||
       scopedDivisionError?.message ||
       scopedDepartmentError?.message ||
       null;
+
+    const initiativesCount = (initiativesData as any)?.initiatives?.meta?.totalItems || (initiativesData as any)?.initiatives?.items?.length || 0;
+    const initiativesGrowth = calculateRecentGrowth((initiativesData as any)?.initiatives?.items || []);
 
     return {
       // Core counts
@@ -353,7 +368,7 @@ export const useAnalytics = (
       employeesCount,
       objectivesCount,
       kpisCount,
-      initiativesCount: 67, // TODO: Replace with real query
+      initiativesCount,
 
       // Growth percentages
       divisionsGrowth,
@@ -361,7 +376,7 @@ export const useAnalytics = (
       employeesGrowth,
       objectivesGrowth,
       kpisGrowth,
-      initiativesGrowth: "-2.1%", // TODO: Replace with real calculation
+      initiativesGrowth,
 
       // Additional insights
       activeDivisionsCount,
@@ -389,16 +404,19 @@ export const useAnalytics = (
     employeesCountData,
     objectivesData,
     kpisData,
+    initiativesData,
     divisionsLoading,
     departmentsLoading,
     employeesLoading,
     objectivesLoading,
     kpisLoading,
+    initiativesLoading,
     divisionsError,
     departmentsError,
     employeesError,
     objectivesError,
     kpisError,
+    initiativesError,
     selectedUnit,
     userRole,
     userId,

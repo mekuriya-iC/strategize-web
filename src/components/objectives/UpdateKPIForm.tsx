@@ -291,6 +291,23 @@ export default function UpdateKPIForm({
                       <p className="font-medium">{parentKpi.unitType}</p>
                     </div>
                   </div>
+                  {/* Show assigned target to make it clear what this KPI should plan against */}
+                  {kpi.assignedTargetValue && kpi.assignedTargetValue > 0 && (
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-gray-600 text-sm">Your Assigned Target</p>
+                      <p className="font-bold text-blue-900 text-lg">
+                        {kpi.assignedTargetValue.toLocaleString()}{" "}
+                        {formData.unitType === "PERCENT" ? "%" : 
+                         formData.unitType === "CURRENCY" ? "Million/ETB" :
+                         formData.unitType === "RATIO" ? "ratio" :
+                         formData.unitType === "COUNT" ? "count" :
+                         ""}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        This is the target assigned to you from the parent KPI. Plan your quarterly breakdown based on this value.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -453,6 +453,8 @@ export interface Kpi {
   status: KpiStatus;
   targetStatus?: KpiTargetStatus;
   targets: KpiTarget[];
+  targetValue?: number; // Base target value of the KPI
+  assignedTargetValue?: number; // Target value assigned to current user (from assignment)
   parent?: { kpiId: string; name?: string } | null;
   objective: Objective | null;
   createdAt: string;

@@ -127,49 +127,54 @@ export function useUpdateKPIState({
 
       // Initialize annual target from existing targets
       if (targets && targets.length > 0 && strategicTimeline) {
-        // Try to find an annual target (non-quarterly) for the strategic period
-        // Handle both exact match and prefix match (e.g. "2025" matching "2025/26")
-        const annualTargetEntry = targets.find((t) => {
-          const tLine = t.timeline;
-          const sLine = strategicTimeline;
-          const tPrefix = tLine.split("/")[0];
-          const sPrefix = sLine.split("/")[0];
-
-          return (
-            !tLine.includes("-Q") &&
-            (tLine === sLine ||
-              tPrefix === sPrefix ||
-              tLine.startsWith(sLine) ||
-              sLine.startsWith(tLine))
-          );
-        });
-
-        if (annualTargetEntry) {
-          setAnnualTarget(annualTargetEntry.target.toString());
+        // PRIORITY 1: Use KPI's own assignedTargetValue if available (respects cascading)
+        if (kpi.assignedTargetValue && kpi.assignedTargetValue > 0) {
+          setAnnualTarget(kpi.assignedTargetValue.toString());
         } else {
-          // If no annual target found, sum up quarterly targets for the strategic period
-          const yearPrefix = strategicTimeline.split("/")[0];
-          const quarterlyTargets = targets.filter(
-            (t) =>
-              (t.timeline.startsWith(yearPrefix) ||
-                t.timeline.startsWith(strategicTimeline)) &&
-              t.timeline.includes("-Q"),
-          );
+          // PRIORITY 2: Try to find an annual target (non-quarterly) for the strategic period
+          // Handle both exact match and prefix match (e.g. "2025" matching "2025/26")
+          const annualTargetEntry = targets.find((t) => {
+            const tLine = t.timeline;
+            const sLine = strategicTimeline;
+            const tPrefix = tLine.split("/")[0];
+            const sPrefix = sLine.split("/")[0];
 
-          if (quarterlyTargets.length > 0) {
-            const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
-            const derived =
-              kpi.unitType === "PERCENT" || kpi.unitType === "RATIO" 
-                ? sum / quarterlyTargets.length 
-                : sum;
-            setAnnualTarget(derived.toString());
-          } else {
-            // Fallback: use first target value if it matches strategic period year prefix
-            const firstTarget = targets.find((t) =>
-              t.timeline.startsWith(yearPrefix),
+            return (
+              !tLine.includes("-Q") &&
+              (tLine === sLine ||
+                tPrefix === sPrefix ||
+                tLine.startsWith(sLine) ||
+                sLine.startsWith(tLine))
             );
-            if (firstTarget) {
-              setAnnualTarget(firstTarget.target.toString());
+          });
+
+          if (annualTargetEntry) {
+            setAnnualTarget(annualTargetEntry.target.toString());
+          } else {
+            // If no annual target found, sum up quarterly targets for the strategic period
+            const yearPrefix = strategicTimeline.split("/")[0];
+            const quarterlyTargets = targets.filter(
+              (t) =>
+                (t.timeline.startsWith(yearPrefix) ||
+                  t.timeline.startsWith(strategicTimeline)) &&
+                t.timeline.includes("-Q"),
+            );
+
+            if (quarterlyTargets.length > 0) {
+              const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
+              const derived =
+                kpi.unitType === "PERCENT" || kpi.unitType === "RATIO" 
+                  ? sum / quarterlyTargets.length 
+                  : sum;
+              setAnnualTarget(derived.toString());
+            } else {
+              // Fallback: use first target value if it matches strategic period year prefix
+              const firstTarget = targets.find((t) =>
+                t.timeline.startsWith(yearPrefix),
+              );
+              if (firstTarget) {
+                setAnnualTarget(firstTarget.target.toString());
+              }
             }
           }
         }
@@ -453,8 +458,52 @@ export function useUpdateKPIState({
   const assignedAnnualTarget = useMemo(() => {
     if (!strategicTimeline) return null;
 
-    // 1. PRIMARY: Use the KPI's own annual target if it exists and is non-zero
-    // This allows the specific assigned target (e.g., 50) to override the parent's total (e.g., 100)
+    // 1. PRIMARY: If Parent exists and KPI is cascaded, use Parent's ASSIGNED target value
+    // This is the key fix: use parent's assignedTargetValue which respects the cascading logic (168M not 264M)
+    if (parentKpi && kpi?.parent?.kpiId) {
+      // Check assignedTargetValue FIRST - this is the value assigned to the parent at their level
+      if (parentKpi.assignedTargetValue && parentKpi.assignedTargetValue > 0) {
+        return parentKpi.assignedTargetValue;
+      }
+
+      // Fallback to parent's targets array if assignedTargetValue is not available
+      if (parentKpi.targets?.length) {
+        const parentAnnual = parentKpi.targets.find((t) => {
+          const tLine = t.timeline;
+          const sLine = strategicTimeline;
+          const tPrefix = tLine.split("/")[0].split("-")[0];
+          const sPrefix = sLine.split("/")[0].split("-")[0];
+
+          return (
+            !tLine.includes("-Q") &&
+            (tLine === sLine ||
+              tPrefix === sPrefix ||
+              tLine.startsWith(sLine) ||
+              sLine.startsWith(tLine))
+          );
+        });
+
+        if (parentAnnual) return parentAnnual.target;
+
+        // For non-corporate parents (like Division parents of Department KPIs),
+        // they might only have quarterly targets
+        const parentQuarterlies = parentKpi.targets.filter((t) => {
+          const tLine = t.timeline.toUpperCase();
+          const sPrefix = strategicTimeline.split("/")[0].split("-")[0];
+
+          return tLine.includes("-Q") && tLine.startsWith(sPrefix);
+        });
+
+        if (parentQuarterlies.length > 0) {
+          const sum = parentQuarterlies.reduce((acc, t) => acc + t.target, 0);
+          return parentKpi.unitType === "PERCENT"
+            ? sum / parentQuarterlies.length
+            : sum;
+        }
+      }
+    }
+
+    // 2. SECONDARY: Use the KPI's own annual target if it exists and is non-zero (for standalone KPIs)
     if (kpi?.targets?.length) {
       const annualTargetEntry = kpi.targets.find((t) => {
         const tLine = t.timeline;
@@ -472,42 +521,6 @@ export function useUpdateKPIState({
         );
       });
       if (annualTargetEntry) return annualTargetEntry.target;
-    }
-
-    // 2. SECONDARY: If Parent exists, use Parent KPI's target (Default Assignment)
-    if (parentKpi?.targets?.length) {
-      const parentAnnual = parentKpi.targets.find((t) => {
-        const tLine = t.timeline;
-        const sLine = strategicTimeline;
-        const tPrefix = tLine.split("/")[0].split("-")[0];
-        const sPrefix = sLine.split("/")[0].split("-")[0];
-
-        return (
-          !tLine.includes("-Q") &&
-          (tLine === sLine ||
-            tPrefix === sPrefix ||
-            tLine.startsWith(sLine) ||
-            sLine.startsWith(tLine))
-        );
-      });
-
-      if (parentAnnual) return parentAnnual.target;
-
-      // For non-corporate parents (like Division parents of Department KPIs),
-      // they might only have quarterly targets
-      const parentQuarterlies = parentKpi.targets.filter((t) => {
-        const tLine = t.timeline.toUpperCase();
-        const sPrefix = strategicTimeline.split("/")[0].split("-")[0];
-
-        return tLine.includes("-Q") && tLine.startsWith(sPrefix);
-      });
-
-      if (parentQuarterlies.length > 0) {
-        const sum = parentQuarterlies.reduce((acc, t) => acc + t.target, 0);
-        return parentKpi.unitType === "PERCENT"
-          ? sum / parentQuarterlies.length
-          : sum;
-      }
     }
 
     return null;

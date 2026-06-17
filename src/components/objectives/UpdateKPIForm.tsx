@@ -123,22 +123,13 @@ export default function UpdateKPIForm({
     }
   }, [handleSubmit]);
 
-  // Derive allocation info for validations
-  const remainingAllocation = useMemo(() => {
-    if (!kpi || !annualTarget) return null;
-    return {
-      available: parseFloat(annualTarget) || 0,
-      used: 0, // In update mode, used is handled by validation against assigned
-      remaining: parseFloat(annualTarget) || 0,
-      unit: kpi.unitType || "NUMBER",
-    };
-  }, [kpi, annualTarget]);
-
   // Wrapper function to match KPIInformationCard's expected signature
+  // Must be declared before early returns to satisfy Rules of Hooks
   const handleInputChange = useCallback((field: string, value: string) => {
     updateField(field as keyof typeof formData, value);
   }, [updateField, formData]);
 
+  // Early return checks - MUST come after all hooks
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -183,6 +174,18 @@ export default function UpdateKPIForm({
   // Otherwise, fallback to editable mode so the user can set their own target (standalone behavior).
   const isAnnualTargetLocked = !isCorporate && hasParent && (assignedAnnualTarget !== null && assignedAnnualTarget > 0);
   const targetLabel = isAnnualTargetLocked ? 'Target Value (Assigned)' : 'Target Value';
+
+  // Derive allocation info for validations (regular variable, not useMemo to avoid hooks order issues)
+  const targetToUse = isAnnualTargetLocked 
+    ? (assignedAnnualTarget ?? 0) 
+    : (parseFloat(annualTarget || "0") || 0);
+  
+  const remainingAllocation = kpi ? {
+    available: targetToUse,
+    used: 0, // In update mode, used is handled by validation against assigned
+    remaining: targetToUse,
+    unit: kpi.unitType || "NUMBER",
+  } : null;
 
   // Create compatible formData
   const compatibleFormData = {
@@ -339,7 +342,7 @@ export default function UpdateKPIForm({
                   remainingAllocation={remainingAllocation}
                   strategicTargetsById={{
                     [kpi.kpiId]: {
-                      [strategicTimeline]: (isAnnualTargetLocked ? assignedAnnualTarget : parseFloat(annualTarget || "0"))
+                      [strategicTimeline]: (isAnnualTargetLocked ? (assignedAnnualTarget ?? 0) : parseFloat(annualTarget || "0"))
                     }
                   }}
                   onYearlyQuartersChange={setYearlyQuarters}

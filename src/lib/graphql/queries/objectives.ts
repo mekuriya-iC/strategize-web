@@ -72,6 +72,7 @@ export const GET_OBJECTIVES = gql`
           unitType
           status
           targetValue
+          assignedTargetValue
           parent {
             kpiId
           }
@@ -156,6 +157,7 @@ export const GET_OBJECTIVE = gql`
         frequency
         measurementUnit
         targetValue
+        assignedTargetValue
         createdAt
         updatedAt
         parent {
@@ -220,6 +222,7 @@ export const GET_OBJECTIVES_FOR_APPROVAL = gql`
           kpiId
           name
           targetValue
+          assignedTargetValue
           measurementUnit
         }
       }
@@ -273,6 +276,7 @@ export const GET_MY_OBJECTIVES = gql`
           kpiId
           name
           targetValue
+          assignedTargetValue
           baselineValue
           measurementUnit
           status
@@ -319,6 +323,7 @@ export const GET_OBJECTIVES_HIERARCHY = gql`
         kpiId
         name
         targetValue
+        assignedTargetValue
         measurementUnit
       }
       children {

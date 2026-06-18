@@ -45,7 +45,7 @@ import {
   CREATE_OR_UPDATE_CONFIG,
   CREATE_SHARED_KPI,
   UPDATE_SHARED_KPI_SCORE,
-} from "@/graphql/queries/semiAnnualPerformance";
+} from "@/lib/graphql/queries/semiAnnualPerformance";
 import { toast } from "sonner";
 
 export default function SemiAnnualConfigPage() {

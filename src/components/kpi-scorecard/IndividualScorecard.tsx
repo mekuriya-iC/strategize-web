@@ -169,6 +169,11 @@ export default function IndividualScorecard({
     );
   }
 
+  const totalScoreRate =
+    scorecard && scorecard.maxPossibleScore > 0
+      ? scorecard.totalScore / scorecard.maxPossibleScore
+      : 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -474,12 +479,9 @@ export default function IndividualScorecard({
                         {formatNumber(scorecard.totalScore)}%
                       </td>
                       <td className="text-right p-3">
-                        <Badge
-                          {...getAchievementBadge(scorecard.totalScore / 100)}
-                        >
+                        <Badge {...getAchievementBadge(totalScoreRate)}>
                           {
-                            getAchievementBadge(scorecard.totalScore / 100)
-                              .label
+                            getAchievementBadge(totalScoreRate).label
                           }
                         </Badge>
                       </td>

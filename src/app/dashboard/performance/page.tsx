@@ -66,7 +66,7 @@ const GET_DEPARTMENTS = gql`
 `;
 
 const GET_WEIGHT_CONFIG = gql`
-  query GetPerformanceWeightConfig($organizationId: ID!, $strategicPeriodId: ID) {
+  query GetPerformanceWeightConfig($organizationId: String!, $strategicPeriodId: String) {
     performanceWeightConfig(organizationId: $organizationId, strategicPeriodId: $strategicPeriodId) {
       kpiWeight
       competencyWeight

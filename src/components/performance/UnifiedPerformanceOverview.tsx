@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, TrendingUp, Target, Award, Activity, AlertCircle } from "lucide-react";
 import { GET_EMPLOYEE_PERFORMANCE } from "@/lib/graphql/queries/unified-performance";
 import PerformanceOverviewCard from "./PerformanceOverviewCard";
-import { IndividualScorecard } from "@/components/kpi-scorecard";
+import IndividualScorecard from "@/components/kpi-scorecard/IndividualScorecard";
 import Employee360Results from "@/components/evaluations/Employee360Results";
 import ActivityMetricsView from "./ActivityMetricsView";
 
@@ -154,7 +154,7 @@ export default function UnifiedPerformanceOverview({
 
         {/* KPI Scorecard Tab */}
         <TabsContent value="kpi" className="space-y-6">
-          <IndividualScorecard />
+          <IndividualScorecard strategicPeriodId={strategicPeriodId} />
         </TabsContent>
 
         {/* 360° Evaluation Tab */}

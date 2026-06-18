@@ -60,7 +60,7 @@ export default function SemiAnnualReportPage() {
   const [employeeAssignments, setEmployeeAssignments] = useState<Record<string, Record<string, number>>>({});
   const [hasChanges, setHasChanges] = useState(false);
 
-  const fullAccessRoles = ["SUPER_ADMIN", "ADMIN", "HR", "CEO"];
+  const fullAccessRoles = ["SUPER_ADMIN", "HR"];
   const hasFullAccess = fullAccessRoles.includes(user?.role as string);
 
   // Fetch strategic periods

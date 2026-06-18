@@ -587,30 +587,35 @@ export default function ChartsSection() {
               {/* Top and Bottom Performers */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Performers */}
-                <Card>
+                <Card className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      <CardTitle className="text-lg">Top Performing KPIs</CardTitle>
+                      <TrendingUp className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Top Performing KPIs</CardTitle>
                     </div>
-                    <CardDescription>Highest achievement rates</CardDescription>
+                    <CardDescription className="text-xs">Highest achievement rates</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {advancedAnalytics.topPerformers.map((kpi: any, idx: number) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 line-clamp-1 flex-1">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 line-clamp-1 flex-1">
                               {kpi.kpi.name}
                             </span>
-                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-350 dark:border-slate-800 px-1.5 py-0">
                               {(kpi.achievementRate * 100).toFixed(1)}%
                             </Badge>
                           </div>
-                          <Progress value={kpi.achievementRate * 100} className="h-1.5" />
-                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <div className="w-full h-1 bg-slate-100 dark:bg-slate-850 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-slate-500 dark:bg-slate-400 transition-all"
+                              style={{ width: `${Math.min(kpi.achievementRate * 100, 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
                             <span>{kpi.actualValue.toFixed(1)} / {kpi.targetValue}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                            <span className="text-[9px] px-1 py-0 rounded bg-slate-100 dark:bg-slate-850">
                               {kpi.level}
                             </span>
                           </div>
@@ -621,30 +626,35 @@ export default function ChartsSection() {
                 </Card>
 
                 {/* Bottom Performers */}
-                <Card>
+                <Card className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      <CardTitle className="text-lg">KPIs Needing Attention</CardTitle>
+                      <AlertCircle className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">KPIs Needing Attention</CardTitle>
                     </div>
-                    <CardDescription>Requires support and intervention</CardDescription>
+                    <CardDescription className="text-xs">Requires support and intervention</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {advancedAnalytics.bottomPerformers.map((kpi: any, idx: number) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 line-clamp-1 flex-1">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 line-clamp-1 flex-1">
                               {kpi.kpi.name}
                             </span>
-                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            <Badge variant="outline" className="text-[10px] bg-slate-55 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-350 dark:border-slate-800 px-1.5 py-0">
                               {(kpi.achievementRate * 100).toFixed(1)}%
                             </Badge>
                           </div>
-                          <Progress value={kpi.achievementRate * 100} className="h-1.5" />
-                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <div className="w-full h-1 bg-slate-100 dark:bg-slate-850 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-slate-400 dark:bg-slate-500 transition-all"
+                              style={{ width: `${Math.min(kpi.achievementRate * 100, 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
                             <span>{kpi.actualValue.toFixed(1)} / {kpi.targetValue}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                            <span className="text-[9px] px-1 py-0 rounded bg-slate-100 dark:bg-slate-850">
                               {kpi.level}
                             </span>
                           </div>
@@ -668,65 +678,67 @@ export default function ChartsSection() {
                 />
                 
                 {/* Team Stats Card */}
-                <Card>
+                <Card className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      <CardTitle className="text-lg">Team Performance Summary</CardTitle>
+                      <Users className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Team Performance Summary</CardTitle>
                     </div>
-                    <CardDescription>Overall team metrics</CardDescription>
+                    <CardDescription className="text-xs">Overall team metrics</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-950/10">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                             High Performers (≥90%)
                           </span>
                         </div>
-                        <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
                           {teamAnalytics.ranges["90-100%"]}
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-950/10">
                         <div className="flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <TrendingUp className="h-4 w-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                             Strong Performers (75-89%)
                           </span>
                         </div>
-                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
                           {teamAnalytics.ranges["75-89%"]}
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-950/10">
                         <div className="flex items-center gap-2">
-                          <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <Activity className="h-4 w-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                             Needs Support (&lt;75%)
                           </span>
                         </div>
-                        <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
                           {teamAnalytics.ranges["60-74%"] + teamAnalytics.ranges["Below 60%"]}
                         </span>
                       </div>
 
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-800">
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          <span className="text-xs font-medium text-slate-500">
                             Team Average
                           </span>
-                          <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
                             {teamData.unifiedTeamPerformance.averageScore.toFixed(1)}%
                           </span>
                         </div>
-                        <Progress 
-                          value={teamData.unifiedTeamPerformance.averageScore} 
-                          className="h-2 mt-2" 
-                        />
+                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5">
+                          <div
+                            className="h-full rounded-full bg-slate-600 dark:bg-slate-350 transition-all"
+                            style={{ width: `${Math.min(teamData.unifiedTeamPerformance.averageScore, 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </CardContent>

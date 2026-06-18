@@ -2,9 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Users, ArrowRight, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -25,26 +23,26 @@ export function EvaluationCoverageCard({
 }: EvaluationCoverageCardProps) {
   const router = useRouter();
 
-  const getStatusColor = (pct: number) => {
-    if (pct >= 90) return "text-emerald-600 dark:text-emerald-400";
-    if (pct >= 75) return "text-blue-600 dark:text-blue-400";
-    if (pct >= 60) return "text-yellow-600 dark:text-yellow-400";
+  const getScoreColor = (pct: number) => {
+    if (pct >= 85) return "text-emerald-600 dark:text-emerald-400";
+    if (pct >= 70) return "text-slate-800 dark:text-slate-100";
+    if (pct >= 60) return "text-amber-600 dark:text-amber-400";
     return "text-red-600 dark:text-red-400";
   };
 
   if (loading) {
     return (
-      <Card className="border-2 border-purple-200 dark:border-purple-900/40">
+      <Card className="border border-slate-200 dark:border-slate-800">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400 animate-pulse" />
-            <CardTitle className="text-base">360° Evaluation Coverage</CardTitle>
+            <Users className="h-4 w-4 text-slate-400 animate-pulse" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">360° Evaluation Coverage</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
-            <div className="h-20 bg-gray-200 dark:bg-gray-800 rounded" />
-            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4" />
+            <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
           </div>
         </CardContent>
       </Card>
@@ -52,74 +50,79 @@ export function EvaluationCoverageCard({
   }
 
   return (
-    <Card className="border-2 border-purple-200 dark:border-purple-900/40 hover:shadow-lg transition-all">
-      <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+    <Card className="border border-slate-200 dark:border-slate-800 hover:shadow-sm transition-shadow">
+      <CardHeader className="pb-2 pt-4 px-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            <CardTitle className="text-base">360° Evaluation Coverage</CardTitle>
+            <Users className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              360° Evaluation Coverage
+            </CardTitle>
           </div>
           {upcomingDeadlines > 0 && (
-            <Badge variant="destructive" className="gap-1">
+            <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full">
               <Clock className="h-3 w-3" />
-              {upcomingDeadlines} Due
-            </Badge>
+              <span>{upcomingDeadlines} Due</span>
+            </div>
           )}
         </div>
       </CardHeader>
-      <CardContent className="pt-6">
-        {/* Main Percentage Display */}
-        <div className="text-center mb-6">
-          <div className={`text-6xl font-bold ${getStatusColor(percentage)} mb-2`}>
+
+      <CardContent className="px-5 pb-5">
+        {/* Main Score */}
+        <div className="mb-5">
+          <div className={`text-4xl font-bold tracking-tight ${getScoreColor(percentage)}`}>
             {percentage.toFixed(0)}%
           </div>
-          <p className="text-xs text-muted-foreground">Completion Rate</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Completion Rate</p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <Progress value={percentage} className="h-3" />
+        {/* Progress Track */}
+        <div className="mb-5">
+          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-slate-700 dark:bg-slate-300 transition-all duration-500"
+              style={{ width: `${Math.min(percentage, 100)}%` }}
+            />
+          </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Row */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Completed</span>
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 mb-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-xs text-slate-500">Completed</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{completed}</p>
+            <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">{completed}</p>
           </div>
 
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Pending</span>
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 mb-1">
+              <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-xs text-slate-500">Pending</span>
             </div>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{pending}</p>
+            <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">{pending}</p>
           </div>
         </div>
 
-        {/* Status Message */}
+        {/* Deadline Warning */}
         {upcomingDeadlines > 0 && (
-          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 mb-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-red-600 dark:text-red-400" />
-              <p className="text-xs font-medium text-red-700 dark:text-red-300">
-                {upcomingDeadlines} evaluation{upcomingDeadlines > 1 ? 's' : ''} due soon
-              </p>
-            </div>
+          <div className="flex items-center gap-2 mb-4 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+            <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              {upcomingDeadlines} evaluation{upcomingDeadlines > 1 ? 's' : ''} due soon
+            </p>
           </div>
         )}
 
-        {/* View Details Button */}
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full h-8 text-xs border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
           onClick={() => router.push('/dashboard/360-evaluation')}
         >
-          <span>Manage evaluations</span>
-          <ArrowRight className="h-4 w-4 ml-2" />
+          Manage evaluations
+          <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
         </Button>
       </CardContent>
     </Card>

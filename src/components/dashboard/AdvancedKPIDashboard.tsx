@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, gql } from "@apollo/client";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import {
@@ -15,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Target,
   TrendingUp,
-  TrendingDown,
   Building2,
   Users,
   Activity,
@@ -117,7 +115,6 @@ export default function AdvancedKPIDashboard() {
       filters: {
         strategicPeriodId: selectedPeriod?.strategicPeriodId,
         organizationId: user?.organizationId,
-        // Note: divisionId and departmentId filtering would need to be added based on user's department membership
       },
     },
     skip: (!hasFullAccess && !isManager) || !selectedPeriod?.strategicPeriodId,
@@ -142,26 +139,26 @@ export default function AdvancedKPIDashboard() {
   const personalPerformance = personalData?.unifiedEmployeePerformance;
 
   const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 90) return "text-emerald-600 dark:text-emerald-400";
-    if (percentage >= 75) return "text-blue-600 dark:text-blue-400";
+    if (percentage >= 85) return "text-emerald-600 dark:text-emerald-400";
+    if (percentage >= 70) return "text-slate-800 dark:text-slate-100";
     if (percentage >= 60) return "text-amber-600 dark:text-amber-400";
-    return "text-rose-600 dark:text-rose-400";
+    return "text-red-600 dark:text-red-400";
   };
 
   const getPerformanceBadge = (percentage: number) => {
-    if (percentage >= 90)
-      return { label: "Exceptional", color: "bg-emerald-100 text-emerald-700" };
-    if (percentage >= 75)
-      return { label: "Strong", color: "bg-blue-100 text-blue-700" };
+    if (percentage >= 85)
+      return { label: "Exceptional", color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30" };
+    if (percentage >= 70)
+      return { label: "Strong", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/30" };
     if (percentage >= 60)
-      return { label: "Satisfactory", color: "bg-amber-100 text-amber-700" };
-    return { label: "Needs Improvement", color: "bg-rose-100 text-rose-700" };
+      return { label: "Satisfactory", color: "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100/50 dark:border-amber-900/30" };
+    return { label: "Needs Improvement", color: "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 border border-red-100/50 dark:border-red-900/30" };
   };
 
   if (!selectedPeriod) {
     return (
-      <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-        <p className="text-center text-gray-600 dark:text-gray-400">
+      <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
           Please select a strategic period to view KPI performance data.
         </p>
       </div>
@@ -172,10 +169,10 @@ export default function AdvancedKPIDashboard() {
     <div className="space-y-6">
       {/* Header Section */}
       <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           KPI Performance Dashboard
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           {hasFullAccess
             ? "Real-time organizational KPI performance and cascade tracking"
             : isManager
@@ -186,35 +183,40 @@ export default function AdvancedKPIDashboard() {
 
       {/* Corporate KPI Overview - Full Access Only */}
       {hasFullAccess && corporateScorecard && (
-        <Card className="border-2 border-blue-200 dark:border-blue-900/40 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+        <Card className="border border-slate-200 dark:border-slate-800">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500 rounded-lg">
-                  <Building2 className="h-5 w-5 text-white" />
+                <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300">
+                  <Building2 className="h-4 w-4" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl">Corporate KPI Performance</CardTitle>
-                  <CardDescription>Organization-wide achievement metrics</CardDescription>
+                  <CardTitle className="text-sm font-medium text-slate-800 dark:text-slate-200">Corporate KPI Performance</CardTitle>
+                  <CardDescription className="text-xs">Organization-wide achievement metrics</CardDescription>
                 </div>
               </div>
-              <Badge className={`text-lg px-4 py-1 ${getPerformanceBadge(corporateScorecard.percentageAchieved).color}`}>
+              <Badge variant="outline" className={`text-xs px-2.5 py-0.5 ${getPerformanceBadge(corporateScorecard.percentageAchieved).color}`}>
                 {corporateScorecard.percentageAchieved.toFixed(1)}%
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="mb-6">
+          <CardContent className="pt-5">
+            <div className="mb-5">
               <div className="flex items-baseline justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <span className="text-xs font-medium text-slate-500">
                   Overall Achievement
                 </span>
-                <span className={`text-4xl font-bold ${getPerformanceColor(corporateScorecard.percentageAchieved)}`}>
+                <span className={`text-3xl font-bold ${getPerformanceColor(corporateScorecard.percentageAchieved)}`}>
                   {corporateScorecard.percentageAchieved.toFixed(1)}%
                 </span>
               </div>
-              <Progress value={corporateScorecard.percentageAchieved} className="h-3" />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-slate-700 dark:bg-slate-300 transition-all"
+                  style={{ width: `${Math.min(corporateScorecard.percentageAchieved, 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-400 mt-1.5">
                 <span>Score: {corporateScorecard.totalScore.toFixed(2)}</span>
                 <span>Target: {corporateScorecard.maxPossibleScore.toFixed(2)}</span>
               </div>
@@ -225,18 +227,23 @@ export default function AdvancedKPIDashboard() {
               {corporateScorecard.kpiScores.slice(0, 6).map((kpi: any, index: number) => (
                 <div
                   key={index}
-                  className="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40"
+                  className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/20"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 line-clamp-2">
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 line-clamp-2">
                       {kpi.kpi.name}
                     </span>
-                    <span className={`text-sm font-bold ml-2 ${getPerformanceColor(kpi.achievementRate * 100)}`}>
+                    <span className={`text-xs font-bold ml-2 ${getPerformanceColor(kpi.achievementRate * 100)}`}>
                       {(kpi.achievementRate * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <Progress value={kpi.achievementRate * 100} className="h-1.5" />
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="w-full h-1 bg-slate-100 dark:bg-slate-850 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-slate-500 dark:bg-slate-400 transition-all"
+                      style={{ width: `${Math.min(kpi.achievementRate * 100, 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1.5">
                     {kpi.actualValue.toFixed(1)} / {kpi.targetValue}
                   </div>
                 </div>
@@ -250,59 +257,74 @@ export default function AdvancedKPIDashboard() {
       {(hasFullAccess || isManager) && teamPerformance && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Average Team Performance */}
-          <Card className="border-purple-200 dark:border-purple-900/40">
-            <CardHeader className="pb-3">
+          <Card className="border border-slate-200 dark:border-slate-800">
+            <CardHeader className="pb-2 pt-4 px-5">
               <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                <CardTitle className="text-base">Team Average</CardTitle>
+                <Users className="h-4 w-4 text-slate-400" />
+                <CardTitle className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Team Average</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className={`text-4xl font-bold mb-2 ${getPerformanceColor(teamPerformance.averageScore)}`}>
+            <CardContent className="px-5 pb-5">
+              <div className={`text-3xl font-bold mb-2 ${getPerformanceColor(teamPerformance.averageScore)}`}>
                 {teamPerformance.averageScore.toFixed(1)}%
               </div>
-              <Progress value={teamPerformance.averageScore} className="h-2 mb-2" />
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full bg-slate-500 transition-all"
+                  style={{ width: `${Math.min(teamPerformance.averageScore, 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-400">
                 {teamPerformance.results?.length || 0} team members
               </p>
             </CardContent>
           </Card>
 
           {/* Top Performer */}
-          <Card className="border-emerald-200 dark:border-emerald-900/40">
-            <CardHeader className="pb-3">
+          <Card className="border border-slate-200 dark:border-slate-800">
+            <CardHeader className="pb-2 pt-4 px-5">
               <div className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                <CardTitle className="text-base">Top Performer</CardTitle>
+                <Award className="h-4 w-4 text-slate-400" />
+                <CardTitle className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Top Performer</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className={`text-4xl font-bold mb-2 ${getPerformanceColor(teamPerformance.highestScore)}`}>
+            <CardContent className="px-5 pb-5">
+              <div className={`text-3xl font-bold mb-2 ${getPerformanceColor(teamPerformance.highestScore)}`}>
                 {teamPerformance.highestScore.toFixed(1)}%
               </div>
-              <Progress value={teamPerformance.highestScore} className="h-2 mb-2" />
-              <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <CheckCircle2 className="h-3 w-3" />
+              <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full bg-slate-500 transition-all"
+                  style={{ width: `${Math.min(teamPerformance.highestScore, 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                 <span>Highest achievement</span>
               </div>
             </CardContent>
           </Card>
 
           {/* Needs Attention */}
-          <Card className="border-amber-200 dark:border-amber-900/40">
-            <CardHeader className="pb-3">
+          <Card className="border border-slate-200 dark:border-slate-800">
+            <CardHeader className="pb-2 pt-4 px-5">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                <CardTitle className="text-base">Lowest Score</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-slate-400" />
+                <CardTitle className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lowest Score</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className={`text-4xl font-bold mb-2 ${getPerformanceColor(teamPerformance.lowestScore)}`}>
+            <CardContent className="px-5 pb-5">
+              <div className={`text-3xl font-bold mb-2 ${getPerformanceColor(teamPerformance.lowestScore)}`}>
                 {teamPerformance.lowestScore.toFixed(1)}%
               </div>
-              <Progress value={teamPerformance.lowestScore} className="h-2 mb-2" />
-              <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <AlertTriangle className="h-3 w-3" />
+              <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full bg-slate-500 transition-all"
+                  style={{ width: `${Math.min(teamPerformance.lowestScore, 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                <AlertTriangle className="h-3 w-3 text-amber-500" />
                 <span>May need support</span>
               </div>
             </CardContent>
@@ -312,79 +334,67 @@ export default function AdvancedKPIDashboard() {
 
       {/* Personal Performance - All Users */}
       {personalPerformance && (
-        <Card className="border-2 border-indigo-200 dark:border-indigo-900/40">
-          <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20">
+        <Card className="border border-slate-200 dark:border-slate-800">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-500 rounded-lg">
-                  <Target className="h-5 w-5 text-white" />
+                <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300">
+                  <Target className="h-4 w-4" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl">Your Performance</CardTitle>
-                  <CardDescription>Personal achievement metrics</CardDescription>
+                  <CardTitle className="text-sm font-medium text-slate-800 dark:text-slate-200">Your Performance</CardTitle>
+                  <CardDescription className="text-xs">Personal achievement metrics</CardDescription>
                 </div>
               </div>
-              <Badge className={`text-lg px-4 py-1 ${getPerformanceBadge(personalPerformance.overallPercentage).color}`}>
+              <Badge variant="outline" className={`text-xs px-2.5 py-0.5 ${getPerformanceBadge(personalPerformance.overallPercentage).color}`}>
                 {personalPerformance.rating}
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="mb-6">
+          <CardContent className="pt-5">
+            <div className="mb-5">
               <div className="flex items-baseline justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <span className="text-xs font-medium text-slate-500">
                   Overall Score
                 </span>
-                <span className={`text-5xl font-bold ${getPerformanceColor(personalPerformance.overallPercentage)}`}>
+                <span className={`text-4xl font-bold ${getPerformanceColor(personalPerformance.overallPercentage)}`}>
                   {personalPerformance.overallPercentage.toFixed(1)}%
                 </span>
               </div>
-              <Progress value={personalPerformance.overallPercentage} className="h-4" />
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-slate-700 dark:bg-slate-300 transition-all"
+                  style={{ width: `${Math.min(personalPerformance.overallPercentage, 100)}%` }}
+                />
+              </div>
             </div>
 
             {/* Performance Breakdown */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/10 border border-blue-200 dark:border-blue-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">KPI</span>
+              {[
+                { label: "KPI", val: personalPerformance.breakdown.kpiScore.percentageAchieved, wt: personalPerformance.breakdown.kpiScore.weight, icon: Target },
+                { label: "Competency", val: personalPerformance.breakdown.competencyScore.percentageAchieved, wt: personalPerformance.breakdown.competencyScore.weight, icon: Users },
+                { label: "Activity", val: personalPerformance.breakdown.activityScore.percentageAchieved, wt: personalPerformance.breakdown.activityScore.weight, icon: Activity },
+              ].map(({ label, val, wt, icon: Icon }) => (
+                <div key={label} className="p-3.5 rounded-lg bg-slate-50/50 dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{label}</span>
+                  </div>
+                  <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1.5">
+                    {val.toFixed(1)}%
+                  </div>
+                  <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-slate-500 transition-all"
+                      style={{ width: `${Math.min(val, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-1">
+                    Weight: {wt}%
+                  </p>
                 </div>
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                  {personalPerformance.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
-                </div>
-                <Progress value={personalPerformance.breakdown.kpiScore.percentageAchieved} className="h-2" />
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Weight: {personalPerformance.breakdown.kpiScore.weight}%
-                </p>
-              </div>
-
-              <div className="p-4 rounded-lg bg-purple-50/50 dark:bg-purple-950/10 border border-purple-200 dark:border-purple-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Competency</span>
-                </div>
-                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                  {personalPerformance.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
-                </div>
-                <Progress value={personalPerformance.breakdown.competencyScore.percentageAchieved} className="h-2" />
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Weight: {personalPerformance.breakdown.competencyScore.weight}%
-                </p>
-              </div>
-
-              <div className="p-4 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Activity</span>
-                </div>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                  {personalPerformance.breakdown.activityScore.percentageAchieved.toFixed(1)}%
-                </div>
-                <Progress value={personalPerformance.breakdown.activityScore.percentageAchieved} className="h-2" />
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Weight: {personalPerformance.breakdown.activityScore.weight}%
-                </p>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -392,64 +402,38 @@ export default function AdvancedKPIDashboard() {
 
       {/* KPI Cascade Information - Full Access Only */}
       {hasFullAccess && corporateScorecard && (
-        <Card>
+        <Card className="border border-slate-200 dark:border-slate-800">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-              <CardTitle>KPI Cascade Flow</CardTitle>
+              <Layers className="h-4 w-4 text-slate-500" />
+              <CardTitle className="text-sm font-medium text-slate-800 dark:text-slate-200">KPI Cascade Flow</CardTitle>
             </div>
-            <CardDescription>How individual achievements cascade to corporate objectives</CardDescription>
+            <CardDescription className="text-xs">How individual achievements cascade to corporate objectives</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-500 text-white font-bold">
-                  1
+            <div className="space-y-2.5">
+              {[
+                { step: "1", title: "Employee Submits Achievement", desc: "Logbook entry with KPI progress" },
+                { step: "2", title: "Manager Approves", desc: "Triggers automatic aggregation" },
+                { step: "3", title: "Cascades to Department", desc: "Aggregates with other team members" },
+                { step: "4", title: "Flows to Division & Corporate", desc: "Real-time updates at all levels" },
+              ].map(({ step, title, desc }) => (
+                <div key={step} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/20 dark:bg-slate-950/10">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300 text-xs font-bold">
+                    {step}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-350">{title}</p>
+                    <p className="text-[10px] text-slate-500">{desc}</p>
+                  </div>
+                  {step !== "4" && <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />}
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">Employee Submits Achievement</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Logbook entry with KPI progress</p>
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-indigo-500" />
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white font-bold">
-                  2
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">Manager Approves</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Triggers automatic aggregation</p>
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-amber-500" />
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-500 text-white font-bold">
-                  3
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">Cascades to Department</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Aggregates with other team members</p>
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-purple-500" />
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white font-bold">
-                  4
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">Flows to Division & Corporate</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Real-time updates at all levels</p>
-                </div>
-                <TrendingUp className="h-5 w-5 text-blue-500" />
-              </div>
+              ))}
             </div>
 
-            <div className="mt-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800">
-              <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <div className="mt-4 p-2.5 rounded-lg bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <p className="text-[10px] text-slate-500">
                 All {corporateScorecard.kpiScores.length} corporate KPIs are actively tracked and updated in real-time
               </p>
             </div>
@@ -457,47 +441,24 @@ export default function AdvancedKPIDashboard() {
         </Card>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardContent className="pt-6">
-            <Target className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-3" />
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">View All KPIs</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Complete KPI performance analytics
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardContent className="pt-6">
-            <Activity className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mb-3" />
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Log Achievement</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Submit new KPI progress
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardContent className="pt-6">
-            <Users className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-3" />
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Team Performance</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Review team metrics
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardContent className="pt-6">
-            <TrendingUp className="h-8 w-8 text-amber-600 dark:text-amber-400 mb-3" />
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Full Reports</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Detailed analytics
-            </p>
-          </CardContent>
-        </Card>
+        {[
+          { title: "View All KPIs", desc: "Complete KPI performance analytics", icon: Target },
+          { title: "Log Achievement", desc: "Submit new KPI progress", icon: Activity },
+          { title: "Team Performance", desc: "Review team metrics", icon: Users },
+          { title: "Full Reports", desc: "Detailed analytics", icon: TrendingUp },
+        ].map(({ title, desc, icon: Icon }) => (
+          <Card key={title} className="hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer">
+            <CardContent className="pt-5">
+              <Icon className="h-6 w-6 text-slate-450 dark:text-slate-450 mb-2.5" />
+              <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-0.5">{title}</h3>
+              <p className="text-[10px] text-slate-500">
+                {desc}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

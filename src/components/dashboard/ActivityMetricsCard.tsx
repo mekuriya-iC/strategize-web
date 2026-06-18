@@ -3,7 +3,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Activity, ArrowRight, CheckCircle, ListTodo, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -23,28 +22,33 @@ export function ActivityMetricsCard({
   const router = useRouter();
 
   const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-emerald-600 dark:text-emerald-400";
-    if (score >= 80) return "text-blue-600 dark:text-blue-400";
-    if (score >= 70) return "text-green-600 dark:text-green-400";
-    if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
+    if (score >= 85) return "text-emerald-600 dark:text-emerald-400";
+    if (score >= 70) return "text-slate-800 dark:text-slate-100";
+    if (score >= 60) return "text-amber-600 dark:text-amber-400";
     return "text-red-600 dark:text-red-400";
   };
 
   const averageActivity = (objectivesCompletion + tasksCompletion + checkinFrequency) / 3;
 
+  const metrics = [
+    { label: "Objectives", value: objectivesCompletion, icon: CheckCircle },
+    { label: "Tasks",      value: tasksCompletion,      icon: ListTodo },
+    { label: "Check-ins",  value: checkinFrequency,     icon: Calendar },
+  ];
+
   if (loading) {
     return (
-      <Card className="border-2 border-orange-200 dark:border-orange-900/40">
+      <Card className="border border-slate-200 dark:border-slate-800">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-orange-600 dark:text-orange-400 animate-pulse" />
-            <CardTitle className="text-base">Activity Metrics</CardTitle>
+            <Activity className="h-4 w-4 text-slate-400 animate-pulse" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Activity Metrics</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
-            <div className="h-20 bg-gray-200 dark:bg-gray-800 rounded" />
-            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4" />
+            <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
           </div>
         </CardContent>
       </Card>
@@ -52,83 +56,65 @@ export function ActivityMetricsCard({
   }
 
   return (
-    <Card className="border-2 border-orange-200 dark:border-orange-900/40 hover:shadow-lg transition-all">
-      <CardHeader className="pb-3 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
+    <Card className="border border-slate-200 dark:border-slate-800 hover:shadow-sm transition-shadow">
+      <CardHeader className="pb-2 pt-4 px-5">
         <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-          <CardTitle className="text-base">Activity Metrics</CardTitle>
+          <Activity className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+            Activity Metrics
+          </CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="pt-6">
-        {/* Main Score Display */}
-        <div className="text-center mb-6">
-          <div className={`text-6xl font-bold ${getScoreColor(averageActivity)} mb-2`}>
+
+      <CardContent className="px-5 pb-5">
+        {/* Main Score */}
+        <div className="mb-5">
+          <div className={`text-4xl font-bold tracking-tight ${getScoreColor(averageActivity)}`}>
             {averageActivity.toFixed(0)}%
           </div>
-          <p className="text-xs text-muted-foreground">Overall Engagement</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Overall Engagement</p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <Progress value={averageActivity} className="h-3" />
+        {/* Progress Track */}
+        <div className="mb-5">
+          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-slate-700 dark:bg-slate-300 transition-all duration-500"
+              style={{ width: `${Math.min(averageActivity, 100)}%` }}
+            />
+          </div>
         </div>
 
         {/* Metrics Breakdown */}
-        <div className="space-y-4 mb-4">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Objectives
-              </span>
+        <div className="space-y-3 mb-4">
+          {metrics.map(({ label, value, icon: Icon }) => (
+            <div key={label} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon className="h-3.5 w-3.5 text-slate-400" />
+                <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-slate-500 dark:bg-slate-400 transition-all duration-500"
+                    style={{ width: `${Math.min(value, 100)}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-semibold w-9 text-right ${getScoreColor(value)}`}>
+                  {value.toFixed(0)}%
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Progress value={objectivesCompletion} className="w-20 h-2" />
-              <span className={`text-lg font-bold ${getScoreColor(objectivesCompletion)}`}>
-                {objectivesCompletion.toFixed(0)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30">
-            <div className="flex items-center gap-2">
-              <ListTodo className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tasks
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Progress value={tasksCompletion} className="w-20 h-2" />
-              <span className={`text-lg font-bold ${getScoreColor(tasksCompletion)}`}>
-                {tasksCompletion.toFixed(0)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/30">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Check-ins
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Progress value={checkinFrequency} className="w-20 h-2" />
-              <span className={`text-lg font-bold ${getScoreColor(checkinFrequency)}`}>
-                {checkinFrequency.toFixed(0)}%
-              </span>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* View Details Button */}
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full h-8 text-xs border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
           onClick={() => router.push('/dashboard/objectives')}
         >
-          <span>View activity details</span>
-          <ArrowRight className="h-4 w-4 ml-2" />
+          View activity details
+          <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
         </Button>
       </CardContent>
     </Card>

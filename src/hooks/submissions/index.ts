@@ -16,4 +16,5 @@ export {
 // Hooks
 export { useSubmissionQueries } from "./useSubmissionQueries";
 export { useDepartmentHierarchy } from "./useDepartmentHierarchy";
+export { usePendingApprovalsCount } from "./usePendingApprovalsCount";
 

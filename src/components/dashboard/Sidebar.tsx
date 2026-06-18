@@ -10,6 +10,7 @@ import type { Permission } from "@/lib/rbac/permissions";
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores";
+import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
 
 interface NavLink {
   label: string;
@@ -627,10 +628,12 @@ function CollapsibleCategory({
   category,
   open: sidebarOpen,
   onLinkClick,
+  badgeCounts,
 }: {
   category: NavCategory;
   open: boolean;
   onLinkClick?: () => void;
+  badgeCounts?: Record<string, number>;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -737,7 +740,12 @@ function CollapsibleCategory({
               `}
             >
               <span className="mr-3">{link.icon}</span>
-              {link.label}
+              <span className="flex-1">{link.label}</span>
+              {badgeCounts?.[link.href] != null && badgeCounts[link.href] > 0 && (
+                <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold leading-none">
+                  {badgeCounts[link.href] > 99 ? "99+" : badgeCounts[link.href]}
+                </span>
+              )}
             </Link>
           ))}
         </div>
@@ -751,6 +759,12 @@ export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const { sidebarOpen, openSidebar } = useUIStore();
   const { can } = usePermissions();
   const user = useAuthStore((state) => state.user);
+  const { count: pendingApprovalsCount } = usePendingApprovalsCount();
+
+  // Badge map: route → count (only "Approve Requests" for now)
+  const badgeCounts: Record<string, number> = {
+    "/dashboard/approvals": pendingApprovalsCount,
+  };
 
   const isLinkActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -801,6 +815,7 @@ export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
             category={category}
             open={sidebarOpen}
             onLinkClick={onLinkClick}
+            badgeCounts={badgeCounts}
           />
         ))}
       </div>

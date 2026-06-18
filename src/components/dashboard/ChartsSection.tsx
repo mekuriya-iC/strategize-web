@@ -61,6 +61,78 @@ const GET_CORPORATE_SCORECARD = gql`
   }
 `;
 
+const GET_DIVISION_SCORECARD = gql`
+  query GetDivisionScorecardForCharts($divisionId: ID!, $periodId: ID!) {
+    realtimeDivisionScorecard(
+      divisionId: $divisionId
+      periodId: $periodId
+      capFinalScore: false
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        kpi {
+          kpiId
+          name
+        }
+        level
+        actualValue
+        targetValue
+        achievementRate
+      }
+    }
+  }
+`;
+
+const GET_DEPARTMENT_SCORECARD = gql`
+  query GetDepartmentScorecardForCharts($departmentId: ID!, $periodId: ID!) {
+    realtimeDepartmentScorecard(
+      departmentId: $departmentId
+      periodId: $periodId
+      capFinalScore: false
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        kpi {
+          kpiId
+          name
+        }
+        level
+        actualValue
+        targetValue
+        achievementRate
+      }
+    }
+  }
+`;
+
+const GET_INDIVIDUAL_SCORECARD = gql`
+  query GetIndividualScorecardForCharts($employeeId: ID!, $periodId: ID!) {
+    realtimeIndividualScorecard(
+      employeeId: $employeeId
+      periodId: $periodId
+      capFinalScore: false
+    ) {
+      totalScore
+      maxPossibleScore
+      percentageAchieved
+      kpiScores {
+        kpi {
+          kpiId
+          name
+        }
+        level
+        actualValue
+        targetValue
+        achievementRate
+      }
+    }
+  }
+`;
+
 const GET_TEAM_PERFORMANCE_STATS = gql`
   query GetTeamPerformanceForCharts($filters: UnifiedPerformanceFilters!) {
     unifiedTeamPerformance(filters: $filters) {
@@ -87,6 +159,10 @@ export default function ChartsSection() {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [topN, setTopN] = useState<number>(5);
 
+  const primaryDept = user?.departments?.[0];
+  const userDepartmentId = primaryDept?.departmentId;
+  const userDivisionId = (primaryDept as any)?.division?.divisionId;
+
   const roleSelectedUnit =
     (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
       ? {
@@ -105,30 +181,59 @@ export default function ChartsSection() {
 
   const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
   const hasFullAccess = !!user?.role && fullAccessRoles.has(user.role as string);
-  
-  const managerRoles = new Set(["MANAGER", "DIRECTOR"]);
-  const isManager = !!user?.role && managerRoles.has(user.role as string);
+  const isDirector = user?.role === "DIRECTOR";
+  const isManager = user?.role === "MANAGER" || user?.role === "COORDINATOR";
+  const isLeadershipRole = hasFullAccess || isDirector || isManager;
 
-  // Fetch corporate scorecard for full access users
-  const { data: corporateData } = useQuery(GET_CORPORATE_SCORECARD, {
-    variables: {
-      organizationId: user?.organizationId,
-      periodId: selectedPeriod?.strategicPeriodId,
-    },
-    skip: !hasFullAccess || !selectedPeriod?.strategicPeriodId,
+  // Determine scorecard query dynamically
+  let scorecardQuery = GET_CORPORATE_SCORECARD;
+  let scorecardVariables: any = {
+    periodId: selectedPeriod?.strategicPeriodId,
+  };
+
+  if (hasFullAccess) {
+    scorecardQuery = GET_CORPORATE_SCORECARD;
+    scorecardVariables.organizationId = user?.organizationId;
+  } else if (isDirector && userDivisionId) {
+    scorecardQuery = GET_DIVISION_SCORECARD;
+    scorecardVariables.divisionId = userDivisionId;
+  } else if (isManager && userDepartmentId) {
+    scorecardQuery = GET_DEPARTMENT_SCORECARD;
+    scorecardVariables.departmentId = userDepartmentId;
+  } else {
+    scorecardQuery = GET_INDIVIDUAL_SCORECARD;
+    scorecardVariables.employeeId = user?.employeeId;
+  }
+
+  // Fetch scorecard for charts based on role
+  const { data: scorecardData } = useQuery(scorecardQuery, {
+    variables: scorecardVariables,
+    skip: !selectedPeriod?.strategicPeriodId || (hasFullAccess ? !user?.organizationId : (isDirector ? !userDivisionId : (isManager ? !userDepartmentId : !user?.employeeId))),
     fetchPolicy: "cache-and-network",
   });
 
+  const scorecard =
+    scorecardData?.realtimeCorporateScorecard ||
+    scorecardData?.realtimeDivisionScorecard ||
+    scorecardData?.realtimeDepartmentScorecard ||
+    scorecardData?.realtimeIndividualScorecard;
+
   // Fetch team performance for managers and full access
+  let teamFilters: any = {
+    strategicPeriodId: selectedPeriod?.strategicPeriodId,
+    organizationId: user?.organizationId,
+  };
+  if (isDirector && userDivisionId) {
+    teamFilters.divisionId = userDivisionId;
+  } else if (isManager && userDepartmentId) {
+    teamFilters.departmentId = userDepartmentId;
+  }
+
   const { data: teamData } = useQuery(GET_TEAM_PERFORMANCE_STATS, {
     variables: {
-      filters: {
-        strategicPeriodId: selectedPeriod?.strategicPeriodId,
-        organizationId: user?.organizationId,
-        // Note: divisionId and departmentId filtering would need to be added based on user's department membership
-      },
+      filters: teamFilters,
     },
-    skip: (!hasFullAccess && !isManager) || !selectedPeriod?.strategicPeriodId,
+    skip: !isLeadershipRole || !selectedPeriod?.strategicPeriodId,
     fetchPolicy: "cache-and-network",
   });
 
@@ -140,11 +245,10 @@ export default function ChartsSection() {
 
   // Build advanced analytics from scorecard data
   const advancedAnalytics = useMemo(() => {
-    if (!corporateData?.realtimeCorporateScorecard) {
+    if (!scorecard) {
       return null;
     }
 
-    const scorecard = corporateData.realtimeCorporateScorecard;
     let kpiScores = scorecard.kpiScores || [];
 
     // Apply filters
@@ -225,7 +329,7 @@ export default function ChartsSection() {
         filtered: kpiScores.length,
       },
     };
-  }, [corporateData, performanceFilter, levelFilter, topN]);
+  }, [scorecard, performanceFilter, levelFilter, topN]);
 
   // Team performance distribution
   const teamAnalytics = useMemo(() => {
@@ -444,8 +548,8 @@ export default function ChartsSection() {
             />
           </div>
 
-          {/* Advanced Charts - Full Access Users */}
-          {hasFullAccess && advancedAnalytics && (
+          {/* Advanced Charts - Leadership Roles */}
+          {isLeadershipRole && advancedAnalytics && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard
@@ -483,30 +587,35 @@ export default function ChartsSection() {
               {/* Top and Bottom Performers */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Performers */}
-                <Card>
+                <Card className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      <CardTitle className="text-lg">Top Performing KPIs</CardTitle>
+                      <TrendingUp className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Top Performing KPIs</CardTitle>
                     </div>
-                    <CardDescription>Highest achievement rates</CardDescription>
+                    <CardDescription className="text-xs">Highest achievement rates</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {advancedAnalytics.topPerformers.map((kpi: any, idx: number) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 line-clamp-1 flex-1">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 line-clamp-1 flex-1">
                               {kpi.kpi.name}
                             </span>
-                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-350 dark:border-slate-800 px-1.5 py-0">
                               {(kpi.achievementRate * 100).toFixed(1)}%
                             </Badge>
                           </div>
-                          <Progress value={kpi.achievementRate * 100} className="h-1.5" />
-                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <div className="w-full h-1 bg-slate-100 dark:bg-slate-850 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-slate-500 dark:bg-slate-400 transition-all"
+                              style={{ width: `${Math.min(kpi.achievementRate * 100, 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
                             <span>{kpi.actualValue.toFixed(1)} / {kpi.targetValue}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                            <span className="text-[9px] px-1 py-0 rounded bg-slate-100 dark:bg-slate-850">
                               {kpi.level}
                             </span>
                           </div>
@@ -517,30 +626,35 @@ export default function ChartsSection() {
                 </Card>
 
                 {/* Bottom Performers */}
-                <Card>
+                <Card className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      <CardTitle className="text-lg">KPIs Needing Attention</CardTitle>
+                      <AlertCircle className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">KPIs Needing Attention</CardTitle>
                     </div>
-                    <CardDescription>Requires support and intervention</CardDescription>
+                    <CardDescription className="text-xs">Requires support and intervention</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {advancedAnalytics.bottomPerformers.map((kpi: any, idx: number) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 line-clamp-1 flex-1">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 line-clamp-1 flex-1">
                               {kpi.kpi.name}
                             </span>
-                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            <Badge variant="outline" className="text-[10px] bg-slate-55 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-350 dark:border-slate-800 px-1.5 py-0">
                               {(kpi.achievementRate * 100).toFixed(1)}%
                             </Badge>
                           </div>
-                          <Progress value={kpi.achievementRate * 100} className="h-1.5" />
-                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <div className="w-full h-1 bg-slate-100 dark:bg-slate-850 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-slate-400 dark:bg-slate-500 transition-all"
+                              style={{ width: `${Math.min(kpi.achievementRate * 100, 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
                             <span>{kpi.actualValue.toFixed(1)} / {kpi.targetValue}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                            <span className="text-[9px] px-1 py-0 rounded bg-slate-100 dark:bg-slate-850">
                               {kpi.level}
                             </span>
                           </div>
@@ -553,8 +667,8 @@ export default function ChartsSection() {
             </>
           )}
 
-          {/* Team Performance Charts - Managers and Full Access */}
-          {(hasFullAccess || isManager) && teamAnalytics && (
+          {/* Team Performance Charts - Leadership Roles */}
+          {isLeadershipRole && teamAnalytics && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard
@@ -564,65 +678,67 @@ export default function ChartsSection() {
                 />
                 
                 {/* Team Stats Card */}
-                <Card>
+                <Card className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      <CardTitle className="text-lg">Team Performance Summary</CardTitle>
+                      <Users className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Team Performance Summary</CardTitle>
                     </div>
-                    <CardDescription>Overall team metrics</CardDescription>
+                    <CardDescription className="text-xs">Overall team metrics</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-950/10">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                             High Performers (≥90%)
                           </span>
                         </div>
-                        <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
                           {teamAnalytics.ranges["90-100%"]}
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-950/10">
                         <div className="flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <TrendingUp className="h-4 w-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                             Strong Performers (75-89%)
                           </span>
                         </div>
-                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
                           {teamAnalytics.ranges["75-89%"]}
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-950/10">
                         <div className="flex items-center gap-2">
-                          <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <Activity className="h-4 w-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                             Needs Support (&lt;75%)
                           </span>
                         </div>
-                        <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
                           {teamAnalytics.ranges["60-74%"] + teamAnalytics.ranges["Below 60%"]}
                         </span>
                       </div>
 
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-800">
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          <span className="text-xs font-medium text-slate-500">
                             Team Average
                           </span>
-                          <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
                             {teamData.unifiedTeamPerformance.averageScore.toFixed(1)}%
                           </span>
                         </div>
-                        <Progress 
-                          value={teamData.unifiedTeamPerformance.averageScore} 
-                          className="h-2 mt-2" 
-                        />
+                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5">
+                          <div
+                            className="h-full rounded-full bg-slate-600 dark:bg-slate-350 transition-all"
+                            style={{ width: `${Math.min(teamData.unifiedTeamPerformance.averageScore, 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </CardContent>

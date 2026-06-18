@@ -30,6 +30,7 @@ export const GET_KPIS = gql`
         unitType
         customUnitLabel
         targetValue
+        assignedTargetValue
         baselineValue
         baseline
         weight
@@ -101,6 +102,7 @@ export const GET_KPI = gql`
       unitType
       customUnitLabel
       targetValue
+      assignedTargetValue
       baselineValue
       baseline
       weight
@@ -144,6 +146,7 @@ export const GET_KPI = gql`
         kpiId
         name
         targetValue
+        assignedTargetValue
         measurementUnit
         unitType
         baseline

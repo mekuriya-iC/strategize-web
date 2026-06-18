@@ -201,7 +201,7 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
                     <div className="flex items-center gap-1">
                       <TrendingUp className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {kpi.targetValue}
+                        {kpi.assignedTargetValue ?? kpi.targetValue}
                         <span className="text-gray-400 font-normal ml-1">{unitLabel}</span>
                       </span>
                     </div>
@@ -299,7 +299,7 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
           kpi={{
             kpiId: assignKpi.kpiId,
             name: assignKpi.name,
-            targetValue: assignKpi.targetValue,
+            targetValue: assignKpi.assignedTargetValue ?? assignKpi.targetValue,
             measurementUnit: assignKpi.measurementUnit,
           }}
           strategicPeriodId={selectedPeriod.strategicPeriodId}

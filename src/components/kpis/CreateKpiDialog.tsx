@@ -92,7 +92,7 @@ export function CreateKpiDialog({
         kpiType: editKpi.kpiType || "individual",
         measurementUnit: editKpi.measurementUnit || "",
         frequency: editKpi.frequency || "",
-        targetValue: editKpi.targetValue?.toString() || "",
+        targetValue: (editKpi.assignedTargetValue ?? editKpi.targetValue)?.toString() || "",
         baselineValue: editKpi.baselineValue?.toString() || "",
         weight: editKpi.weight?.toString() || "",
         strategicObjectiveId: editKpi.objective?.objectiveId || "",

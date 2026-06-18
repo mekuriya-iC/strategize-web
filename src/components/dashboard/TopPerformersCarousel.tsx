@@ -32,17 +32,15 @@ export function TopPerformersCarousel({
   const router = useRouter();
 
   const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-emerald-600 dark:text-emerald-400";
-    if (score >= 80) return "text-blue-600 dark:text-blue-400";
-    return "text-green-600 dark:text-green-400";
+    if (score >= 85) return "text-emerald-600 dark:text-emerald-400";
+    if (score >= 70) return "text-slate-800 dark:text-slate-100";
+    return "text-slate-500 dark:text-slate-400";
   };
 
   const getScoreBadge = (score: number) => {
-    if (score >= 95)
-      return "bg-gradient-to-r from-yellow-400 to-orange-500 text-white";
-    if (score >= 90)
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
-    return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+    if (score >= 85)
+      return "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30";
+    return "bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800";
   };
 
   const getRankIcon = (index: number) => {
@@ -54,18 +52,18 @@ export function TopPerformersCarousel({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="border border-slate-200 dark:border-slate-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-yellow-600" />
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <Trophy className="h-4 w-4 text-slate-400" />
             Top Performers
           </CardTitle>
-          <CardDescription>Outstanding team members</CardDescription>
+          <CardDescription className="text-xs">Outstanding team members</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 dark:bg-gray-800 rounded" />
+              <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg" />
             ))}
           </div>
         </CardContent>
@@ -75,18 +73,18 @@ export function TopPerformersCarousel({
 
   if (performers.length === 0) {
     return (
-      <Card>
+      <Card className="border border-slate-200 dark:border-slate-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-yellow-600" />
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <Trophy className="h-4 w-4 text-slate-400" />
             Top Performers
           </CardTitle>
-          <CardDescription>Outstanding team members</CardDescription>
+          <CardDescription className="text-xs">Outstanding team members</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12">
-            <Award className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400">No performance data yet</p>
+            <Award className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+            <p className="text-sm text-slate-400 dark:text-slate-500">No performance data yet</p>
           </div>
         </CardContent>
       </Card>
@@ -96,47 +94,47 @@ export function TopPerformersCarousel({
   const displayPerformers = performers.slice(0, limit);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border border-slate-200 dark:border-slate-800">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-yellow-600" />
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <Trophy className="h-4 w-4 text-slate-500" />
               Top Performers
             </CardTitle>
-            <CardDescription>Outstanding achievements this period</CardDescription>
+            <CardDescription className="text-xs">Outstanding achievements this period</CardDescription>
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            className="h-8 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             onClick={() => router.push('/dashboard/performance')}
           >
             View All
-            <ArrowRight className="h-4 w-4 ml-1" />
+            <ArrowRight className="h-3.5 w-3.5 ml-1" />
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {displayPerformers.map((performer, index) => (
             <div
               key={performer.employeeId}
               className={`
-                p-4 rounded-lg transition-all cursor-pointer
-                ${index === 0 ? 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-yellow-200 dark:border-yellow-900/40' :
-                  'bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800'}
-                hover:shadow-md
+                p-3 rounded-lg transition-all cursor-pointer border
+                ${index === 0 ? 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800' :
+                  'bg-white dark:bg-slate-950/20 border-slate-100 dark:border-slate-900'}
+                hover:border-slate-300 dark:hover:border-slate-700
               `}
               onClick={() => router.push(`/dashboard/employees/${performer.employeeId}`)}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 {/* Rank Badge */}
                 <div className={`
-                  flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg
-                  ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg' :
-                    index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800' :
-                    index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white' :
-                    'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}
+                  flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm
+                  ${index === 0 ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100' :
+                    index === 1 ? 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' :
+                    index === 2 ? 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400' :
+                    'text-slate-400 dark:text-slate-600'}
                 `}>
                   {getRankIcon(index)}
                 </div>
@@ -146,15 +144,15 @@ export function TopPerformersCarousel({
                   src={performer.picture}
                   alt={performer.fullName}
                   fallbackText={performer.fullName}
-                  size="md"
+                  size="sm"
                 />
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                     {performer.fullName}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                     {performer.title || 'No title'}
                     {performer.achievements && performer.achievements > 0 && (
                       <span className="ml-2">• {performer.achievements} achievements</span>
@@ -164,17 +162,17 @@ export function TopPerformersCarousel({
 
                 {/* Score */}
                 <div className="text-right">
-                  <div className={`text-2xl font-bold ${getScoreColor(performer.overallScore)}`}>
+                  <div className={`text-base font-bold ${getScoreColor(performer.overallScore)}`}>
                     {performer.overallScore.toFixed(1)}%
                   </div>
-                  <Badge className={`text-xs ${getScoreBadge(performer.overallScore)}`}>
+                  <Badge variant="outline" className={`text-[9px] px-1 py-0 h-4 ${getScoreBadge(performer.overallScore)}`}>
                     {performer.rating}
                   </Badge>
                 </div>
 
                 {/* Trending Icon */}
                 {index === 0 && (
-                  <TrendingUp className="h-5 w-5 text-yellow-600 animate-pulse" />
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                 )}
               </div>
             </div>
@@ -183,10 +181,10 @@ export function TopPerformersCarousel({
 
         {/* Recognition Message */}
         {displayPerformers.length > 0 && (
-          <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30">
+          <div className="mt-3.5 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80">
             <div className="flex items-center gap-2">
-              <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">
+              <Award className="h-3.5 w-3.5 text-slate-400" />
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
                 Celebrate these outstanding achievements! Consider recognition or rewards.
               </p>
             </div>

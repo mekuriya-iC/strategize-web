@@ -50,6 +50,7 @@ export interface Kpi {
   createdBy?: KpiCreatedBy;
   parent?: { kpiId: string; name: string };
   targets?: KpiTarget[];
+  assignedTargetValue?: number;
   createdAt: string;
   updatedAt: string;
 }

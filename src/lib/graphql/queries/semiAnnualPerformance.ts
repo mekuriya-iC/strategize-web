@@ -1,170 +1,218 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
-export const GET_SEMI_ANNUAL_PERIODS = gql`
-  query GetSemiAnnualPeriods($organizationId: ID!) {
-    semiAnnualPeriods(organizationId: $organizationId) {
-      periodId
+/**
+ * Semi-annual performance operations.
+ *
+ * Backed by `SemiAnnualPerformanceResolver` in the API.
+ *
+ * NOTE: This module intentionally bundles queries and mutations together
+ * (rather than splitting them across `queries/` and `mutations/`) because
+ * the two semi-annual dashboard pages consume them as a single feature
+ * surface.
+ */
+
+// ==================== FRAGMENTS ====================
+
+const SEMI_ANNUAL_PERIOD_FIELDS = gql`
+  fragment SemiAnnualPeriodFields on SemiAnnualPeriod {
+    periodId
+    name
+    semester
+    startDate
+    endDate
+    strategicPeriodId
+    organizationId
+    isActive
+    createdAt
+    updatedAt
+  }
+`;
+
+const SEMI_ANNUAL_CONFIG_FIELDS = gql`
+  fragment SemiAnnualConfigFields on SemiAnnualPerformanceConfig {
+    configId
+    semiAnnualPeriodId
+    organizationId
+    ownPerformanceWeight
+    sharedPerformanceWeight
+    createdBy
+    createdAt
+    updatedAt
+  }
+`;
+
+const SHARED_KPI_FIELDS = gql`
+  fragment SharedKPIFields on SharedKPI {
+    sharedKpiId
+    name
+    description
+    achievementScore
+    isActive
+    semiAnnualPeriodId
+    organizationId
+    createdAt
+    updatedAt
+    division {
+      divisionId
       name
-      semester
-      startDate
-      endDate
-      strategicPeriodId
-      organizationId
+      description
       isActive
     }
   }
 `;
 
+const SEMI_ANNUAL_RESULT_FIELDS = gql`
+  fragment SemiAnnualResultFields on SemiAnnualPerformanceResult {
+    resultId
+    organizationId
+    semiAnnualPeriodId
+    kpiScore
+    evaluation360Score
+    baseScore
+    ownPerformanceWeight
+    ownPerformanceScore
+    sharedKPIScores {
+      sharedKpiId
+      name
+      assignedWeight
+      achievementScore
+      earnedScore
+    }
+    totalSharedKPIScore
+    finalScore
+    rating
+    isFinalized
+    finalizedAt
+    finalizedBy
+    calculatedAt
+    updatedAt
+    employee {
+      employeeId
+      fullName
+      title
+      picture
+      departments {
+        departmentId
+        name
+      }
+    }
+  }
+`;
+
+// ==================== QUERIES ====================
+
+export const GET_SEMI_ANNUAL_PERIODS = gql`
+  query GetSemiAnnualPeriods($organizationId: String!) {
+    semiAnnualPeriods(organizationId: $organizationId) {
+      ...SemiAnnualPeriodFields
+    }
+  }
+  ${SEMI_ANNUAL_PERIOD_FIELDS}
+`;
+
 export const GET_SEMI_ANNUAL_CONFIG = gql`
-  query GetSemiAnnualPerformanceConfig(
-    $semiAnnualPeriodId: ID!
-    $organizationId: ID!
+  query GetSemiAnnualConfig(
+    $semiAnnualPeriodId: String!
+    $organizationId: String!
   ) {
     semiAnnualPerformanceConfig(
       semiAnnualPeriodId: $semiAnnualPeriodId
       organizationId: $organizationId
     ) {
-      configId
-      semiAnnualPeriodId
-      organizationId
-      ownPerformanceWeight
-      sharedPerformanceWeight
-      createdBy
-      createdAt
-      updatedAt
+      ...SemiAnnualConfigFields
     }
   }
+  ${SEMI_ANNUAL_CONFIG_FIELDS}
 `;
 
 export const GET_SHARED_KPIS = gql`
-  query GetSharedKPIs($semiAnnualPeriodId: ID!, $organizationId: ID!) {
+  query GetSharedKPIs(
+    $semiAnnualPeriodId: String!
+    $organizationId: String!
+  ) {
     sharedKPIs(
       semiAnnualPeriodId: $semiAnnualPeriodId
       organizationId: $organizationId
     ) {
-      sharedKpiId
-      name
-      description
-      achievementScore
-      isActive
-      semiAnnualPeriodId
-      organizationId
+      ...SharedKPIFields
     }
   }
+  ${SHARED_KPI_FIELDS}
 `;
 
 export const GET_SHARED_KPIS_WITH_DIVISIONS = gql`
   query GetSharedKPIsWithDivisions(
-    $semiAnnualPeriodId: ID!
-    $organizationId: ID!
+    $semiAnnualPeriodId: String!
+    $organizationId: String!
   ) {
     sharedKPIsWithDivisions(
       semiAnnualPeriodId: $semiAnnualPeriodId
       organizationId: $organizationId
     ) {
-      sharedKpiId
-      name
-      description
-      achievementScore
-      isActive
-      division {
-        divisionId
-        name
-      }
+      ...SharedKPIFields
     }
   }
+  ${SHARED_KPI_FIELDS}
 `;
 
 export const GET_ALL_SEMI_ANNUAL_RESULTS = gql`
-  query GetAllSemiAnnualPerformanceResults(
-    $semiAnnualPeriodId: ID!
-    $organizationId: ID!
+  query GetAllSemiAnnualResults(
+    $semiAnnualPeriodId: String!
+    $organizationId: String!
   ) {
     allSemiAnnualPerformanceResults(
       semiAnnualPeriodId: $semiAnnualPeriodId
       organizationId: $organizationId
     ) {
-      resultId
-      employeeId
-      semiAnnualPeriodId
-      organizationId
-      kpiScore
-      evaluation360Score
-      baseScore
-      ownPerformanceWeight
-      ownPerformanceScore
-      sharedKPIScores {
-        sharedKpiId
-        name
-        assignedWeight
-        achievementScore
-        earnedScore
-      }
-      totalSharedKPIScore
-      finalScore
-      rating
-      isFinalized
-      calculatedAt
-      employee {
-        employeeId
-        fullName
-        title
-        picture
-      }
+      ...SemiAnnualResultFields
     }
   }
+  ${SEMI_ANNUAL_RESULT_FIELDS}
 `;
+
+// ==================== MUTATIONS ====================
 
 export const CREATE_SEMI_ANNUAL_PERIOD = gql`
   mutation CreateSemiAnnualPeriod($input: CreateSemiAnnualPeriodInput!) {
     createSemiAnnualPeriod(input: $input) {
-      periodId
-      name
-      semester
-      startDate
-      endDate
-      strategicPeriodId
-      organizationId
-      isActive
+      ...SemiAnnualPeriodFields
     }
   }
+  ${SEMI_ANNUAL_PERIOD_FIELDS}
 `;
 
 export const CREATE_OR_UPDATE_CONFIG = gql`
-  mutation CreateOrUpdateSemiAnnualConfig($input: CreatePerformanceConfigInput!) {
+  mutation CreateOrUpdateSemiAnnualConfig(
+    $input: CreatePerformanceConfigInput!
+  ) {
     createOrUpdateSemiAnnualConfig(input: $input) {
-      configId
-      semiAnnualPeriodId
-      organizationId
-      ownPerformanceWeight
-      sharedPerformanceWeight
-      createdBy
+      ...SemiAnnualConfigFields
     }
   }
+  ${SEMI_ANNUAL_CONFIG_FIELDS}
 `;
 
 export const CREATE_SHARED_KPI = gql`
   mutation CreateSharedKPI($input: CreateSharedKPIInput!) {
     createSharedKPI(input: $input) {
-      sharedKpiId
-      name
-      description
-      achievementScore
-      semiAnnualPeriodId
-      organizationId
-      isActive
+      ...SharedKPIFields
     }
   }
+  ${SHARED_KPI_FIELDS}
 `;
 
 export const UPDATE_SHARED_KPI_SCORE = gql`
-  mutation UpdateSharedKPIScore($sharedKpiId: ID!, $achievementScore: Float!) {
+  mutation UpdateSharedKPIScore(
+    $sharedKpiId: String!
+    $achievementScore: Float!
+  ) {
     updateSharedKPIScore(
       sharedKpiId: $sharedKpiId
       achievementScore: $achievementScore
     ) {
       sharedKpiId
       achievementScore
+      updatedAt
     }
   }
 `;
@@ -175,29 +223,27 @@ export const ASSIGN_SHARED_KPI = gql`
       assignmentId
       employeeId
       sharedKpiId
-      assignedWeight
       semiAnnualPeriodId
+      assignedWeight
       organizationId
+      assignedBy
+      assignedAt
+      updatedAt
     }
   }
 `;
 
 export const SYNC_DIVISIONS_TO_SHARED_KPIS = gql`
   mutation SyncDivisionsToSharedKPIs(
-    $semiAnnualPeriodId: ID!
-    $organizationId: ID!
+    $semiAnnualPeriodId: String!
+    $organizationId: String!
   ) {
     syncDivisionsToSharedKPIs(
       semiAnnualPeriodId: $semiAnnualPeriodId
       organizationId: $organizationId
     ) {
-      sharedKpiId
-      name
-      achievementScore
-      division {
-        divisionId
-        name
-      }
+      ...SharedKPIFields
     }
   }
+  ${SHARED_KPI_FIELDS}
 `;

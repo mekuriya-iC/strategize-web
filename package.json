@@ -92,7 +92,7 @@
     "@vitejs/plugin-react": "^5.1.2",
     "baseline-browser-mapping": "^2.10.29",
     "eslint": "^9",
-    "eslint-config-next": "15.1.6",
+    "eslint-config-next": "16.0.7",
     "graphql-request": "^6.1.0",
     "i": "^0.3.7",
     "jsdom": "^27.3.0",
@@ -101,7 +101,7 @@
     "typescript": "^5",
     "vitest": "^4.0.16"
   },
-  "packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912",
+  "packageManager": "pnpm@11.7.0+sha512.19cc852c120c7125760f2443ee6be0ca5b40f9f50598de1a09a1f177503e010e57c23c77646e01e761de59bf874fb22a3398c33ab9691fc13eb946b6f0f4d620",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",

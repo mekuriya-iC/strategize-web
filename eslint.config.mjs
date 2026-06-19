@@ -1,24 +1,9 @@
-import { createRequire } from "module";
-import { pathToFileURL } from "url";
-
-const require = createRequire(import.meta.url);
-
-// Use require.resolve to get the actual path, then convert to file:// URL for ESM import
-const coreWebVitalsPath = require.resolve("eslint-config-next/core-web-vitals");
-const typescriptPath = require.resolve("eslint-config-next/typescript");
-
-const nextCoreWebVitals = await import(pathToFileURL(coreWebVitalsPath).href);
-const nextTypescript = await import(pathToFileURL(typescriptPath).href);
-
-// Handle both default and named exports
-const coreWebVitalsConfig = nextCoreWebVitals.default || nextCoreWebVitals;
-const typescriptConfig = nextTypescript.default || nextTypescript;
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 
 const eslintConfig = [
-  ...(Array.isArray(coreWebVitalsConfig)
-    ? coreWebVitalsConfig
-    : [coreWebVitalsConfig]),
-  ...(Array.isArray(typescriptConfig) ? typescriptConfig : [typescriptConfig]),
+  ...nextCoreWebVitals,
+  ...nextTypescript,
   {
     ignores: [
       "node_modules/**",
@@ -30,12 +15,11 @@ const eslintConfig = [
   },
   {
     rules: {
-      // Prevent console.log in production code
-      // Allow console.warn and console.error for important messages
       "no-console": ["error", { allow: ["warn", "error"] }],
-      
-      // Prevent commented-out code (will warn, not error)
-      "no-warning-comments": ["warn", { terms: ["todo", "fixme", "xxx", "hack"], location: "start" }],
+      "no-warning-comments": [
+        "warn",
+        { terms: ["todo", "fixme", "xxx", "hack"], location: "start" },
+      ],
     },
   },
 ];

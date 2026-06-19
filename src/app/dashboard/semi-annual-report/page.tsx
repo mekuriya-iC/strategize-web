@@ -45,8 +45,9 @@ import {
   GET_SHARED_KPIS_WITH_DIVISIONS,
   SYNC_DIVISIONS_TO_SHARED_KPIS,
   CREATE_OR_UPDATE_CONFIG,
+  ASSIGN_SHARED_KPI,
+  UPDATE_SHARED_KPI_SCORE,
 } from "@/lib/graphql/queries/semiAnnualPerformance";
-import { ASSIGN_SHARED_KPI, UPDATE_SHARED_KPI_SCORE } from "@/lib/graphql/queries/semiAnnualPerformance";
 import UserAvatar from "@/components/UserAvatar";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";

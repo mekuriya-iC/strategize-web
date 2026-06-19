@@ -63,6 +63,7 @@ const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
       <span className="absolute right-3 top-2.5 text-gray-500">
         {unitType === "PERCENT" ? "%" : 
          unitType === "CURRENCY" ? "Million/ETB" :
+         unitType === "HOUR" ? "hrs" :
          unitType === "RATIO" ? "ratio" :
          unitType === "COUNT" ? "count" :
          ""}

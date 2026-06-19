@@ -425,7 +425,13 @@ export interface PaginatedObjectives {
 
 // KPI Types
 export type KpiWeightType = "NUMBER" | "PERCENT";
-export type KpiUnitType = "NUMBER" | "PERCENT" | "CURRENCY" | "RATIO" | "COUNT";
+export type KpiUnitType =
+  | "NUMBER"
+  | "PERCENT"
+  | "CURRENCY"
+  | "HOUR"
+  | "RATIO"
+  | "COUNT";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiTargetStatus =
   | "NOT_SUBMITTED"

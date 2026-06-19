@@ -47,8 +47,10 @@ interface ScorecardData {
 
 export default function IndividualScorecard({
   capFinalScore = false,
+  strategicPeriodId,
 }: {
   capFinalScore?: boolean;
+  strategicPeriodId?: string;
 }) {
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -72,14 +74,19 @@ export default function IndividualScorecard({
   });
 
   const periods = periodsData?.strategicPeriods?.items || [];
-  const activePeriod = periods.find((p: any) => p.isActive);
+  const activePeriod = periods.find((p: any) => p.status === "ACTIVE");
 
-  // Set active period as default
+  // Prefer the parent-selected period, otherwise fall back to the active period.
   useEffect(() => {
+    if (strategicPeriodId && strategicPeriodId !== selectedPeriodId) {
+      setSelectedPeriodId(strategicPeriodId);
+      return;
+    }
+
     if (activePeriod && !selectedPeriodId) {
       setSelectedPeriodId(activePeriod.strategicPeriodId);
     }
-  }, [activePeriod, selectedPeriodId]);
+  }, [activePeriod, selectedPeriodId, strategicPeriodId]);
 
   // Fetch employees (for HR/Admin)
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
@@ -150,14 +157,6 @@ export default function IndividualScorecard({
     return `${(num * 100).toFixed(1)}%`;
   };
 
-  const selectedEmployee = employees.find(
-    (e: any) => e.employeeId === selectedEmployeeId,
-  );
-
-  const selectedPeriod = periods.find(
-    (p: any) => p.strategicPeriodId === selectedPeriodId,
-  );
-
   if (!user) {
     return (
       <Card>
@@ -169,6 +168,11 @@ export default function IndividualScorecard({
       </Card>
     );
   }
+
+  const totalScoreRate =
+    scorecard && scorecard.maxPossibleScore > 0
+      ? scorecard.totalScore / scorecard.maxPossibleScore
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -231,7 +235,7 @@ export default function IndividualScorecard({
                       key={period.strategicPeriodId}
                       value={period.strategicPeriodId}
                     >
-                      {period.name} {period.isActive ? "(Active)" : ""}
+                      {period.name} {period.status === "ACTIVE" ? "(Active)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -382,9 +386,6 @@ export default function IndividualScorecard({
                   <tbody>
                     {scorecard.kpiScores.map((kpiScore) => {
                       const achievementPercent = kpiScore.achievementRate * 100;
-                      const badge = getAchievementBadge(
-                        kpiScore.achievementRate,
-                      );
                       const assignment = assignmentMap.get(kpiScore.kpi.kpiId);
                       const hasParentWeight = Boolean(
                         assignment &&
@@ -478,12 +479,9 @@ export default function IndividualScorecard({
                         {formatNumber(scorecard.totalScore)}%
                       </td>
                       <td className="text-right p-3">
-                        <Badge
-                          {...getAchievementBadge(scorecard.totalScore / 100)}
-                        >
+                        <Badge {...getAchievementBadge(totalScoreRate)}>
                           {
-                            getAchievementBadge(scorecard.totalScore / 100)
-                              .label
+                            getAchievementBadge(totalScoreRate).label
                           }
                         </Badge>
                       </td>

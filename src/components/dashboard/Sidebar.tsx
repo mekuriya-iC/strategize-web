@@ -19,6 +19,8 @@ interface NavLink {
   permission: Permission;
   /** Shown only for division/department managers (not corporate admins) */
   managerOnly?: boolean;
+  /** Shown only for specific roles */
+  rolesOnly?: string[];
 }
 
 interface NavCategory {
@@ -483,6 +485,7 @@ const navCategories: NavCategory[] = [
         label: "Semi-Annual Report",
         href: "/dashboard/semi-annual-report",
         permission: "nav:reports",
+        rolesOnly: ["SUPER_ADMIN", "HR"],
         icon: (
           <svg
             width="16"
@@ -648,6 +651,7 @@ function CollapsibleCategory({
     .filter((link) => {
       if (!can(link.permission)) return false;
       if (link.managerOnly && !isManagerRole) return false;
+      if (link.rolesOnly && !link.rolesOnly.includes(user?.role || "")) return false;
       return true;
     })
     .map((link) =>

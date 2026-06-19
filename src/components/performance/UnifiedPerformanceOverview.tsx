@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, TrendingUp, Target, Award, Activity, AlertCircle } from "lucide-react";
 import { GET_EMPLOYEE_PERFORMANCE } from "@/lib/graphql/queries/unified-performance";
+import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { GET_CHECKINOUT_TASKS } from "@/lib/graphql/queries/checkins";
+import { getRatingFromScore } from "@/lib/utils/performance-export";
 import PerformanceOverviewCard from "./PerformanceOverviewCard";
-import { IndividualScorecard } from "@/components/kpi-scorecard";
+import IndividualScorecard from "@/components/kpi-scorecard/IndividualScorecard";
 import Employee360Results from "@/components/evaluations/Employee360Results";
 import ActivityMetricsView from "./ActivityMetricsView";
 
@@ -56,6 +59,86 @@ export default function UnifiedPerformanceOverview({
   });
 
   const performanceData = data?.employeePerformance;
+
+  // Keep the overview activity card aligned with the Activity Metrics tab.
+  const { data: objectivesData } = useQuery(GET_OBJECTIVES, {
+    variables: {
+      page: 1,
+      limit: 1000,
+      assigneeId: employeeId,
+      strategicPeriodId,
+    },
+    skip: !employeeId,
+  });
+
+  const { data: tasksData } = useQuery(GET_CHECKINOUT_TASKS, {
+    variables: {
+      page: 1,
+      limit: 1000,
+      ownerUserId: employeeId,
+      strategicPeriodId,
+    },
+    skip: !employeeId,
+  });
+
+  const overviewPerformanceData = useMemo(() => {
+    if (!performanceData) return performanceData;
+
+    const objectives = objectivesData?.objectives?.items || [];
+    const tasks = tasksData?.checkinoutTasks?.items || [];
+
+    const completedObjectives = objectives.filter(
+      (obj: any) => obj.status === "COMPLETED",
+    ).length;
+    const objectiveCompletionRate =
+      objectives.length > 0 ? (completedObjectives / objectives.length) * 100 : 0;
+
+    const completedTasks = tasks.filter(
+      (task: any) =>
+        task.status === "COMPLETED" || task.taskStatus === "DONE",
+    ).length;
+    const taskCompletionRate =
+      tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+
+    const combinedActivityScore =
+      objectiveCompletionRate * 0.5 + taskCompletionRate * 0.5;
+
+    const activityWeight = performanceData.breakdown.activityScore.weight || 0;
+    const activityWeightedScore = (combinedActivityScore / 100) * activityWeight;
+
+    const nextBreakdown = {
+      ...performanceData.breakdown,
+      activityScore: {
+        ...performanceData.breakdown.activityScore,
+        rawScore: combinedActivityScore,
+        maxScore: 100,
+        percentageAchieved: combinedActivityScore,
+        weightedScore: activityWeightedScore,
+      },
+    };
+
+    const totalScore =
+      nextBreakdown.kpiScore.weightedScore +
+      nextBreakdown.competencyScore.weightedScore +
+      nextBreakdown.activityScore.weightedScore;
+
+    const maxPossibleScore =
+      performanceData.maxPossibleScore ||
+      nextBreakdown.kpiScore.weight +
+        nextBreakdown.competencyScore.weight +
+        nextBreakdown.activityScore.weight;
+
+    const overallPercentage =
+      maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+
+    return {
+      ...performanceData,
+      totalScore,
+      overallPercentage,
+      rating: getRatingFromScore(overallPercentage),
+      breakdown: nextBreakdown,
+    };
+  }, [objectivesData, performanceData, tasksData]);
 
   if (loading) {
     return (
@@ -143,18 +226,18 @@ export default function UnifiedPerformanceOverview({
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <PerformanceOverviewCard
-            totalScore={performanceData.totalScore}
-            maxPossibleScore={performanceData.maxPossibleScore}
-            overallPercentage={performanceData.overallPercentage}
-            rating={performanceData.rating}
-            breakdown={performanceData.breakdown}
-            calculatedAt={performanceData.calculatedAt}
+            totalScore={overviewPerformanceData.totalScore}
+            maxPossibleScore={overviewPerformanceData.maxPossibleScore}
+            overallPercentage={overviewPerformanceData.overallPercentage}
+            rating={overviewPerformanceData.rating}
+            breakdown={overviewPerformanceData.breakdown}
+            calculatedAt={overviewPerformanceData.calculatedAt}
           />
         </TabsContent>
 
         {/* KPI Scorecard Tab */}
         <TabsContent value="kpi" className="space-y-6">
-          <IndividualScorecard />
+          <IndividualScorecard strategicPeriodId={strategicPeriodId} />
         </TabsContent>
 
         {/* 360° Evaluation Tab */}

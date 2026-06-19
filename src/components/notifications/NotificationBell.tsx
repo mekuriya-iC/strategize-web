@@ -43,7 +43,7 @@ export function NotificationBell() {
     try {
       await updateNotification({
         variables: {
-          input: {
+          updateNotificationInput: {
             notificationId,
             readAt: new Date().toISOString(),
           },
@@ -61,7 +61,7 @@ export function NotificationBell() {
         notifications.map((notif: any) =>
           updateNotification({
             variables: {
-              input: {
+              updateNotificationInput: {
                 notificationId: notif.notificationId,
                 readAt: new Date().toISOString(),
               },

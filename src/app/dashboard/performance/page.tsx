@@ -32,7 +32,7 @@ import {
 import UserAvatar from "@/components/UserAvatar";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import { GET_TEAM_PERFORMANCE } from "@/lib/graphql/queries/unified-performance";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import UnifiedPerformanceOverview from "@/components/performance/UnifiedPerformanceOverview";
 import { PerformanceDistributionChart } from "@/components/performance/PerformanceDistributionChart";
 import { PerformanceTrendChart } from "@/components/performance/PerformanceTrendChart";
@@ -66,7 +66,7 @@ const GET_DEPARTMENTS = gql`
 `;
 
 const GET_WEIGHT_CONFIG = gql`
-  query GetPerformanceWeightConfig($organizationId: ID!, $strategicPeriodId: ID) {
+  query GetPerformanceWeightConfig($organizationId: String!, $strategicPeriodId: String) {
     performanceWeightConfig(organizationId: $organizationId, strategicPeriodId: $strategicPeriodId) {
       kpiWeight
       competencyWeight
@@ -77,6 +77,7 @@ const GET_WEIGHT_CONFIG = gql`
 
 export default function PerformancePage() {
   const user = useAuthStore((state) => state.user);
+  const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
   const userRole = user?.role as string | undefined;
   
   // Filter state
@@ -112,7 +113,7 @@ export default function PerformancePage() {
     skip: !user?.organizationId,
   });
   const periods = periodsData?.strategicPeriods?.items || [];
-  const activePeriod = periods.find((period: any) => period.isActive);
+  const activePeriod = periods.find((period: any) => period.status === "ACTIVE");
 
   // Fetch divisions
   const { data: divisionsData } = useQuery(GET_DIVISIONS, {
@@ -146,10 +147,11 @@ export default function PerformancePage() {
   };
 
   useEffect(() => {
-    if (!filters.periodId && activePeriod?.strategicPeriodId) {
-      setFilters((prev) => ({ ...prev, periodId: activePeriod.strategicPeriodId }));
+    const periodId = selectedPeriod?.strategicPeriodId || activePeriod?.strategicPeriodId;
+    if (periodId && filters.periodId !== periodId) {
+      setFilters((prev) => ({ ...prev, periodId }));
     }
-  }, [activePeriod?.strategicPeriodId]); // Only depend on activePeriod ID, not filters.periodId
+  }, [selectedPeriod?.strategicPeriodId, activePeriod?.strategicPeriodId, filters.periodId]);
 
   // Fetch team performance if viewing team
   const { data: teamData, loading: teamLoading } = useQuery(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useQuery, gql } from "@apollo/client";
 import {
   Card,
@@ -28,10 +28,9 @@ import {
   Users,
   Award,
   Activity,
-  CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 
 // GraphQL Queries
 const GET_EMPLOYEE_PERFORMANCE = gql`
@@ -160,8 +159,10 @@ export default function UnifiedPerformanceReport({
   onExport,
 }: UnifiedPerformanceReportProps) {
   const user = useAuthStore((state) => state.user);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const {
+    selectedPeriod,
+    setSelectedPeriod,
+  } = useStrategicPeriodStore();
 
   // Fetch periods
   const { data: periodsData } = useQuery(GET_PERIODS);
@@ -172,13 +173,19 @@ export default function UnifiedPerformanceReport({
     const end = new Date(p.endDate);
     return now >= start && now <= end;
   });
+  const fallbackPeriod = activePeriod || periods[0];
+  const selectedPeriodId = selectedPeriod?.strategicPeriodId || "";
 
-  // Auto-select active period (using useEffect to avoid state update during render)
+  // Keep this view aligned with the shared top-bar strategic period selection.
   useEffect(() => {
-    if (!selectedPeriodId && activePeriod && activePeriod.strategicPeriodId) {
-      setSelectedPeriodId(activePeriod.strategicPeriodId);
+    if (!selectedPeriod?.strategicPeriodId && fallbackPeriod) {
+      setSelectedPeriod(fallbackPeriod);
     }
-  }, [activePeriod?.strategicPeriodId]); // Only depend on activePeriod ID, not selectedPeriodId
+  }, [
+    fallbackPeriod,
+    selectedPeriod?.strategicPeriodId,
+    setSelectedPeriod,
+  ]);
 
   // Determine which query to use based on view mode
   const isTeamView = viewMode === "team";
@@ -191,7 +198,7 @@ export default function UnifiedPerformanceReport({
   } = useQuery(GET_EMPLOYEE_PERFORMANCE, {
     variables: {
       filters: {
-        employeeId: selectedEmployeeId || user?.employeeId,
+        employeeId: user?.employeeId,
         strategicPeriodId: selectedPeriodId,
         organizationId: user?.organizationId,
       },
@@ -258,6 +265,27 @@ export default function UnifiedPerformanceReport({
     onExport?.(reportData);
   };
 
+  const handlePeriodChange = (periodId: string) => {
+    const period = periods.find((item: any) => item.strategicPeriodId === periodId);
+    if (!period) return;
+    setSelectedPeriod(period);
+  };
+
+  const periodSelector = (
+    <Select value={selectedPeriodId} onValueChange={handlePeriodChange}>
+      <SelectTrigger className="w-[250px]">
+        <SelectValue placeholder="Select period" />
+      </SelectTrigger>
+      <SelectContent>
+        {periods.map((period: any) => (
+          <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
+            {period.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   // Show loading only on initial load
   if (loading && !performanceData) {
     return (
@@ -290,10 +318,21 @@ export default function UnifiedPerformanceReport({
 
   if (!selectedPeriodId) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-600 dark:text-gray-400">
-          Please select a period to view performance data.
-        </p>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+          {periodSelector}
+          <Button onClick={handleExport} variant="outline" disabled>
+            <Download className="mr-2 h-4 w-4" />
+            Export Report
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-600 dark:text-gray-400">
+              Please select a period to view performance data.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -318,18 +357,7 @@ export default function UnifiedPerformanceReport({
       <div className="space-y-6">
         {/* Header & Filters */}
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-          <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-              {periods.map((period: any) => (
-                <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
-                  {period.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {periodSelector}
 
           <Button onClick={handleExport} variant="outline">
             <Download className="mr-2 h-4 w-4" />
@@ -490,18 +518,7 @@ export default function UnifiedPerformanceReport({
     <div className="space-y-6">
       {/* Header & Filters */}
       <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-        <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            {periods.map((period: any) => (
-              <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
-                {period.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {periodSelector}
 
         <Button onClick={handleExport} variant="outline">
           <Download className="mr-2 h-4 w-4" />

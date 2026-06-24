@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { useMutation } from "@apollo/client";
 import { CREATE_STRATEGIC_PLAN } from "@/lib/graphql/mutations/strategicPlans";
+import { formatAnnualTimeline } from "@/lib/strategic-periods/periodDates";
 
 const GET_ORGANIZATIONS = gql`
   query GetOrganizationsForPeriodSetup {
@@ -43,7 +44,7 @@ const PERIOD_TYPES = [
 export default function AddNewStrategyForm() {
   const router = useRouter();
   const userOrgId = useAuthStore((s) => s.user?.organizationId ?? "");
-  const { setSelectedPeriod } = useStrategicPeriodStore();
+  const { selectPeriodWithTimeline } = useStrategicPeriodStore();
   const { createStrategicPeriod } = useStrategicPeriodMutations();
 
   // Call the mutation directly (no success toast — plan creation is invisible to the user)
@@ -119,7 +120,7 @@ export default function AddNewStrategyForm() {
       });
 
       if (period) {
-        setSelectedPeriod(period);
+        selectPeriodWithTimeline(period, formatAnnualTimeline(period));
       }
 
       router.push("/strategy-period");

@@ -6,6 +6,7 @@ import { useStrategicPeriodMutations } from "@/hooks/objectives/useStrategicPeri
 import { useRouter } from "next/navigation";
 import { StrategicPeriod } from "@/types/graphql";
 import { useStrategicPeriodStore, useAuthStore } from "@/stores";
+import { getAnnualTimelineForPeriod } from "@/lib/strategic-periods/periodDates";
 
 const getStatusIcon = (period: StrategicPeriod, now: Date) => {
   const startDate = new Date(period.startDate);
@@ -71,17 +72,23 @@ const formatDateRange = (startDate: string, endDate: string) => {
 };
 
 export default function StrategyPeriodGrid() {
-  const { strategicPeriods, loading, error, refetch } = useStrategicPeriods();
+  const user = useAuthStore((state) => state.user);
+  const { strategicPeriods, loading, error, refetch } = useStrategicPeriods({
+    limit: 1000,
+    organizationId: user?.organizationId,
+  });
   const { removeStrategicPeriod } = useStrategicPeriodMutations();
   const router = useRouter();
-  const { setSelectedPeriod } = useStrategicPeriodStore();
-  const user = useAuthStore((state) => state.user);
+  const { selectPeriodWithTimeline } = useStrategicPeriodStore();
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const now = new Date();
 
   const handlePeriodSelect = (period: StrategicPeriod) => {
     // Update store (which also syncs to sessionStorage)
-    setSelectedPeriod(period);
+    selectPeriodWithTimeline(
+      period,
+      getAnnualTimelineForPeriod(period, strategicPeriods),
+    );
     // Admins go to create their first strategic objective before the dashboard
     if (isAdmin) {
       router.push("/setup/objectives");

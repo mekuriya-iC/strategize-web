@@ -16,7 +16,9 @@ import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useAuthStore } from "@/stores/authStore";
 
 const CREATE_ORGANIZATION = gql`
-  mutation CreateOrganization($createOrganizationInput: CreateOrganizationInput!) {
+  mutation CreateOrganization(
+    $createOrganizationInput: CreateOrganizationInput!
+  ) {
     createOrganization(createOrganizationInput: $createOrganizationInput) {
       organizationId
       name
@@ -86,12 +88,14 @@ export default function OnboardingPage() {
   }, [user]);
 
   // Check if user needs organization creation
-  const needsOrgCreation = (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") && !user?.organizationId;
+  const needsOrgCreation =
+    (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") &&
+    !user?.organizationId;
 
   // Only SUPER_ADMIN and ADMIN see template selection
   const isSuperAdminOrAdmin =
     user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
-  
+
   // Calculate total steps based on whether org creation is needed
   let totalSteps = 2; // Default: password + complete
   if (needsOrgCreation) {
@@ -302,7 +306,10 @@ export default function OnboardingPage() {
                     placeholder="e.g., Acme Corporation"
                     value={organizationData.name}
                     onChange={(e) =>
-                      setOrganizationData({ ...organizationData, name: e.target.value })
+                      setOrganizationData({
+                        ...organizationData,
+                        name: e.target.value,
+                      })
                     }
                     required
                   />
@@ -314,7 +321,10 @@ export default function OnboardingPage() {
                     placeholder="e.g., Acme"
                     value={organizationData.shortName}
                     onChange={(e) =>
-                      setOrganizationData({ ...organizationData, shortName: e.target.value })
+                      setOrganizationData({
+                        ...organizationData,
+                        shortName: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -328,7 +338,10 @@ export default function OnboardingPage() {
                       placeholder="e.g., Ethiopia"
                       value={organizationData.country}
                       onChange={(e) =>
-                        setOrganizationData({ ...organizationData, country: e.target.value })
+                        setOrganizationData({
+                          ...organizationData,
+                          country: e.target.value,
+                        })
                       }
                       required
                     />
@@ -342,7 +355,10 @@ export default function OnboardingPage() {
                       placeholder="e.g., Addis Ababa"
                       value={organizationData.city}
                       onChange={(e) =>
-                        setOrganizationData({ ...organizationData, city: e.target.value })
+                        setOrganizationData({
+                          ...organizationData,
+                          city: e.target.value,
+                        })
                       }
                       required
                     />
@@ -355,7 +371,10 @@ export default function OnboardingPage() {
                     placeholder="e.g., Technology, Healthcare, Finance"
                     value={organizationData.industry}
                     onChange={(e) =>
-                      setOrganizationData({ ...organizationData, industry: e.target.value })
+                      setOrganizationData({
+                        ...organizationData,
+                        industry: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -367,7 +386,8 @@ export default function OnboardingPage() {
           )}
 
           {/* Password Change Step */}
-          {((step === 1 && !needsOrgCreation) || (step === 2 && needsOrgCreation)) && (
+          {((step === 1 && !needsOrgCreation) ||
+            (step === 2 && needsOrgCreation)) && (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <h3 className="text-xl font-semibold mb-2">
@@ -425,7 +445,8 @@ export default function OnboardingPage() {
                 <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Setup Complete!</h3>
                 <p className="text-gray-600">
-                  Your password has been changed. You can now access the dashboard.
+                  Your password has been changed. You can now access the
+                  dashboard.
                 </p>
               </div>
               <Button onClick={completeOnboarding} className="w-full">

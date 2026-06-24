@@ -19,6 +19,10 @@ import { toast } from "sonner";
 import { useMutation } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { useAuth } from "@/hooks/auth/useAuth";
+import {
+  useSystemConfigurationByOrg,
+  useSystemConfigurationMutations,
+} from "@/hooks/systemConfiguration/useSystemConfiguration";
 import Logo from "@/components/Logo";
 import {
   format,
@@ -56,6 +60,10 @@ interface Period {
 export default function StrategicPeriodsSetupPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { configuration, refetch: refetchConfiguration } =
+    useSystemConfigurationByOrg(user?.organizationId ?? "");
+  const { createConfiguration, updateConfiguration } =
+    useSystemConfigurationMutations();
   const [createPeriod] = useMutation(CREATE_STRATEGIC_PERIOD);
 
   const [granularity, setGranularity] = useState<
@@ -227,11 +235,36 @@ export default function StrategicPeriodsSetupPage() {
               organizationId: user?.organizationId,
               name: period.name,
               periodType: period.type,
-              startDate: period.startDate.toISOString(),
-              endDate: period.endDate.toISOString(),
+              startDate: format(period.startDate, "yyyy-MM-dd"),
+              endDate: format(period.endDate, "yyyy-MM-dd"),
             },
           },
         });
+      }
+
+      const fiscalYearStartMonth =
+        fiscalType === "ethiopian"
+          ? 7
+          : fiscalType === "custom"
+            ? parseInt(customStartMonth, 10)
+            : 1;
+
+      if (user?.organizationId) {
+        const latestConfigResult = await refetchConfiguration();
+        const currentConfiguration =
+          latestConfigResult.data?.systemConfigurationByOrg ?? configuration;
+
+        if (currentConfiguration?.systemConfigurationId) {
+          await updateConfiguration({
+            systemConfigurationId: currentConfiguration.systemConfigurationId,
+            fiscalYearStartMonth,
+          });
+        } else {
+          await createConfiguration({
+            organizationId: user.organizationId,
+            fiscalYearStartMonth,
+          });
+        }
       }
 
       toast.success(`${periods.length} strategic periods created successfully`);

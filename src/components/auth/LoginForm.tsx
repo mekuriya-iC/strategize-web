@@ -5,7 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -21,7 +28,10 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: MessageType }>({ text: "", type: null });
+  const [message, setMessage] = useState<{ text: string; type: MessageType }>({
+    text: "",
+    type: null,
+  });
   const [checkingSetup, setCheckingSetup] = useState(false);
   const { login, loading } = useAuth();
   const apolloClient = useApolloClient();
@@ -36,12 +46,18 @@ export default function LoginForm() {
     // Clear the intentional logout flag after reading
     if (intentionalLogout) {
       sessionStorage.removeItem("intentionalLogout");
-      setMessage({ text: "You have been logged out successfully.", type: "logout" });
+      setMessage({
+        text: "You have been logged out successfully.",
+        type: "logout",
+      });
       return; // Don't show expired message if user logged out intentionally
     }
 
     if (expired === "true") {
-      setMessage({ text: "Your session has expired. Please log in again.", type: "expired" });
+      setMessage({
+        text: "Your session has expired. Please log in again.",
+        type: "expired",
+      });
     } else if (storedMessage) {
       setMessage({ text: storedMessage, type: "info" });
       sessionStorage.removeItem("authMessage");
@@ -109,7 +125,7 @@ export default function LoginForm() {
           const isSetupComplete = hasPeriods && hasObjectives;
 
           navigateAfterLogin(
-            isSetupComplete ? "/dashboard" : "/organization-template"
+            isSetupComplete ? "/dashboard" : "/organization-template",
           );
         } catch (error) {
           console.error("Error checking organization setup:", error);
@@ -128,18 +144,33 @@ export default function LoginForm() {
 
       // Check for network errors
       if (isNetworkError || error?.networkError) {
-        toast.error("Network error. Please check your internet connection and try again.");
-      } else if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) {
-        toast.error("Unable to connect to server. Please check your internet connection.");
+        toast.error(
+          "Network error. Please check your internet connection and try again.",
+        );
+      } else if (
+        error?.message?.includes("Failed to fetch") ||
+        error?.message?.includes("NetworkError")
+      ) {
+        toast.error(
+          "Unable to connect to server. Please check your internet connection.",
+        );
       } else if (error?.graphQLErrors?.length > 0) {
         // GraphQL errors (usually auth failures)
-        const gqlError = error.graphQLErrors[0]?.message || "Authentication failed";
+        const gqlError =
+          error.graphQLErrors[0]?.message || "Authentication failed";
         toast.error(gqlError);
-      } else if (typeof error === "string" && error === "No access token received") {
-        toast.error("Login failed. Please check your credentials and try again.");
+      } else if (
+        typeof error === "string" &&
+        error === "No access token received"
+      ) {
+        toast.error(
+          "Login failed. Please check your credentials and try again.",
+        );
       } else {
         // Fallback for other errors
-        toast.error("Login failed. Please check your credentials and try again.");
+        toast.error(
+          "Login failed. Please check your credentials and try again.",
+        );
       }
     }
   };
@@ -158,10 +189,11 @@ export default function LoginForm() {
       {/* Auth Message */}
       {message.type && (
         <div
-          className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${message.type === "logout"
+          className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
+            message.type === "logout"
               ? "bg-green border border-green-200"
               : "bg-amber border border-amber-200"
-            }`}
+          }`}
         >
           {message.type === "logout" ? (
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -169,8 +201,9 @@ export default function LoginForm() {
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           )}
           <p
-            className={`text-sm ${message.type === "logout" ? "text-green-800" : "text-amber-800"
-              }`}
+            className={`text-sm ${
+              message.type === "logout" ? "text-green-800" : "text-amber-800"
+            }`}
           >
             {message.text}
           </p>
@@ -252,7 +285,11 @@ export default function LoginForm() {
         disabled={loading || checkingSetup || !email || !password}
         className="w-full bg-primary text-white py-6 font-sans cursor-pointer disabled:opacity-50"
       >
-        {loading ? "Logging in..." : checkingSetup ? "Checking setup..." : "Login"}
+        {loading
+          ? "Logging in..."
+          : checkingSetup
+            ? "Checking setup..."
+            : "Login"}
       </Button>
     </form>
   );

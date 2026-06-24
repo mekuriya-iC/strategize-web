@@ -36,6 +36,16 @@ export const REFRESH_TOKEN = gql`
   }
 `;
 
+// Change password mutation
+export const CHANGE_PASSWORD = gql`
+  mutation ChangePassword($input: ChangePasswordInput!) {
+    changePassword(input: $input) {
+      success
+      message
+    }
+  }
+`;
+
 // Logout mutation — not yet implemented in the API, kept for future use
 // export const LOGOUT_EMPLOYEE = gql`
 //   mutation LogoutEmployee {

@@ -78,7 +78,7 @@ export default function PermissionOverrides() {
   const [editingOverride, setEditingOverride] = useState<any>(null);
 
   const { overrides, meta, loading, refetch } = useUserPermissionOverrides(
-    userFilter === "all" ? "" : userFilter,
+    userFilter === "all" ? undefined : userFilter,
     currentPage,
     ITEMS_PER_PAGE
   );

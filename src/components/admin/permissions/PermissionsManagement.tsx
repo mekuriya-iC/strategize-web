@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -254,9 +254,9 @@ export default function PermissionsManagement() {
                 </TableRow>
               ) : (
                 Object.entries(groupedPermissions).map(([module, modulePermissions]) => (
-                  <>
+                  <React.Fragment key={module}>
                     {/* Module Header */}
-                    <TableRow key={`header-${module}`} className="bg-gray-100 dark:bg-gray-800/30">
+                    <TableRow className="bg-gray-100 dark:bg-gray-800/30">
                       <TableCell colSpan={6} className="px-4 py-2">
                         <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
                           <Shield className="w-4 h-4" />
@@ -336,7 +336,7 @@ export default function PermissionsManagement() {
                         </TableCell>
                       </TableRow>
                     ))}
-                  </>
+                  </React.Fragment>
                 ))
               )}
             </TableBody>

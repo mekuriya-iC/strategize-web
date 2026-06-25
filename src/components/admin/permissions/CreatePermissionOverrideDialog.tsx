@@ -57,13 +57,23 @@ export default function CreatePermissionOverrideDialog({
 
     setIsSubmitting(true);
     try {
-      await createPermissionOverride(
+      console.log('🔐 Creating permission override with:', {
+        userId: selectedUserId,
+        permissionId: selectedPermissionId,
+        isGranted,
+        reason: reason.trim(),
+        expiresAt: hasExpiration && expirationDate ? expirationDate.toISOString() : undefined,
+      });
+
+      const result = await createPermissionOverride(
         selectedUserId,
         selectedPermissionId,
         isGranted,
         reason.trim(),
         hasExpiration && expirationDate ? expirationDate.toISOString() : undefined
       );
+
+      console.log('✅ Permission override created:', result);
 
       // Reset form
       setSelectedUserId("");
@@ -75,7 +85,7 @@ export default function CreatePermissionOverrideDialog({
 
       onSuccess();
     } catch (error) {
-      console.error("Failed to create permission override:", error);
+      console.error("❌ Failed to create permission override:", error);
       const { title, description } = parseGraphQLError(error, "permission override");
       toast.error(title, { description });
     } finally {

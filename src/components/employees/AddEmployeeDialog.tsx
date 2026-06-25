@@ -28,6 +28,7 @@ import {
   EmployeeRole,
   EmployeeStatus,
 } from "@/types/graphql";
+import { useRoles } from "@/hooks/permissions/usePermissionManagement";
 
 interface AddEmployeeDialogProps {
   children: React.ReactNode;
@@ -82,6 +83,7 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children, onSucce
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { createEmployee, createLoading } = useEmployeeMutations();
+  const { roles, loading: rolesLoading } = useRoles(1, 100); // Fetch all active roles
 
   // Validation function
   const validateForm = (): boolean => {
@@ -342,17 +344,30 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children, onSucce
                 onValueChange={(value: EmployeeRole) =>
                   handleInputChange("role", value)
                 }
+                disabled={rolesLoading}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select role" />
+                  <SelectValue placeholder={rolesLoading ? "Loading roles..." : "Select role"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NORMAL">Employee</SelectItem>
-                  <SelectItem value="COORDINATOR">Coordinator</SelectItem>
-                  <SelectItem value="MANAGER">Manager</SelectItem>
-                  <SelectItem value="DIRECTOR">Director</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                  {rolesLoading ? (
+                    <SelectItem value="loading" disabled>Loading roles...</SelectItem>
+                  ) : roles.length === 0 ? (
+                    <SelectItem value="empty" disabled>No roles available</SelectItem>
+                  ) : (
+                    roles
+                      .filter((role: any) => !role.isDeleted) // Only show active roles
+                      .map((role: any) => (
+                        <SelectItem key={role.roleId} value={role.code}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{role.name}</span>
+                            {role.description && (
+                              <span className="text-xs text-gray-500">{role.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

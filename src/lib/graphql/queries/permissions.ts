@@ -202,6 +202,11 @@ export const GET_USER_PERMISSION_OVERRIDES = gql`
           scope
           module
         }
+        grantedBy {
+          employeeId
+          fullName
+          email
+        }
       }
       meta {
         totalItems

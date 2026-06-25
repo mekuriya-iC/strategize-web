@@ -248,6 +248,11 @@ export const CREATE_USER_PERMISSION_OVERRIDE = gql`
         scope
         module
       }
+      grantedBy {
+        employeeId
+        fullName
+        email
+      }
     }
   }
 `;

@@ -27,8 +27,8 @@ export default function RootLayout({
               {children}
               <SessionTimeoutWarning />
               <Toaster />
-              {/* Temporary Debug Panel - Remove before production */}
-              <DebugInfoPanel />
+              {/* Debug Panel - Only in development mode */}
+              {process.env.NODE_ENV === 'development' && <DebugInfoPanel />}
             </AuthProvider>
           </ThemeProvider>
         </ApolloWrapper>

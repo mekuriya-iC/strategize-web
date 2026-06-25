@@ -109,10 +109,9 @@ export const useUserRoleAssignments = (userId?: string, roleId?: string, page = 
 };
 
 // User Permission Overrides Hook
-export const useUserPermissionOverrides = (userId: string, page = 1, limit = 50) => {
+export const useUserPermissionOverrides = (userId?: string, page = 1, limit = 50) => {
   const { data, loading, error, refetch } = useQuery(GET_USER_PERMISSION_OVERRIDES, {
-    variables: { userId, page, limit },
-    skip: !userId,
+    variables: { userId: userId || undefined, page, limit },
     fetchPolicy: 'cache-and-network',
   });
 
@@ -183,10 +182,18 @@ export const usePermissionMutations = () => {
   });
 
   const [createUserPermissionOverride] = useMutation(CREATE_USER_PERMISSION_OVERRIDE, {
+    refetchQueries: [
+      {
+        query: GET_USER_PERMISSION_OVERRIDES,
+        variables: { userId: undefined, page: 1, limit: 50 }
+      }
+    ],
+    awaitRefetchQueries: true,
     onCompleted: () => {
       toast.success('Permission override created');
     },
     onError: (error) => {
+      console.error('CREATE_USER_PERMISSION_OVERRIDE Error:', error);
       toast.error(`Failed to create override: ${error.message}`);
     },
   });

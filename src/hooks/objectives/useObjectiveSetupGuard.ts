@@ -16,7 +16,9 @@ import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 export function useObjectiveSetupGuard() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+  const selectedPeriod = useStrategicPeriodStore(
+    (state) => state.selectedPeriod,
+  );
   const hasRedirected = useRef(false);
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";

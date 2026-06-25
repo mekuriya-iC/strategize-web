@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useLazyQuery, useApolloClient } from "@apollo/client";
 import { useRouter, usePathname } from "next/navigation";
-import { LOGIN_EMPLOYEE } from "@/lib/graphql/mutations/auth";
+import { LOGIN_EMPLOYEE, CHANGE_PASSWORD } from "@/lib/graphql/mutations/auth";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { LoginEmployeeInput, Employee } from "@/types/graphql";
 import { authLogger } from "@/lib/logger";
@@ -40,6 +40,7 @@ export const useAuth = () => {
   const pathname = usePathname();
   const apolloClient = useApolloClient();
   const [loginMutation] = useMutation(LOGIN_EMPLOYEE);
+  const [changePasswordMutation] = useMutation(CHANGE_PASSWORD);
   const [getMeQuery] = useLazyQuery(GET_ME);
 
   // Update token expiry display periodically
@@ -208,20 +209,20 @@ export const useAuth = () => {
     } catch (error: unknown) {
       setAuthState((prev) => ({ ...prev, loading: false }));
       authLogger.error("Login error:", error);
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const apolloError = error as any;
-      
+
       // Check if it's a network error (no internet, server unreachable)
-      const isNetworkError = 
-        apolloError?.networkError || 
+      const isNetworkError =
+        apolloError?.networkError ||
         apolloError?.message?.includes("Failed to fetch") ||
         apolloError?.message?.includes("NetworkError") ||
         apolloError?.message?.includes("Network request failed") ||
         apolloError?.message?.includes("ERR_NETWORK");
-      
-      return { 
-        success: false, 
+
+      return {
+        success: false,
         error: apolloError,
         isNetworkError,
       };
@@ -264,13 +265,39 @@ export const useAuth = () => {
     return getAccessToken();
   }, []);
 
+  const changePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      const { data } = await changePasswordMutation({
+        variables: {
+          input: {
+            oldPassword,
+            newPassword,
+          },
+        },
+      });
+
+      if (data?.changePassword?.success) {
+        authLogger.info("Password changed successfully");
+        return { success: true, message: data.changePassword.message };
+      } else {
+        return { success: false, error: "Failed to change password" };
+      }
+    } catch (error: unknown) {
+      authLogger.error("Change password error:", error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apolloError = error as any;
+      return {
+        success: false,
+        error: apolloError?.message || "Failed to change password",
+      };
+    }
+  };
+
   return {
     ...authState,
     login,
     logout,
     getToken,
+    changePassword,
   };
 };
-
-
- 

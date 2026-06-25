@@ -6,7 +6,7 @@ import { GET_KPI, GET_KPI_UPDATES } from "@/lib/graphql/queries/kpis";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Target, TrendingUp, Users, Calendar } from "lucide-react";
+import { ArrowLeft, Target, TrendingUp, Calendar } from "lucide-react";
 import {
   KpiProgressDialog,
   KpiProgressHistory,
@@ -14,6 +14,80 @@ import {
   KpiAssignmentDialog,
   SharedKpiParticipants,
 } from "@/components/kpis";
+import { getUnitLabel, getUnitName } from "@/utils/kpi-format";
+
+const KPI_TYPE_LABELS: Record<string, string> = {
+  individual: "Individual",
+  shared: "Shared",
+};
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  weekly: "Weekly",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  semi_annual: "Semi-Annual",
+  annual: "Annual",
+};
+
+type KpiDetail = {
+  customUnitLabel?: string | null;
+  measurementUnit?: string | null;
+  unitType?: string | null;
+};
+
+const getMeasurementUnitDisplay = (kpi: KpiDetail) => {
+  if (kpi.customUnitLabel?.trim()) {
+    return {
+      valueLabel: kpi.customUnitLabel.trim(),
+      fullName: kpi.customUnitLabel.trim(),
+    };
+  }
+
+  if (kpi.unitType) {
+    const valueLabel = getUnitLabel(kpi.unitType);
+    const fullName = getUnitName(kpi.unitType);
+
+    return {
+      valueLabel: valueLabel || kpi.measurementUnit || "",
+      fullName:
+        fullName && fullName !== "Unknown"
+          ? fullName
+          : (kpi.measurementUnit ?? "Not set"),
+    };
+  }
+
+  switch (kpi.measurementUnit) {
+    case "percentage":
+      return { valueLabel: "%", fullName: "Percentage" };
+    case "currency":
+      return { valueLabel: "Million ETB", fullName: "Currency (Million ETB)" };
+    case "hour":
+      return { valueLabel: "hrs", fullName: "Hours" };
+    case "rating":
+      return { valueLabel: "Rating", fullName: "Rating" };
+    case "boolean":
+      return { valueLabel: "Yes/No", fullName: "Boolean" };
+    case "number":
+      return { valueLabel: "", fullName: "Number" };
+    default:
+      return {
+        valueLabel: kpi.measurementUnit ?? "",
+        fullName: kpi.measurementUnit ?? "Not set",
+      };
+  }
+};
+
+const formatValueWithUnit = (value: number, unitLabel: string) => {
+  if (!unitLabel) {
+    return value.toString();
+  }
+
+  if (unitLabel === "%") {
+    return `${value}%`;
+  }
+
+  return `${value} ${unitLabel}`;
+};
 
 export default function KpiDetailPage() {
   const params = useParams();
@@ -26,7 +100,7 @@ export default function KpiDetailPage() {
   });
 
   // Fetch KPI updates
-  const { data: updatesData, loading: updatesLoading } = useQuery(GET_KPI_UPDATES, {
+  const { data: updatesData } = useQuery(GET_KPI_UPDATES, {
     variables: {
       kpiId,
       page: 1,
@@ -91,6 +165,10 @@ export default function KpiDetailPage() {
     }
   };
 
+  const measurementUnitDisplay = getMeasurementUnitDisplay(kpi);
+  const kpiTypeLabel = KPI_TYPE_LABELS[kpi.kpiType] ?? kpi.kpiType;
+  const frequencyLabel = FREQUENCY_LABELS[kpi.frequency] ?? kpi.frequency;
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -125,10 +203,10 @@ export default function KpiDetailPage() {
                 {kpi.status?.replace(/_/g, " ")}
               </Badge>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {kpi.kpiType}
+                {kpiTypeLabel}
               </Badge>
               <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                {kpi.frequency}
+                {frequencyLabel}
               </Badge>
             </div>
           </div>
@@ -175,7 +253,7 @@ export default function KpiDetailPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Target Value</p>
               <p className="text-2xl font-bold text-blue-600">
                 {kpi.targetValue !== null && kpi.targetValue !== undefined 
-                  ? `${kpi.targetValue} ${kpi.measurementUnit}` 
+                  ? formatValueWithUnit(kpi.targetValue, measurementUnitDisplay.valueLabel)
                   : <span className="text-gray-400 text-base">Not set</span>
                 }
               </p>
@@ -184,9 +262,9 @@ export default function KpiDetailPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Baseline</p>
               <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
                 {kpi.baselineValue !== null && kpi.baselineValue !== undefined
-                  ? `${kpi.baselineValue} ${kpi.measurementUnit}`
+                  ? formatValueWithUnit(kpi.baselineValue, measurementUnitDisplay.valueLabel)
                   : kpi.baseline !== null && kpi.baseline !== undefined
-                  ? `${kpi.baseline} ${kpi.measurementUnit}`
+                  ? formatValueWithUnit(kpi.baseline, measurementUnitDisplay.valueLabel)
                   : <span className="text-gray-400 text-base">Not set</span>
                 }
               </p>
@@ -203,7 +281,7 @@ export default function KpiDetailPage() {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Measurement Unit</p>
               <p className="text-2xl font-bold text-green-600">
-                {kpi.measurementUnit || <span className="text-gray-400 text-base">Not set</span>}
+                {measurementUnitDisplay.fullName || <span className="text-gray-400 text-base">Not set</span>}
               </p>
             </div>
           </div>
@@ -286,7 +364,10 @@ export default function KpiDetailPage() {
                     {target.timeline}
                   </p>
                   <p className="text-xl font-bold text-green-700 dark:text-green-300">
-                    {target.target} {kpi.measurementUnit}
+                    {formatValueWithUnit(
+                      target.target,
+                      measurementUnitDisplay.valueLabel,
+                    )}
                   </p>
                 </div>
               ))}

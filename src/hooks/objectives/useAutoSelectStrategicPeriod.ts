@@ -2,29 +2,29 @@
  * Hook to automatically select the current strategic period
  * Used for non-admin users who should be redirected directly to dashboard
  */
-import { useEffect } from 'react';
-import { useStrategicPeriods } from './useStrategicPeriods';
-import { useStrategicPeriodStore } from '@/stores';
-import { StrategicPeriod } from '@/types/graphql';
+import { useEffect } from "react";
+import { useStrategicPeriods } from "./useStrategicPeriods";
+import { useAuthStore, useStrategicPeriodStore } from "@/stores";
+import {
+  findCurrentPeriod,
+  getAnnualPeriods,
+  getAnnualTimelineForPeriod,
+  getPeriodTimeStatus,
+} from "@/lib/strategic-periods/periodDates";
 
 /**
- * Determines if a strategic period is current based on today's date
- */
-const isCurrentPeriod = (period: StrategicPeriod): boolean => {
-  const now = new Date();
-  const startDate = new Date(period.startDate);
-  const endDate = new Date(period.endDate);
-  
-  return now >= startDate && now <= endDate;
-};
-
-/**
- * Auto-selects the current strategic period if none is selected
- * Priority: Active status period > Current period by date > First ANNUAL period > First available period
+ * Auto-selects the current strategic period if none is selected.
+ * For dashboard/objective consistency, annual periods are preferred when they
+ * exist, while the quarter selector separately displays the active quarter.
  */
 export const useAutoSelectStrategicPeriod = () => {
-  const { strategicPeriods, loading } = useStrategicPeriods();
-  const { selectedPeriod, selectPeriodWithTimeline } = useStrategicPeriodStore();
+  const user = useAuthStore((state) => state.user);
+  const { strategicPeriods, loading } = useStrategicPeriods({
+    limit: 1000,
+    organizationId: user?.organizationId,
+  });
+  const { selectedPeriod, annualTimeline, selectPeriodWithTimeline } =
+    useStrategicPeriodStore();
 
   useEffect(() => {
     // Don't auto-select if still loading or no periods available
@@ -33,54 +33,85 @@ export const useAutoSelectStrategicPeriod = () => {
     }
 
     // Check if the currently selected period is still valid
-    const isSelectedPeriodValid = selectedPeriod && strategicPeriods.some(
-      p => p.strategicPeriodId === selectedPeriod.strategicPeriodId
-    );
+    const isSelectedPeriodValid =
+      selectedPeriod &&
+      strategicPeriods.some(
+        (p) => p.strategicPeriodId === selectedPeriod.strategicPeriodId,
+      );
 
-    // If there's a valid selected period, keep it
-    if (isSelectedPeriodValid) {
+    // If there's a valid selected period, keep it, but repair stale persisted
+    // timelines from older selector logic.
+    if (isSelectedPeriodValid && selectedPeriod) {
+      const expectedTimeline = getAnnualTimelineForPeriod(
+        selectedPeriod,
+        strategicPeriods,
+      );
+
+      if (annualTimeline !== expectedTimeline) {
+        selectPeriodWithTimeline(selectedPeriod, expectedTimeline);
+      }
+
       return;
     }
 
-    // If no valid period is selected, auto-select one
-    // Priority 1: Find period with ACTIVE status
-    const activePeriod = strategicPeriods.find(p => 
-      p.status?.toUpperCase() === 'ACTIVE'
+    const annualPeriods = getAnnualPeriods(strategicPeriods);
+
+    // Prefer the active/current annual period so objective dashboards keep the
+    // annual strategic context while the topbar can still show the active quarter.
+    const activeAnnualPeriod = annualPeriods.find(
+      (p) => p.status?.toLowerCase() === "active",
     );
-    
-    // Priority 2: Find the current period by date
-    const currentPeriod = strategicPeriods.find(isCurrentPeriod);
-    
-    // Priority 3: Find the first ANNUAL period (best for corporate objectives)
-    const firstAnnualPeriod = strategicPeriods.find(p => 
-      p.periodType?.toUpperCase() === 'ANNUAL'
+    const currentAnnualPeriod = findCurrentPeriod(annualPeriods);
+    const firstAnnualPeriod = annualPeriods[0];
+
+    // Fallback for data sets that only contain quarterly/monthly/custom periods.
+    const activePeriod = strategicPeriods.find(
+      (p) => p.status?.toLowerCase() === "active",
     );
-    
-    // Priority 4: First period in the list
-    const periodToSelect = activePeriod || currentPeriod || firstAnnualPeriod || strategicPeriods[0];
-    
+    const currentPeriod = findCurrentPeriod(strategicPeriods);
+
+    const periodToSelect =
+      activeAnnualPeriod ??
+      currentAnnualPeriod ??
+      firstAnnualPeriod ??
+      activePeriod ??
+      currentPeriod ??
+      strategicPeriods[0];
+
     if (periodToSelect) {
-      // Format annual timeline
-      const start = new Date(periodToSelect.startDate);
-      const end = new Date(periodToSelect.endDate);
-      const startYear = start.getFullYear();
-      const endYear = end.getFullYear();
-      const annualTimeline = `${startYear}/${endYear.toString().slice(-2)}`;
-      
-      console.log('🎯 Auto-selecting strategic period:', {
+      const annualTimeline = getAnnualTimelineForPeriod(
+        periodToSelect,
+        strategicPeriods,
+      );
+
+      console.log("🎯 Auto-selecting strategic period:", {
         name: periodToSelect.name,
         id: periodToSelect.strategicPeriodId,
         status: periodToSelect.status,
+        timeStatus: getPeriodTimeStatus(periodToSelect),
         annualTimeline,
-        reason: activePeriod ? 'active status' : 
-                currentPeriod ? 'current by date' : 
-                firstAnnualPeriod ? 'first annual' : 
-                'first available'
+        reason: activeAnnualPeriod
+          ? "active annual status"
+          : currentAnnualPeriod
+            ? "current annual by date"
+            : firstAnnualPeriod
+              ? "first annual"
+              : activePeriod
+                ? "active status"
+                : currentPeriod
+                  ? "current by date"
+                  : "first available",
       });
-      
+
       selectPeriodWithTimeline(periodToSelect, annualTimeline);
     }
-  }, [strategicPeriods, loading, selectedPeriod, selectPeriodWithTimeline]);
+  }, [
+    strategicPeriods,
+    loading,
+    selectedPeriod,
+    annualTimeline,
+    selectPeriodWithTimeline,
+  ]);
 
   return {
     loading,

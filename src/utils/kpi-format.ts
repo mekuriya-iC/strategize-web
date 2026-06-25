@@ -2,7 +2,13 @@
  * Utility functions for formatting KPI values with their units
  */
 
-export type KpiUnitType = "NUMBER" | "PERCENT" | "CURRENCY" | "RATIO" | "COUNT";
+export type KpiUnitType =
+  | "NUMBER"
+  | "PERCENT"
+  | "CURRENCY"
+  | "HOUR"
+  | "RATIO"
+  | "COUNT";
 
 /**
  * Get the display label for a KPI unit type
@@ -15,6 +21,8 @@ export function getUnitLabel(unitType: KpiUnitType | string): string {
       return "%";
     case "CURRENCY":
       return "Million ETB";
+    case "HOUR":
+      return "hrs";
     case "RATIO":
       return "Ratio";
     case "COUNT":
@@ -35,6 +43,8 @@ export function getUnitName(unitType: KpiUnitType | string): string {
       return "Percentage";
     case "CURRENCY":
       return "Currency (Million ETB)";
+    case "HOUR":
+      return "Hours";
     case "RATIO":
       return "Ratio";
     case "COUNT":
@@ -97,6 +107,8 @@ export function formatKpiValue(
         return `${formatted}%`;
       case "CURRENCY":
         return compact ? `${formatted} Million ETB` : `${numValue.toLocaleString()} Million ETB`;
+      case "HOUR":
+        return `${formatted} hrs`;
       case "RATIO":
         return formatted;
       case "COUNT":

@@ -20,7 +20,6 @@ const SEMI_ANNUAL_PERIOD_FIELDS = gql`
     semester
     startDate
     endDate
-    strategicPeriodId
     organizationId
     isActive
     createdAt
@@ -31,7 +30,9 @@ const SEMI_ANNUAL_PERIOD_FIELDS = gql`
 const SEMI_ANNUAL_CONFIG_FIELDS = gql`
   fragment SemiAnnualConfigFields on SemiAnnualPerformanceConfig {
     configId
-    semiAnnualPeriodId
+    semiAnnualPeriod {
+      ...SemiAnnualPeriodFields
+    }
     organizationId
     ownPerformanceWeight
     sharedPerformanceWeight
@@ -48,7 +49,6 @@ const SHARED_KPI_FIELDS = gql`
     description
     achievementScore
     isActive
-    semiAnnualPeriodId
     organizationId
     createdAt
     updatedAt
@@ -65,7 +65,9 @@ const SEMI_ANNUAL_RESULT_FIELDS = gql`
   fragment SemiAnnualResultFields on SemiAnnualPerformanceResult {
     resultId
     organizationId
-    semiAnnualPeriodId
+    semiAnnualPeriod {
+      ...SemiAnnualPeriodFields
+    }
     kpiScore
     evaluation360Score
     baseScore
@@ -122,6 +124,7 @@ export const GET_SEMI_ANNUAL_CONFIG = gql`
       ...SemiAnnualConfigFields
     }
   }
+  ${SEMI_ANNUAL_PERIOD_FIELDS}
   ${SEMI_ANNUAL_CONFIG_FIELDS}
 `;
 
@@ -167,6 +170,7 @@ export const GET_ALL_SEMI_ANNUAL_RESULTS = gql`
       ...SemiAnnualResultFields
     }
   }
+  ${SEMI_ANNUAL_PERIOD_FIELDS}
   ${SEMI_ANNUAL_RESULT_FIELDS}
 `;
 
@@ -189,6 +193,7 @@ export const CREATE_OR_UPDATE_CONFIG = gql`
       ...SemiAnnualConfigFields
     }
   }
+  ${SEMI_ANNUAL_PERIOD_FIELDS}
   ${SEMI_ANNUAL_CONFIG_FIELDS}
 `;
 

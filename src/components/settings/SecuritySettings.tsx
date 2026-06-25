@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore } from "@/stores";
-import { useEmployeeMutations } from "@/hooks/employees/useEmployeeMutations";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,19 +16,21 @@ import { Shield, Eye, EyeOff, Key, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SecuritySettings() {
-  const user = useAuthStore((state) => state.user);
-  const { updateEmployee, updateLoading } = useEmployeeMutations();
+  const { changePassword } = useAuth();
+  const [loading, setLoading] = useState(false);
 
+  const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
+    oldPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
 
   const handleChangePassword = async () => {
-    if (!user?.employeeId) {
-      toast.error("Unable to change password: User not found");
+    if (!passwordForm.oldPassword) {
+      toast.error("Please enter your current password");
       return;
     }
 
@@ -43,29 +44,35 @@ export default function SecuritySettings() {
       return;
     }
 
+    setLoading(true);
     try {
-      const result = await updateEmployee({
-        employeeId: user.employeeId,
-        password: passwordForm.newPassword,
-      });
+      const result = await changePassword(
+        passwordForm.oldPassword,
+        passwordForm.newPassword
+      );
 
       if (result.success) {
         toast.success(
-          "Password changed successfully. Please use your new password on next login."
+          result.message || "Password changed successfully. Please use your new password on next login."
         );
         setPasswordForm({
+          oldPassword: "",
           newPassword: "",
           confirmPassword: "",
         });
       } else {
         const errorMessage =
-          result.error instanceof Error
+          typeof result.error === "string"
+            ? result.error
+            : result.error instanceof Error
             ? result.error.message
             : "Failed to change password";
         toast.error(errorMessage);
       }
-    } catch {
+    } catch (error) {
       toast.error("Failed to change password. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,6 +118,35 @@ export default function SecuritySettings() {
                 After changing your password, you will need to use the new
                 password on your next login.
               </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="oldPassword">Current Password</Label>
+            <div className="relative">
+              <Input
+                id="oldPassword"
+                type={showOldPassword ? "text" : "password"}
+                value={passwordForm.oldPassword}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    oldPassword: e.target.value,
+                  })
+                }
+                placeholder="Enter current password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowOldPassword(!showOldPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                {showOldPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -260,7 +296,8 @@ export default function SecuritySettings() {
             <Button
               onClick={handleChangePassword}
               disabled={
-                updateLoading ||
+                loading ||
+                !passwordForm.oldPassword ||
                 !passwordForm.newPassword ||
                 !passwordForm.confirmPassword ||
                 passwordForm.newPassword !== passwordForm.confirmPassword ||
@@ -268,7 +305,7 @@ export default function SecuritySettings() {
               }
               className="w-full sm:w-auto"
             >
-              {updateLoading ? (
+              {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
                   <span className="hidden sm:inline">Changing...</span>

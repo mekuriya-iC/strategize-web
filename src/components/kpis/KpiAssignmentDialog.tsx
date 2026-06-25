@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,13 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Building2, Users, User, Info, Check } from "lucide-react";
@@ -29,6 +22,7 @@ import {
   CREATE_KPI_ASSIGNMENT_DIVISION,
   CREATE_KPI_ASSIGNMENT_CORPORATE,
 } from "@/lib/graphql/mutations/kpis";
+import { GET_KPI } from "@/lib/graphql/queries/kpis";
 import { useAuthStore } from "@/stores";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
@@ -36,6 +30,7 @@ import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { toast } from "sonner";
 import { parseGraphQLError } from "@/utils/errorParsing";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getUnitLabel, getUnitName } from "@/utils/kpi-format";
 import {
   Tooltip,
   TooltipContent,
@@ -47,8 +42,16 @@ interface KpiAssignmentDialogProps {
   kpi: {
     kpiId: string;
     name: string;
-    targetValue: number;
+    targetValue?: number | null;
+    assignedTargetValue?: number | null;
     measurementUnit: string;
+    unitType?: string;
+    customUnitLabel?: string;
+    weight?: number | null;
+    status?: string;
+    objective?: {
+      title?: string;
+    } | null;
   };
   strategicPeriodId: string;
   onSuccess?: () => void;
@@ -56,6 +59,51 @@ interface KpiAssignmentDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
+
+type KpiUnitDisplay = {
+  valueLabel: string;
+  fullName: string;
+};
+
+const getMeasurementUnitDisplay = (kpi: KpiAssignmentDialogProps["kpi"]): KpiUnitDisplay => {
+  if (kpi.customUnitLabel?.trim()) {
+    const label = kpi.customUnitLabel.trim();
+    return { valueLabel: label, fullName: label };
+  }
+
+  if (kpi.unitType) {
+    const valueLabel = getUnitLabel(kpi.unitType);
+    const fullName = getUnitName(kpi.unitType);
+
+    return {
+      valueLabel: valueLabel || kpi.measurementUnit || "",
+      fullName:
+        fullName && fullName !== "Unknown"
+          ? fullName
+          : (kpi.measurementUnit ?? "Not set"),
+    };
+  }
+
+  switch (kpi.measurementUnit) {
+    case "percentage":
+      return { valueLabel: "%", fullName: "Percentage" };
+    case "currency":
+      return { valueLabel: "Million ETB", fullName: "Currency (Million ETB)" };
+    case "hour":
+      return { valueLabel: "hrs", fullName: "Hours" };
+    case "rating":
+      return { valueLabel: "Rating", fullName: "Rating" };
+    case "boolean":
+      return { valueLabel: "Yes/No", fullName: "Boolean" };
+    case "number":
+      return { valueLabel: "", fullName: "Number" };
+    default:
+      return {
+        valueLabel: kpi.measurementUnit ?? "",
+        fullName: kpi.measurementUnit ?? "Not set",
+      };
+  }
+};
 
 export default function KpiAssignmentDialog({
   kpi,
@@ -66,24 +114,39 @@ export default function KpiAssignmentDialog({
   onOpenChange: controlledOnOpenChange,
 }: KpiAssignmentDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  
+
   // Use controlled state if provided, otherwise use internal state
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
-  
+
   const [assignmentType, setAssignmentType] = useState<
     "EMPLOYEE" | "DEPARTMENT" | "DIVISION" | "CORPORATE"
   >("EMPLOYEE");
   const [selectedId, setSelectedId] = useState("");
-  const [targetValue, setTargetValue] = useState(kpi.targetValue.toString());
+  const [targetValue, setTargetValue] = useState("");
   const [weight, setWeight] = useState("100");
   const [parentWeightAllocation, setParentWeightAllocation] = useState("");
   const [cap, setCap] = useState("1.5");
   const [useCustomParentWeight, setUseCustomParentWeight] = useState(false);
+  const [hasEditedTarget, setHasEditedTarget] = useState(false);
+  const [hasEditedWeight, setHasEditedWeight] = useState(false);
 
   // Fetch employees - filter by department for non-admins
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
+  const { data: liveKpiData, loading: liveKpiLoading } = useQuery(GET_KPI, {
+    variables: { kpiId: kpi.kpiId },
+    skip: !open || !kpi.kpiId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const liveKpi = liveKpiData?.kpi;
+  const resolvedKpi = liveKpi ?? kpi;
+  const resolvedTarget =
+    resolvedKpi?.assignedTargetValue ?? resolvedKpi?.targetValue ?? 0;
+  const resolvedWeight = resolvedKpi?.weight ?? 100;
+  const resolvedMeasurementUnit = getMeasurementUnitDisplay(resolvedKpi);
 
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: {
@@ -180,14 +243,52 @@ export default function KpiAssignmentDialog({
   const loading =
     loadingEmployee || loadingDepartment || loadingDivision || loadingCorporate;
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setAssignmentType("EMPLOYEE");
+    setSelectedId("");
+    setTargetValue(String(resolvedTarget));
+    setWeight(String(resolvedWeight));
+    setParentWeightAllocation(String(resolvedWeight));
+    setUseCustomParentWeight(false);
+    setCap("1.5");
+    setHasEditedTarget(false);
+    setHasEditedWeight(false);
+  }, [open, kpi.kpiId]);
+
+  useEffect(() => {
+    if (!open || hasEditedTarget) {
+      return;
+    }
+
+    setTargetValue(String(resolvedTarget));
+  }, [open, hasEditedTarget, resolvedTarget]);
+
+  useEffect(() => {
+    if (!open || hasEditedWeight) {
+      return;
+    }
+
+    const nextWeight = String(resolvedWeight);
+    setWeight(nextWeight);
+    if (!useCustomParentWeight) {
+      setParentWeightAllocation(nextWeight);
+    }
+  }, [open, hasEditedWeight, resolvedWeight, useCustomParentWeight]);
+
   const handleClose = () => {
     setOpen(false);
     setSelectedId("");
-    setTargetValue(kpi.targetValue.toString());
-    setWeight("100");
-    setParentWeightAllocation("");
+    setTargetValue(String(resolvedTarget));
+    setWeight(String(resolvedWeight));
+    setParentWeightAllocation(String(resolvedWeight));
     setUseCustomParentWeight(false);
     setCap("1.5");
+    setHasEditedTarget(false);
+    setHasEditedWeight(false);
     onSuccess?.();
   };
 
@@ -315,12 +416,60 @@ export default function KpiAssignmentDialog({
             Assign KPI
           </DialogTitle>
           <DialogDescription>
-            Assign <strong>{kpi.name}</strong> to an employee, department,
+            Assign <strong>{resolvedKpi.name}</strong> to an employee, department,
             division, or corporate scorecard
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {resolvedKpi.name}
+                </p>
+                {resolvedKpi.objective?.title && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Objective: {resolvedKpi.objective.title}
+                  </p>
+                )}
+                {resolvedKpi.status && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Status: {resolvedKpi.status.replace(/_/g, " ")}
+                  </p>
+                )}
+              </div>
+              {liveKpiLoading && (
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Refreshing KPI data...
+                </p>
+              )}
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-600 dark:text-gray-400 sm:grid-cols-2">
+              <p>
+                Current target:{" "}
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {resolvedTarget}
+                  {resolvedMeasurementUnit.valueLabel
+                    ? ` ${resolvedMeasurementUnit.valueLabel}`
+                    : ""}
+                </span>
+              </p>
+              <p>
+                Unit:{" "}
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {resolvedMeasurementUnit.fullName}
+                </span>
+              </p>
+              <p>
+                Default weight:{" "}
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {resolvedWeight}%
+                </span>
+              </p>
+            </div>
+          </div>
+
           {/* Assignment Type */}
           <div className="space-y-2">
             <Label>Assignment Type</Label>
@@ -432,15 +581,21 @@ export default function KpiAssignmentDialog({
                 type="number"
                 step="0.01"
                 value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
+                onChange={(e) => {
+                  setTargetValue(e.target.value);
+                  setHasEditedTarget(true);
+                }}
                 className="flex-1"
               />
               <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
-                {kpi.measurementUnit}
+                {resolvedMeasurementUnit.valueLabel || resolvedMeasurementUnit.fullName}
               </div>
             </div>
             <p className="text-xs text-gray-500">
-              Original target: {kpi.targetValue} {kpi.measurementUnit}
+              Live KPI target: {resolvedTarget}
+              {resolvedMeasurementUnit.valueLabel
+                ? ` ${resolvedMeasurementUnit.valueLabel}`
+                : ""}
             </p>
           </div>
 
@@ -469,6 +624,7 @@ export default function KpiAssignmentDialog({
               max="100"
               value={weight}
               onChange={(e) => {
+                setHasEditedWeight(true);
                 setWeight(e.target.value);
                 // Auto-sync parent weight if not using custom
                 if (!useCustomParentWeight) {

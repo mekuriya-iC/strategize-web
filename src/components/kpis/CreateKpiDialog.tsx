@@ -70,6 +70,24 @@ const defaultForm = {
   strategicObjectiveId: "",
   customUnitLabel: "",
   parentId: "", // For KPI cascade/hierarchy
+  unitType: "", // Keep track of unitType mapping
+};
+
+const mapMeasurementUnitToUnitType = (unit: string): string => {
+  switch (unit) {
+    case "percentage":
+      return "PERCENT";
+    case "currency":
+      return "CURRENCY";
+    case "hour":
+      return "HOUR";
+    case "number":
+    case "boolean":
+    case "rating":
+    case "custom":
+    default:
+      return "NUMBER";
+  }
 };
 
 export function CreateKpiDialog({
@@ -93,11 +111,12 @@ export function CreateKpiDialog({
         measurementUnit: editKpi.measurementUnit || "",
         frequency: editKpi.frequency || "",
         targetValue: (editKpi.assignedTargetValue ?? editKpi.targetValue)?.toString() || "",
-        baselineValue: editKpi.baselineValue?.toString() || "",
+        baselineValue: (editKpi.baselineValue ?? editKpi.baseline)?.toString() || "",
         weight: editKpi.weight?.toString() || "",
         strategicObjectiveId: editKpi.objective?.objectiveId || "",
         customUnitLabel: editKpi.customUnitLabel || "",
-        parentId: (editKpi as any).parentId || "", // Parent KPI for cascade
+        parentId: editKpi.parent?.kpiId || "", // Parent KPI for cascade
+        unitType: editKpi.unitType || "",
       });
     } else {
       setForm(defaultForm);
@@ -143,11 +162,12 @@ export function CreateKpiDialog({
         measurementUnit: form.measurementUnit,
         frequency: form.frequency,
         targetValue: parseFloat(form.targetValue),
-        baselineValue: form.baselineValue ? parseFloat(form.baselineValue) : undefined,
-        weight: form.weight ? parseFloat(form.weight) : undefined,
+        baselineValue: form.baselineValue && form.baselineValue.trim() !== '' ? parseFloat(form.baselineValue) : undefined,
+        weight: form.weight && form.weight.trim() !== '' ? parseFloat(form.weight) : undefined,
         strategicObjectiveId: form.strategicObjectiveId || undefined,
         customUnitLabel: form.measurementUnit === "custom" ? form.customUnitLabel || undefined : undefined,
         parentId: form.parentId || undefined, // Include parent KPI for cascade aggregation
+        unitType: form.unitType || mapMeasurementUnitToUnitType(form.measurementUnit),
       };
 
       if (isEdit && editKpi) {
@@ -163,6 +183,14 @@ export function CreateKpiDialog({
 
   const set = (key: keyof typeof form) => (val: string) =>
     setForm((f) => ({ ...f, [key]: val }));
+
+  const handleMeasurementUnitChange = (val: string) => {
+    setForm((f) => ({
+      ...f,
+      measurementUnit: val,
+      unitType: mapMeasurementUnitToUnitType(val),
+    }));
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,7 +265,7 @@ export function CreateKpiDialog({
           {/* Measurement Unit */}
           <div className="space-y-2">
             <Label>Measurement Unit <span className="text-red-500">*</span></Label>
-            <Select value={form.measurementUnit} onValueChange={set("measurementUnit")}>
+            <Select value={form.measurementUnit} onValueChange={handleMeasurementUnitChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select unit" />
               </SelectTrigger>

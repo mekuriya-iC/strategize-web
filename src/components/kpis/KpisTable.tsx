@@ -92,7 +92,7 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
   const handleDelete = async () => {
     if (!deleteKpiItem) return;
     try {
-      await deleteKpi(deleteKpiItem.kpiId);
+      await deleteKpi({ kpiId: deleteKpiItem.kpiId });
       setDeleteKpiItem(null);
     } catch {
       /* handled by hook */

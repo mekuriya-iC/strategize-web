@@ -118,7 +118,7 @@ export function useUpdateKPIState({
       setFormData((prev) => ({
         ...prev,
         name: name || "",
-        baseline: baseline?.toString() || "0",
+        baseline: (baseline !== null && baseline !== undefined) ? baseline.toString() : "",
         weight: weight?.toString() || "0",
         weightType: prev.weightType || ("PERCENT" as KpiWeightType),
         status,
@@ -634,7 +634,7 @@ export function useUpdateKPIState({
       const updateInput: UpdateKpiInput = {
         kpiId: kpi.kpiId,
         name: formData.name,
-        baseline: parseFloat(formData.baseline) || 0,
+        baseline: formData.baseline !== "" ? parseFloat(formData.baseline) : undefined,
         weight: parseFloat(formData.weight) || 0,
         targetValue: calculatedTargetValue, // Add targetValue
         // Only include optional fields if they have values

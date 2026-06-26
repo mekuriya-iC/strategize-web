@@ -158,6 +158,7 @@ export const useKpiMutations = () => {
       strategicObjectiveId?: string;
       customUnitLabel?: string;
       parentId?: string;
+      unitType?: string;
     }) => {
       const result = await createKpiMutation({
         variables: { input },
@@ -178,6 +179,7 @@ export const useKpiMutations = () => {
       isActive?: boolean;
       customUnitLabel?: string;
       parentId?: string;
+      unitType?: string;
     }) => {
       const result = await updateKpiMutation({
         variables: { input },

@@ -1,6 +1,6 @@
 # Strategize Web Application
 
-> **Version:** 0.1.0  
+> **Version:** 0.1.0
 > **Documentation:** [Full Technical Documentation](./DOCUMENTATION.md)
 
 > **Guides:**

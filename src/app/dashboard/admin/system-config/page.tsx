@@ -69,6 +69,9 @@ export default function SystemConfigPage() {
   const { user } = useAuth();
   // TODO: Get organizationId from proper source when organization field is added to Employee type
   const organizationId = user?.organizationId || "";
+  
+  // Check if user is admin
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
   const { configuration, loading, refetch } = useSystemConfigurationByOrg(organizationId);
   const { createConfiguration, updateConfiguration, loading: mutationLoading } =
@@ -455,19 +458,21 @@ export default function SystemConfigPage() {
         </div>
       )}
 
-      {/* Data Management Tools - Always show */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-orange-600" />
-            <CardTitle>Data Management</CardTitle>
-          </div>
-          <CardDescription>Tools for fixing and maintaining data integrity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FixAssigneeType />
-        </CardContent>
-      </Card>
+      {/* Data Management Tools - Admin only */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-orange-600" />
+              <CardTitle>Data Management</CardTitle>
+            </div>
+            <CardDescription>Tools for fixing and maintaining data integrity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FixAssigneeType />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Save Button (Bottom) */}
       {hasChanges && (

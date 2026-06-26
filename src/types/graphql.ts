@@ -622,7 +622,7 @@ export interface UpdateKpiMutationVariables {
 }
 
 export interface RemoveKpiMutationVariables {
-  id: string;
+  kpiId: string;
 }
 
 // Alias for backward compatibility

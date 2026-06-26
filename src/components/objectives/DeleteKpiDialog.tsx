@@ -45,7 +45,7 @@ const DeleteKpiDialog: React.FC<DeleteKpiDialogProps> = ({
 
     setIsDeleting(true);
     try {
-      await deleteKpi({ id: kpiId });
+      await deleteKpi({ kpiId: kpiId });
       toast.success("KPI deleted successfully", {
         description: `${kpiName} has been removed from the system.`,
       });

@@ -4,13 +4,13 @@ import React, { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useCreateKPIForm } from "@/hooks/objectives/useCreateKPIForm"; // Ensure this matches path
+import { useCreateKPIForm } from "@/hooks/objectives/useCreateKPIForm";
 import {
   KPIFormHeader,
   KPIInformationCard,
   QuarterlyBreakdown,
 } from "./kpi-form";
-// import QuarterlyBreakdown logic/types if needed
+import { KpiModeSelector } from "./KpiModeSelector";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import type { Objective, Kpi } from "@/types/graphql";
 import {
@@ -80,6 +80,7 @@ export default function CreateKPIForm({
   }, [objective.strategicPeriod]);
 
   const isCorporate = usesAnnualOnlyKpiTargets(objective);
+  const effectiveObjectiveType = objective?.assigneeType || objective?.type;
 
   const strategicYear = availableYears[0];
 
@@ -225,6 +226,20 @@ export default function CreateKPIForm({
             mode="create"
             hideParentSelector={true} // Always hide for creation
           />
+
+          {/* KPI Mode Selector - Only for Division/Department managers */}
+          {(effectiveObjectiveType?.toUpperCase() === "DIVISION" ||
+            effectiveObjectiveType?.toUpperCase() === "DEPARTMENT") && (
+            <KpiModeSelector
+              mode={formData.kpiMode || "AGGREGATED"}
+              onModeChange={(mode) => updateField("kpiMode", mode)}
+              retentionPercent={formData.managerRetentionPercent || "30"}
+              onRetentionChange={(percent) =>
+                updateField("managerRetentionPercent", percent)
+              }
+              targetValue={annualTargets[strategicYear || ""] || "0"}
+            />
+          )}
 
           {/* Weight Allocation Display */}
           <div

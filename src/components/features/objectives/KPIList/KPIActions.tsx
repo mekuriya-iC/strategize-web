@@ -8,9 +8,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, MoreHorizontal, Send, Eye } from "lucide-react";
+import { Edit, Trash2, MoreHorizontal, Send, Eye, Users } from "lucide-react";
 import DeleteKpiDialog from "@/components/objectives/DeleteKpiDialog";
 import SubmitDialog from "@/components/submissions/SubmitDialog";
+import SingleKpiAssignmentDialog from "@/components/kpis/SingleKpiAssignmentDialog";
 import { Kpi } from "@/types/graphql";
 import usePermissions from "@/hooks/permissions/usePermissions";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
@@ -76,6 +77,35 @@ const KPIActions: React.FC<KPIActionsProps> = ({
     return userLevel > objectiveLevel;
   }, [role, kpi.objective?.type]);
 
+  // Check if this KPI has been assigned (has children)
+  const hasBeenAssigned = React.useMemo(() => {
+    return allKpis.some((other) => other.parent?.kpiId === kpi.kpiId);
+  }, [allKpis, kpi.kpiId]);
+
+  // Determine if "Assign KPI" option should be shown
+  const canAssignKpi = React.useMemo(() => {
+    // Must be approved
+    if (kpi.status !== "APPROVED") return false;
+    
+    // Must not be already assigned
+    if (hasBeenAssigned) return false;
+    
+    // DIRECT mode KPIs cannot cascade (manager logs directly)
+    const kpiMode = (kpi as any).kpiMode || "AGGREGATED";
+    if (kpiMode === "DIRECT") return false;
+    
+    // Must be at a level that can cascade
+    const objectiveType = kpi.objective?.type;
+    if (!objectiveType) return false;
+    
+    // CORPORATE → DIVISION/DEPARTMENT, DIVISION → DEPARTMENT, DEPARTMENT → EMPLOYEE
+    if (objectiveType === "CORPORATE" || objectiveType === "DIVISION" || objectiveType === "DEPARTMENT") {
+      return true;
+    }
+    
+    return false;
+  }, [kpi, hasBeenAssigned, allKpis]);
+
   return (
     <>
       <DropdownMenu>
@@ -93,6 +123,24 @@ const KPIActions: React.FC<KPIActionsProps> = ({
             <Eye className="mr-2 h-4 w-4 text-gray-500" />
             <span>View KPI</span>
           </DropdownMenuItem>
+
+          {/* Assign KPI - Show for approved, unassigned KPIs that can cascade */}
+          {canAssignKpi && (
+            <SingleKpiAssignmentDialog kpi={kpi} onSuccess={onRefresh} />
+          )}
+
+          {/* DEBUG: Show why Assign KPI is not available */}
+          {!canAssignKpi && kpi.status === "APPROVED" && (
+            <DropdownMenuItem disabled className="text-xs text-gray-400 italic px-2 py-1.5">
+              <Users className="mr-2 h-4 w-4 text-gray-400" />
+              <span>
+                Assign disabled: {hasBeenAssigned ? "Already assigned" : 
+                  (kpi as any).kpiMode === "DIRECT" ? "DIRECT mode" :
+                  !kpi.objective?.type ? "No obj type" :
+                  `Type: ${kpi.objective?.type}`}
+              </span>
+            </DropdownMenuItem>
+          )}
 
           {!isReadOnly && !isCascaded ? (
             <DropdownMenuItem

@@ -26,6 +26,8 @@ export interface UpdateKPIFormData {
   weightType: KpiWeightType;
   status?: KpiStatus;
   unitType?: KpiUnitType;
+  kpiMode?: string;
+  managerRetentionPercent?: string;
 }
 
 interface UseUpdateKPIStateProps {
@@ -72,6 +74,8 @@ export function useUpdateKPIState({
     weight: "",
     weightType: "PERCENT" as KpiWeightType,
     unitType: "NUMBER" as KpiUnitType,
+    kpiMode: "AGGREGATED",
+    managerRetentionPercent: "30",
   });
 
   // Annual target state (single value for strategic period)
@@ -123,6 +127,8 @@ export function useUpdateKPIState({
         weightType: prev.weightType || ("PERCENT" as KpiWeightType),
         status,
         unitType: unitType || ("NUMBER" as KpiUnitType),
+        kpiMode: (kpi as any).kpiMode || "AGGREGATED",
+        managerRetentionPercent: (kpi as any).managerRetentionPercent?.toString() || "30",
       }));
 
       // Initialize annual target from existing targets
@@ -637,6 +643,10 @@ export function useUpdateKPIState({
         baseline: formData.baseline !== "" ? parseFloat(formData.baseline) : undefined,
         weight: parseFloat(formData.weight) || 0,
         targetValue: calculatedTargetValue, // Add targetValue
+        kpiMode: formData.kpiMode || "AGGREGATED",
+        managerRetentionPercent: formData.kpiMode === "HYBRID" && formData.managerRetentionPercent
+          ? parseFloat(formData.managerRetentionPercent)
+          : undefined,
         // Only include optional fields if they have values
         ...(formData.status && { status: formData.status }),
         ...(formData.unitType && { unitType: formData.unitType }),

@@ -9,6 +9,9 @@ import {
   Target,
   Award,
   AlertCircle,
+  Info,
+  User,
+  Users,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
@@ -24,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -31,6 +35,8 @@ interface KpiScore {
     kpiId: string;
     name: string;
     description: string;
+    kpiMode?: string;
+    managerRetentionPercent?: number;
   };
   level: string;
   actualValue: number;
@@ -41,6 +47,12 @@ interface KpiScore {
   cappedRate: number;
   score: number;
   calculatedAt: string;
+  managerActual?: number;
+  managerTarget?: number;
+  teamActual?: number;
+  teamTarget?: number;
+  managerAchievementRate?: number;
+  teamAchievementRate?: number;
 }
 
 interface ScorecardData {
@@ -350,6 +362,7 @@ export default function DepartmentScorecard({
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
+                      <th className="text-center p-3 font-medium">Mode</th>
                       <th className="text-right p-3 font-medium">
                         Actual (Aggregated)
                       </th>
@@ -369,6 +382,11 @@ export default function DepartmentScorecard({
                       const badge = getAchievementBadge(
                         kpiScore.achievementRate,
                       );
+                      const kpiMode = kpiScore.kpi.kpiMode || "AGGREGATED";
+                      const hasHybridBreakdown = 
+                        kpiMode === "HYBRID" && 
+                        kpiScore.managerActual !== undefined && 
+                        kpiScore.teamActual !== undefined;
 
                       return (
                         <tr
@@ -384,6 +402,58 @@ export default function DepartmentScorecard({
                                 </p>
                               )}
                             </div>
+                          </td>
+                          <td className="text-center p-3">
+                            <div className="flex flex-col items-center gap-2">
+                              <KpiModeBadge mode={kpiMode} size="sm" />
+                              {kpiMode === "AGGREGATED" && (
+                                <p className="text-xs text-muted-foreground">
+                                  (from subordinates)
+                                </p>
+                              )}
+                              {kpiMode === "DIRECT" && (
+                                <p className="text-xs text-muted-foreground">
+                                  (Dept Head Only)
+                                </p>
+                              )}
+                              {kpiMode === "HYBRID" && kpiScore.kpi.managerRetentionPercent && (
+                                <p className="text-xs text-muted-foreground">
+                                  {kpiScore.kpi.managerRetentionPercent}% mgr / {100 - kpiScore.kpi.managerRetentionPercent}% team
+                                </p>
+                              )}
+                            </div>
+                            {hasHybridBreakdown && (
+                              <div className="mt-2 text-xs space-y-1 border-t pt-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <User className="w-3 h-3" />
+                                    Manager:
+                                  </span>
+                                  <span className="font-medium">
+                                    {formatNumber(kpiScore.managerActual!)} / {formatNumber(kpiScore.managerTarget!)}
+                                    {kpiScore.managerAchievementRate !== undefined && (
+                                      <span className={`ml-1 ${getAchievementColor(kpiScore.managerAchievementRate)}`}>
+                                        ({formatPercentage(kpiScore.managerAchievementRate)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <Users className="w-3 h-3" />
+                                    Team:
+                                  </span>
+                                  <span className="font-medium">
+                                    {formatNumber(kpiScore.teamActual!)} / {formatNumber(kpiScore.teamTarget!)}
+                                    {kpiScore.teamAchievementRate !== undefined && (
+                                      <span className={`ml-1 ${getAchievementColor(kpiScore.teamAchievementRate)}`}>
+                                        ({formatPercentage(kpiScore.teamAchievementRate)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </td>
                           <td className="text-right p-3 font-medium">
                             {formatNumber(kpiScore.actualValue)}
@@ -426,7 +496,7 @@ export default function DepartmentScorecard({
                   <tfoot className="border-t-2 font-bold">
                     <tr>
                       <td className="p-3">Total</td>
-                      <td className="text-right p-3" colSpan={5}></td>
+                      <td className="text-right p-3" colSpan={6}></td>
                       <td className="text-right p-3 text-primary text-lg">
                         {formatNumber(scorecard.totalScore)}%
                       </td>
@@ -446,7 +516,7 @@ export default function DepartmentScorecard({
               </div>
 
               {/* Formula Explanation */}
-              <div className="mt-6 p-4 bg-muted rounded-lg">
+              <div className="mt-6 p-4 bg-muted rounded-lg space-y-3">
                 <h4 className="text-sm font-semibold mb-2">
                   How Department Scores are Calculated
                 </h4>
@@ -473,6 +543,39 @@ export default function DepartmentScorecard({
                   ⚠️ Key: Department scores are calculated using
                   department-level targets, NOT individual targets!
                 </p>
+
+                {/* KPI Mode Explanation */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Understanding KPI Modes at Department Level
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <KpiModeBadge mode="AGGREGATED" size="sm" />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Aggregated:</strong> Department head's KPI aggregates from all team members. All employee achievements roll up to this KPI.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <KpiModeBadge mode="DIRECT" size="sm" />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Direct:</strong> Department head's personal work. Only their individual logbook entries count - not cascaded to team.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <KpiModeBadge mode="HYBRID" size="sm" />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Hybrid:</strong> Department head retains a percentage for their direct work, remainder cascades from team. Both portions are weighted and combined.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-900">
+                    <p className="text-xs text-blue-900 dark:text-blue-100">
+                      <strong>Hybrid Example:</strong> If a department head retains 30%, they own 30% of the target for their direct work, and the remaining 70% comes from aggregating team member results. The final score combines both weighted portions.
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

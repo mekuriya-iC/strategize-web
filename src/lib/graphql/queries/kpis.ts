@@ -42,6 +42,8 @@ export const GET_KPIS = gql`
         assigneeType
         assigneeId
         assignerId
+        kpiMode
+        managerRetentionPercent
         createdAt
         updatedAt
         isDeleted
@@ -114,6 +116,8 @@ export const GET_KPI = gql`
       assigneeType
       assigneeId
       assignerId
+      kpiMode
+      managerRetentionPercent
       createdAt
       updatedAt
       isDeleted
@@ -467,6 +471,59 @@ export const GET_KPI_ASSIGNMENTS_DIVISION = gql`
         }
         division {
           divisionId
+          name
+        }
+        assignedBy {
+          employeeId
+          fullName
+        }
+        strategicPeriod {
+          strategicPeriodId
+          name
+        }
+      }
+      meta {
+        currentPage
+        totalPages
+        totalItems
+        itemsPerPage
+        itemCount
+      }
+    }
+  }
+`;
+
+export const GET_KPI_ASSIGNMENTS_CORPORATE = gql`
+  query GetKpiAssignmentsCorporate(
+    $organizationId: ID!
+    $strategicPeriodId: ID
+    $kpiId: ID
+    $page: Int
+    $limit: Int
+  ) {
+    kpiAssignmentsCorporate(
+      organizationId: $organizationId
+      strategicPeriodId: $strategicPeriodId
+      kpiId: $kpiId
+      page: $page
+      limit: $limit
+    ) {
+      items {
+        kpiAssignmentCorporateId
+        targetValue
+        weight
+        cap
+        createdAt
+        updatedAt
+        kpi {
+          kpiId
+          name
+          description
+          measurementUnit
+          kpiType
+        }
+        organization {
+          organizationId
           name
         }
         assignedBy {

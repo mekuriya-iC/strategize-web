@@ -1,7 +1,11 @@
-import { useQuery, useMutation } from '@apollo/client';
-import { toast } from 'sonner';
-import { GET_KPIS, GET_KPI } from '@/lib/graphql/queries/kpis';
-import { CREATE_KPI, UPDATE_KPI, DELETE_KPI } from '@/lib/graphql/mutations/kpis';
+import { useQuery, useMutation } from "@apollo/client";
+import { toast } from "sonner";
+import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
+import {
+  CREATE_KPI,
+  UPDATE_KPI,
+  DELETE_KPI,
+} from "@/lib/graphql/mutations/kpis";
 
 // ===================== TYPES =====================
 
@@ -11,6 +15,7 @@ export interface KpiObjective {
   level?: string;
   status?: string;
   type?: string;
+  assigneeType?: string;
 }
 
 export interface KpiCreatedBy {
@@ -46,6 +51,8 @@ export interface Kpi {
   assigneeType?: string;
   assigneeId?: string;
   assignerId?: string;
+  kpiMode?: string;
+  managerRetentionPercent?: number;
   objective?: KpiObjective;
   createdBy?: KpiCreatedBy;
   parent?: { kpiId: string; name: string };
@@ -65,17 +72,19 @@ interface PaginationMeta {
 
 // ===================== QUERY HOOKS =====================
 
-export const useKpis = (variables: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  organizationId?: string;
-  strategicObjectiveId?: string;
-} = {}) => {
+export const useKpis = (
+  variables: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    organizationId?: string;
+    strategicObjectiveId?: string;
+  } = {},
+) => {
   const { page = 1, limit = 20, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_KPIS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   return {
@@ -91,7 +100,7 @@ export const useKpi = (kpiId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_KPI, {
     variables: { kpiId },
     skip: !kpiId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   return {
@@ -105,44 +114,55 @@ export const useKpi = (kpiId: string) => {
 // ===================== MUTATION HOOKS =====================
 
 export const useKpiMutations = () => {
-  const [createKpiMutation, { loading: createLoading }] = useMutation(CREATE_KPI, {
-    onCompleted: (data) => {
-      toast.success('KPI created successfully!', {
-        description: `"${data.createKpi.name}" has been created.`,
-      });
+  const [createKpiMutation, { loading: createLoading }] = useMutation(
+    CREATE_KPI,
+    {
+      onCompleted: (data) => {
+        toast.success("KPI created successfully!", {
+          description: `"${data.createKpi.name}" has been created.`,
+        });
+      },
+      onError: (error) => {
+        toast.error("Failed to create KPI", { description: error.message });
+      },
+      refetchQueries: "active",
+      awaitRefetchQueries: true,
     },
-    onError: (error) => {
-      toast.error('Failed to create KPI', { description: error.message });
-    },
-    refetchQueries: 'active',
-    awaitRefetchQueries: true,
-  });
+  );
 
-  const [updateKpiMutation, { loading: updateLoading }] = useMutation(UPDATE_KPI, {
-    onCompleted: (data) => {
-      toast.success('KPI updated successfully!', {
-        description: `"${data.updateKpi.name}" has been updated.`,
-      });
+  const [updateKpiMutation, { loading: updateLoading }] = useMutation(
+    UPDATE_KPI,
+    {
+      onCompleted: (data) => {
+        toast.success("KPI updated successfully!", {
+          description: `"${data.updateKpi.name}" has been updated.`,
+        });
+      },
+      onError: (error) => {
+        toast.error("Failed to update KPI", { description: error.message });
+      },
+      refetchQueries: "active",
+      awaitRefetchQueries: true,
     },
-    onError: (error) => {
-      toast.error('Failed to update KPI', { description: error.message });
-    },
-    refetchQueries: 'active',
-    awaitRefetchQueries: true,
-  });
+  );
 
-  const [deleteKpiMutation, { loading: deleteLoading }] = useMutation(DELETE_KPI, {
-    onCompleted: (data) => {
-      toast.success('KPI deleted successfully!', {
-        description: data?.removeKpi?.name ? `"${data.removeKpi.name}" has been removed.` : 'KPI has been removed.',
-      });
+  const [deleteKpiMutation, { loading: deleteLoading }] = useMutation(
+    DELETE_KPI,
+    {
+      onCompleted: (data) => {
+        toast.success("KPI deleted successfully!", {
+          description: data?.removeKpi?.name
+            ? `"${data.removeKpi.name}" has been removed.`
+            : "KPI has been removed.",
+        });
+      },
+      onError: (error) => {
+        toast.error("Failed to delete KPI", { description: error.message });
+      },
+      refetchQueries: "active",
+      awaitRefetchQueries: true,
     },
-    onError: (error) => {
-      toast.error('Failed to delete KPI', { description: error.message });
-    },
-    refetchQueries: 'active',
-    awaitRefetchQueries: true,
-  });
+  );
 
   return {
     createKpi: async (input: {
@@ -159,6 +179,8 @@ export const useKpiMutations = () => {
       customUnitLabel?: string;
       parentId?: string;
       unitType?: string;
+      kpiMode?: string;
+      managerRetentionPercent?: number;
     }) => {
       const result = await createKpiMutation({
         variables: { input },
@@ -180,6 +202,8 @@ export const useKpiMutations = () => {
       customUnitLabel?: string;
       parentId?: string;
       unitType?: string;
+      kpiMode?: string;
+      managerRetentionPercent?: number;
     }) => {
       const result = await updateKpiMutation({
         variables: { input },

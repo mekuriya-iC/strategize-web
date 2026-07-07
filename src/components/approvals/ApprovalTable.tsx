@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Objective } from "@/components/features/objectives/ObjectiveTable";
 import { Kpi } from "@/types/graphql";
+import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 
 interface ApprovalTableProps {
   objectives: Objective[];
@@ -149,16 +150,19 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
         <TableBody>
           {objectives.map((obj, idx) => {
             const objectiveKPIs = getKPIsForObjective(obj.objectiveId);
-            const areAllKPIsApproved = objectiveKPIs.length > 0 && objectiveKPIs.every(kpi => kpi.status === "APPROVED");
+            const areAllKPIsApproved =
+              objectiveKPIs.length > 0 &&
+              objectiveKPIs.every((kpi) => kpi.status === "APPROVED");
             return (
               <React.Fragment key={obj.objectiveId}>
                 <TableRow
-                  className={`border-b border-gray-100 ${selected.includes(obj.objectiveId)
-                    ? "bg-blue-50"
-                    : idx % 2 === 1
-                      ? "bg-white"
-                      : "bg-[#ECECFF]"
-                    } hover:bg-gray-50 transition-colors`}
+                  className={`border-b border-gray-100 ${
+                    selected.includes(obj.objectiveId)
+                      ? "bg-blue-50"
+                      : idx % 2 === 1
+                        ? "bg-white"
+                        : "bg-[#ECECFF]"
+                  } hover:bg-gray-50 transition-colors`}
                 >
                   <TableCell
                     className="px-6 py-4 w-12"
@@ -200,9 +204,10 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <Badge
-                      className={`${statusMap[obj.status as keyof typeof statusMap]
-                        ?.color || "bg-gray-100 text-gray-600"
-                        } rounded-full px-3 py-1 text-xs font-medium border-0`}
+                      className={`${
+                        statusMap[obj.status as keyof typeof statusMap]
+                          ?.color || "bg-gray-100 text-gray-600"
+                      } rounded-full px-3 py-1 text-xs font-medium border-0`}
                     >
                       {statusMap[obj.status as keyof typeof statusMap]?.label ||
                         obj.status}
@@ -217,7 +222,11 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                             variant="outline"
                             onClick={() => onApproveObjective(obj)}
                             className={`flex items-center gap-1 h-8 px-3 text-green-700 border-green-200 bg-green-50 hover:bg-green-100 ${areAllKPIsApproved ? "ring-2 ring-green-500 ring-offset-1 animate-pulse" : ""}`}
-                            title={areAllKPIsApproved ? "All KPIs approved - ready to accept objective" : "Accept objective"}
+                            title={
+                              areAllKPIsApproved
+                                ? "All KPIs approved - ready to accept objective"
+                                : "Accept objective"
+                            }
                           >
                             <CheckCircle className="h-4 w-4" />
                             <span className="hidden lg:inline">Approve</span>
@@ -304,6 +313,9 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                                     Targets
                                   </TableHead>
                                   <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
+                                    Mode
+                                  </TableHead>
+                                  <TableHead className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                                     Status
                                   </TableHead>
                                   <TableHead className="px-4 py-3 w-12"></TableHead>
@@ -337,12 +349,36 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                                       )}
                                     </TableCell>
                                     <TableCell className="px-4 py-3">
+                                      <div className="flex flex-col items-start gap-1">
+                                        <KpiModeBadge
+                                          mode={kpi.kpiMode || "AGGREGATED"}
+                                          size="sm"
+                                        />
+                                        {kpi.kpiMode === "HYBRID" &&
+                                          kpi.managerRetentionPercent !==
+                                            undefined &&
+                                          kpi.managerRetentionPercent !==
+                                            null && (
+                                            <span className="text-[11px] text-gray-500">
+                                              {kpi.managerRetentionPercent}%
+                                              manager /{" "}
+                                              {100 -
+                                                Number(
+                                                  kpi.managerRetentionPercent,
+                                                )}
+                                              % cascade
+                                            </span>
+                                          )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3">
                                       <Badge
-                                        className={`${statusMap[
-                                          kpi.status as keyof typeof statusMap
-                                        ]?.color ||
+                                        className={`${
+                                          statusMap[
+                                            kpi.status as keyof typeof statusMap
+                                          ]?.color ||
                                           "bg-gray-100 text-gray-600"
-                                          } rounded-full px-2 py-1 text-xs font-medium border-0`}
+                                        } rounded-full px-2 py-1 text-xs font-medium border-0`}
                                       >
                                         {statusMap[
                                           kpi.status as keyof typeof statusMap
@@ -383,7 +419,10 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
                                               <MoreVertical className="h-3.5 w-3.5" />
                                             </Button>
                                           </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="w-40">
+                                          <DropdownMenuContent
+                                            align="end"
+                                            className="w-40"
+                                          >
                                             {onEditKPI && (
                                               <DropdownMenuItem
                                                 onClick={() => onEditKPI(kpi)}

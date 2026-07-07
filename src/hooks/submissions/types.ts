@@ -23,6 +23,9 @@ export interface SubmissionKpi extends SubmissionAssignee {
   status?: string;
   weight?: number;
   baseline?: number;
+  targetValue?: number | string;
+  kpiMode?: string;
+  managerRetentionPercent?: number;
   objective?: {
     objectiveId: string;
     name?: string;

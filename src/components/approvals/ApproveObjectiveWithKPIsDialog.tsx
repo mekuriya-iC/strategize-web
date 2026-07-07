@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 
 interface KPISubmission {
   kpiId: string;
@@ -22,6 +23,8 @@ interface KPISubmission {
   weight?: number;
   baseline?: number | string;
   targetValue?: number | string;
+  kpiMode?: string;
+  managerRetentionPercent?: number;
   submissionId?: string;
 }
 
@@ -36,7 +39,7 @@ interface ApproveObjectiveWithKPIsDialogProps {
   onApprove: (
     submissionId: string,
     reason: string,
-    selectedKPIs?: string[]
+    selectedKPIs?: string[],
   ) => Promise<void>;
 }
 
@@ -51,20 +54,19 @@ export default function ApproveObjectiveWithKPIsDialog({
   const [selectedKPIs, setSelectedKPIs] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize with all KPIs selected by default
-  useEffect(() => {
-    if (open) {
-      const allKPIIds = associatedKPIs.map((kpi) => kpi.kpiId);
-      setSelectedKPIs(allKPIIds);
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setSelectedKPIs(associatedKPIs.map((kpi) => kpi.kpiId));
       setReason("");
     }
-  }, [open, associatedKPIs]);
+  };
 
   const handleKPIToggle = (kpiId: string) => {
     setSelectedKPIs((prev) =>
       prev.includes(kpiId)
         ? prev.filter((id) => id !== kpiId)
-        : [...prev, kpiId]
+        : [...prev, kpiId],
     );
   };
 
@@ -95,7 +97,7 @@ export default function ApproveObjectiveWithKPIsDialog({
   const totalCount = associatedKPIs.length;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
@@ -155,10 +157,11 @@ export default function ApproveObjectiveWithKPIsDialog({
                 {associatedKPIs.map((kpi) => (
                   <div
                     key={kpi.kpiId}
-                    className={`flex items-center space-x-3 p-3 border rounded-lg transition-colors ${selectedKPIs.includes(kpi.kpiId)
+                    className={`flex items-center space-x-3 p-3 border rounded-lg transition-colors ${
+                      selectedKPIs.includes(kpi.kpiId)
                         ? "bg-green-50 border-green-200"
                         : "bg-gray-50 border-gray-200"
-                      }`}
+                    }`}
                   >
                     <Checkbox
                       checked={selectedKPIs.includes(kpi.kpiId)}
@@ -166,20 +169,36 @@ export default function ApproveObjectiveWithKPIsDialog({
                       className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">
-                        {kpi.name}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          {kpi.name}
+                        </div>
+                        <KpiModeBadge
+                          mode={kpi.kpiMode || "AGGREGATED"}
+                          size="sm"
+                        />
                       </div>
+                      {kpi.kpiMode === "HYBRID" &&
+                        kpi.managerRetentionPercent !== undefined && (
+                          <div className="text-[11px] text-gray-500 mt-1">
+                            {kpi.managerRetentionPercent}% manager /{" "}
+                            {100 - Number(kpi.managerRetentionPercent)}% cascade
+                          </div>
+                        )}
                       <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                         <span>Weight: {kpi.weight ?? "N/A"}%</span>
-                        <span>Target: {kpi.targetValue?.toLocaleString() || "N/A"}</span>
+                        <span>
+                          Target: {kpi.targetValue?.toLocaleString() || "N/A"}
+                        </span>
                         <span>Baseline: {kpi.baseline || "N/A"}</span>
                         <Badge
-                          className={`text-xs ${kpi.status === "PENDING"
+                          className={`text-xs ${
+                            kpi.status === "PENDING"
                               ? "bg-yellow-100 text-yellow-600"
                               : kpi.status === "APPROVED"
                                 ? "bg-green-100 text-green-600"
                                 : "bg-gray-100 text-gray-600"
-                            }`}
+                          }`}
                         >
                           {kpi.status}
                         </Badge>

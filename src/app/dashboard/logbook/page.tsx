@@ -19,6 +19,12 @@ const mapEntryToFrontend = (entry: any) => ({
   entryDate: entry.entryDate,
   attachmentUrl: entry.evidenceUrl || null,
   status: entry.entryStatus,
+  linkedKpiId: entry.linkedKpiId || "",
+  kpiTargetValue: entry.kpiTargetValue ?? null,
+  kpiAchievedValue: entry.kpiAchievedValue ?? null,
+  kpiCompletionPercent: entry.kpiCompletionPercent ?? null,
+  contributionUnit: entry.contributionUnit || "",
+  strategicPeriodId: entry.strategicPeriod?.strategicPeriodId || "",
   rejectionReason: entry.rejectionReason || "",
   createdAt: entry.createdAt,
   updatedAt: entry.updatedAt,
@@ -184,7 +190,9 @@ export default function LogbookPage() {
             No logbook entries yet
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 text-center max-w-md">
-            Logbook entries are automatically created when you mark tasks as done with fulfilled status (KPI Fulfilled, Initiative Fulfilled, or Self Development Fulfilled)
+            Logbook entries are automatically created when you mark tasks as
+            done with fulfilled status (KPI Fulfilled, Initiative Fulfilled, or
+            Self Development Fulfilled)
           </p>
         </div>
       ) : (

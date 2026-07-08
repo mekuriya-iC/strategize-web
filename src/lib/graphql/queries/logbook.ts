@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Logbook Queries
@@ -28,6 +28,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
         entryDate
         activityDescription
         entryStatus
+        linkedKpiId
         kpiTargetValue
         kpiAchievedValue
         kpiCompletionPercent

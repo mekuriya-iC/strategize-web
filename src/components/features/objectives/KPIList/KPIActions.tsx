@@ -36,7 +36,11 @@ const KPIActions: React.FC<KPIActionsProps> = ({
   const router = useRouter();
 
   const { role } = usePermissions();
-  const isObjectiveApproved = kpi.objective?.status === "APPROVED";
+  const isKpiApproved = kpi.status === "APPROVED";
+  const isObjectiveApproved =
+    kpi.objective?.status === "APPROVED" ||
+    (kpi.objective as any)?.cascadeStatus === "approved" ||
+    Boolean((kpi.objective as any)?.approvedAt);
 
   const isAssigned = React.useMemo(() => {
     return allKpis.some((other) => other.parent?.kpiId === kpi.kpiId);
@@ -53,9 +57,8 @@ const KPIActions: React.FC<KPIActionsProps> = ({
     ? isTopLevelCorporateObjective(objectiveContext)
     : false;
 
-  // Rule 2 & 4: Read-only and Cascaded rules
-  // Corporate objectives/KPIs are never read-only even if approved
-  const isReadOnly = isObjectiveApproved && !isCorporate;
+  // Approved KPIs/objectives are locked globally.
+  const isReadOnly = isKpiApproved || isObjectiveApproved;
 
   const isCascaded = React.useMemo(() => {
     if (!role) return false;
@@ -86,23 +89,27 @@ const KPIActions: React.FC<KPIActionsProps> = ({
   const canAssignKpi = React.useMemo(() => {
     // Must be approved
     if (kpi.status !== "APPROVED") return false;
-    
+
     // Must not be already assigned
     if (hasBeenAssigned) return false;
-    
+
     // DIRECT mode KPIs cannot cascade (manager logs directly)
     const kpiMode = (kpi as any).kpiMode || "AGGREGATED";
     if (kpiMode === "DIRECT") return false;
-    
+
     // Must be at a level that can cascade
     const objectiveType = kpi.objective?.type;
     if (!objectiveType) return false;
-    
+
     // CORPORATE → DIVISION/DEPARTMENT, DIVISION → DEPARTMENT, DEPARTMENT → EMPLOYEE
-    if (objectiveType === "CORPORATE" || objectiveType === "DIVISION" || objectiveType === "DEPARTMENT") {
+    if (
+      objectiveType === "CORPORATE" ||
+      objectiveType === "DIVISION" ||
+      objectiveType === "DEPARTMENT"
+    ) {
       return true;
     }
-    
+
     return false;
   }, [kpi, hasBeenAssigned, allKpis]);
 
@@ -131,13 +138,20 @@ const KPIActions: React.FC<KPIActionsProps> = ({
 
           {/* DEBUG: Show why Assign KPI is not available */}
           {!canAssignKpi && kpi.status === "APPROVED" && (
-            <DropdownMenuItem disabled className="text-xs text-gray-400 italic px-2 py-1.5">
+            <DropdownMenuItem
+              disabled
+              className="text-xs text-gray-400 italic px-2 py-1.5"
+            >
               <Users className="mr-2 h-4 w-4 text-gray-400" />
               <span>
-                Assign disabled: {hasBeenAssigned ? "Already assigned" : 
-                  (kpi as any).kpiMode === "DIRECT" ? "DIRECT mode" :
-                  !kpi.objective?.type ? "No obj type" :
-                  `Type: ${kpi.objective?.type}`}
+                Assign disabled:{" "}
+                {hasBeenAssigned
+                  ? "Already assigned"
+                  : (kpi as any).kpiMode === "DIRECT"
+                    ? "DIRECT mode"
+                    : !kpi.objective?.type
+                      ? "No obj type"
+                      : `Type: ${kpi.objective?.type}`}
               </span>
             </DropdownMenuItem>
           )}
@@ -183,7 +197,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({
           )}
 
           <DropdownMenuSeparator />
-          {!isReadOnly || role === "ADMIN" || role === "SUPER_ADMIN" ? (
+          {!isReadOnly ? (
             <DropdownMenuItem
               onClick={() => setShowDeleteDialog(true)}
               className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"

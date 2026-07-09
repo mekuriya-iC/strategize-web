@@ -181,12 +181,25 @@ export default function ObjectiveDetailPage() {
     router.back();
   };
 
+  const isApprovedObjective = (obj?: typeof objective | null) =>
+    obj?.status === "APPROVED" ||
+    obj?.cascadeStatus === "approved" ||
+    Boolean(obj?.approvedAt);
+
   const handleAddKPI = () => {
+    if (isApprovedObjective(objective)) {
+      toast.error("Approved objectives are locked and cannot be edited.");
+      return;
+    }
     setShowAddKPI(true);
     setEditingKPI(null);
   };
 
   const handleEditKPI = (kpiId: string) => {
+    if (isApprovedObjective(objective)) {
+      toast.error("Approved objectives are locked and cannot be edited.");
+      return;
+    }
     setEditingKPI(kpiId);
     setShowAddKPI(true);
   };
@@ -305,13 +318,19 @@ export default function ObjectiveDetailPage() {
     parentId: objective.parent?.objectiveId ?? null,
   };
 
+  const isObjectiveLocked =
+    objective.status === "APPROVED" ||
+    objective.cascadeStatus === "approved" ||
+    Boolean(objective.approvedAt);
   const assignDownstream = canAssignDownstream(objectiveContext, objectiveKPIs);
   const showAssignButton =
+    !isObjectiveLocked &&
     !hasBeenAssigned() &&
     (isTopLevelCorporateObjective(objectiveContext) ||
       isDivisionLevelObjective(objectiveContext) ||
       isDepartmentLevelObjective(objectiveContext));
   const showSubmitButton =
+    !isObjectiveLocked &&
     !isTopLevelCorporateObjective(objectiveContext) &&
     (objective.status === "NOT_SUBMITTED" || objective.status === "REJECTED");
 
@@ -596,19 +615,15 @@ export default function ObjectiveDetailPage() {
           <h2 className="text-lg font-semibold">Key Performance Indicators</h2>
           <Button
             onClick={handleAddKPI}
-            disabled={
-              objective.status === "APPROVED" && objective.type !== "CORPORATE"
-            }
+            disabled={isObjectiveLocked}
             className={
-              objective.status === "APPROVED" && objective.type !== "CORPORATE"
+              isObjectiveLocked
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-[#3838EC] hover:bg-[#2e2ed6]"
             }
           >
             <Plus className="w-4 h-4 mr-2" />
-            {objective.status === "APPROVED" && objective.type !== "CORPORATE"
-              ? "Adding Disabled (Approved)"
-              : "Add KPI"}
+            {isObjectiveLocked ? "Adding Disabled (Approved)" : "Add KPI"}
           </Button>
         </div>
 
@@ -778,10 +793,7 @@ export default function ObjectiveDetailPage() {
                                   yearQuartersMap[year] = {};
                                 }
                                 const quarterNum = quarter.toLowerCase() as
-                                  | "q1"
-                                  | "q2"
-                                  | "q3"
-                                  | "q4";
+                                  "q1" | "q2" | "q3" | "q4";
                                 yearQuartersMap[year][quarterNum] =
                                   (yearQuartersMap[year][quarterNum] || 0) +
                                   Number(target.target || 0);

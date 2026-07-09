@@ -75,8 +75,12 @@ export function LogbookTableRow({
     }
   };
 
+  const normalizedStatus = String(item.status || "DRAFT").toUpperCase();
+  const canSubmit =
+    ["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status;
+
   const getStatusBadge = () => {
-    const status = item.status || "DRAFT";
+    const status = normalizedStatus;
     const classes: Record<string, string> = {
       DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
       SUBMITTED:
@@ -150,9 +154,7 @@ export function LogbookTableRow({
         {/* Actions */}
         <td className="px-4 py-4">
           <div className="flex items-center gap-2">
-            {(item.status === "DRAFT" ||
-              item.status === "REJECTED" ||
-              !item.status) && (
+            {canSubmit && (
               <Button
                 variant="ghost"
                 size="sm"

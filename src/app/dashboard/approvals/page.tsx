@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
-import { useQuery } from "@apollo/client";
+import { useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 import { GET_LOGBOOK_ENTRIES } from "@/lib/graphql/queries/logbook";
 import { LogbookApprovalActions } from "@/components/logbook";
 import {
@@ -19,8 +19,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Clock, Eye, FileText, Link as LinkIcon } from "lucide-react";
+
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Eye,
+  FileText,
+  Link as LinkIcon,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -36,21 +43,140 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
+const GET_LOGBOOK_REVIEW_DEPARTMENTS = gql`
+  query GetApprovalsLogbookReviewDepartments($page: Int!, $limit: Int!) {
+    departments(page: $page, limit: $limit) {
+      items {
+        departmentId
+        head {
+          employeeId
+        }
+        division {
+          divisionId
+          head {
+            employeeId
+          }
+        }
+      }
+    }
+  }
+`;
+
+type ReviewDepartment = {
+  departmentId?: string;
+  head?: { employeeId?: string | null } | null;
+  division?: {
+    divisionId?: string;
+    head?: { employeeId?: string | null } | null;
+  } | null;
+};
+
+type ReviewUser = {
+  employeeId?: string;
+  role?: string | null;
+  departments?: ReviewDepartment[] | null;
+};
+
+type LogbookReviewEntry = {
+  logbookEntryId: string;
+  entryDate: string;
+  activityDescription?: string | null;
+  entryStatus?: string | null;
+  contributionUnit?: string | null;
+  kpiCompletionPercent?: number | null;
+  evidenceDescription?: string | null;
+  evidenceUrl?: string | null;
+  decisionsMade?: string | null;
+  lessonsLearned?: string | null;
+  risksIssues?: string | null;
+  rejectionReason?: string | null;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
+  owner?:
+    (ReviewUser & { fullName?: string | null; title?: string | null }) | null;
+  approvedBy?: { employeeId?: string; fullName?: string | null } | null;
+};
+
+const MANAGEMENT_ROLES = new Set([
+  "MANAGER",
+  "DIRECTOR",
+  "ADMIN",
+  "SUPER_ADMIN",
+]);
+const normalizeStatus = (status?: string | null) =>
+  String(status || "").toUpperCase();
+
+const canReviewLogbookEntry = (
+  entry: LogbookReviewEntry,
+  currentUser: ReviewUser | null | undefined,
+  departments: ReviewDepartment[] = [],
+) => {
+  const owner = entry?.owner;
+  if (!owner || !currentUser || owner.employeeId === currentUser.employeeId) {
+    return false;
+  }
+
+  const currentUserRole = String(currentUser.role || "").toUpperCase();
+  const ownerRole = String(owner.role || "").toUpperCase();
+
+  if (["SUPER_ADMIN", "ADMIN"].includes(currentUserRole)) {
+    return ownerRole === "DIRECTOR";
+  }
+
+  if (currentUserRole === "DIRECTOR") {
+    return (
+      ownerRole === "MANAGER" &&
+      departments.some(
+        (department) =>
+          department.head?.employeeId === owner.employeeId &&
+          department.division?.head?.employeeId === currentUser.employeeId,
+      )
+    );
+  }
+
+  if (currentUserRole === "MANAGER") {
+    return (
+      !MANAGEMENT_ROLES.has(ownerRole) &&
+      owner.departments?.some(
+        (department) => department.head?.employeeId === currentUser.employeeId,
+      )
+    );
+  }
+
+  return false;
+};
+
 export default function ApprovalsPage() {
   const router = useRouter();
   const { guards, isLoading } = usePermissions();
   const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState("objectives");
   const [logbookStatusFilter, setLogbookStatusFilter] = useState("all");
-  const [selectedLogbookEntry, setSelectedLogbookEntry] = useState<any>(null);
+  const [selectedLogbookEntry, setSelectedLogbookEntry] =
+    useState<LogbookReviewEntry | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
   // Get logbook entries for approval
   // NOTE: Backend returns ALL entries (filtered by status), frontend should filter by hierarchy
   // For now, we fetch all SUBMITTED entries and the user's role/permissions determine what they can approve
-  const { data: logbookData, loading: logbookLoading, refetch: refetchLogbook } = useQuery(GET_LOGBOOK_ENTRIES, {
+  const { data: departmentsData, loading: departmentsLoading } = useQuery(
+    GET_LOGBOOK_REVIEW_DEPARTMENTS,
+    {
+      variables: { page: 1, limit: 1000 },
+      skip: !user?.employeeId,
+    },
+  );
+
+  const {
+    data: logbookData,
+    loading: logbookLoading,
+    refetch: refetchLogbook,
+  } = useQuery(GET_LOGBOOK_ENTRIES, {
     variables: {
-      entryStatus: logbookStatusFilter !== "all" ? logbookStatusFilter.toUpperCase() : undefined,
+      entryStatus:
+        logbookStatusFilter !== "all"
+          ? logbookStatusFilter.toUpperCase()
+          : undefined,
       approverUserId: user?.employeeId,
       limit: 100,
       page: 1,
@@ -58,28 +184,65 @@ export default function ApprovalsPage() {
     skip: !user?.employeeId,
   });
 
-  const logbookEntries = logbookData?.logbookEntries?.items || [];
+  const rawLogbookEntries = useMemo<LogbookReviewEntry[]>(
+    () => logbookData?.logbookEntries?.items || [],
+    [logbookData],
+  );
+  const reviewDepartments = useMemo<ReviewDepartment[]>(
+    () => departmentsData?.departments?.items || [],
+    [departmentsData],
+  );
+  const logbookEntries = useMemo(
+    () =>
+      rawLogbookEntries.filter((entry) =>
+        canReviewLogbookEntry(entry, user, reviewDepartments),
+      ),
+    [rawLogbookEntries, user, reviewDepartments],
+  );
 
   const getStatusBadge = (status: string) => {
+    const normalizedStatus = normalizeStatus(status);
     const statusConfig = {
-      SUBMITTED: { icon: Clock, color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", label: "Pending" },
-      APPROVED: { icon: CheckCircle2, color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300", label: "Approved" },
-      REJECTED: { icon: XCircle, color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300", label: "Rejected" },
-      DRAFT: { icon: Clock, color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400", label: "Draft" },
+      SUBMITTED: {
+        icon: Clock,
+        color:
+          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+        label: "Pending",
+      },
+      APPROVED: {
+        icon: CheckCircle2,
+        color:
+          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        label: "Approved",
+      },
+      REJECTED: {
+        icon: XCircle,
+        color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+        label: "Rejected",
+      },
+      DRAFT: {
+        icon: Clock,
+        color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
+        label: "Draft",
+      },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.DRAFT;
+    const config =
+      statusConfig[normalizedStatus as keyof typeof statusConfig] ||
+      statusConfig.DRAFT;
     const Icon = config.icon;
 
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
         <Icon className="w-3.5 h-3.5" />
         {config.label}
       </span>
     );
   };
 
-  const handleViewDetails = (entry: any) => {
+  const handleViewDetails = (entry: LogbookReviewEntry) => {
     setSelectedLogbookEntry(entry);
     setShowDetailDialog(true);
   };
@@ -103,7 +266,8 @@ export default function ApprovalsPage() {
 
   // Coordinators and above can access approvals
   // NORMAL users can only view their own submissions
-  const canAccessApprovals = guards.isEmployee || guards.canApprove || guards.isCoordinator;
+  const canAccessApprovals =
+    guards.isEmployee || guards.canApprove || guards.isCoordinator;
 
   if (!canAccessApprovals) {
     return (
@@ -197,28 +361,31 @@ export default function ApprovalsPage() {
                     <div className="mt-2 text-sm text-blue-700">
                       {user?.role === "DIRECTOR" ? (
                         <p>
-                          <strong>Department Objectives:</strong> Submissions from
-                          departments in your division requesting your approval
+                          <strong>Department Objectives:</strong> Submissions
+                          from departments in your division requesting your
+                          approval
                           <br />
-                          <strong>Personnel Objectives:</strong> Submissions from
-                          employees in your departments
+                          <strong>Personnel Objectives:</strong> Submissions
+                          from employees in your departments
                         </p>
                       ) : user?.role === "MANAGER" ? (
                         <p>
-                          <strong>Personnel Objectives:</strong> Submissions from
-                          employees in your department requesting your approval
+                          <strong>Personnel Objectives:</strong> Submissions
+                          from employees in your department requesting your
+                          approval
                         </p>
                       ) : (
                         <p>
                           <strong>Division Objectives:</strong> Submissions from
                           divisions requesting corporate approval
                           <br />
-                          <strong>Department Objectives:</strong> Submissions from
-                          departments requesting approval from their division or
-                          corporate
+                          <strong>Department Objectives:</strong> Submissions
+                          from departments requesting approval from their
+                          division or corporate
                           <br />
-                          <strong>Personnel Objectives:</strong> Submissions from
-                          employees requesting approval from their department
+                          <strong>Personnel Objectives:</strong> Submissions
+                          from employees requesting approval from their
+                          department
                         </p>
                       )}
                     </div>
@@ -250,9 +417,9 @@ export default function ApprovalsPage() {
                     </h3>
                     <div className="mt-2 text-sm text-amber-700">
                       <p>
-                        As a coordinator, you can view submission status for your
-                        unit but cannot approve submissions. Contact your manager
-                        for approval actions.
+                        As a coordinator, you can view submission status for
+                        your unit but cannot approve submissions. Contact your
+                        manager for approval actions.
                       </p>
                     </div>
                   </div>
@@ -263,23 +430,31 @@ export default function ApprovalsPage() {
 
           {/* Workflow Content - Tabbed View */}
           <div className="px-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="grid w-full max-w-md grid-cols-2">
                 <TabsTrigger value="objectives">Objectives & KPIs</TabsTrigger>
                 <TabsTrigger value="logbook">Logbook Entries</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="objectives" className="mt-6">
                 <SubmissionApprovalsTable listMode="inbound" />
               </TabsContent>
-              
+
               <TabsContent value="logbook" className="mt-6 space-y-4">
                 {/* Logbook Filter */}
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600">
-                    {logbookEntries.length} logbook {logbookEntries.length === 1 ? 'entry' : 'entries'}
+                    {logbookEntries.length} logbook{" "}
+                    {logbookEntries.length === 1 ? "entry" : "entries"}
                   </p>
-                  <Select value={logbookStatusFilter} onValueChange={setLogbookStatusFilter}>
+                  <Select
+                    value={logbookStatusFilter}
+                    onValueChange={setLogbookStatusFilter}
+                  >
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="All Status" />
                     </SelectTrigger>
@@ -294,7 +469,7 @@ export default function ApprovalsPage() {
                 </div>
 
                 {/* Logbook Table */}
-                {logbookLoading ? (
+                {logbookLoading || departmentsLoading ? (
                   <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 p-12 text-center">
                     <div className="text-gray-500">Loading...</div>
                   </div>
@@ -307,7 +482,7 @@ export default function ApprovalsPage() {
                       No logbook entries found
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {logbookStatusFilter === "submitted" 
+                      {logbookStatusFilter === "submitted"
                         ? "There are no pending logbook entries to review."
                         : "No logbook entries match your filter."}
                     </p>
@@ -318,19 +493,35 @@ export default function ApprovalsPage() {
                       <TableHeader>
                         <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                           <TableHead className="font-semibold">Date</TableHead>
-                          <TableHead className="font-semibold">Employee</TableHead>
-                          <TableHead className="font-semibold">Activity</TableHead>
-                          <TableHead className="font-semibold">Contribution</TableHead>
-                          <TableHead className="font-semibold">Status</TableHead>
-                          <TableHead className="font-semibold">Actions</TableHead>
+                          <TableHead className="font-semibold">
+                            Employee
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            Activity
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            Contribution
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            Status
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            Actions
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {logbookEntries.map((entry: any) => (
-                          <TableRow key={entry.logbookEntryId} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
+                        {logbookEntries.map((entry) => (
+                          <TableRow
+                            key={entry.logbookEntryId}
+                            className="hover:bg-gray-50 dark:hover:bg-gray-900/30"
+                          >
                             <TableCell>
                               <div className="text-sm text-gray-900 dark:text-gray-100">
-                                {format(new Date(entry.entryDate), "MMM d, yyyy")}
+                                {format(
+                                  new Date(entry.entryDate),
+                                  "MMM d, yyyy",
+                                )}
                               </div>
                               <div className="text-xs text-gray-500">
                                 {format(new Date(entry.entryDate), "h:mm a")}
@@ -361,7 +552,9 @@ export default function ApprovalsPage() {
                                   <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 max-w-[100px]">
                                     <div
                                       className="bg-blue-600 h-2 rounded-full"
-                                      style={{ width: `${Math.min(entry.kpiCompletionPercent, 100)}%` }}
+                                      style={{
+                                        width: `${Math.min(entry.kpiCompletionPercent, 100)}%`,
+                                      }}
                                     />
                                   </div>
                                   <span className="text-xs text-gray-600 dark:text-gray-400">
@@ -373,7 +566,7 @@ export default function ApprovalsPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              {getStatusBadge(entry.entryStatus)}
+                              {getStatusBadge(entry.entryStatus || "")}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -388,8 +581,10 @@ export default function ApprovalsPage() {
                                 </Button>
                                 <LogbookApprovalActions
                                   logbookEntryId={entry.logbookEntryId}
-                                  activityDescription={entry.activityDescription}
-                                  currentStatus={entry.entryStatus}
+                                  activityDescription={
+                                    entry.activityDescription || ""
+                                  }
+                                  currentStatus={entry.entryStatus || ""}
                                   onSuccess={() => refetchLogbook()}
                                 />
                               </div>
@@ -431,7 +626,10 @@ export default function ApprovalsPage() {
                 <div>
                   <Label className="text-xs text-gray-500">Date</Label>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {format(new Date(selectedLogbookEntry.entryDate), "MMMM d, yyyy")}
+                    {format(
+                      new Date(selectedLogbookEntry.entryDate),
+                      "MMMM d, yyyy",
+                    )}
                   </p>
                   <p className="text-xs text-gray-500">
                     {format(new Date(selectedLogbookEntry.entryDate), "h:mm a")}
@@ -440,14 +638,17 @@ export default function ApprovalsPage() {
                 <div>
                   <Label className="text-xs text-gray-500">Status</Label>
                   <div className="mt-1">
-                    {getStatusBadge(selectedLogbookEntry.entryStatus)}
+                    {getStatusBadge(selectedLogbookEntry.entryStatus || "")}
                   </div>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Submitted</Label>
                   <p className="text-sm text-gray-900 dark:text-gray-100">
                     {selectedLogbookEntry.submittedAt
-                      ? format(new Date(selectedLogbookEntry.submittedAt), "MMM d, yyyy h:mm a")
+                      ? format(
+                          new Date(selectedLogbookEntry.submittedAt),
+                          "MMM d, yyyy h:mm a",
+                        )
                       : "Not submitted"}
                   </p>
                 </div>
@@ -539,7 +740,9 @@ export default function ApprovalsPage() {
                         <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                           <div
                             className="bg-blue-600 h-3 rounded-full transition-all"
-                            style={{ width: `${Math.min(selectedLogbookEntry.kpiCompletionPercent, 100)}%` }}
+                            style={{
+                              width: `${Math.min(selectedLogbookEntry.kpiCompletionPercent, 100)}%`,
+                            }}
                           />
                         </div>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -611,7 +814,10 @@ export default function ApprovalsPage() {
                           Approved On
                         </Label>
                         <p className="text-sm text-green-900 dark:text-green-100">
-                          {format(new Date(selectedLogbookEntry.approvedAt), "MMM d, yyyy h:mm a")}
+                          {format(
+                            new Date(selectedLogbookEntry.approvedAt),
+                            "MMM d, yyyy h:mm a",
+                          )}
                         </p>
                       </div>
                     )}
@@ -620,7 +826,8 @@ export default function ApprovalsPage() {
               )}
 
               {/* Action Buttons */}
-              {selectedLogbookEntry.entryStatus === "SUBMITTED" && (
+              {normalizeStatus(selectedLogbookEntry.entryStatus) ===
+                "SUBMITTED" && (
                 <div className="flex items-center justify-end gap-3 pt-4 border-t">
                   <Button
                     variant="outline"
@@ -630,8 +837,10 @@ export default function ApprovalsPage() {
                   </Button>
                   <LogbookApprovalActions
                     logbookEntryId={selectedLogbookEntry.logbookEntryId}
-                    activityDescription={selectedLogbookEntry.activityDescription}
-                    currentStatus={selectedLogbookEntry.entryStatus}
+                    activityDescription={
+                      selectedLogbookEntry.activityDescription || ""
+                    }
+                    currentStatus={selectedLogbookEntry.entryStatus || ""}
                     onSuccess={() => {
                       refetchLogbook();
                       setShowDetailDialog(false);

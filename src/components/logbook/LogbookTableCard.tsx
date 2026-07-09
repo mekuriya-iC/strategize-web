@@ -75,6 +75,11 @@ export function LogbookTableCard({
     }
   };
 
+  const normalizedStatus = String(item.status || "DRAFT").toUpperCase();
+  const canSubmit =
+    ["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status;
+  const isLocked = ["SUBMITTED", "APPROVED"].includes(normalizedStatus);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Card Header */}
@@ -92,9 +97,9 @@ export function LogbookTableCard({
                 {item.activity}
               </h3>
               <span className="inline-flex mb-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {item.status === "SUBMITTED"
+                {normalizedStatus === "SUBMITTED"
                   ? "Pending Approval"
-                  : item.status || "DRAFT"}
+                  : normalizedStatus}
               </span>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <CalendarIcon className="w-4 h-4" />
@@ -190,9 +195,7 @@ export function LogbookTableCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2">
-            {(item.status === "DRAFT" ||
-              item.status === "REJECTED" ||
-              !item.status) && (
+            {canSubmit && (
               <Button
                 variant="outline"
                 size="sm"
@@ -207,11 +210,7 @@ export function LogbookTableCard({
               variant="outline"
               size="sm"
               onClick={handleEdit}
-              disabled={
-                loading ||
-                item.status === "SUBMITTED" ||
-                item.status === "APPROVED"
-              }
+              disabled={loading || isLocked}
               className="flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
             >
               <PencilIcon className="w-4 h-4 mr-2" />
@@ -221,11 +220,7 @@ export function LogbookTableCard({
               variant="outline"
               size="sm"
               onClick={handleDelete}
-              disabled={
-                loading ||
-                item.status === "SUBMITTED" ||
-                item.status === "APPROVED"
-              }
+              disabled={loading || isLocked}
               className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
             >
               <TrashIcon className="w-4 h-4 mr-2" />

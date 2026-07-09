@@ -75,6 +75,12 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
     boxShadow: isDragging ? "0 4px 12px rgba(0, 0, 0, 0.15)" : undefined,
   };
 
+  const isKpiLocked =
+    kpi.status === "APPROVED" ||
+    kpi.objective?.status === "APPROVED" ||
+    (kpi.objective as any)?.cascadeStatus === "approved" ||
+    Boolean((kpi.objective as any)?.approvedAt);
+
   const getFirstColumnContent = (kpi: Kpi) => {
     if (kpi.parent?.name) {
       return kpi.parent.name.trim() || "Unnamed Parent KPI";
@@ -114,8 +120,10 @@ const KPITableRow: React.FC<KPITableRowProps> = ({
           : idx % 2 === 1
             ? "bg-white dark:bg-transparent"
             : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
-      } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${isDragging ? "ring-2 ring-blue-400" : ""}`}
-      onClick={() => onEdit(kpi.kpiId)}
+      } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isKpiLocked ? "cursor-default" : "cursor-pointer"} ${isDragging ? "ring-2 ring-blue-400" : ""}`}
+      onClick={() => {
+        if (!isKpiLocked) onEdit(kpi.kpiId);
+      }}
     >
       {enableSorting && (
         <TableCell className="px-2 w-10" onClick={(e) => e.stopPropagation()}>

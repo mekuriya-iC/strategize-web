@@ -48,6 +48,21 @@ export const GET_LOGBOOK_ENTRIES = gql`
           fullName
           email
           title
+          role
+          departments {
+            departmentId
+            name
+            head {
+              employeeId
+            }
+            division {
+              divisionId
+              name
+              head {
+                employeeId
+              }
+            }
+          }
         }
         approvedBy {
           employeeId
@@ -96,6 +111,21 @@ export const GET_LOGBOOK_ENTRY = gql`
         fullName
         email
         title
+        role
+        departments {
+          departmentId
+          name
+          head {
+            employeeId
+          }
+          division {
+            divisionId
+            name
+            head {
+              employeeId
+            }
+          }
+        }
       }
       approvedBy {
         employeeId

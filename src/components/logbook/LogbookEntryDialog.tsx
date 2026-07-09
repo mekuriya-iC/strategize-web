@@ -29,6 +29,7 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/lib/utils";
 import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
 import { useStrategicPeriodStore, useUser } from "@/stores";
+import { getAccessToken } from "@/lib/auth-utils";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,31 @@ interface LogbookEntryDialogProps {
 }
 
 type TimeValue = { hour: string; minute: string; period: "AM" | "PM" };
+
+const getApiBaseUrl = () => {
+  const graphqlUrl =
+    process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/graphql";
+  return graphqlUrl.replace(/\/graphql\/?$/, "");
+};
+
+const uploadLogbookFile = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token = getAccessToken();
+  const response = await fetch(`${getApiBaseUrl()}/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("File upload failed");
+  }
+
+  const result = await response.json();
+  return result.url || `${getApiBaseUrl()}/storage/${result.filename}`;
+};
 
 export function LogbookEntryDialog({
   open,
@@ -197,6 +223,11 @@ export function LogbookEntryDialog({
     }
 
     try {
+      let evidenceUrl = editingEntry?.attachmentUrl || null;
+      if (attachment) {
+        evidenceUrl = await uploadLogbookFile(attachment);
+      }
+
       const entryData = {
         organizationId: currentUser.organizationId,
         strategicPeriodId: selectedPeriod.strategicPeriodId,
@@ -204,7 +235,7 @@ export function LogbookEntryDialog({
         evidenceDescription: description.trim() || null,
         decisionsMade: outcome.trim() || null,
         entryDate: buildDateTime(entryDate, entryTime).toISOString(),
-        evidenceUrl: attachment?.name || null,
+        evidenceUrl,
         linkedKpiId: linkedKpiId || null,
         kpiAchievedValue: achieved,
         kpiTargetValue: target,

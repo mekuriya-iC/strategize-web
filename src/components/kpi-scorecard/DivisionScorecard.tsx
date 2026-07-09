@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import { Network, TrendingUp, Target, Award, AlertCircle } from "lucide-react";
+import { Network, TrendingUp, Target, Award, AlertCircle, Info, User, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_TOTAL_SCORECARD_SCORE } from "@/lib/graphql/queries/kpi-scorecard";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -25,6 +26,8 @@ interface KpiScore {
     kpiId: string;
     name: string;
     description: string;
+    kpiMode?: string;
+    managerRetentionPercent?: number;
   };
   level: string;
   actualValue: number;
@@ -35,6 +38,12 @@ interface KpiScore {
   cappedRate: number;
   score: number;
   calculatedAt: string;
+  managerActual?: number;
+  managerTarget?: number;
+  teamActual?: number;
+  teamTarget?: number;
+  managerAchievementRate?: number;
+  teamAchievementRate?: number;
 }
 
 interface ScorecardData {
@@ -339,6 +348,7 @@ export default function DivisionScorecard({
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
+                      <th className="text-center p-3 font-medium">Mode</th>
                       <th className="text-right p-3 font-medium">
                         Actual (Aggregated)
                       </th>
@@ -358,6 +368,11 @@ export default function DivisionScorecard({
                       const badge = getAchievementBadge(
                         kpiScore.achievementRate,
                       );
+                      const kpiMode = kpiScore.kpi.kpiMode || "AGGREGATED";
+                      const hasHybridBreakdown = 
+                        kpiMode === "HYBRID" && 
+                        kpiScore.managerActual !== undefined && 
+                        kpiScore.teamActual !== undefined;
 
                       return (
                         <tr
@@ -373,6 +388,58 @@ export default function DivisionScorecard({
                                 </p>
                               )}
                             </div>
+                          </td>
+                          <td className="text-center p-3">
+                            <div className="flex flex-col items-center gap-2">
+                              <KpiModeBadge mode={kpiMode} size="sm" />
+                              {kpiMode === "AGGREGATED" && (
+                                <p className="text-xs text-muted-foreground">
+                                  (from departments)
+                                </p>
+                              )}
+                              {kpiMode === "DIRECT" && (
+                                <p className="text-xs text-muted-foreground">
+                                  (Div Head Only)
+                                </p>
+                              )}
+                              {kpiMode === "HYBRID" && kpiScore.kpi.managerRetentionPercent && (
+                                <p className="text-xs text-muted-foreground">
+                                  {kpiScore.kpi.managerRetentionPercent}% mgr / {100 - kpiScore.kpi.managerRetentionPercent}% depts
+                                </p>
+                              )}
+                            </div>
+                            {hasHybridBreakdown && (
+                              <div className="mt-2 text-xs space-y-1 border-t pt-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <User className="w-3 h-3" />
+                                    Div Head:
+                                  </span>
+                                  <span className="font-medium">
+                                    {formatNumber(kpiScore.managerActual!)} / {formatNumber(kpiScore.managerTarget!)}
+                                    {kpiScore.managerAchievementRate !== undefined && (
+                                      <span className={`ml-1 ${getAchievementColor(kpiScore.managerAchievementRate)}`}>
+                                        ({formatPercentage(kpiScore.managerAchievementRate)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <Users className="w-3 h-3" />
+                                    Departments:
+                                  </span>
+                                  <span className="font-medium">
+                                    {formatNumber(kpiScore.teamActual!)} / {formatNumber(kpiScore.teamTarget!)}
+                                    {kpiScore.teamAchievementRate !== undefined && (
+                                      <span className={`ml-1 ${getAchievementColor(kpiScore.teamAchievementRate)}`}>
+                                        ({formatPercentage(kpiScore.teamAchievementRate)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </td>
                           <td className="text-right p-3 font-medium">
                             {formatNumber(kpiScore.actualValue)}

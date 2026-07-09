@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { CreateKpiDialog } from "@/components/kpis/CreateKpiDialog";
 import KpiAssignmentDialog from "@/components/kpis/KpiAssignmentDialog";
+import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 
 interface KpisTableProps {
@@ -135,6 +136,7 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
             <TableRow className="bg-gray-50 dark:bg-gray-900/50">
               <TableHead className="font-semibold">KPI Name</TableHead>
               <TableHead className="font-semibold">Type</TableHead>
+              <TableHead className="font-semibold">Mode</TableHead>
               <TableHead className="font-semibold">Objective</TableHead>
               <TableHead className="font-semibold">Target</TableHead>
               <TableHead className="font-semibold">Frequency</TableHead>
@@ -178,6 +180,18 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${typeConf.className}`}>
                       {typeConf.label}
                     </span>
+                  </TableCell>
+
+                  {/* Mode */}
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <KpiModeBadge mode={kpi.kpiMode as any} size="sm" />
+                      {kpi.kpiMode === "HYBRID" && kpi.managerRetentionPercent && (
+                        <span className="text-xs text-purple-600 dark:text-purple-400">
+                          {kpi.managerRetentionPercent}% mgr / {100 - kpi.managerRetentionPercent}% team
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
 
                   {/* Objective */}
@@ -260,9 +274,10 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
                             e.stopPropagation();
                             setAssignKpi(kpi);
                           }}
-                          disabled={!selectedPeriod}
+                          disabled={!selectedPeriod || (kpi as any).kpiMode === "DIRECT"}
                         >
-                          <UserPlus className="mr-2 h-4 w-4" /> Assign
+                          <UserPlus className="mr-2 h-4 w-4" /> 
+                          {(kpi as any).kpiMode === "DIRECT" ? "Assign (DIRECT mode)" : "Assign"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"

@@ -26,6 +26,8 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
           kpiId
           name
           description
+          kpiMode
+          managerRetentionPercent
         }
         level
         actualValue
@@ -36,6 +38,12 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
         cappedRate
         score
         calculatedAt
+        managerActual
+        managerTarget
+        teamActual
+        teamTarget
+        managerAchievementRate
+        teamAchievementRate
       }
     }
   }
@@ -86,6 +94,8 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
           kpiId
           name
           description
+          kpiMode
+          managerRetentionPercent
         }
         level
         actualValue
@@ -96,6 +106,12 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
         cappedRate
         score
         calculatedAt
+        managerActual
+        managerTarget
+        teamActual
+        teamTarget
+        managerAchievementRate
+        teamAchievementRate
       }
     }
   }
@@ -114,6 +130,8 @@ export const GET_KPI_SCORES_BY_ENTITY = gql`
         name
         description
         measurementUnit
+        kpiMode
+        managerRetentionPercent
       }
       level
       actualValue
@@ -124,6 +142,12 @@ export const GET_KPI_SCORES_BY_ENTITY = gql`
       cappedRate
       score
       calculatedAt
+      managerActual
+      managerTarget
+      teamActual
+      teamTarget
+      managerAchievementRate
+      teamAchievementRate
     }
   }
 `;

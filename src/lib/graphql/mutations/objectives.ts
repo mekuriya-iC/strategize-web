@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Objective Mutations
@@ -127,8 +127,22 @@ export const ASSIGN_OBJECTIVE = gql`
     assignObjective(assignObjectiveInput: $input) {
       objectiveId
       title
+      type
+      level
       assigneeType
       assigneeId
+      kpis {
+        kpiId
+        name
+        kpiMode
+        managerRetentionPercent
+        targetValue
+        assignedTargetValue
+        parent {
+          kpiId
+          name
+        }
+      }
       ownerUser {
         employeeId
         fullName

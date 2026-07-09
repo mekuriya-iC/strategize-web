@@ -318,15 +318,9 @@ export interface PaginatedStrategicPeriods {
 
 // Objective Types
 export type ObjectiveType =
-  | "CORPORATE"
-  | "DIVISION"
-  | "DEPARTMENT"
-  | "PERSONNEL";
+  "CORPORATE" | "DIVISION" | "DEPARTMENT" | "PERSONNEL";
 export type ObjectiveStatus =
-  | "NOT_SUBMITTED"
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED";
+  "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 
 export interface Objective {
   objectiveId: string;
@@ -426,18 +420,10 @@ export interface PaginatedObjectives {
 // KPI Types
 export type KpiWeightType = "NUMBER" | "PERCENT";
 export type KpiUnitType =
-  | "NUMBER"
-  | "PERCENT"
-  | "CURRENCY"
-  | "HOUR"
-  | "RATIO"
-  | "COUNT";
+  "NUMBER" | "PERCENT" | "CURRENCY" | "HOUR" | "RATIO" | "COUNT";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiTargetStatus =
-  | "NOT_SUBMITTED"
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED";
+  "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 
 // Restore KPI target types
 export interface KpiTarget {
@@ -461,6 +447,8 @@ export interface Kpi {
   targets: KpiTarget[];
   targetValue?: number; // Base target value of the KPI
   assignedTargetValue?: number; // Target value assigned to current user (from assignment)
+  kpiMode?: string; // AGGREGATED, DIRECT, HYBRID
+  managerRetentionPercent?: number; // For HYBRID mode
   parent?: { kpiId: string; name?: string } | null;
   objective: Objective | null;
   createdAt: string;
@@ -487,6 +475,8 @@ export interface CreateKpiInput {
   assigneeId?: string;
   assigneeType?: string;
   assignerId?: string;
+  kpiMode?: string; // KPI mode: AGGREGATED, DIRECT, HYBRID
+  managerRetentionPercent?: number; // For HYBRID mode: percentage manager retains (1-99)
 }
 
 export interface UpdateKpiInput {
@@ -501,6 +491,8 @@ export interface UpdateKpiInput {
   targets?: KpiTargetInput[];
   objectiveId?: string;
   parentId?: string;
+  kpiMode?: string;
+  managerRetentionPercent?: number;
 }
 
 export interface PaginatedKpis {

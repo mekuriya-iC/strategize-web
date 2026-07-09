@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Objective Queries
@@ -73,6 +73,8 @@ export const GET_OBJECTIVES = gql`
           status
           targetValue
           assignedTargetValue
+          kpiMode
+          managerRetentionPercent
           parent {
             kpiId
           }
@@ -158,6 +160,8 @@ export const GET_OBJECTIVE = gql`
         measurementUnit
         targetValue
         assignedTargetValue
+        kpiMode
+        managerRetentionPercent
         createdAt
         updatedAt
         parent {
@@ -224,6 +228,8 @@ export const GET_OBJECTIVES_FOR_APPROVAL = gql`
           targetValue
           assignedTargetValue
           measurementUnit
+          kpiMode
+          managerRetentionPercent
         }
       }
       meta {
@@ -300,10 +306,7 @@ export const GET_OBJECTIVES_HIERARCHY = gql`
     $strategicPeriodId: ID!
     $level: ObjectiveLevel
   ) {
-    objectivesHierarchy(
-      strategicPeriodId: $strategicPeriodId
-      level: $level
-    ) {
+    objectivesHierarchy(strategicPeriodId: $strategicPeriodId, level: $level) {
       objectiveId
       title
       description

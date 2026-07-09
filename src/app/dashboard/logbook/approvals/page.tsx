@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { GET_LOGBOOK_ENTRIES } from "@/lib/graphql/queries/logbook";
+import { GET_ME } from "@/lib/graphql/queries/auth";
 import { LogbookApprovalActions } from "@/components/logbook";
 import { Input } from "@/components/ui/input";
 import { Search, CheckCircle2, XCircle, Clock } from "lucide-react";
@@ -27,9 +28,120 @@ import { format } from "date-fns";
  * Logbook Approvals Page
  * For managers/supervisors to approve/reject logbook entries
  */
+const GET_LOGBOOK_REVIEW_DEPARTMENTS = gql`
+  query GetLogbookReviewDepartments($page: Int!, $limit: Int!) {
+    departments(page: $page, limit: $limit) {
+      items {
+        departmentId
+        head {
+          employeeId
+        }
+        division {
+          divisionId
+          head {
+            employeeId
+          }
+        }
+      }
+    }
+  }
+`;
+
+type ReviewDepartment = {
+  departmentId?: string;
+  head?: { employeeId?: string | null } | null;
+  division?: {
+    divisionId?: string;
+    head?: { employeeId?: string | null } | null;
+  } | null;
+};
+
+type ReviewEmployee = {
+  employeeId?: string;
+  role?: string | null;
+  departments?: ReviewDepartment[] | null;
+};
+
+type ReviewLogbookEntry = {
+  logbookEntryId: string;
+  entryDate: string;
+  activityDescription?: string | null;
+  entryStatus?: string | null;
+  kpiCompletionPercent?: number | null;
+  owner?:
+    | (ReviewEmployee & { fullName?: string | null; title?: string | null })
+    | null;
+};
+
+const MANAGEMENT_ROLES = new Set([
+  "MANAGER",
+  "DIRECTOR",
+  "ADMIN",
+  "SUPER_ADMIN",
+]);
+
+const normalizeStatus = (status?: string | null) =>
+  String(status || "").toUpperCase();
+
+const canReviewEntry = (
+  entry: ReviewLogbookEntry,
+  currentUser: ReviewEmployee | null | undefined,
+  departments: ReviewDepartment[] = [],
+) => {
+  const owner = entry?.owner;
+  if (!owner || !currentUser || owner.employeeId === currentUser.employeeId) {
+    return false;
+  }
+
+  const currentUserRole = String(currentUser.role || "").toUpperCase();
+  const ownerRole = String(owner.role || "").toUpperCase();
+
+  // CEO/Super Admin/Admin approve division manager/director logbooks.
+  if (["SUPER_ADMIN", "ADMIN"].includes(currentUserRole)) {
+    return ownerRole === "DIRECTOR";
+  }
+
+  // Division manager/director approves department managers heading departments under their division.
+  if (currentUserRole === "DIRECTOR") {
+    return (
+      ownerRole === "MANAGER" &&
+      departments.some(
+        (department) =>
+          department.head?.employeeId === owner.employeeId &&
+          department.division?.head?.employeeId === currentUser.employeeId,
+      )
+    );
+  }
+
+  // Department manager approves non-management employees in departments they head.
+  if (currentUserRole === "MANAGER") {
+    return (
+      !MANAGEMENT_ROLES.has(ownerRole) &&
+      owner.departments?.some(
+        (department) => department.head?.employeeId === currentUser.employeeId,
+      )
+    );
+  }
+
+  return false;
+};
+
 export default function LogbookApprovalsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("SUBMITTED");
+
+  const { data: meData, loading: meLoading } = useQuery(GET_ME);
+  const currentUser = meData?.me;
+  const { data: departmentsData, loading: departmentsLoading } = useQuery(
+    GET_LOGBOOK_REVIEW_DEPARTMENTS,
+    {
+      variables: { page: 1, limit: 1000 },
+    },
+  );
+  const departments = useMemo<ReviewDepartment[]>(
+    () => departmentsData?.departments?.items || [],
+    [departmentsData],
+  );
 
   // Get logbook entries pending approval
   const { data, loading, refetch } = useQuery(GET_LOGBOOK_ENTRIES, {
@@ -40,32 +152,67 @@ export default function LogbookApprovalsPage() {
     },
   });
 
-  const entries = data?.logbookEntries?.items || [];
+  const entries = useMemo<ReviewLogbookEntry[]>(
+    () => data?.logbookEntries?.items || [],
+    [data],
+  );
 
-  // Filter by search
+  const approvableEntries = useMemo(
+    () =>
+      entries.filter((entry) =>
+        canReviewEntry(entry, currentUser, departments),
+      ),
+    [entries, currentUser, departments],
+  );
+
+  // Filter by approval hierarchy first, then search.
   const filteredEntries = useMemo(() => {
-    if (!searchQuery) return entries;
-    
+    if (!searchQuery) return approvableEntries;
+
     const query = searchQuery.toLowerCase();
-    return entries.filter((entry: any) =>
-      entry.activityDescription?.toLowerCase().includes(query) ||
-      entry.owner?.fullName?.toLowerCase().includes(query)
+    return approvableEntries.filter(
+      (entry) =>
+        entry.activityDescription?.toLowerCase().includes(query) ||
+        entry.owner?.fullName?.toLowerCase().includes(query),
     );
-  }, [entries, searchQuery]);
+  }, [approvableEntries, searchQuery]);
 
   const getStatusBadge = (status: string) => {
+    const normalizedStatus = normalizeStatus(status);
     const statusConfig = {
-      SUBMITTED: { icon: Clock, color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", label: "Pending" },
-      APPROVED: { icon: CheckCircle2, color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300", label: "Approved" },
-      REJECTED: { icon: XCircle, color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300", label: "Rejected" },
-      DRAFT: { icon: Clock, color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400", label: "Draft" },
+      SUBMITTED: {
+        icon: Clock,
+        color:
+          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+        label: "Pending",
+      },
+      APPROVED: {
+        icon: CheckCircle2,
+        color:
+          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        label: "Approved",
+      },
+      REJECTED: {
+        icon: XCircle,
+        color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+        label: "Rejected",
+      },
+      DRAFT: {
+        icon: Clock,
+        color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
+        label: "Draft",
+      },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.DRAFT;
+    const config =
+      statusConfig[normalizedStatus as keyof typeof statusConfig] ||
+      statusConfig.DRAFT;
     const Icon = config.icon;
 
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
         <Icon className="w-3.5 h-3.5" />
         {config.label}
       </span>
@@ -111,7 +258,7 @@ export default function LogbookApprovalsPage() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {loading || meLoading || departmentsLoading ? (
         <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 p-12 text-center">
           <div className="text-gray-500">Loading...</div>
         </div>
@@ -124,7 +271,7 @@ export default function LogbookApprovalsPage() {
             No entries found
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {statusFilter === "SUBMITTED" 
+            {statusFilter === "SUBMITTED"
               ? "There are no pending logbook entries to review."
               : "No logbook entries match your filters."}
           </p>
@@ -143,8 +290,11 @@ export default function LogbookApprovalsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEntries.map((entry: any) => (
-                <TableRow key={entry.logbookEntryId} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
+              {filteredEntries.map((entry) => (
+                <TableRow
+                  key={entry.logbookEntryId}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900/30"
+                >
                   <TableCell>
                     <div className="text-sm text-gray-900 dark:text-gray-100">
                       {format(new Date(entry.entryDate), "MMM d, yyyy")}
@@ -174,7 +324,9 @@ export default function LogbookApprovalsPage() {
                         <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 max-w-[100px]">
                           <div
                             className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${Math.min(entry.kpiCompletionPercent, 100)}%` }}
+                            style={{
+                              width: `${Math.min(entry.kpiCompletionPercent, 100)}%`,
+                            }}
                           />
                         </div>
                         <span className="text-xs text-gray-600 dark:text-gray-400">
@@ -186,13 +338,13 @@ export default function LogbookApprovalsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {getStatusBadge(entry.entryStatus)}
+                    {getStatusBadge(entry.entryStatus || "")}
                   </TableCell>
                   <TableCell>
                     <LogbookApprovalActions
                       logbookEntryId={entry.logbookEntryId}
-                      activityDescription={entry.activityDescription}
-                      currentStatus={entry.entryStatus}
+                      activityDescription={entry.activityDescription || ""}
+                      currentStatus={entry.entryStatus || ""}
                       onSuccess={() => refetch()}
                     />
                   </TableCell>
@@ -212,9 +364,15 @@ export default function LogbookApprovalsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {entries.filter((e: any) => e.entryStatus === "SUBMITTED").length}
+                {
+                  approvableEntries.filter(
+                    (e) => normalizeStatus(e.entryStatus) === "SUBMITTED",
+                  ).length
+                }
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Pending</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Pending
+              </p>
             </div>
           </div>
         </div>
@@ -226,9 +384,15 @@ export default function LogbookApprovalsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {entries.filter((e: any) => e.entryStatus === "APPROVED").length}
+                {
+                  approvableEntries.filter(
+                    (e) => normalizeStatus(e.entryStatus) === "APPROVED",
+                  ).length
+                }
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Approved</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Approved
+              </p>
             </div>
           </div>
         </div>
@@ -240,9 +404,15 @@ export default function LogbookApprovalsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {entries.filter((e: any) => e.entryStatus === "REJECTED").length}
+                {
+                  approvableEntries.filter(
+                    (e) => normalizeStatus(e.entryStatus) === "REJECTED",
+                  ).length
+                }
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Rejected</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Rejected
+              </p>
             </div>
           </div>
         </div>
@@ -254,7 +424,7 @@ export default function LogbookApprovalsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {entries.length}
+                {approvableEntries.length}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">Total</p>
             </div>

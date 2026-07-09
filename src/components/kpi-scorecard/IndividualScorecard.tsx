@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -370,6 +371,7 @@ export default function IndividualScorecard({
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
                       <th className="text-center p-3 font-medium">Level</th>
+                      <th className="text-center p-3 font-medium">Mode</th>
                       <th className="text-right p-3 font-medium">Actual</th>
                       <th className="text-right p-3 font-medium">Target</th>
                       <th className="text-right p-3 font-medium">
@@ -412,6 +414,17 @@ export default function IndividualScorecard({
                             <Badge variant="outline" className="text-xs">
                               {kpiScore.level}
                             </Badge>
+                          </td>
+                          <td className="text-center p-3">
+                            <KpiModeBadge 
+                              mode={(kpiScore.kpi as any).kpiMode || "AGGREGATED"} 
+                              size="sm"
+                            />
+                            {(kpiScore.kpi as any).kpiMode === "HYBRID" && (kpiScore.kpi as any).managerRetentionPercent && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {(kpiScore.kpi as any).managerRetentionPercent}% mgr
+                              </p>
+                            )}
                           </td>
                           <td className="text-right p-3 font-medium">
                             {formatNumber(kpiScore.actualValue)}
@@ -474,7 +487,7 @@ export default function IndividualScorecard({
                   <tfoot className="border-t-2 font-bold">
                     <tr>
                       <td className="p-3">Total</td>
-                      <td className="text-right p-3" colSpan={6}></td>
+                      <td className="text-right p-3" colSpan={7}></td>
                       <td className="text-right p-3 text-primary text-lg">
                         {formatNumber(scorecard.totalScore)}%
                       </td>
@@ -514,6 +527,34 @@ export default function IndividualScorecard({
                   • <strong>Cap:</strong> Maximum achievement rate (e.g., 150%
                   means max 1.5x of weight)
                 </p>
+
+                {/* KPI Mode Explanation */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Understanding KPI Modes
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <KpiModeBadge mode="AGGREGATED" size="sm" />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Aggregated:</strong> Your manager's KPI aggregates results from the team. Your achievements contribute to their score.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <KpiModeBadge mode="DIRECT" size="sm" />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Direct:</strong> Manager's personal work KPI. Only their logbook entries count - not assigned to team members.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <KpiModeBadge mode="HYBRID" size="sm" />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Hybrid:</strong> Manager retains a percentage for their own work, remainder cascades from team. Both portions contribute to final score.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Weight Allocation Explanation */}
                 <div className="mt-4 pt-4 border-t border-border">

@@ -8,11 +8,12 @@ import { toast } from "sonner";
 import {
   KPIFormHeader,
   KPIInformationCard,
-  QuarterlyBreakdown
+  QuarterlyBreakdown,
 } from "./kpi-form";
 import type { Kpi, KpiWeightType, Objective } from "@/types/graphql";
 import { useUpdateKPIState } from "@/hooks/objectives/useUpdateKPIState";
 import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
+import { KpiModeSelector } from "@/components/objectives/KpiModeSelector";
 
 interface KPIFormSectionProps {
   title: string;
@@ -23,13 +24,11 @@ interface KPIFormSectionProps {
 const KPIFormSection: React.FC<KPIFormSectionProps> = ({
   title,
   children,
-  className = ""
+  className = "",
 }) => (
   <div className={`space-y-4 ${className}`}>
     <h3 className="text-lg font-medium">{title}</h3>
-    <div className="pl-4 border-l-2 border-gray-200">
-      {children}
-    </div>
+    <div className="pl-4 border-l-2 border-gray-200">{children}</div>
   </div>
 );
 
@@ -61,12 +60,17 @@ const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
         min="0"
       />
       <span className="absolute right-3 top-2.5 text-gray-500">
-        {unitType === "PERCENT" ? "%" : 
-         unitType === "CURRENCY" ? "Million/ETB" :
-         unitType === "HOUR" ? "hrs" :
-         unitType === "RATIO" ? "ratio" :
-         unitType === "COUNT" ? "count" :
-         ""}
+        {unitType === "PERCENT"
+          ? "%"
+          : unitType === "CURRENCY"
+            ? "Million/ETB"
+            : unitType === "HOUR"
+              ? "hrs"
+              : unitType === "RATIO"
+                ? "ratio"
+                : unitType === "COUNT"
+                  ? "count"
+                  : ""}
       </span>
     </div>
   </div>
@@ -93,9 +97,9 @@ export default function UpdateKPIForm({
     error,
     isSubmitting,
     kpi,
-    parentKpi,  // Make sure this is destructured from the hook
+    parentKpi, // Make sure this is destructured from the hook
     annualTarget,
-    assignedAnnualTarget,  // This should be included
+    assignedAnnualTarget, // This should be included
 
     strategicTimeline,
     yearlyQuarters,
@@ -114,21 +118,27 @@ export default function UpdateKPIForm({
     objectiveOverride: objectiveProp,
   });
 
-  const handleFormSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await handleSubmit();
-    } catch (error) {
-      console.error("Error updating KPI:", error);
-      toast.error("Failed to update KPI");
-    }
-  }, [handleSubmit]);
+  const handleFormSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        await handleSubmit();
+      } catch (error) {
+        console.error("Error updating KPI:", error);
+        toast.error("Failed to update KPI");
+      }
+    },
+    [handleSubmit],
+  );
 
   // Wrapper function to match KPIInformationCard's expected signature
   // Must be declared before early returns to satisfy Rules of Hooks
-  const handleInputChange = useCallback((field: string, value: string) => {
-    updateField(field as keyof typeof formData, value);
-  }, [updateField, formData]);
+  const handleInputChange = useCallback(
+    (field: string, value: string) => {
+      updateField(field as keyof typeof formData, value);
+    },
+    [updateField, formData],
+  );
 
   // Early return checks - MUST come after all hooks
   if (loading) {
@@ -162,6 +172,15 @@ export default function UpdateKPIForm({
   const planningObjective = objectiveProp || kpi.objective;
   const isCorporate = usesAnnualOnlyKpiTargets(planningObjective);
 
+  const objectiveType =
+    planningObjective?.assigneeType ||
+    planningObjective?.type ||
+    kpi?.objective?.assigneeType ||
+    kpi?.objective?.type;
+  const showModeSelector =
+    objectiveType?.toUpperCase() === "DIVISION" ||
+    objectiveType?.toUpperCase() === "DEPARTMENT";
+
   const hasParent = !!kpi.parent?.kpiId;
 
   // For corporate KPIs, all fields are editable regardless of approval status
@@ -173,20 +192,28 @@ export default function UpdateKPIForm({
   // Lock annual target for all non-corporate KPIs that are cascaded from a parent
   // Only lock if we actually found a valid assigned target (> 0) from the parent.
   // Otherwise, fallback to editable mode so the user can set their own target (standalone behavior).
-  const isAnnualTargetLocked = !isCorporate && hasParent && (assignedAnnualTarget !== null && assignedAnnualTarget > 0);
-  const targetLabel = isAnnualTargetLocked ? 'Target Value (Assigned)' : 'Target Value';
+  const isAnnualTargetLocked =
+    !isCorporate &&
+    hasParent &&
+    assignedAnnualTarget !== null &&
+    assignedAnnualTarget > 0;
+  const targetLabel = isAnnualTargetLocked
+    ? "Target Value (Assigned)"
+    : "Target Value";
 
   // Derive allocation info for validations (regular variable, not useMemo to avoid hooks order issues)
-  const targetToUse = isAnnualTargetLocked 
-    ? (assignedAnnualTarget ?? 0) 
-    : (parseFloat(annualTarget || "0") || 0);
-  
-  const remainingAllocation = kpi ? {
-    available: targetToUse,
-    used: 0, // In update mode, used is handled by validation against assigned
-    remaining: targetToUse,
-    unit: kpi.unitType || "NUMBER",
-  } : null;
+  const targetToUse = isAnnualTargetLocked
+    ? (assignedAnnualTarget ?? 0)
+    : parseFloat(annualTarget || "0") || 0;
+
+  const remainingAllocation = kpi
+    ? {
+        available: targetToUse,
+        used: 0, // In update mode, used is handled by validation against assigned
+        remaining: targetToUse,
+        unit: kpi.unitType || "NUMBER",
+      }
+    : null;
 
   // Create compatible formData
   const compatibleFormData = {
@@ -198,22 +225,25 @@ export default function UpdateKPIForm({
 
   return (
     <div className="space-y-6">
-      <KPIFormHeader
-        isEditing={true}
-        onCancel={onCancel}
-      />
+      <KPIFormHeader isEditing={true} onCancel={onCancel} />
 
       {/* Weight Allocation Display */}
-      <div className={`p-4 rounded-lg mb-6 border ${weightAllocation.isOver ? 'bg-red-50 border-red-200' : 'bg-zinc-50 border-zinc-200'}`}>
+      <div
+        className={`p-4 rounded-lg mb-6 border ${weightAllocation.isOver ? "bg-red-50 border-red-200" : "bg-zinc-50 border-zinc-200"}`}
+      >
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-zinc-700">Objective Weight Allocation</span>
-          <span className={`text-sm font-bold ${weightAllocation.isOver ? 'text-red-600' : 'text-zinc-900'}`}>
+          <span className="text-sm font-medium text-zinc-700">
+            Objective Weight Allocation
+          </span>
+          <span
+            className={`text-sm font-bold ${weightAllocation.isOver ? "text-red-600" : "text-zinc-900"}`}
+          >
             {weightAllocation.total.toFixed(1)}% / 100%
           </span>
         </div>
         <div className="w-full bg-zinc-200 rounded-full h-2 overflow-hidden">
           <div
-            className={`h-full transition-all duration-300 ${weightAllocation.isOver ? 'bg-red-500' : 'bg-blue-600'}`}
+            className={`h-full transition-all duration-300 ${weightAllocation.isOver ? "bg-red-500" : "bg-blue-600"}`}
             style={{ width: `${Math.min(100, weightAllocation.total)}%` }}
           />
         </div>
@@ -234,18 +264,28 @@ export default function UpdateKPIForm({
               canEditStructure={canEditStructure}
               kpiId={kpiId}
               onInputChange={handleInputChange}
-              onParentIdChange={() => { }} // Disabled in update mode
+              onParentIdChange={() => {}} // Disabled in update mode
               objective={kpi.objective || undefined}
               mode="edit"
             />
           </KPIFormSection>
 
+          {/* Performance tracking mode settings for Division/Department level scorecards */}
+          {showModeSelector && (
+            <KpiModeSelector
+              mode={formData.kpiMode || "AGGREGATED"}
+              onModeChange={(mode) => updateField("kpiMode", mode)}
+              retentionPercent={formData.managerRetentionPercent || "30"}
+              onRetentionChange={(percent) =>
+                updateField("managerRetentionPercent", percent)
+              }
+              targetValue={targetToUse.toString()}
+            />
+          )}
+
           {isCorporate ? (
             // CORPORATE VIEW: Annual Target Input Only
-            <KPIFormSection
-              title="Target Settings"
-              className="mb-8"
-            >
+            <KPIFormSection title="Target Settings" className="mb-8">
               <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-medium text-gray-700">
@@ -260,20 +300,20 @@ export default function UpdateKPIForm({
                   unitType={formData.unitType}
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Enter the annual target for the strategic period. Corporate KPIs use annual targets only.
+                  Enter the annual target for the strategic period. Corporate
+                  KPIs use annual targets only.
                 </p>
               </div>
             </KPIFormSection>
           ) : (
             // NON-CORPORATE VIEW: Parent KPI details + Target Breakdown
-            <KPIFormSection
-              title="Target Breakdown"
-              className="mb-8"
-            >
+            <KPIFormSection title="Target Breakdown" className="mb-8">
               {/* Parent KPI Details Card (only show if KPI has a parent) */}
               {hasParent && parentKpi && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-blue-800 mb-2">Parent KPI Details</h4>
+                  <h4 className="font-medium text-blue-800 mb-2">
+                    Parent KPI Details
+                  </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-600">Name</p>
@@ -281,7 +321,9 @@ export default function UpdateKPIForm({
                     </div>
                     <div>
                       <p className="text-gray-600">Baseline</p>
-                      <p className="font-medium">{parentKpi.baseline?.toLocaleString()}</p>
+                      <p className="font-medium">
+                        {parentKpi.baseline?.toLocaleString()}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-600">Weight</p>
@@ -295,17 +337,24 @@ export default function UpdateKPIForm({
                   {/* Show assigned target to make it clear what this KPI should plan against */}
                   {kpi.assignedTargetValue && kpi.assignedTargetValue > 0 && (
                     <div className="mt-3 pt-3 border-t border-blue-200">
-                      <p className="text-gray-600 text-sm">Your Assigned Target</p>
+                      <p className="text-gray-600 text-sm">
+                        Your Assigned Target
+                      </p>
                       <p className="font-bold text-blue-900 text-lg">
                         {kpi.assignedTargetValue.toLocaleString()}{" "}
-                        {formData.unitType === "PERCENT" ? "%" : 
-                         formData.unitType === "CURRENCY" ? "Million/ETB" :
-                         formData.unitType === "RATIO" ? "ratio" :
-                         formData.unitType === "COUNT" ? "count" :
-                         ""}
+                        {formData.unitType === "PERCENT"
+                          ? "%"
+                          : formData.unitType === "CURRENCY"
+                            ? "Million/ETB"
+                            : formData.unitType === "RATIO"
+                              ? "ratio"
+                              : formData.unitType === "COUNT"
+                                ? "count"
+                                : ""}
                       </p>
                       <p className="text-xs text-blue-600 mt-1">
-                        This is the target assigned to you from the parent KPI. Plan your quarterly breakdown based on this value.
+                        This is the target assigned to you from the parent KPI.
+                        Plan your quarterly breakdown based on this value.
                       </p>
                     </div>
                   )}
@@ -313,20 +362,25 @@ export default function UpdateKPIForm({
               )}
 
               {/* Annual Target - Strategic Period */}
-              <div className={`mb-6 p-4 ${isAnnualTargetLocked ? 'bg-gray-50' : 'bg-yellow-50'} rounded-lg border ${isAnnualTargetLocked ? 'border-gray-200' : 'border-yellow-200'}`}>
+              <div
+                className={`mb-6 p-4 ${isAnnualTargetLocked ? "bg-gray-50" : "bg-yellow-50"} rounded-lg border ${isAnnualTargetLocked ? "border-gray-200" : "border-yellow-200"}`}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <span className="font-medium text-gray-700">
                     {targetLabel}
                   </span>
                   {isAnnualTargetLocked ? (
                     <span className="text-lg font-bold text-gray-900">
-                      {(assignedAnnualTarget ?? 0).toLocaleString()} {
-                        formData.unitType === "PERCENT" ? "%" : 
-                        formData.unitType === "CURRENCY" ? "Million/ETB" :
-                        formData.unitType === "RATIO" ? "ratio" :
-                        formData.unitType === "COUNT" ? "count" :
-                        ""
-                      }
+                      {(assignedAnnualTarget ?? 0).toLocaleString()}{" "}
+                      {formData.unitType === "PERCENT"
+                        ? "%"
+                        : formData.unitType === "CURRENCY"
+                          ? "Million/ETB"
+                          : formData.unitType === "RATIO"
+                            ? "ratio"
+                            : formData.unitType === "COUNT"
+                              ? "count"
+                              : ""}
                     </span>
                   ) : (
                     <div className="w-48">
@@ -350,7 +404,9 @@ export default function UpdateKPIForm({
               {/* Quarterly Breakdown Component */}
               <div className="mt-8 border-t pt-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium text-gray-900">Quarterly Planning</h4>
+                  <h4 className="font-medium text-gray-900">
+                    Quarterly Planning
+                  </h4>
                 </div>
                 <QuarterlyBreakdown
                   yearlyQuarters={yearlyQuarters}
@@ -360,15 +416,18 @@ export default function UpdateKPIForm({
                   remainingAllocation={remainingAllocation}
                   strategicTargetsById={{
                     [kpi.kpiId]: {
-                      [strategicTimeline]: (isAnnualTargetLocked ? (assignedAnnualTarget ?? 0) : parseFloat(annualTarget || "0"))
-                    }
+                      [strategicTimeline]: isAnnualTargetLocked
+                        ? (assignedAnnualTarget ?? 0)
+                        : parseFloat(annualTarget || "0"),
+                    },
                   }}
                   onYearlyQuartersChange={setYearlyQuarters}
                   weightType={formData.weightType}
                   mode="edit"
                 />
                 <p className="text-xs text-gray-500 mt-4">
-                  Break down the Target Value into 4 quarters. The sum (or average for percentages) must match the Target Value above.
+                  Break down the Target Value into 4 quarters. The sum (or
+                  average for percentages) must match the Target Value above.
                 </p>
               </div>
             </KPIFormSection>
@@ -399,7 +458,7 @@ export default function UpdateKPIForm({
             </Button>
           </div>
         </div>
-      </form >
-    </div >
+      </form>
+    </div>
   );
 }

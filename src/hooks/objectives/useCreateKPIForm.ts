@@ -20,6 +20,8 @@ export interface CreateKPIFormData {
     weightType: KpiWeightType;
     status: KpiStatus;
     unitType: KpiUnitType;
+    kpiMode?: string;
+    managerRetentionPercent?: string;
 }
 
 export interface YearlyQuarters {
@@ -51,6 +53,8 @@ export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }
         weightType: "PERCENT",
         status: "NOT_SUBMITTED",
         unitType: "NUMBER",
+        kpiMode: "AGGREGATED",
+        managerRetentionPercent: "30",
     });
 
     // Annual Goals - Only for strategic period (single year)
@@ -149,6 +153,10 @@ export function useCreateKPIForm({ objectiveId, onSuccess, isCorporate = false }
                 organizationId: organizationId, // Required by backend
                 targetValue: annualValue, // Use the annual target value directly
                 targets: targets,
+                kpiMode: formData.kpiMode || "AGGREGATED",
+                managerRetentionPercent: formData.kpiMode === "HYBRID" && formData.managerRetentionPercent 
+                    ? parseFloat(formData.managerRetentionPercent) 
+                    : undefined,
             };
 
             console.log("🎯 Creating KPI with input:", {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client";
 import { UPDATE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
+import { getAccessToken } from "@/lib/auth-utils";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -15,6 +16,31 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { XIcon, PlusIcon, TrashIcon, UploadIcon } from "lucide-react";
+
+const getApiBaseUrl = () => {
+  const graphqlUrl =
+    process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/graphql";
+  return graphqlUrl.replace(/\/graphql\/?$/, "");
+};
+
+const uploadEvidenceFile = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token = getAccessToken();
+  const response = await fetch(`${getApiBaseUrl()}/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("File upload failed");
+  }
+
+  const result = await response.json();
+  return result.url || `${getApiBaseUrl()}/storage/${result.filename}`;
+};
 
 interface LogbookItem {
   id: string;
@@ -87,27 +113,49 @@ export function SubmitApprovalDialog({
     setIsSubmitting(true);
 
     try {
-      const evidenceDescription = evidenceItems
+      const uploadedEvidence = await Promise.all(
+        evidenceItems.map(async (evidence) => {
+          if (
+            (evidence.type === "file" || evidence.type === "certificate") &&
+            evidence.file
+          ) {
+            const url = await uploadEvidenceFile(evidence.file);
+            return { ...evidence, value: url };
+          }
+          return evidence;
+        }),
+      );
+
+      const evidenceDescription = uploadedEvidence
+        .filter((evidence) => evidence.value?.trim())
         .map((evidence) => `${evidence.type}: ${evidence.value}`)
-        .filter(Boolean)
         .join("\n");
 
       const parsedQuantity = quantity ? Number(quantity) : null;
+      const input: Record<string, unknown> = {
+        logbookEntryId: item.id,
+        entryStatus: "SUBMITTED",
+        submittedAt: new Date().toISOString(),
+        evidenceDescription: description || evidenceDescription || null,
+        decisionsMade: remark || null,
+      };
+
+      if (parsedQuantity !== null && Number.isFinite(parsedQuantity)) {
+        input.kpiAchievedValue = parsedQuantity;
+      }
+
+      const firstUploadedUrl = uploadedEvidence.find(
+        (evidence) =>
+          (evidence.type === "file" || evidence.type === "certificate") &&
+          evidence.value?.startsWith("http"),
+      )?.value;
+
+      if (firstUploadedUrl) {
+        input.evidenceUrl = firstUploadedUrl;
+      }
 
       await updateLogbookEntry({
-        variables: {
-          input: {
-            logbookEntryId: item.id,
-            entryStatus: "SUBMITTED",
-            submittedAt: new Date().toISOString(),
-            evidenceDescription: description || evidenceDescription || null,
-            decisionsMade: remark || null,
-            kpiAchievedValue:
-              parsedQuantity !== null && Number.isFinite(parsedQuantity)
-                ? parsedQuantity
-                : null,
-          },
-        },
+        variables: { input },
       });
 
       toast.success("Logbook entry submitted for approval");
@@ -402,7 +450,8 @@ export function SubmitApprovalDialog({
                 onChange={(e) => setQuantity(e.target.value)}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Enter the actual value you achieved for this KPI (not a percentage)
+                Enter the actual value you achieved for this KPI (not a
+                percentage)
               </p>
             </div>
           </div>

@@ -88,8 +88,11 @@ export function LogbookApprovalActions({
     }
   };
 
-  // Only show actions for SUBMITTED entries
-  if (currentStatus !== "SUBMITTED") {
+  const normalizedStatus = String(currentStatus || "").toUpperCase();
+
+  // Only show actions for submitted entries. Backend enum values may be returned
+  // as lowercase values while GraphQL mutation inputs use enum names.
+  if (normalizedStatus !== "SUBMITTED") {
     return null;
   }
 

@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * KPI Queries
@@ -42,6 +42,8 @@ export const GET_KPIS = gql`
         assigneeType
         assigneeId
         assignerId
+        kpiMode
+        managerRetentionPercent
         createdAt
         updatedAt
         isDeleted
@@ -114,6 +116,8 @@ export const GET_KPI = gql`
       assigneeType
       assigneeId
       assignerId
+      kpiMode
+      managerRetentionPercent
       createdAt
       updatedAt
       isDeleted
@@ -166,16 +170,8 @@ export const GET_KPI = gql`
 
 // Get KPIs for an objective
 export const GET_KPIS_BY_OBJECTIVE = gql`
-  query GetKpisByObjective(
-    $objectiveId: ID!
-    $page: Int
-    $limit: Int
-  ) {
-    kpisByObjective(
-      objectiveId: $objectiveId
-      page: $page
-      limit: $limit
-    ) {
+  query GetKpisByObjective($objectiveId: ID!, $page: Int, $limit: Int) {
+    kpisByObjective(objectiveId: $objectiveId, page: $page, limit: $limit) {
       items {
         kpiId
         name
@@ -238,6 +234,10 @@ export const GET_MY_KPIS = gql`
         baselineValue
         weight
         frequency
+        assigneeType
+        assigneeId
+        kpiMode
+        managerRetentionPercent
         status
         targetStatus
         isActive
@@ -489,6 +489,58 @@ export const GET_KPI_ASSIGNMENTS_DIVISION = gql`
   }
 `;
 
+export const GET_KPI_ASSIGNMENTS_CORPORATE = gql`
+  query GetKpiAssignmentsCorporate(
+    $organizationId: ID!
+    $strategicPeriodId: ID
+    $kpiId: ID
+    $page: Int
+    $limit: Int
+  ) {
+    kpiAssignmentsCorporate(
+      organizationId: $organizationId
+      strategicPeriodId: $strategicPeriodId
+      kpiId: $kpiId
+      page: $page
+      limit: $limit
+    ) {
+      items {
+        kpiAssignmentCorporateId
+        targetValue
+        weight
+        cap
+        createdAt
+        updatedAt
+        kpi {
+          kpiId
+          name
+          description
+          measurementUnit
+          kpiType
+        }
+        organization {
+          organizationId
+          name
+        }
+        assignedBy {
+          employeeId
+          fullName
+        }
+        strategicPeriod {
+          strategicPeriodId
+          name
+        }
+      }
+      meta {
+        currentPage
+        totalPages
+        totalItems
+        itemsPerPage
+        itemCount
+      }
+    }
+  }
+`;
 
 // Get shared KPI participants
 export const GET_SHARED_KPI_PARTICIPANTS = gql`

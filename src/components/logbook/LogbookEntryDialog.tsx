@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import {
   CREATE_LOGBOOK_ENTRY,
   UPDATE_LOGBOOK_ENTRY,
@@ -27,6 +27,16 @@ import {
 } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/lib/utils";
+import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
+import { useStrategicPeriodStore, useUser } from "@/stores";
+import { getAccessToken } from "@/lib/auth-utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LogbookEntryDialogProps {
   open: boolean;
@@ -37,20 +47,79 @@ interface LogbookEntryDialogProps {
 
 type TimeValue = { hour: string; minute: string; period: "AM" | "PM" };
 
+const getApiBaseUrl = () => {
+  const graphqlUrl =
+    process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/graphql";
+  return graphqlUrl.replace(/\/graphql\/?$/, "");
+};
+
+const uploadLogbookFile = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token = getAccessToken();
+  const response = await fetch(`${getApiBaseUrl()}/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("File upload failed");
+  }
+
+  const result = await response.json();
+  return result.url || `${getApiBaseUrl()}/storage/${result.filename}`;
+};
+
 export function LogbookEntryDialog({
   open,
   onOpenChange,
   onSuccess,
   editingEntry,
 }: LogbookEntryDialogProps) {
-  // Mutations
-  const [createEntryMutation, { loading: creating }] = useMutation(CREATE_LOGBOOK_ENTRY, {
-    refetchQueries: ["GetLogbookEntries"],
+  const currentUser = useUser();
+  const selectedPeriod = useStrategicPeriodStore(
+    (state) => state.selectedPeriod,
+  );
+
+  const { data: kpisData } = useQuery(GET_MY_KPIS, {
+    variables: {
+      page: 1,
+      limit: 200,
+      strategicPeriodId: selectedPeriod?.strategicPeriodId,
+    },
+    skip: !open || !selectedPeriod?.strategicPeriodId,
   });
 
-  const [updateEntryMutation, { loading: updating }] = useMutation(UPDATE_LOGBOOK_ENTRY, {
-    refetchQueries: ["GetLogbookEntries"],
+  const availableKpis = (kpisData?.myKpis?.items || []).filter((kpi: any) => {
+    const mode = kpi.kpiMode || "AGGREGATED";
+    const assigneeType = kpi.assigneeType || kpi.objective?.type;
+
+    // Personnel KPIs are loggable by the assigned employee even when the stored mode defaults to AGGREGATED.
+    if (assigneeType === "PERSONNEL") return true;
+
+    // Unit-level DIRECT/HYBRID KPIs are loggable by the unit head for retained/direct achievement.
+    if (mode === "DIRECT" || mode === "HYBRID") return true;
+
+    // Unit-level AGGREGATED KPIs should be achieved by subordinate child KPIs, not direct manager logs.
+    return false;
   });
+
+  // Mutations
+  const [createEntryMutation, { loading: creating }] = useMutation(
+    CREATE_LOGBOOK_ENTRY,
+    {
+      refetchQueries: ["GetLogbookEntries"],
+    },
+  );
+
+  const [updateEntryMutation, { loading: updating }] = useMutation(
+    UPDATE_LOGBOOK_ENTRY,
+    {
+      refetchQueries: ["GetLogbookEntries"],
+    },
+  );
 
   const mutationLoading = creating || updating;
 
@@ -66,6 +135,10 @@ export function LogbookEntryDialog({
   const [description, setDescription] = useState("");
   const [outcome, setOutcome] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [linkedKpiId, setLinkedKpiId] = useState("");
+  const [kpiAchievedValue, setKpiAchievedValue] = useState("");
+  const [kpiTargetValue, setKpiTargetValue] = useState("");
+  const [contributionUnit, setContributionUnit] = useState("");
 
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
@@ -76,15 +149,28 @@ export function LogbookEntryDialog({
       const entryDateTime = new Date(editingEntry.entryDate);
       setEntryDate(entryDateTime);
       setEntryTime({
-        hour: entryDateTime.getHours() > 12 
-          ? String(entryDateTime.getHours() - 12).padStart(2, '0') 
-          : String(entryDateTime.getHours() || 12).padStart(2, '0'),
-        minute: String(entryDateTime.getMinutes()).padStart(2, '0'),
+        hour:
+          entryDateTime.getHours() > 12
+            ? String(entryDateTime.getHours() - 12).padStart(2, "0")
+            : String(entryDateTime.getHours() || 12).padStart(2, "0"),
+        minute: String(entryDateTime.getMinutes()).padStart(2, "0"),
         period: entryDateTime.getHours() >= 12 ? "PM" : "AM",
       });
       setActivity(editingEntry.activity || "");
       setDescription(editingEntry.description || "");
       setOutcome(editingEntry.outcome || "");
+      setLinkedKpiId(editingEntry.linkedKpiId || "");
+      setKpiAchievedValue(
+        editingEntry.kpiAchievedValue != null
+          ? String(editingEntry.kpiAchievedValue)
+          : "",
+      );
+      setKpiTargetValue(
+        editingEntry.kpiTargetValue != null
+          ? String(editingEntry.kpiTargetValue)
+          : "",
+      );
+      setContributionUnit(editingEntry.contributionUnit || "");
     } else if (!open) {
       resetForm();
     }
@@ -99,19 +185,65 @@ export function LogbookEntryDialog({
     return dt;
   };
 
+  const handleKpiChange = (value: string) => {
+    const nextKpiId = value === "none" ? "" : value;
+    setLinkedKpiId(nextKpiId);
+
+    const selectedKpi = availableKpis.find(
+      (kpi: any) => kpi.kpiId === nextKpiId,
+    );
+    if (selectedKpi?.targetValue != null) {
+      setKpiTargetValue(String(selectedKpi.targetValue));
+    } else if (!nextKpiId) {
+      setKpiTargetValue("");
+      setKpiAchievedValue("");
+      setContributionUnit("");
+    }
+  };
+
   const handleSubmit = async () => {
     if (!activity || !entryDate) {
       toast.error("Please fill in all required fields");
       return;
     }
 
+    if (!currentUser?.organizationId || !selectedPeriod?.strategicPeriodId) {
+      toast.error(
+        "Please select a strategic period before adding a logbook entry",
+      );
+      return;
+    }
+
+    const achieved = kpiAchievedValue ? Number(kpiAchievedValue) : null;
+    const target = kpiTargetValue ? Number(kpiTargetValue) : null;
+
+    if (linkedKpiId && (achieved == null || Number.isNaN(achieved))) {
+      toast.error("Please enter the KPI achieved value");
+      return;
+    }
+
     try {
+      let evidenceUrl = editingEntry?.attachmentUrl || null;
+      if (attachment) {
+        evidenceUrl = await uploadLogbookFile(attachment);
+      }
+
       const entryData = {
-        activity: activity.trim(),
-        description: description.trim() || null,
-        outcome: outcome.trim() || null,
+        organizationId: currentUser.organizationId,
+        strategicPeriodId: selectedPeriod.strategicPeriodId,
+        activityDescription: activity.trim(),
+        evidenceDescription: description.trim() || null,
+        decisionsMade: outcome.trim() || null,
         entryDate: buildDateTime(entryDate, entryTime).toISOString(),
-        attachmentUrl: attachment?.name || null,
+        evidenceUrl,
+        linkedKpiId: linkedKpiId || null,
+        kpiAchievedValue: achieved,
+        kpiTargetValue: target,
+        kpiCompletionPercent:
+          achieved != null && target && target > 0
+            ? Number(((achieved / target) * 100).toFixed(2))
+            : null,
+        contributionUnit: contributionUnit.trim() || null,
       };
 
       if (editingEntry) {
@@ -139,7 +271,10 @@ export function LogbookEntryDialog({
       resetForm();
     } catch (error: any) {
       console.error("Logbook entry operation error:", error);
-      toast.error(error.message || `Failed to ${editingEntry ? "update" : "create"} entry`);
+      toast.error(
+        error.message ||
+          `Failed to ${editingEntry ? "update" : "create"} entry`,
+      );
     }
   };
 
@@ -151,6 +286,10 @@ export function LogbookEntryDialog({
     setDescription("");
     setOutcome("");
     setAttachment(null);
+    setLinkedKpiId("");
+    setKpiAchievedValue("");
+    setKpiTargetValue("");
+    setContributionUnit("");
   };
 
   return (
@@ -232,7 +371,10 @@ export function LogbookEntryDialog({
 
             {/* Activity */}
             <div className="space-y-2">
-              <Label htmlFor="activity" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label
+                htmlFor="activity"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Activity <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -270,6 +412,91 @@ export function LogbookEntryDialog({
               />
             </div>
 
+            {/* KPI Achievement */}
+            <div className="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+              <div>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  KPI Achievement (Optional)
+                </Label>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Link this entry to a KPI so approved achievements count toward
+                  KPI scorecards.
+                </p>
+              </div>
+
+              <Select
+                value={linkedKpiId || "none"}
+                onValueChange={handleKpiChange}
+              >
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Select KPI" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No KPI linked</SelectItem>
+                  {availableKpis.map((kpi: any) => {
+                    const mode = kpi.kpiMode || "AGGREGATED";
+                    const suffix =
+                      mode === "HYBRID"
+                        ? ` · HYBRID ${Number(kpi.managerRetentionPercent || 0).toFixed(0)}% manager`
+                        : mode === "DIRECT"
+                          ? " · DIRECT"
+                          : "";
+
+                    return (
+                      <SelectItem key={kpi.kpiId} value={kpi.kpiId}>
+                        {kpi.name}
+                        {suffix}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+
+              {linkedKpiId && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">
+                      Achieved Value
+                    </Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={kpiAchievedValue}
+                      onChange={(e) => setKpiAchievedValue(e.target.value)}
+                      placeholder="0"
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">
+                      Target Value
+                    </Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={kpiTargetValue}
+                      onChange={(e) => setKpiTargetValue(e.target.value)}
+                      placeholder="Target"
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">
+                      Unit
+                    </Label>
+                    <Input
+                      value={contributionUnit}
+                      onChange={(e) => setContributionUnit(e.target.value)}
+                      placeholder="%, USD, tasks..."
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Attachment */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -280,7 +507,7 @@ export function LogbookEntryDialog({
                 className={cn(
                   "flex flex-col items-center justify-center gap-2 p-4 rounded-lg cursor-pointer transition-colors",
                   "border-2 border-dashed border-gray-300 dark:border-gray-600",
-                  "hover:border-[#3838EC] hover:bg-blue-50/30 dark:hover:bg-blue-950/10"
+                  "hover:border-[#3838EC] hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
                 )}
               >
                 <input
@@ -331,9 +558,13 @@ export function LogbookEntryDialog({
             disabled={mutationLoading}
             className="sm:w-auto bg-[#3838EC] hover:bg-[#2d2dbd] text-white"
           >
-            {mutationLoading 
-              ? (editingEntry ? "Updating..." : "Adding...") 
-              : (editingEntry ? "Update Entry" : "Add Entry")}
+            {mutationLoading
+              ? editingEntry
+                ? "Updating..."
+                : "Adding..."
+              : editingEntry
+                ? "Update Entry"
+                : "Add Entry"}
           </Button>
         </div>
       </DialogContent>

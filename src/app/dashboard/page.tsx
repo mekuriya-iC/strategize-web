@@ -15,12 +15,20 @@ import { DepartmentHeatMap } from "@/components/dashboard/DepartmentHeatMap";
 import { TopPerformersCarousel } from "@/components/dashboard/TopPerformersCarousel";
 import { PerformanceAlertsWidget } from "@/components/performance/PerformanceAlertsWidget";
 import { useAnalytics } from "@/hooks/objectives/useAnalytics";
-import { GET_EVALUATION_CYCLES, GET_COMPETENCY_ASSESSMENTS } from "@/lib/graphql/queries/evaluations";
-import { GET_CHECKINOUT_SESSIONS, GET_CHECKINOUT_TASKS } from "@/lib/graphql/queries/checkins";
+import {
+  GET_EVALUATION_CYCLES,
+  GET_COMPETENCY_ASSESSMENTS,
+} from "@/lib/graphql/queries/evaluations";
+import {
+  GET_CHECKINOUT_SESSIONS,
+  GET_CHECKINOUT_TASKS,
+} from "@/lib/graphql/queries/checkins";
 
 // GraphQL queries for dashboard data
 const GET_TEAM_PERFORMANCE_SUMMARY = gql`
-  query GetTeamPerformanceSummaryForDashboard($filters: UnifiedPerformanceFilters!) {
+  query GetTeamPerformanceSummaryForDashboard(
+    $filters: UnifiedPerformanceFilters!
+  ) {
     unifiedTeamPerformance(filters: $filters) {
       results {
         employeeId
@@ -153,7 +161,8 @@ export default function DashboardPage() {
   const userDivisionId = (primaryDept as any)?.division?.divisionId;
 
   const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
-  const hasFullAccess = !!user?.role && fullAccessRoles.has(user.role as string);
+  const hasFullAccess =
+    !!user?.role && fullAccessRoles.has(user.role as string);
   const isDirector = user?.role === "DIRECTOR";
   const isManager = user?.role === "MANAGER" || user?.role === "COORDINATOR";
   const isLeadershipRole = hasFullAccess || isDirector || isManager;
@@ -169,13 +178,16 @@ export default function DashboardPage() {
     teamFilters.departmentId = userDepartmentId;
   }
 
-  const { data: teamData, loading: teamLoading } = useQuery(GET_TEAM_PERFORMANCE_SUMMARY, {
-    variables: {
-      filters: teamFilters,
+  const { data: teamData, loading: teamLoading } = useQuery(
+    GET_TEAM_PERFORMANCE_SUMMARY,
+    {
+      variables: {
+        filters: teamFilters,
+      },
+      skip: !isLeadershipRole || !selectedPeriod?.strategicPeriodId,
+      fetchPolicy: "cache-and-network",
     },
-    skip: !isLeadershipRole || !selectedPeriod?.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
-  });
+  );
 
   // Fetch scorecard for KPI metrics based on role
   let scorecardQuery = GET_CORPORATE_SCORECARD_SUMMARY;
@@ -197,20 +209,34 @@ export default function DashboardPage() {
     scorecardVariables.employeeId = user?.employeeId;
   }
 
-  const { data: scorecardData, loading: scorecardLoading } = useQuery(scorecardQuery, {
-    variables: scorecardVariables,
-    skip: !selectedPeriod?.strategicPeriodId || (hasFullAccess ? !user?.organizationId : (isDirector ? !userDivisionId : (isManager ? !userDepartmentId : !user?.employeeId))),
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: scorecardData, loading: scorecardLoading } = useQuery(
+    scorecardQuery,
+    {
+      variables: scorecardVariables,
+      skip:
+        !selectedPeriod?.strategicPeriodId ||
+        (hasFullAccess
+          ? !user?.organizationId
+          : isDirector
+            ? !userDivisionId
+            : isManager
+              ? !userDepartmentId
+              : !user?.employeeId),
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
   // Fetch divisions with departments for heat map
-  const { data: divisionsData, loading: divisionsLoading } = useQuery(GET_DIVISIONS_WITH_PERFORMANCE, {
-    variables: {
-      organizationId: user?.organizationId,
+  const { data: divisionsData, loading: divisionsLoading } = useQuery(
+    GET_DIVISIONS_WITH_PERFORMANCE,
+    {
+      variables: {
+        organizationId: user?.organizationId,
+      },
+      skip: !hasFullAccess && !isDirector,
+      fetchPolicy: "cache-and-network",
     },
-    skip: !hasFullAccess && !isDirector,
-    fetchPolicy: "cache-and-network",
-  });
+  );
 
   // Fetch all departments
   const { data: departmentsData } = useQuery(GET_DEPARTMENTS_QUERY, {
@@ -246,15 +272,20 @@ export default function DashboardPage() {
     fetchPolicy: "cache-and-network",
   });
 
-  // Fetch check-in sessions
+  // Fetch check-in sessions. Backend only allows unscoped session listing for
+  // ADMIN/HR/SUPER_ADMIN; managers/directors must be scoped to themselves.
   const { data: checkinsData } = useQuery(GET_CHECKINOUT_SESSIONS, {
     variables: {
       page: 1,
       limit: 1000,
       strategicPeriodId: selectedPeriod?.strategicPeriodId,
       employeeUserId: !isLeadershipRole ? user?.employeeId : undefined,
+      supervisorUserId:
+        !hasFullAccess && isLeadershipRole ? user?.employeeId : undefined,
     },
-    skip: !selectedPeriod?.strategicPeriodId,
+    skip:
+      !selectedPeriod?.strategicPeriodId ||
+      (!hasFullAccess && !user?.employeeId),
     fetchPolicy: "cache-and-network",
   });
 
@@ -276,7 +307,8 @@ export default function DashboardPage() {
 
   // Calculate metrics from REAL data
   const teamMeetingExpectations = teamPerformance?.results
-    ? (teamPerformance.results.filter((r: any) => r.overallPercentage >= 70).length /
+    ? (teamPerformance.results.filter((r: any) => r.overallPercentage >= 70)
+        .length /
         teamPerformance.results.length) *
       100
     : 0;
@@ -293,23 +325,23 @@ export default function DashboardPage() {
       acc.total[level] += kpi.achievementRate * 100;
       return acc;
     },
-    { count: {}, total: {} }
+    { count: {}, total: {} },
   );
 
   const kpiData = {
     overallRate: scorecard?.percentageAchieved || 0,
     byLevel: {
-      corporate: kpiByLevel?.count.corporate 
-        ? kpiByLevel.total.corporate / kpiByLevel.count.corporate 
+      corporate: kpiByLevel?.count.corporate
+        ? kpiByLevel.total.corporate / kpiByLevel.count.corporate
         : 0,
-      division: kpiByLevel?.count.division 
-        ? kpiByLevel.total.division / kpiByLevel.count.division 
+      division: kpiByLevel?.count.division
+        ? kpiByLevel.total.division / kpiByLevel.count.division
         : 0,
-      department: kpiByLevel?.count.department 
-        ? kpiByLevel.total.department / kpiByLevel.count.department 
+      department: kpiByLevel?.count.department
+        ? kpiByLevel.total.department / kpiByLevel.count.department
         : 0,
-      personnel: kpiByLevel?.count.personnel 
-        ? kpiByLevel.total.personnel / kpiByLevel.count.personnel 
+      personnel: kpiByLevel?.count.personnel
+        ? kpiByLevel.total.personnel / kpiByLevel.count.personnel
         : 0,
     },
   };
@@ -319,34 +351,59 @@ export default function DashboardPage() {
   const filteredAssessments = useMemo(() => {
     if (!assessments.length) return [];
     if (hasFullAccess) return assessments;
-    
+
     return assessments.filter((a: any) => {
       const evaluateeDepts = a.evaluatee?.departments || [];
       const evaluatorDepts = a.evaluator?.departments || [];
-      
+
       if (isDirector && userDivisionId) {
-        return evaluateeDepts.some((d: any) => d.division?.divisionId === userDivisionId) ||
-               evaluatorDepts.some((d: any) => d.division?.divisionId === userDivisionId);
+        return (
+          evaluateeDepts.some(
+            (d: any) => d.division?.divisionId === userDivisionId,
+          ) ||
+          evaluatorDepts.some(
+            (d: any) => d.division?.divisionId === userDivisionId,
+          )
+        );
       }
       if (isManager && userDepartmentId) {
-        return evaluateeDepts.some((d: any) => d.departmentId === userDepartmentId) ||
-               evaluatorDepts.some((d: any) => d.departmentId === userDepartmentId);
+        return (
+          evaluateeDepts.some(
+            (d: any) => d.departmentId === userDepartmentId,
+          ) ||
+          evaluatorDepts.some((d: any) => d.departmentId === userDepartmentId)
+        );
       }
-      return a.evaluatee?.employeeId === user?.employeeId || a.evaluator?.employeeId === user?.employeeId;
+      return (
+        a.evaluatee?.employeeId === user?.employeeId ||
+        a.evaluator?.employeeId === user?.employeeId
+      );
     });
-  }, [assessments, hasFullAccess, isDirector, isManager, userDivisionId, userDepartmentId, user?.employeeId]);
+  }, [
+    assessments,
+    hasFullAccess,
+    isDirector,
+    isManager,
+    userDivisionId,
+    userDepartmentId,
+    user?.employeeId,
+  ]);
 
   const completedAssessmentsCount = filteredAssessments.filter(
-    (a: any) => a.status === "COMPLETED" || a.status === "SUBMITTED"
+    (a: any) => a.status === "COMPLETED" || a.status === "SUBMITTED",
   ).length;
-  const pendingAssessmentsCount = filteredAssessments.length - completedAssessmentsCount;
+  const pendingAssessmentsCount =
+    filteredAssessments.length - completedAssessmentsCount;
   const evaluationPercentage = filteredAssessments.length
     ? (completedAssessmentsCount / filteredAssessments.length) * 100
     : 0;
 
   const upcomingDeadlines = activeCycle?.endDate
     ? new Date(activeCycle.endDate) > new Date()
-      ? Math.ceil((new Date(activeCycle.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.ceil(
+          (new Date(activeCycle.endDate).getTime() - new Date().getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
       : 0
     : 0;
 
@@ -360,7 +417,7 @@ export default function DashboardPage() {
   // Calculate real activity metrics from objectives, tasks, and checkins
   const objectives = analytics.filteredObjectives || [];
   const completedObjectivesCount = objectives.filter(
-    (obj: any) => obj.status === "completed" || obj.status === "APPROVED"
+    (obj: any) => obj.status === "completed" || obj.status === "APPROVED",
   ).length;
   const objectivesCompletion = objectives.length
     ? (completedObjectivesCount / objectives.length) * 100
@@ -370,21 +427,31 @@ export default function DashboardPage() {
   const filteredTasks = useMemo(() => {
     if (!tasks.length) return [];
     if (hasFullAccess) return tasks;
-    
+
     return tasks.filter((t: any) => {
       const ownerDepts = t.relatedTo?.departments || [];
       if (isDirector && userDivisionId) {
-        return ownerDepts.some((d: any) => d.division?.divisionId === userDivisionId);
+        return ownerDepts.some(
+          (d: any) => d.division?.divisionId === userDivisionId,
+        );
       }
       if (isManager && userDepartmentId) {
         return ownerDepts.some((d: any) => d.departmentId === userDepartmentId);
       }
       return t.relatedTo?.employeeId === user?.employeeId;
     });
-  }, [tasks, hasFullAccess, isDirector, isManager, userDivisionId, userDepartmentId, user?.employeeId]);
+  }, [
+    tasks,
+    hasFullAccess,
+    isDirector,
+    isManager,
+    userDivisionId,
+    userDepartmentId,
+    user?.employeeId,
+  ]);
 
   const completedTasksCount = filteredTasks.filter(
-    (t: any) => t.taskStatus === "done" || t.taskStatus === "DONE"
+    (t: any) => t.taskStatus === "done" || t.taskStatus === "DONE",
   ).length;
   const tasksCompletion = filteredTasks.length
     ? (completedTasksCount / filteredTasks.length) * 100
@@ -394,22 +461,37 @@ export default function DashboardPage() {
   const filteredCheckins = useMemo(() => {
     if (!checkins.length) return [];
     if (hasFullAccess) return checkins;
-    
+
     return checkins.filter((c: any) => {
       const empDepts = c.employee?.departments || [];
       if (isDirector && userDivisionId) {
-        return empDepts.some((d: any) => d.division?.divisionId === userDivisionId);
+        return empDepts.some(
+          (d: any) => d.division?.divisionId === userDivisionId,
+        );
       }
       if (isManager && userDepartmentId) {
         return empDepts.some((d: any) => d.departmentId === userDepartmentId);
       }
       return c.employee?.employeeId === user?.employeeId;
     });
-  }, [checkins, hasFullAccess, isDirector, isManager, userDivisionId, userDepartmentId, user?.employeeId]);
+  }, [
+    checkins,
+    hasFullAccess,
+    isDirector,
+    isManager,
+    userDivisionId,
+    userDepartmentId,
+    user?.employeeId,
+  ]);
 
   const submittedCheckins = filteredCheckins.filter(
-    (c: any) => c.overallStatus === "submitted" || c.overallStatus === "reviewed" || c.overallStatus === "approved" ||
-                c.overallStatus === "SUBMITTED" || c.overallStatus === "REVIEWED" || c.overallStatus === "APPROVED"
+    (c: any) =>
+      c.overallStatus === "submitted" ||
+      c.overallStatus === "reviewed" ||
+      c.overallStatus === "approved" ||
+      c.overallStatus === "SUBMITTED" ||
+      c.overallStatus === "REVIEWED" ||
+      c.overallStatus === "APPROVED",
   ).length;
   const checkinFrequency = filteredCheckins.length
     ? (submittedCheckins / filteredCheckins.length) * 100
@@ -422,49 +504,64 @@ export default function DashboardPage() {
   };
 
   // Build heat map data from REAL divisions and departments
-  const rawHeatMapData = divisionsData?.divisions?.items.map((division: any) => {
-    // Get all team members for this division (by checking if any of their departments belong to this division)
-    const divisionMembers = teamPerformance?.results?.filter(
-      (r: any) => r.employee.departments?.some((dept: any) => dept.division?.divisionId === division.divisionId)
-    ) || [];
-    
-    const divisionAvgScore = divisionMembers.length
-      ? divisionMembers.reduce((sum: number, r: any) => sum + r.overallPercentage, 0) / divisionMembers.length
-      : 0;
+  const rawHeatMapData =
+    divisionsData?.divisions?.items.map((division: any) => {
+      // Get all team members for this division (by checking if any of their departments belong to this division)
+      const divisionMembers =
+        teamPerformance?.results?.filter((r: any) =>
+          r.employee.departments?.some(
+            (dept: any) => dept.division?.divisionId === division.divisionId,
+          ),
+        ) || [];
 
-    // Get departments for this division from the departments query
-    const divisionDepartments = departmentsData?.departments?.items?.filter(
-      (dept: any) => dept.division?.divisionId === division.divisionId
-    ) || [];
-
-    const departments = divisionDepartments.map((dept: any) => {
-      const deptMembers = teamPerformance?.results?.filter(
-        (r: any) => r.employee.departments?.some((d: any) => d.departmentId === dept.departmentId)
-      ) || [];
-      
-      const deptAvgScore = deptMembers.length
-        ? deptMembers.reduce((sum: number, r: any) => sum + r.overallPercentage, 0) / deptMembers.length
+      const divisionAvgScore = divisionMembers.length
+        ? divisionMembers.reduce(
+            (sum: number, r: any) => sum + r.overallPercentage,
+            0,
+          ) / divisionMembers.length
         : 0;
 
+      // Get departments for this division from the departments query
+      const divisionDepartments =
+        departmentsData?.departments?.items?.filter(
+          (dept: any) => dept.division?.divisionId === division.divisionId,
+        ) || [];
+
+      const departments = divisionDepartments.map((dept: any) => {
+        const deptMembers =
+          teamPerformance?.results?.filter((r: any) =>
+            r.employee.departments?.some(
+              (d: any) => d.departmentId === dept.departmentId,
+            ),
+          ) || [];
+
+        const deptAvgScore = deptMembers.length
+          ? deptMembers.reduce(
+              (sum: number, r: any) => sum + r.overallPercentage,
+              0,
+            ) / deptMembers.length
+          : 0;
+
+        return {
+          departmentId: dept.departmentId,
+          name: dept.name,
+          averageScore: deptAvgScore,
+          employeeCount: deptMembers.length,
+        };
+      });
+
       return {
-        departmentId: dept.departmentId,
-        name: dept.name,
-        averageScore: deptAvgScore,
-        employeeCount: deptMembers.length,
+        divisionId: division.divisionId,
+        name: division.name,
+        averageScore: divisionAvgScore,
+        departments,
       };
-    });
+    }) || [];
 
-    return {
-      divisionId: division.divisionId,
-      name: division.name,
-      averageScore: divisionAvgScore,
-      departments,
-    };
-  }) || [];
-
-  const heatMapData = isDirector && userDivisionId
-    ? rawHeatMapData.filter((d: any) => d.divisionId === userDivisionId)
-    : rawHeatMapData;
+  const heatMapData =
+    isDirector && userDivisionId
+      ? rawHeatMapData.filter((d: any) => d.divisionId === userDivisionId)
+      : rawHeatMapData;
 
   // Top performers from team data
   const topPerformers =
@@ -506,9 +603,15 @@ export default function DashboardPage() {
           <DepartmentHeatMap
             divisions={heatMapData}
             loading={divisionsLoading || teamLoading}
-            onDepartmentClick={(deptId) => console.log("Navigate to department:", deptId)}
+            onDepartmentClick={(deptId) =>
+              console.log("Navigate to department:", deptId)
+            }
           />
-          <TopPerformersCarousel performers={topPerformers} loading={teamLoading} limit={5} />
+          <TopPerformersCarousel
+            performers={topPerformers}
+            loading={teamLoading}
+            limit={5}
+          />
         </div>
       )}
 
@@ -517,7 +620,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <PerformanceAlertsWidget
             teamResults={teamPerformance.results || []}
-            onEmployeeClick={(empId) => console.log("Navigate to employee:", empId)}
+            onEmployeeClick={(empId) =>
+              console.log("Navigate to employee:", empId)
+            }
           />
           <QuickActionsGrid />
         </div>

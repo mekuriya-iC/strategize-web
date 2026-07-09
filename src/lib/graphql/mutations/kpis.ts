@@ -25,6 +25,8 @@ export const CREATE_KPI = gql`
       targetStatus
       isActive
       order
+      kpiMode
+      managerRetentionPercent
       createdAt
       objective {
         objectiveId
@@ -62,6 +64,8 @@ export const UPDATE_KPI = gql`
       targetStatus
       isActive
       order
+      kpiMode
+      managerRetentionPercent
       updatedAt
       objective {
         objectiveId

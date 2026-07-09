@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Logbook Queries
@@ -28,6 +28,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
         entryDate
         activityDescription
         entryStatus
+        linkedKpiId
         kpiTargetValue
         kpiAchievedValue
         kpiCompletionPercent
@@ -47,6 +48,21 @@ export const GET_LOGBOOK_ENTRIES = gql`
           fullName
           email
           title
+          role
+          departments {
+            departmentId
+            name
+            head {
+              employeeId
+            }
+            division {
+              divisionId
+              name
+              head {
+                employeeId
+              }
+            }
+          }
         }
         approvedBy {
           employeeId
@@ -95,6 +111,21 @@ export const GET_LOGBOOK_ENTRY = gql`
         fullName
         email
         title
+        role
+        departments {
+          departmentId
+          name
+          head {
+            employeeId
+          }
+          division {
+            divisionId
+            name
+            head {
+              employeeId
+            }
+          }
+        }
       }
       approvedBy {
         employeeId

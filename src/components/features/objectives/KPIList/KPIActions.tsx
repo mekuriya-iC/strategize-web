@@ -58,14 +58,14 @@ const KPIActions: React.FC<KPIActionsProps> = ({
     : false;
 
   // Check if this is an unassigned KPI
-  const isUnassignedKpi = !kpi.assigneeId;
+  const isUnassignedKpi = !(kpi as any).assigneeId;
 
-  // CEO and SUPER_ADMIN can edit unassigned KPIs even if approved
-  const isCEOOrSuperAdmin = role === "CEO" || role === "SUPER_ADMIN";
-  const canCEOEdit = isCEOOrSuperAdmin && isUnassignedKpi;
+  // SUPER_ADMIN can edit unassigned KPIs even if approved
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const canSuperAdminEdit = isSuperAdmin && isUnassignedKpi;
 
-  // Approved KPIs/objectives are locked, except for CEO/SUPER_ADMIN on unassigned KPIs
-  const isReadOnly = (isKpiApproved || isObjectiveApproved) && !canCEOEdit;
+  // Approved KPIs/objectives are locked, except for SUPER_ADMIN on unassigned KPIs
+  const isReadOnly = (isKpiApproved || isObjectiveApproved) && !canSuperAdminEdit;
 
   const isCascaded = React.useMemo(() => {
     if (!role) return false;
@@ -171,17 +171,17 @@ const KPIActions: React.FC<KPIActionsProps> = ({
               <Edit className="mr-2 h-4 w-4 text-blue-500" />
               <span>Edit KPI</span>
             </DropdownMenuItem>
-          ) : canCEOEdit && isCascaded ? (
+          ) : canSuperAdminEdit && isCascaded ? (
             <DropdownMenuItem
               onClick={() => onEdit(kpi.kpiId)}
               className="cursor-pointer"
             >
               <Edit className="mr-2 h-4 w-4 text-blue-500" />
-              <span>Edit KPI (CEO/Admin)</span>
+              <span>Edit KPI (Super Admin)</span>
             </DropdownMenuItem>
           ) : (
             <div className="px-2 py-1.5 text-xs text-gray-400 italic">
-              {isReadOnly && !canCEOEdit ? "Read-only (Approved)" : "Edit disabled (Cascaded)"}
+              {isReadOnly && !canSuperAdminEdit ? "Read-only (Approved)" : "Edit disabled (Cascaded)"}
             </div>
           )}
 
@@ -212,7 +212,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({
           )}
 
           <DropdownMenuSeparator />
-          {!isReadOnly || canCEOEdit ? (
+          {!isReadOnly || canSuperAdminEdit ? (
             <DropdownMenuItem
               onClick={() => setShowDeleteDialog(true)}
               className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"

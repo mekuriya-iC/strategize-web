@@ -449,6 +449,8 @@ export interface Kpi {
   assignedTargetValue?: number; // Target value assigned to current user (from assignment)
   kpiMode?: string; // AGGREGATED, DIRECT, HYBRID
   managerRetentionPercent?: number; // For HYBRID mode
+  assigneeId?: string; // ID of the person assigned to this KPI
+  assigneeType?: string; // Type of assignee (PERSONNEL, DEPARTMENT, DIVISION, CORPORATE)
   parent?: { kpiId: string; name?: string } | null;
   objective: Objective | null;
   createdAt: string;

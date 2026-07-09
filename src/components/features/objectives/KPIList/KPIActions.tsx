@@ -57,8 +57,15 @@ const KPIActions: React.FC<KPIActionsProps> = ({
     ? isTopLevelCorporateObjective(objectiveContext)
     : false;
 
-  // Approved KPIs/objectives are locked globally.
-  const isReadOnly = isKpiApproved || isObjectiveApproved;
+  // Check if this is an unassigned KPI
+  const isUnassignedKpi = !kpi.assigneeId;
+
+  // CEO and SUPER_ADMIN can edit unassigned KPIs even if approved
+  const isCEOOrSuperAdmin = role === "CEO" || role === "SUPER_ADMIN";
+  const canCEOEdit = isCEOOrSuperAdmin && isUnassignedKpi;
+
+  // Approved KPIs/objectives are locked, except for CEO/SUPER_ADMIN on unassigned KPIs
+  const isReadOnly = (isKpiApproved || isObjectiveApproved) && !canCEOEdit;
 
   const isCascaded = React.useMemo(() => {
     if (!role) return false;
@@ -164,9 +171,17 @@ const KPIActions: React.FC<KPIActionsProps> = ({
               <Edit className="mr-2 h-4 w-4 text-blue-500" />
               <span>Edit KPI</span>
             </DropdownMenuItem>
+          ) : canCEOEdit && isCascaded ? (
+            <DropdownMenuItem
+              onClick={() => onEdit(kpi.kpiId)}
+              className="cursor-pointer"
+            >
+              <Edit className="mr-2 h-4 w-4 text-blue-500" />
+              <span>Edit KPI (CEO/Admin)</span>
+            </DropdownMenuItem>
           ) : (
             <div className="px-2 py-1.5 text-xs text-gray-400 italic">
-              {isReadOnly ? "Read-only (Approved)" : "Edit disabled (Cascaded)"}
+              {isReadOnly && !canCEOEdit ? "Read-only (Approved)" : "Edit disabled (Cascaded)"}
             </div>
           )}
 
@@ -197,7 +212,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({
           )}
 
           <DropdownMenuSeparator />
-          {!isReadOnly ? (
+          {!isReadOnly || canCEOEdit ? (
             <DropdownMenuItem
               onClick={() => setShowDeleteDialog(true)}
               className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"

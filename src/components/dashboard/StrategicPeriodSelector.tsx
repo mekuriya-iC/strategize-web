@@ -14,7 +14,6 @@ import { Calendar, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-  findActiveOrCurrentQuarter,
   findCurrentPeriod,
   formatAnnualTimeline,
   getAnnualPeriods,
@@ -30,6 +29,8 @@ import {
 interface StrategicPeriodSelectorProps {
   className?: string;
 }
+
+const ANNUAL_PERIOD_VALUE = "__annual_period__";
 
 export default function StrategicPeriodSelector({
   className = "",
@@ -92,10 +93,10 @@ export default function StrategicPeriodSelector({
       return;
     }
 
-    const currentQuarter = findActiveOrCurrentQuarter(
-      getPeriodsForAnnualTimeline(yearLabel, strategicPeriods),
-    );
-    setSelectedQuarter(currentQuarter?.strategicPeriodId ?? "");
+    // Keep the dropdown honest: if the globally selected period is annual,
+    // don't display an active quarter as selected. Exact quarter filtering only
+    // happens after a real quarter is selected.
+    setSelectedQuarter(ANNUAL_PERIOD_VALUE);
   }, [selectedPeriod, strategicPeriods]);
 
   const handleYearChange = (yearLabel: string) => {
@@ -119,7 +120,6 @@ export default function StrategicPeriodSelector({
       (period) =>
         isAnnualPeriod(period) && getPeriodTimeStatus(period) === "current",
     );
-    const currentQuarter = findActiveOrCurrentQuarter(periodsForYear);
     const periodToSelect =
       activeAnnualPeriod ??
       currentAnnualPeriod ??
@@ -129,16 +129,41 @@ export default function StrategicPeriodSelector({
 
     if (periodToSelect) {
       selectPeriodWithTimeline(periodToSelect, yearLabel);
-      setSelectedQuarter(currentQuarter?.strategicPeriodId ?? "");
+      setSelectedQuarter(
+        isQuarterlyPeriod(periodToSelect)
+          ? periodToSelect.strategicPeriodId
+          : ANNUAL_PERIOD_VALUE,
+      );
 
-      const quarterLabel = currentQuarter
-        ? ` (${getQuarterLabelForPeriod(currentQuarter, strategicPeriods)} active)`
-        : "";
-      toast.success(`Switched to ${yearLabel}${quarterLabel}`);
+      toast.success(`Switched to ${yearLabel}`);
     }
   };
 
   const handleQuarterChange = (periodId: string) => {
+    if (periodId === ANNUAL_PERIOD_VALUE) {
+      const periodsForYear = getPeriodsForAnnualTimeline(
+        selectedYear,
+        strategicPeriods,
+      );
+      const annualPeriod =
+        periodsForYear.find(
+          (period) =>
+            isAnnualPeriod(period) && period.status?.toLowerCase() === "active",
+        ) ??
+        periodsForYear.find(
+          (period) =>
+            isAnnualPeriod(period) && getPeriodTimeStatus(period) === "current",
+        ) ??
+        periodsForYear.find(isAnnualPeriod);
+
+      if (!annualPeriod) return;
+
+      selectPeriodWithTimeline(annualPeriod, selectedYear);
+      setSelectedQuarter(ANNUAL_PERIOD_VALUE);
+      toast.success(`Switched to annual period ${selectedYear}`);
+      return;
+    }
+
     const period = strategicPeriods.find(
       (p) => p.strategicPeriodId === periodId,
     );
@@ -215,6 +240,11 @@ export default function StrategicPeriodSelector({
             <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
               Select Quarter
             </div>
+            <SelectItem value={ANNUAL_PERIOD_VALUE}>
+              <div className="flex items-center justify-between w-full gap-3">
+                <span>Annual period</span>
+              </div>
+            </SelectItem>
             {availableQuarters.map((quarter) => {
               const status = getPeriodTimeStatus(quarter.period);
               return (

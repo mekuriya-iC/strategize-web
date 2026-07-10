@@ -575,35 +575,35 @@ export default function ObjectivesApprovalTable() {
       });
     }
 
-    // Apply strategic period filter - ONLY if a period is explicitly selected
-    // This allows users to see all objectives when no period filter is active
-    if (selectedPeriodId) {
-      console.log("🔍 [ObjectivesFilter] Applying strategic period filter", {
-        selectedPeriodId: selectedPeriodId,
-        objectivesBeforeFilter: filtered.map((o) => ({
-          id: o.objectiveId,
-          title: o.title,
-          periodId: o.strategicPeriod?.strategicPeriodId,
-          periodStartDate: o.strategicPeriod?.startDate,
-        })),
-      });
+    // Apply strategic period filter only when the selected period exists in the
+    // currently visible objective set. A persisted/stale period selection should
+    // not make the objectives dashboard appear empty.
+    if (selectedPeriodId && filtered.length > 0) {
+      const periodFiltered = filtered.filter(
+        (obj) => obj.strategicPeriod?.strategicPeriodId === selectedPeriodId,
+      );
 
-      filtered = filtered.filter((obj) => {
-        const match =
-          obj.strategicPeriod?.strategicPeriodId === selectedPeriodId;
-        if (!match) {
-          console.log("❌ [ObjectivesFilter] Period mismatch", {
-            objective: obj.title,
-            objectivePeriod: obj.strategicPeriod?.strategicPeriodId,
-            selectedPeriod: selectedPeriodId,
-          });
-        }
-        return match;
-      });
-
-      console.log("🔍 [ObjectivesFilter] After strategic period filter", {
-        count: filtered.length,
-      });
+      if (periodFiltered.length > 0) {
+        filtered = periodFiltered;
+        console.log("🔍 [ObjectivesFilter] After strategic period filter", {
+          selectedPeriodId,
+          count: filtered.length,
+        });
+      } else {
+        console.warn(
+          "⚠️ [ObjectivesFilter] Ignoring stale strategic period filter",
+          {
+            selectedPeriodId,
+            availablePeriodIds: Array.from(
+              new Set(
+                filtered
+                  .map((obj) => obj.strategicPeriod?.strategicPeriodId)
+                  .filter(Boolean),
+              ),
+            ),
+          },
+        );
+      }
     }
 
     console.log("🔍 [ObjectivesFilter] FINAL RESULT", {
@@ -880,11 +880,39 @@ export default function ObjectivesApprovalTable() {
     });
   };
 
-  // Group objectives by assigneeType for tabs
+  const getObjectiveLevelKey = (objective: Objective) => {
+    const type = String(objective.type || "").toUpperCase();
+    const assigneeType = String(objective.assigneeType || "").toUpperCase();
+
+    if (type === "CORPORATE" || assigneeType === "CORPORATE") {
+      return "corporate";
+    }
+    if (assigneeType === "DIVISION" || type === "DIVISION") {
+      return "division";
+    }
+    if (assigneeType === "DEPARTMENT" || type === "DEPARTMENT") {
+      return "department";
+    }
+    if (
+      assigneeType === "PERSONNEL" ||
+      assigneeType === "EMPLOYEE" ||
+      type === "PERSONNEL"
+    ) {
+      return "personnel";
+    }
+
+    // Legacy top-level corporate objectives usually have no assignee data.
+    if (!objective.assigneeType && !objective.assigneeId && !objective.parent) {
+      return "corporate";
+    }
+
+    return "unknown";
+  };
+
+  // Group objectives by effective hierarchy level for tabs.
   const corporateObjectives = useMemo(() => {
-    // Corporate objectives have no assigneeType/assigneeId
     const filtered = sortedObjectives.filter(
-      (o) => !o.assigneeType && !o.assigneeId,
+      (o) => getObjectiveLevelKey(o) === "corporate",
     );
     console.log("🔍 [TabFilter] Corporate objectives", {
       count: filtered.length,
@@ -895,7 +923,7 @@ export default function ObjectivesApprovalTable() {
 
   const divisionObjectives = useMemo(() => {
     const filtered = sortedObjectives.filter(
-      (o) => o.assigneeType === "DIVISION",
+      (o) => getObjectiveLevelKey(o) === "division",
     );
     console.log("🔍 [TabFilter] Division objectives", {
       count: filtered.length,
@@ -906,7 +934,7 @@ export default function ObjectivesApprovalTable() {
 
   const departmentObjectives = useMemo(() => {
     const filtered = sortedObjectives.filter(
-      (o) => o.assigneeType === "DEPARTMENT",
+      (o) => getObjectiveLevelKey(o) === "department",
     );
     console.log("🔍 [TabFilter] Department objectives", {
       count: filtered.length,
@@ -917,7 +945,7 @@ export default function ObjectivesApprovalTable() {
 
   const personnelObjectives = useMemo(() => {
     const filtered = sortedObjectives.filter(
-      (o) => o.assigneeType === "PERSONNEL",
+      (o) => getObjectiveLevelKey(o) === "personnel",
     );
     console.log("🔍 [TabFilter] Personnel objectives", {
       count: filtered.length,
@@ -1224,10 +1252,7 @@ export default function ObjectivesApprovalTable() {
                             yearQuartersMap[year] = {};
                           }
                           const quarterNum = quarter.toLowerCase() as
-                            | "q1"
-                            | "q2"
-                            | "q3"
-                            | "q4";
+                            "q1" | "q2" | "q3" | "q4";
                           yearQuartersMap[year][quarterNum] =
                             (yearQuartersMap[year][quarterNum] || 0) +
                             Number(target.target || 0);

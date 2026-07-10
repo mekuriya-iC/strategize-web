@@ -8,8 +8,8 @@ import { gql } from "@apollo/client";
 // Get paginated objectives
 export const GET_OBJECTIVES = gql`
   query GetObjectives(
-    $page: Int
-    $limit: Int
+    $page: Int!
+    $limit: Int!
     $assigneeId: ID
     $organizationId: ID
     $search: String
@@ -72,9 +72,6 @@ export const GET_OBJECTIVES = gql`
           unitType
           status
           targetValue
-          assignedTargetValue
-          kpiMode
-          managerRetentionPercent
           parent {
             kpiId
           }
@@ -159,9 +156,6 @@ export const GET_OBJECTIVE = gql`
         frequency
         measurementUnit
         targetValue
-        assignedTargetValue
-        kpiMode
-        managerRetentionPercent
         createdAt
         updatedAt
         parent {
@@ -226,10 +220,7 @@ export const GET_OBJECTIVES_FOR_APPROVAL = gql`
           kpiId
           name
           targetValue
-          assignedTargetValue
           measurementUnit
-          kpiMode
-          managerRetentionPercent
         }
       }
       meta {
@@ -282,8 +273,6 @@ export const GET_MY_OBJECTIVES = gql`
           kpiId
           name
           targetValue
-          assignedTargetValue
-          baselineValue
           measurementUnit
           status
           weight
@@ -326,7 +315,6 @@ export const GET_OBJECTIVES_HIERARCHY = gql`
         kpiId
         name
         targetValue
-        assignedTargetValue
         measurementUnit
       }
       children {

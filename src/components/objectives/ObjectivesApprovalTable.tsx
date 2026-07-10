@@ -61,6 +61,9 @@ export default function ObjectivesApprovalTable() {
     direction: "desc",
   });
   const selectedPeriod = useSelectedStrategicPeriod();
+  const selectedPeriodId = selectedPeriod?.strategicPeriodId;
+  const selectedPeriodLabel =
+    selectedPeriod?.name || "the selected period/quarter";
 
   const showTabs =
     user?.role === "ADMIN" ||
@@ -78,7 +81,6 @@ export default function ObjectivesApprovalTable() {
   const userEmployeeId = user?.employeeId;
   const selectedUnitId = selectedUnit?.id;
   const selectedUnitType = selectedUnit?.type;
-  const selectedPeriodId = selectedPeriod?.strategicPeriodId;
   const managedDepartmentIds = scope?.managedDepartmentIds;
   const managedDivisionIds = scope?.managedDivisionIds;
   const isAdmin = guards.isAdmin;
@@ -132,7 +134,7 @@ export default function ObjectivesApprovalTable() {
   const { objectives, loading, error, /* meta, */ refetch } =
     useObjectives(objectivesQueryVars);
 
-  // Refresh when landing on objectives, after login, or when user context changes
+  // Refresh when landing on objectives, after login, or when user context changes.
   useEffect(() => {
     if (pathname === "/dashboard/objectives" && userEmployeeId) {
       refetch();
@@ -156,16 +158,46 @@ export default function ObjectivesApprovalTable() {
 
   // Fetch a broad set of objectives for lookup (to resolve parent KPI names in expanded rows)
   // This avoids missing parent corporate objectives when the view is scoped to a unit
-  const { objectives: allObjectivesForLookup } = useObjectives({
+  const {
+    objectives: allObjectivesForLookup,
+    refetch: refetchAllObjectivesForLookup,
+  } = useObjectives({
     page: 1,
     limit: 1000,
   });
 
   // Fetch KPIs from API (large page so per-objective counts are correct)
-  const { kpis, loading: kpisLoading } = useKPIs({
+  const {
+    kpis,
+    loading: kpisLoading,
+    refetch: refetchKpis,
+  } = useKPIs({
     page: 1,
     limit: 1000,
   });
+
+  // Period/quarter changes are stored globally in the topbar selector. Refetch
+  // and clear local table state so the objectives dashboard responds without a
+  // manual page refresh.
+  useEffect(() => {
+    if (pathname !== "/dashboard/objectives" || !userEmployeeId) return;
+
+    setOrderedObjectives(null);
+    setSelected([]);
+    setExpanded(null);
+    setCurrentPage(1);
+
+    refetch();
+    refetchAllObjectivesForLookup();
+    refetchKpis();
+  }, [
+    pathname,
+    userEmployeeId,
+    selectedPeriodId,
+    refetch,
+    refetchAllObjectivesForLookup,
+    refetchKpis,
+  ]);
 
   // Fetch KPI submissions specifically to get rejection reasons
   const { data: kpiSubmissionsData1 } = useQuery(GET_KPI_SUBMISSIONS, {
@@ -575,35 +607,18 @@ export default function ObjectivesApprovalTable() {
       });
     }
 
-    // Apply strategic period filter only when the selected period exists in the
-    // currently visible objective set. A persisted/stale period selection should
-    // not make the objectives dashboard appear empty.
-    if (selectedPeriodId && filtered.length > 0) {
-      const periodFiltered = filtered.filter(
+    // Apply selected strategic period/quarter strictly. If no objective was
+    // created in the selected period/quarter, the table should correctly show
+    // an empty state instead of falling back to another active period.
+    if (selectedPeriodId) {
+      filtered = filtered.filter(
         (obj) => obj.strategicPeriod?.strategicPeriodId === selectedPeriodId,
       );
 
-      if (periodFiltered.length > 0) {
-        filtered = periodFiltered;
-        console.log("🔍 [ObjectivesFilter] After strategic period filter", {
-          selectedPeriodId,
-          count: filtered.length,
-        });
-      } else {
-        console.warn(
-          "⚠️ [ObjectivesFilter] Ignoring stale strategic period filter",
-          {
-            selectedPeriodId,
-            availablePeriodIds: Array.from(
-              new Set(
-                filtered
-                  .map((obj) => obj.strategicPeriod?.strategicPeriodId)
-                  .filter(Boolean),
-              ),
-            ),
-          },
-        );
-      }
+      console.log("🔍 [ObjectivesFilter] After strategic period filter", {
+        selectedPeriodId,
+        count: filtered.length,
+      });
     }
 
     console.log("🔍 [ObjectivesFilter] FINAL RESULT", {
@@ -1203,6 +1218,16 @@ export default function ObjectivesApprovalTable() {
             : "none"
         }
         unitNames={unitNames}
+        emptyTitle={
+          selectedPeriodId
+            ? `No objectives in ${selectedPeriodLabel}.`
+            : "No objectives found."
+        }
+        emptyDescription={
+          selectedPeriodId
+            ? "Objectives are shown only for the exact period or quarter where they were created."
+            : "Change your filters or add a new objective."
+        }
         childQuartersByParentId={(function () {
           try {
             // Build child quarters map for corporate objectives

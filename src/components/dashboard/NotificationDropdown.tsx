@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, MoreVertical } from "lucide-react";
+import { Bell, ClipboardCheck, FileCheck2 } from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_NOTIFICATIONS } from "@/lib/graphql/queries/notifications";
 import { UPDATE_NOTIFICATION } from "@/lib/graphql/mutations/notifications";
+import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,12 @@ export default function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const { user } = useAuthContext();
   const router = useRouter();
+  const {
+    count: pendingApprovalCount,
+    submissionCount,
+    logbookCount,
+    loading: approvalsLoading,
+  } = usePendingApprovalsCount();
 
   const { data, loading, refetch } = useQuery(GET_NOTIFICATIONS, {
     variables: {
@@ -36,6 +43,7 @@ export default function NotificationDropdown() {
     (n: any) => n.recipient != null
   );
   const unreadCount = notifications.filter((n: any) => n.status === "UNREAD").length;
+  const bellBadgeCount = pendingApprovalCount > 0 ? pendingApprovalCount : unreadCount;
 
   const markAllAsRead = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -47,7 +55,7 @@ export default function NotificationDropdown() {
         unreadNotifications.map((notif: any) =>
           updateNotification({
             variables: {
-              input: {
+              updateNotificationInput: {
                 notificationId: notif.notificationId,
                 status: "READ",
                 readAt: new Date().toISOString(),
@@ -68,7 +76,7 @@ export default function NotificationDropdown() {
       try {
         await updateNotification({
           variables: {
-            input: {
+            updateNotificationInput: {
               notificationId: notification.notificationId,
               status: "READ",
               readAt: new Date().toISOString(),
@@ -102,6 +110,10 @@ export default function NotificationDropdown() {
         case "approval":
           url = `/dashboard/approvals`;
           break;
+        case "logbook_entry":
+        case "logbookentry":
+          url = `/dashboard/approvals?tab=logbook`;
+          break;
         default:
           url = "/dashboard";
       }
@@ -116,11 +128,11 @@ export default function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <button className="relative p-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
           <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          {unreadCount > 0 && (
+          {bellBadgeCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
               <span className="animate-ping absolute inline-flex h-5 w-5 rounded-full bg-red-400 opacity-40"></span>
               <span className="relative inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
-                {unreadCount > 99 ? "99+" : unreadCount}
+                {bellBadgeCount > 99 ? "99+" : bellBadgeCount}
               </span>
             </span>
           )}
@@ -143,7 +155,51 @@ export default function NotificationDropdown() {
           )}
         </div>
 
-        {/* List */}
+        {(approvalsLoading || pendingApprovalCount > 0) && (
+          <div className="border-y border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Approval requests
+            </p>
+            {approvalsLoading ? (
+              <div className="h-14 animate-pulse rounded-lg bg-slate-200/70 dark:bg-slate-800" />
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {submissionCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      router.push("/dashboard/approvals");
+                    }}
+                    className="flex items-center gap-3 rounded-lg border bg-white p-3 text-left transition-colors hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20"
+                  >
+                    <ClipboardCheck className="h-4 w-4 text-indigo-600" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">Objectives & KPIs</span>
+                      <span className="text-xs text-muted-foreground">{submissionCount} pending</span>
+                    </span>
+                  </button>
+                )}
+                {logbookCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      router.push("/dashboard/approvals?tab=logbook");
+                    }}
+                    className="flex items-center gap-3 rounded-lg border bg-white p-3 text-left transition-colors hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20"
+                  >
+                    <FileCheck2 className="h-4 w-4 text-indigo-600" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">Logbooks</span>
+                      <span className="text-xs text-muted-foreground">{logbookCount} pending</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent persisted notifications */}
         <div className="flex flex-col max-h-[60vh] sm:max-h-[480px] overflow-y-auto custom-scrollbar pb-2">
           {loading ? (
             <div className="flex items-center justify-center h-32">

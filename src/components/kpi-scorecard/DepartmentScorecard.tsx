@@ -28,6 +28,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
+import { QuarterPerformanceCell } from "./QuarterPerformanceCell";
+import type { KpiQuarterPlan, KpiQuarterResult } from "@/types/graphql";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -37,6 +39,8 @@ interface KpiScore {
     description: string;
     kpiMode?: string;
     managerRetentionPercent?: number;
+    quarterPlans?: KpiQuarterPlan[];
+    quarterResults?: KpiQuarterResult[];
   };
   level: string;
   actualValue: number;
@@ -363,6 +367,9 @@ export default function DepartmentScorecard({
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
                       <th className="text-center p-3 font-medium">Mode</th>
+                      <th className="text-center p-3 font-medium">
+                        Quarterly Performance
+                      </th>
                       <th className="text-right p-3 font-medium">
                         Actual (Aggregated)
                       </th>
@@ -383,9 +390,9 @@ export default function DepartmentScorecard({
                         kpiScore.achievementRate,
                       );
                       const kpiMode = kpiScore.kpi.kpiMode || "AGGREGATED";
-                      const hasHybridBreakdown = 
-                        kpiMode === "HYBRID" && 
-                        kpiScore.managerActual !== undefined && 
+                      const hasHybridBreakdown =
+                        kpiMode === "HYBRID" &&
+                        kpiScore.managerActual !== undefined &&
                         kpiScore.teamActual !== undefined;
 
                       return (
@@ -416,11 +423,15 @@ export default function DepartmentScorecard({
                                   (Dept Head Only)
                                 </p>
                               )}
-                              {kpiMode === "HYBRID" && kpiScore.kpi.managerRetentionPercent && (
-                                <p className="text-xs text-muted-foreground">
-                                  {kpiScore.kpi.managerRetentionPercent}% mgr / {100 - kpiScore.kpi.managerRetentionPercent}% team
-                                </p>
-                              )}
+                              {kpiMode === "HYBRID" &&
+                                kpiScore.kpi.managerRetentionPercent && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {kpiScore.kpi.managerRetentionPercent}% mgr
+                                    /{" "}
+                                    {100 - kpiScore.kpi.managerRetentionPercent}
+                                    % team
+                                  </p>
+                                )}
                             </div>
                             {hasHybridBreakdown && (
                               <div className="mt-2 text-xs space-y-1 border-t pt-2">
@@ -430,10 +441,18 @@ export default function DepartmentScorecard({
                                     Manager:
                                   </span>
                                   <span className="font-medium">
-                                    {formatNumber(kpiScore.managerActual!)} / {formatNumber(kpiScore.managerTarget!)}
-                                    {kpiScore.managerAchievementRate !== undefined && (
-                                      <span className={`ml-1 ${getAchievementColor(kpiScore.managerAchievementRate)}`}>
-                                        ({formatPercentage(kpiScore.managerAchievementRate)})
+                                    {formatNumber(kpiScore.managerActual!)} /{" "}
+                                    {formatNumber(kpiScore.managerTarget!)}
+                                    {kpiScore.managerAchievementRate !==
+                                      undefined && (
+                                      <span
+                                        className={`ml-1 ${getAchievementColor(kpiScore.managerAchievementRate)}`}
+                                      >
+                                        (
+                                        {formatPercentage(
+                                          kpiScore.managerAchievementRate,
+                                        )}
+                                        )
                                       </span>
                                     )}
                                   </span>
@@ -444,16 +463,31 @@ export default function DepartmentScorecard({
                                     Team:
                                   </span>
                                   <span className="font-medium">
-                                    {formatNumber(kpiScore.teamActual!)} / {formatNumber(kpiScore.teamTarget!)}
-                                    {kpiScore.teamAchievementRate !== undefined && (
-                                      <span className={`ml-1 ${getAchievementColor(kpiScore.teamAchievementRate)}`}>
-                                        ({formatPercentage(kpiScore.teamAchievementRate)})
+                                    {formatNumber(kpiScore.teamActual!)} /{" "}
+                                    {formatNumber(kpiScore.teamTarget!)}
+                                    {kpiScore.teamAchievementRate !==
+                                      undefined && (
+                                      <span
+                                        className={`ml-1 ${getAchievementColor(kpiScore.teamAchievementRate)}`}
+                                      >
+                                        (
+                                        {formatPercentage(
+                                          kpiScore.teamAchievementRate,
+                                        )}
+                                        )
                                       </span>
                                     )}
                                   </span>
                                 </div>
                               </div>
                             )}
+                          </td>
+                          <td className="p-3">
+                            <QuarterPerformanceCell
+                              kpiId={kpiScore.kpi.kpiId}
+                              plans={kpiScore.kpi.quarterPlans}
+                              results={kpiScore.kpi.quarterResults}
+                            />
                           </td>
                           <td className="text-right p-3 font-medium">
                             {formatNumber(kpiScore.actualValue)}
@@ -496,7 +530,7 @@ export default function DepartmentScorecard({
                   <tfoot className="border-t-2 font-bold">
                     <tr>
                       <td className="p-3">Total</td>
-                      <td className="text-right p-3" colSpan={6}></td>
+                      <td className="text-right p-3" colSpan={7}></td>
                       <td className="text-right p-3 text-primary text-lg">
                         {formatNumber(scorecard.totalScore)}%
                       </td>
@@ -554,25 +588,35 @@ export default function DepartmentScorecard({
                     <div className="flex items-start gap-2">
                       <KpiModeBadge mode="AGGREGATED" size="sm" />
                       <p className="text-xs text-muted-foreground">
-                        <strong>Aggregated:</strong> Department head's KPI aggregates from all team members. All employee achievements roll up to this KPI.
+                        <strong>Aggregated:</strong> Department head's KPI
+                        aggregates from all team members. All employee
+                        achievements roll up to this KPI.
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
                       <KpiModeBadge mode="DIRECT" size="sm" />
                       <p className="text-xs text-muted-foreground">
-                        <strong>Direct:</strong> Department head's personal work. Only their individual logbook entries count - not cascaded to team.
+                        <strong>Direct:</strong> Department head's personal
+                        work. Only their individual logbook entries count - not
+                        cascaded to team.
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
                       <KpiModeBadge mode="HYBRID" size="sm" />
                       <p className="text-xs text-muted-foreground">
-                        <strong>Hybrid:</strong> Department head retains a percentage for their direct work, remainder cascades from team. Both portions are weighted and combined.
+                        <strong>Hybrid:</strong> Department head retains a
+                        percentage for their direct work, remainder cascades
+                        from team. Both portions are weighted and combined.
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-900">
                     <p className="text-xs text-blue-900 dark:text-blue-100">
-                      <strong>Hybrid Example:</strong> If a department head retains 30%, they own 30% of the target for their direct work, and the remaining 70% comes from aggregating team member results. The final score combines both weighted portions.
+                      <strong>Hybrid Example:</strong> If a department head
+                      retains 30%, they own 30% of the target for their direct
+                      work, and the remaining 70% comes from aggregating team
+                      member results. The final score combines both weighted
+                      portions.
                     </p>
                   </div>
                 </div>

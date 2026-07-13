@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
+import { summarizeQuarterPlans } from "@/lib/kpi/quarterPlanStatus";
+import type { KpiQuarterPlan } from "@/types/graphql";
 
 interface KPISubmission {
   kpiId: string;
@@ -25,6 +27,7 @@ interface KPISubmission {
   targetValue?: number | string;
   kpiMode?: string;
   managerRetentionPercent?: number;
+  quarterPlans?: KpiQuarterPlan[];
   submissionId?: string;
 }
 
@@ -185,6 +188,10 @@ export default function ApproveObjectiveWithKPIsDialog({
                             {100 - Number(kpi.managerRetentionPercent)}% cascade
                           </div>
                         )}
+                      <div className="mt-1 text-xs text-blue-700">
+                        Quarterly plan:{" "}
+                        {summarizeQuarterPlans(kpi.quarterPlans)}
+                      </div>
                       <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                         <span>Weight: {kpi.weight ?? "N/A"}%</span>
                         <span>

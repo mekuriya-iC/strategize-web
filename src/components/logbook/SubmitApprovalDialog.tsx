@@ -98,8 +98,8 @@ export function SubmitApprovalDialog({
     field: keyof EvidenceItem,
     value: any,
   ) => {
-    setEvidenceItems(
-      evidenceItems.map((item) =>
+    setEvidenceItems((items) =>
+      items.map((item) =>
         item.id === id ? { ...item, [field]: value } : item,
       ),
     );
@@ -136,7 +136,10 @@ export function SubmitApprovalDialog({
         logbookEntryId: item.id,
         entryStatus: "SUBMITTED",
         submittedAt: new Date().toISOString(),
-        evidenceDescription: description || evidenceDescription || null,
+        evidenceDescription:
+          [description.trim(), evidenceDescription]
+            .filter(Boolean)
+            .join("\n") || null,
         decisionsMade: remark || null,
       };
 
@@ -144,14 +147,14 @@ export function SubmitApprovalDialog({
         input.kpiAchievedValue = parsedQuantity;
       }
 
-      const firstUploadedUrl = uploadedEvidence.find(
+      const firstEvidenceUrl = uploadedEvidence.find(
         (evidence) =>
-          (evidence.type === "file" || evidence.type === "certificate") &&
-          evidence.value?.startsWith("http"),
+          ["file", "certificate", "drive_link"].includes(evidence.type) &&
+          /^https?:\/\//i.test(evidence.value?.trim() || ""),
       )?.value;
 
-      if (firstUploadedUrl) {
-        input.evidenceUrl = firstUploadedUrl;
+      if (firstEvidenceUrl) {
+        input.evidenceUrl = firstEvidenceUrl.trim();
       }
 
       await updateLogbookEntry({
@@ -181,6 +184,7 @@ export function SubmitApprovalDialog({
               <p className="text-xs text-gray-500">Upload</p>
               <input
                 type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -237,7 +241,7 @@ export function SubmitApprovalDialog({
           <div className="space-y-2">
             <Input
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {

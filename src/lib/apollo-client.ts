@@ -60,9 +60,10 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
         continue; // Skip further processing for not-found errors
       }
 
+      const operationName = operation.operationName || "UnknownOperation";
       apolloLogger.error(
-        `[GraphQL error]: Message: ${err.message}, Path: ${err.path?.join(".")}`,
-        { operation: operation.operationName }
+        `[GraphQL error]: Operation: ${operationName}, Message: ${err.message}, Path: ${err.path?.join(".")}`,
+        { operation: operationName },
       );
 
       // Check for authentication errors

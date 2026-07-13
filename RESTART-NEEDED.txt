@@ -1,0 +1,22 @@
+✅ Configuration Updated!
+
+Your .env.local now points to: http://192.168.100.58:3000/graphql
+
+NEXT STEPS:
+
+1. Stop your frontend dev server (Ctrl+C if running)
+
+2. Restart it with:
+   cd strategize-web
+   npm run dev
+
+3. Share this link with testers:
+   http://192.168.100.58:3001
+
+The backend is already working correctly at:
+   http://192.168.100.58:3000/graphql
+
+---
+
+To verify it's working, check the browser console on the tester's device.
+It should show API calls to http://192.168.100.58:3000/graphql (not localhost)

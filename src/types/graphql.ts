@@ -318,9 +318,15 @@ export interface PaginatedStrategicPeriods {
 
 // Objective Types
 export type ObjectiveType =
-  "CORPORATE" | "DIVISION" | "DEPARTMENT" | "PERSONNEL";
+  | "CORPORATE"
+  | "DIVISION"
+  | "DEPARTMENT"
+  | "PERSONNEL";
 export type ObjectiveStatus =
-  "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
+  | "NOT_SUBMITTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
 
 export interface Objective {
   objectiveId: string;
@@ -420,10 +426,54 @@ export interface PaginatedObjectives {
 // KPI Types
 export type KpiWeightType = "NUMBER" | "PERCENT";
 export type KpiUnitType =
-  "NUMBER" | "PERCENT" | "CURRENCY" | "HOUR" | "RATIO" | "COUNT";
+  | "NUMBER"
+  | "PERCENT"
+  | "CURRENCY"
+  | "HOUR"
+  | "RATIO"
+  | "COUNT";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiTargetStatus =
-  "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
+  | "NOT_SUBMITTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+export type KpiQuarterPlanStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "LOCKED";
+export type KpiQuarterPlanSource = "LEGACY_BACKFILL" | "MANUAL" | "SYSTEM";
+
+export interface KpiQuarterPlan {
+  kpiQuarterPlanId: string;
+  organizationId: string;
+  kpiId: string;
+  annualStrategicPeriodId: string;
+  quarterStrategicPeriodId?: string | null;
+  quarterNumber: number;
+  timeline: string;
+  originalTarget: number;
+  carryIn: number;
+  effectiveTarget: number;
+  managerOriginalTarget?: number | null;
+  managerCarryIn?: number | null;
+  managerEffectiveTarget?: number | null;
+  teamOriginalTarget?: number | null;
+  teamCarryIn?: number | null;
+  teamEffectiveTarget?: number | null;
+  status: KpiQuarterPlanStatus;
+  source: KpiQuarterPlanSource;
+  version: number;
+  submittedById?: string | null;
+  submittedAt?: string | null;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // Restore KPI target types
 export interface KpiTarget {
@@ -436,6 +486,143 @@ export interface KpiTargetInput {
   target: number; // Float in GraphQL schema
 }
 
+export type KpiQuarterResultStatus = "PROVISIONAL" | "FINAL";
+export type ScorecardLevel =
+  | "INDIVIDUAL"
+  | "DEPARTMENT"
+  | "DIVISION"
+  | "CORPORATE";
+
+export interface KpiQuarterResult {
+  kpiQuarterResultId: string;
+  kpiId: string;
+  quarterPlanId: string;
+  quarterPlan: KpiQuarterPlan;
+  level: ScorecardLevel;
+  entityId?: string | null;
+  calculationMode: "AGGREGATED" | "DIRECT" | "HYBRID";
+  directActual?: number | null;
+  directAchievementRate?: number | null;
+  aggregateActual?: number | null;
+  aggregateAchievementRate?: number | null;
+  finalActual: number;
+  finalAchievementRate: number;
+  weightedScore: number;
+  carryOut: number;
+  managerCarryOut?: number | null;
+  teamCarryOut?: number | null;
+  status: KpiQuarterResultStatus;
+  calculationVersion: number;
+  calculatedAt: string;
+  finalizedAt?: string | null;
+}
+
+export type KpiMode = "AGGREGATED" | "DIRECT" | "HYBRID";
+export type KpiQuarterReportScope =
+  | "SELF"
+  | "DEPARTMENT"
+  | "DIVISION"
+  | "ORGANIZATION";
+
+export interface KpiQuarterReportFilterOption {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  parentIds: string[];
+}
+
+export interface KpiQuarterReportSummary {
+  rowCount: number;
+  kpiCount: number;
+  originalTarget: number;
+  carryIn: number;
+  effectiveTarget: number;
+  actual: number;
+  averageAchievementRate: number;
+  annualContribution: number;
+  carryOut: number;
+  finalCount: number;
+  provisionalCount: number;
+  pendingResultCount: number;
+}
+
+export interface KpiQuarterReportQuarterSummary
+  extends KpiQuarterReportSummary {
+  quarterNumber: number;
+}
+
+export interface KpiQuarterReportRollup extends KpiQuarterReportSummary {
+  level: ScorecardLevel;
+  entityId: string;
+  entityName: string;
+}
+
+export interface KpiQuarterReportRow {
+  kpiQuarterPlanId: string;
+  kpiId: string;
+  kpiName: string;
+  objectiveTitle?: string | null;
+  level: ScorecardLevel;
+  entityId: string;
+  entityName: string;
+  divisionId?: string | null;
+  divisionName?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  employeeId?: string | null;
+  employeeName?: string | null;
+  kpiMode: KpiMode;
+  unitType?: KpiUnitType | null;
+  measurementUnit: string;
+  customUnitLabel?: string | null;
+  annualTarget: number;
+  weight: number;
+  quarterNumber: number;
+  timeline: string;
+  originalTarget: number;
+  carryIn: number;
+  effectiveTarget: number;
+  managerOriginalTarget?: number | null;
+  managerCarryIn?: number | null;
+  managerEffectiveTarget?: number | null;
+  teamOriginalTarget?: number | null;
+  teamCarryIn?: number | null;
+  teamEffectiveTarget?: number | null;
+  planStatus: KpiQuarterPlanStatus;
+  directActual?: number | null;
+  directAchievementRate?: number | null;
+  aggregateActual?: number | null;
+  aggregateAchievementRate?: number | null;
+  actual?: number | null;
+  achievementRate?: number | null;
+  annualContribution?: number | null;
+  carryOut?: number | null;
+  managerCarryOut?: number | null;
+  teamCarryOut?: number | null;
+  resultStatus?: KpiQuarterResultStatus | null;
+  calculatedAt?: string | null;
+  finalizedAt?: string | null;
+}
+
+export interface KpiQuarterPerformanceReport {
+  annualStrategicPeriodId: string;
+  annualStrategicPeriodName: string;
+  scope: KpiQuarterReportScope;
+  availableFilters: {
+    divisions: KpiQuarterReportFilterOption[];
+    departments: KpiQuarterReportFilterOption[];
+    employees: KpiQuarterReportFilterOption[];
+  };
+  summary: KpiQuarterReportSummary;
+  quarterSummaries: KpiQuarterReportQuarterSummary[];
+  rollups: KpiQuarterReportRollup[];
+  rows: KpiQuarterReportRow[];
+  totalItems: number;
+  currentPage: number;
+  itemsPerPage: number;
+  totalPages: number;
+}
+
 export interface Kpi {
   kpiId: string;
   name: string;
@@ -445,6 +632,8 @@ export interface Kpi {
   status: KpiStatus;
   targetStatus?: KpiTargetStatus;
   targets: KpiTarget[];
+  quarterPlans?: KpiQuarterPlan[];
+  quarterResults?: KpiQuarterResult[];
   targetValue?: number; // Base target value of the KPI
   assignedTargetValue?: number; // Target value assigned to current user (from assignment)
   kpiMode?: string; // AGGREGATED, DIRECT, HYBRID

@@ -36,6 +36,18 @@ export const SubmissionsFragment = gql`
       weight
       baseline
       targetValue
+      kpiMode
+      managerRetentionPercent
+      quarterPlans {
+        kpiQuarterPlanId
+        quarterNumber
+        timeline
+        originalTarget
+        carryIn
+        effectiveTarget
+        status
+        version
+      }
       objective {
         objectiveId
         title
@@ -59,6 +71,26 @@ export const SubmissionsFragment = gql`
       status
       assigneeType
       assigneeId
+      kpis {
+        kpiId
+        name
+        status
+        weight
+        baseline
+        targetValue
+        kpiMode
+        managerRetentionPercent
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          timeline
+          originalTarget
+          carryIn
+          effectiveTarget
+          status
+          version
+        }
+      }
       parent {
         objectiveId
         title

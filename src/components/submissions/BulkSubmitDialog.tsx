@@ -12,17 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
+
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useKPI } from "@/hooks/objectives/useKPIs";
-import { useObjective } from "@/hooks/objectives/useObjectives";
+
 import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
-import type {
-  ObjectiveType,
-  SubmissionType,
-} from "@/types/graphql";
+import type { ObjectiveType, SubmissionType } from "@/types/graphql";
 import { resolveSubmissionLevel } from "@/lib/objectives/submissionLevel";
 
 interface BulkSubmissionItem {
@@ -51,22 +47,8 @@ export default function BulkSubmitDialog({
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { updateKpi } = useKPIMutations();
   const { user, isAuthenticated } = useAuth();
   const client = useApolloClient();
-
-  // Validate first KPI exists (for debugging)
-  const firstKPIId =
-    items.length > 0 && items[0].itemType === "kpi" ? items[0].itemId : "";
-  const { kpi: firstKPI, loading: kpiLoading } = useKPI(
-    firstKPIId ? { kpiId: firstKPIId } : { kpiId: "" }
-  );
-
-  // Validate objective exists (for debugging)
-  const objectiveId = firstKPI?.objective?.objectiveId;
-  const { objective: objectiveData, loading: objectiveLoading } = useObjective(
-    objectiveId ? { objectiveId } : { objectiveId: "" }
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,30 +70,13 @@ export default function BulkSubmitDialog({
 
     // Validate all items have valid IDs
     const invalidItems = items.filter(
-      (item) => !item.itemId || item.itemId.trim() === ""
+      (item) => !item.itemId || item.itemId.trim() === "",
     );
     if (invalidItems.length > 0) {
       toast.error(
-        `${invalidItems.length} item(s) have invalid IDs. Please refresh and try again.`
+        `${invalidItems.length} item(s) have invalid IDs. Please refresh and try again.`,
       );
       return;
-    }
-
-    // Additional validation for KPIs
-    if (itemType === "kpis") {
-      for (const item of items) {
-        // KPI ${item.itemId}: ${item.itemName} (${item.objectiveType})
-      }
-
-      // Check if first KPI exists in database
-      if (firstKPIId) {
-        // KPI validation: ${firstKPIId}, loading: ${kpiLoading}, exists: ${!!firstKPI}
-
-        // Check if objective exists in database
-        if (objectiveId) {
-          // Objective validation: ${objectiveId}, loading: ${objectiveLoading}, exists: ${!!objectiveData}
-        }
-      }
     }
 
     setIsSubmitting(true);
@@ -162,7 +127,7 @@ export default function BulkSubmitDialog({
       for (const item of items) {
         try {
           const submissionData = submissionInputs.find(
-            (input) => input.itemId === item.itemId
+            (input) => input.itemId === item.itemId,
           );
 
           if (!submissionData) {
@@ -199,7 +164,7 @@ export default function BulkSubmitDialog({
         if (failedSubmissions.length > 0) {
           console.warn("⚠️ Some submissions failed:", failedSubmissions);
           toast.warning(
-            `${successfulSubmissions.length} submission(s) successful, ${failedSubmissions.length} failed.`
+            `${successfulSubmissions.length} submission(s) successful, ${failedSubmissions.length} failed.`,
           );
         }
       } else {
@@ -207,23 +172,6 @@ export default function BulkSubmitDialog({
       }
 
       // Bulk submission results: ${successfulSubmissions.length} successful, ${failedSubmissions.length} failed
-
-      // Update KPI status to PENDING after successful submission
-      for (const submission of successfulSubmissions) {
-        if (submission.type === "kpi") {
-          try {
-            await updateKpi({
-              input: {
-                kpiId: submission.id,
-                status: "PENDING",
-              }
-            });
-          } catch (updateError) {
-            console.error("❌ Error updating KPI status:", updateError);
-            // Don't fail the submission if status update fails
-          }
-        }
-      }
 
       const itemTypeLabel =
         itemType === "objectives"
@@ -251,7 +199,7 @@ export default function BulkSubmitDialog({
         "message" in error &&
         typeof (error as { message?: unknown }).message === "string" &&
         (error as { message: string }).message.includes(
-          "foreign key constraint"
+          "foreign key constraint",
         )
       ) {
         errorMessage = `Unable to submit ${itemType}. Some items may not exist or you may not have permission to submit them.`;

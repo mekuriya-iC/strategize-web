@@ -37,6 +37,8 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import usePermissions from "@/hooks/permissions/usePermissions";
 import { canUserApproveSubmission } from "@/lib/objectives/cascadeApproval";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
+import { summarizeQuarterPlans } from "@/lib/kpi/quarterPlanStatus";
+import type { KpiQuarterPlan } from "@/types/graphql";
 
 type KpiSubmission = {
   submissionId: string;
@@ -58,6 +60,7 @@ type KpiSubmission = {
     targetValue?: number | string;
     kpiMode?: string;
     managerRetentionPercent?: number;
+    quarterPlans?: KpiQuarterPlan[];
   };
 };
 
@@ -89,6 +92,7 @@ export type GroupedSubmission = {
       weightType?: string;
       kpiMode?: string;
       managerRetentionPercent?: number;
+      quarterPlans?: KpiQuarterPlan[];
     }>;
   } | null;
   kpi?: {
@@ -100,6 +104,7 @@ export type GroupedSubmission = {
     targetValue?: number | string;
     kpiMode?: string;
     managerRetentionPercent?: number;
+    quarterPlans?: KpiQuarterPlan[];
     objective?: {
       objectiveId: string;
       title?: string; // Backend uses 'title'
@@ -888,6 +893,11 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                         allKpis.find(
                                           (full) => full.kpiId === k.kpi?.kpiId,
                                         )?.managerRetentionPercent,
+                                      quarterPlans:
+                                        k.kpi?.quarterPlans ||
+                                        allKpis.find(
+                                          (full) => full.kpiId === k.kpi?.kpiId,
+                                        )?.quarterPlans,
                                       submissionId: k.submissionId,
                                     }),
                                   )}
@@ -1505,6 +1515,13 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                 mode={kpiMode}
                                                 size="sm"
                                               />
+                                              <span className="text-[11px] text-blue-700">
+                                                {summarizeQuarterPlans(
+                                                  kpiSubmission.kpi
+                                                    ?.quarterPlans ||
+                                                    fullKpi?.quarterPlans,
+                                                )}
+                                              </span>
                                               {kpiMode === "HYBRID" &&
                                                 managerRetentionPercent !==
                                                   undefined &&

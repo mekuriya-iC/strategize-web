@@ -479,8 +479,8 @@ export default function CreateSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Create Check-In Period</DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
             Set up a check-in period for your team members. Each employee will
@@ -488,7 +488,8 @@ export default function CreateSessionDialog({
           </p>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <ScrollArea className="flex-1 overflow-y-auto pr-4">
+          <div className="space-y-6">
           {/* Sprint Title */}
           <div className="space-y-2">
             <Label htmlFor="sprintTitle">
@@ -634,7 +635,7 @@ export default function CreateSessionDialog({
                 </div>
               </div>
             ) : availableEmployees.length > 0 ? (
-              <ScrollArea className="h-64 border rounded-lg">
+              <div className="border rounded-lg max-h-64 overflow-y-auto">
                 <div className="p-4 space-y-2">
                   {availableEmployees.map((employee: any) => (
                     <div
@@ -673,7 +674,7 @@ export default function CreateSessionDialog({
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             ) : directReports.length > 0 ? (
               <div className="flex flex-col items-center justify-center h-32 border rounded-lg bg-amber-50">
                 <Users className="h-8 w-8 text-amber-500 mb-2" />
@@ -718,8 +719,9 @@ export default function CreateSessionDialog({
             )}
           </div>
         </div>
+        </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           <Button
             type="button"
             variant="outline"

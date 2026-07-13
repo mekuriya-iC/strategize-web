@@ -26,7 +26,7 @@ interface UseSubmissionQueriesOptions {
 interface SubmissionQueriesResult {
   submissions: MinimalSubmission[];
   loading: boolean;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
 
 function mapSubmissionItems(
@@ -205,15 +205,17 @@ export const useSubmissionQueries = ({
     departmentKpiLoading ||
     personnelKpiLoading;
 
-  const refetch = useCallback(() => {
-    corporateObjRefetch();
-    divisionObjRefetch();
-    departmentObjRefetch();
-    personnelObjRefetch();
-    corporateKpiRefetch();
-    divisionKpiRefetch();
-    departmentKpiRefetch();
-    personnelKpiRefetch();
+  const refetch = useCallback(async () => {
+    await Promise.all([
+      corporateObjRefetch(),
+      divisionObjRefetch(),
+      departmentObjRefetch(),
+      personnelObjRefetch(),
+      corporateKpiRefetch(),
+      divisionKpiRefetch(),
+      departmentKpiRefetch(),
+      personnelKpiRefetch(),
+    ]);
   }, [
     corporateObjRefetch,
     divisionObjRefetch,

@@ -168,8 +168,16 @@ export const useSubmissionApprovalMutations = () => {
   ) => {
     try {
       // Update submission status (this includes the reason and handles both submission + associated item)
-      await handleApproveSubmission(submission.submissionId, reason, submission);
+      const approvedSubmission = await handleApproveSubmission(
+        submission.submissionId,
+        reason,
+        submission,
+      );
+      if (approvedSubmission?.status !== "APPROVED") {
+        throw new Error("The submission was not approved by the server.");
+      }
       // The backend handles updating the associated objective/KPI automatically
+      return approvedSubmission;
     } catch (error) {
       submissionLogger.error("Error approving submission with item update:", error);
       throw error;

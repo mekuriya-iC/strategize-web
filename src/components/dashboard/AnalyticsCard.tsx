@@ -5,8 +5,8 @@ import { ReactNode } from "react";
 interface AnalyticsCardProps {
   title: string;
   value: number | string;
-  change: string;
-  isPositive: boolean;
+  change?: string;
+  isPositive?: boolean;
   icon?: ReactNode;
   loading?: boolean;
   href?: string; // optional navigation target
@@ -17,7 +17,7 @@ export default function AnalyticsCard({
   title,
   value,
   change,
-  isPositive,
+  isPositive = true,
   icon,
   loading = false,
   href,
@@ -63,15 +63,17 @@ export default function AnalyticsCard({
         <span className="text-2xl font-semibold text-slate-800 dark:text-slate-100">
           {value}
         </span>
-        <span
-          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            isPositive
-              ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400"
-              : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400"
-          }`}
-        >
-          {change}
-        </span>
+        {change && (
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              isPositive
+                ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400"
+                : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400"
+            }`}
+          >
+            {change}
+          </span>
+        )}
       </div>
     </Card>
   );

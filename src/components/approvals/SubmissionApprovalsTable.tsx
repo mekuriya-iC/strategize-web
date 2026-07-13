@@ -374,9 +374,6 @@ export default function SubmissionApprovalsTable({
             if (selectedKPIs && selectedKPIs.length > 0) {
               return selectedKPIs.includes(kpiSub.kpi?.kpiId || "");
             }
-            if (submission.level === "DIVISION") {
-              return false;
-            }
             return true;
           });
 

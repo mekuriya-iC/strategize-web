@@ -19,7 +19,10 @@ export const useObjectiveAssignment = () => {
       objectiveLogger.error("Error assigning objective:", error);
       toast.error("Failed to assign objective", { description: error.message });
     },
-    refetchQueries: [{ query: GET_OBJECTIVES }, { query: GET_KPIS }],
+    refetchQueries: [
+      { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
+      { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+    ],
     awaitRefetchQueries: true,
   });
 

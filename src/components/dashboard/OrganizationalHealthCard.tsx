@@ -16,6 +16,7 @@ import {
 import { useRouter } from 'next/navigation';
 
 interface OrganizationalHealthCardProps {
+  title?: string;
   currentScore: number;
   previousScore?: number;
   trend?: number;
@@ -25,6 +26,7 @@ interface OrganizationalHealthCardProps {
 }
 
 export function OrganizationalHealthCard({
+  title = "Team performance",
   currentScore,
   previousScore,
   trend,
@@ -60,16 +62,15 @@ export function OrganizationalHealthCard({
 
   const getStatusInfo = () => {
     if (currentScore >= 85)
-      return { text: "Exceptional organizational performance", icon: CheckCircle2, dot: "bg-emerald-500" };
+      return { text: "Exceptional performance in the current scope", icon: CheckCircle2, dot: "bg-emerald-500" };
     if (currentScore >= 70)
       return { text: `${teamMeetingExpectations.toFixed(0)}% of team meeting expectations`, icon: CheckCircle2, dot: "bg-slate-400" };
     if (currentScore >= 60)
       return { text: "Some team members need support", icon: AlertTriangle, dot: "bg-amber-500" };
-    return { text: "Organizational performance needs attention", icon: AlertTriangle, dot: "bg-red-500" };
+    return { text: "Current scope performance needs attention", icon: AlertTriangle, dot: "bg-red-500" };
   };
 
   const status = getStatusInfo();
-  const StatusIcon = status.icon;
 
   if (loading) {
     return (
@@ -77,7 +78,7 @@ export function OrganizationalHealthCard({
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-slate-400 animate-pulse" />
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Organizational Performance</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -97,13 +98,15 @@ export function OrganizationalHealthCard({
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
             <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-              Organizational Performance
+              {title}
             </CardTitle>
           </div>
-          <div className={`flex items-center gap-1 text-xs font-medium ${getTrendColor()}`}>
-            {getTrendIcon()}
-            <span>{getTrendText()}</span>
-          </div>
+          {trend !== undefined && (
+            <div className={`flex items-center gap-1 text-xs font-medium ${getTrendColor()}`}>
+              {getTrendIcon()}
+              <span>{getTrendText()}</span>
+            </div>
+          )}
         </div>
       </CardHeader>
 

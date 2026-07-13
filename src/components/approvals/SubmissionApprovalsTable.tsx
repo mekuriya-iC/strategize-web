@@ -8,7 +8,7 @@ import type { GroupedSubmission } from "./SubmissionApprovalTable";
 import DataTablePagination from "@/components/shared/DataTablePagination";
 import { useSubmissionApprovals } from "@/hooks/submissions/useSubmissionApprovals";
 import { useSubmissionApprovalMutations } from "@/hooks/submissions/useSubmissionApprovalMutations";
-import { useAuthStore, useOrgUnitStore } from "@/stores";
+import { useAuthStore } from "@/stores";
 import { useObjectives } from "@/hooks/objectives/useObjectives";
 import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { toast } from "sonner";
@@ -48,12 +48,14 @@ export default function SubmissionApprovalsTable({
   listMode = "inbound",
 }: SubmissionApprovalsTableProps) {
   const user = useAuthStore((state) => state.user);
-  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+
   const readOnly = listMode === "outbound";
 
   const [selected, setSelected] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() =>
+    listMode === "inbound" ? "pending" : "all",
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;

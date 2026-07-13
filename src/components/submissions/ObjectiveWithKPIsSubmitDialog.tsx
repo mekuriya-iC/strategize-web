@@ -18,17 +18,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { handleSmartSubmission } from "@/utils/smartSubmission";
 import { useApolloClient } from "@apollo/client";
-import type {
-  ObjectiveType,
-  SubmissionType,
-  Kpi,
-} from "@/types/graphql";
+import type { ObjectiveType, SubmissionType, Kpi } from "@/types/graphql";
 import {
   isKpiSubmittable,
   resolveSubmissionLevel,
   validateKpisReadyForCascadeSubmit,
 } from "@/lib/objectives/submissionLevel";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import { summarizeQuarterPlans } from "@/lib/kpi/quarterPlanStatus";
 
 interface ObjectiveWithKPIsSubmitDialogProps {
   children?: React.ReactNode;
@@ -80,7 +77,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
     setSelectedKPIs((prev) =>
       prev.includes(kpiId)
         ? prev.filter((id) => id !== kpiId)
-        : [...prev, kpiId]
+        : [...prev, kpiId],
     );
   };
 
@@ -123,7 +120,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
       })
     ) {
       toast.error(
-        "Top-level corporate objectives are not submitted for approval."
+        "Top-level corporate objectives are not submitted for approval.",
       );
       return;
     }
@@ -138,7 +135,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
     }
 
     const selectedKpiRecords = associatedKPIs.filter((k) =>
-      selectedKPIs.includes(k.kpiId)
+      selectedKPIs.includes(k.kpiId),
     );
     const quarterlyCheck = validateKpisReadyForCascadeSubmit(
       selectedKpiRecords,
@@ -146,7 +143,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
         type: objectiveType,
         assigneeType: assigneeType ?? null,
         parentId: parentId ?? null,
-      }
+      },
     );
     if (!quarterlyCheck.valid) {
       toast.error(quarterlyCheck.message ?? "KPI targets are incomplete.");
@@ -239,7 +236,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
         if (failedSubmissions.length > 0) {
           console.warn("⚠️ Some submissions failed:", failedSubmissions);
           toast.warning(
-            `${successfulSubmissions.length} submission(s) successful, ${failedSubmissions.length} failed.`
+            `${successfulSubmissions.length} submission(s) successful, ${failedSubmissions.length} failed.`,
           );
         }
       } else {
@@ -252,8 +249,9 @@ export default function ObjectiveWithKPIsSubmitDialog({
       // No need for additional status updates here
 
       toast.success(
-        `Objective and ${successfulSubmissions.filter((s) => s.type === "kpi").length
-        } KPI(s) submitted successfully!`
+        `Objective and ${
+          successfulSubmissions.filter((s) => s.type === "kpi").length
+        } KPI(s) submitted successfully!`,
       );
       setOpen(false);
       setReason(""); // Reset form
@@ -288,7 +286,7 @@ export default function ObjectiveWithKPIsSubmitDialog({
   };
 
   const submittableKPIs = associatedKPIs.filter((kpi) =>
-    isKpiSubmittable(kpi.status)
+    isKpiSubmittable(kpi.status),
   );
 
   return (
@@ -367,9 +365,13 @@ export default function ObjectiveWithKPIsSubmitDialog({
                     />
                     <label
                       htmlFor={kpi.kpiId}
-                      className="text-sm text-gray-700 cursor-pointer flex-1"
+                      className="flex flex-1 cursor-pointer flex-col text-sm text-gray-700"
                     >
-                      {kpi.name || "Unnamed KPI"}
+                      <span>{kpi.name || "Unnamed KPI"}</span>
+                      <span className="text-xs text-blue-700">
+                        Quarterly plan:{" "}
+                        {summarizeQuarterPlans(kpi.quarterPlans)}
+                      </span>
                     </label>
                   </div>
                 ))}

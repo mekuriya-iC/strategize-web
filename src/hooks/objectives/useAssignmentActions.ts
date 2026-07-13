@@ -14,8 +14,9 @@ import { GET_ME } from "@/lib/graphql/queries/auth";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
 import { detectKPIType, getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import { appLogger } from "@/lib/logger";
+import { buildAssignedQuarterTargets } from "@/utils/quarterTargetAllocation";
 
-// Helper to get assignee objective type based on source and assignee type
+
 function getAssigneeObjectiveType(
   sourceType: string,
   assigneeType: string,
@@ -93,7 +94,7 @@ export function useAssignmentActions({
         // Strict Check: Fetch only objectives for this specific assigneeId
         const { data: existingData } = await client.query({
           query: GET_OBJECTIVES,
-          variables: { assigneeId: assignment.assigneeId, limit: 100 },
+          variables: { assigneeId: assignment.assigneeId, page: 1, limit: 100 },
           fetchPolicy: "network-only",
         });
 
@@ -145,20 +146,31 @@ export function useAssignmentActions({
             const sourceKpi = availableKPIs.find((k) => k.kpiId === kpiId);
             // Strict check: Ensure we only adding the KPI if it's in the current assignment's list
             if (sourceKpi && !existingKpiNames.has(sourceKpi.name)) {
+              const assignedTarget =
+                targets[sourceKpi.kpiId]?.[assignment.assigneeId] ?? 0;
               await createKpi({
                 input: {
                   name: sourceKpi.name,
                   baseline: sourceKpi.baseline || 0,
                   weight: sourceKpi.weight || 0,
                   unitType: sourceKpi.unitType || "NUMBER",
-                  strategicObjectiveId: targetObjectiveId, // Backend uses strategicObjectiveId
+                  strategicObjectiveId: targetObjectiveId,
                   parentId: sourceKpi.kpiId,
-                  frequency: "QUARTERLY", // Default to QUARTERLY
-                  measurementUnit: "NUMBER", // Default to NUMBER
-                  organizationId: organizationId, // Required by backend
-                  targetValue: 0, // Will be updated with targets
-                  targets: [],
-                  kpiMode: "AGGREGATED",
+                  frequency: "QUARTERLY",
+                  measurementUnit: "NUMBER",
+                  organizationId,
+                  targetValue: assignedTarget,
+                  targets: buildAssignedQuarterTargets(
+                    sourceKpi,
+                    assignedTarget,
+                    getTimelineFromContext(),
+                  ),
+                  // Each operational level chooses its own mode. Personnel KPIs
+                  // are direct because the employee records the achievement.
+                  kpiMode:
+                    assignment.assigneeType === "PERSONNEL"
+                      ? "DIRECT"
+                      : "AGGREGATED",
                 },
               });
             }
@@ -169,7 +181,7 @@ export function useAssignmentActions({
         // We need to fetch the FRESH child objective to get the IDs of the child KPIs
         const { data: freshData } = await client.query({
           query: GET_OBJECTIVES,
-          variables: { assigneeId: assignment.assigneeId, limit: 100 },
+          variables: { assigneeId: assignment.assigneeId, page: 1, limit: 100 },
           fetchPolicy: "network-only",
         });
         const freshObjective = freshData?.objectives?.items?.find(
@@ -177,8 +189,6 @@ export function useAssignmentActions({
         );
 
         if (freshObjective) {
-          const timeline = getTimelineFromContext();
-
           for (const sourceKpiId of assignment.kpis) {
             // STRICT: Get target ONLY for the current assignment.assigneeId
             const targetValue = targets[sourceKpiId]?.[assignment.assigneeId];
@@ -197,22 +207,31 @@ export function useAssignmentActions({
             );
 
             if (childKpi) {
+              const sourceKpi = availableKPIs.find(
+                (k) => k.kpiId === sourceKpiId,
+              );
+              const assignedQuarterTargets = sourceKpi
+                ? buildAssignedQuarterTargets(
+                    sourceKpi,
+                    targetValue,
+                    getTimelineFromContext(),
+                  )
+                : [];
+
+              if (assignedQuarterTargets.length !== 4) {
+                throw new Error(
+                  `KPI "${sourceKpi?.name || sourceKpiId}" could not generate a valid Q1–Q4 plan. Review its annual timeline before assigning it.`,
+                );
+              }
+
               await updateKpi({
                 input: {
                   kpiId: childKpi.kpiId,
-                  targetValue: targetValue,
-                  targets:
-                    childKpi.targets?.length > 0
-                      ? childKpi.targets.map((t: any) => ({
-                          timeline: t.timeline,
-                          target: targetValue,
-                        }))
-                      : [
-                          {
-                            timeline,
-                            target: targetValue,
-                          },
-                        ],
+                  targetValue,
+                  targets: assignedQuarterTargets,
+                  ...(assignment.assigneeType === "PERSONNEL"
+                    ? { kpiMode: "DIRECT" }
+                    : {}),
                 },
               });
             } else {

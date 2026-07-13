@@ -30,7 +30,7 @@ interface UseSubmissionApprovalsResult {
   meta: SubmissionMeta;
   loading: boolean;
   error: string | undefined;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
 
 export const useSubmissionApprovals = ({

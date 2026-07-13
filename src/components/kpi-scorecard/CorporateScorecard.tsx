@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { QuarterPerformanceCell } from "./QuarterPerformanceCell";
+import type { KpiQuarterPlan, KpiQuarterResult } from "@/types/graphql";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -30,6 +32,8 @@ interface KpiScore {
     kpiId: string;
     name: string;
     description?: string;
+    quarterPlans?: KpiQuarterPlan[];
+    quarterResults?: KpiQuarterResult[];
   };
   actualValue: number;
   targetValue: number;
@@ -308,6 +312,9 @@ export default function CorporateScorecard({
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
+                      <th className="text-center p-3 font-medium">
+                        Quarterly Performance
+                      </th>
                       <th className="text-right p-3 font-medium">Actual</th>
                       <th className="text-right p-3 font-medium">Target</th>
                       <th className="text-right p-3 font-medium">
@@ -331,6 +338,13 @@ export default function CorporateScorecard({
                               {kpiScore.kpi.description}
                             </p>
                           )}
+                        </td>
+                        <td className="p-3">
+                          <QuarterPerformanceCell
+                            kpiId={kpiScore.kpi.kpiId}
+                            plans={kpiScore.kpi.quarterPlans}
+                            results={kpiScore.kpi.quarterResults}
+                          />
                         </td>
                         <td className="text-right p-3 font-medium">
                           {formatNumber(kpiScore.actualValue)}

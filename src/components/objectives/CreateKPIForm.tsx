@@ -123,16 +123,17 @@ export default function CreateKPIForm({
     const q2 = parseFloat(q.q2) || 0;
     const q3 = parseFloat(q.q3) || 0;
     const q4 = parseFloat(q.q4) || 0;
+    const values = [q1, q2, q3, q4];
+    if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
+      return false;
+    }
     const sum = q1 + q2 + q3 + q4;
-
-    // Must be positive overall
-    if (sum <= 0) return false;
 
     const annual = parseFloat(annualTargets[strategicYear] || "0") || 0;
     if (annual <= 0) return false;
 
     const TOLERANCE = 0.01;
-    if (formData.unitType === "PERCENT") {
+    if (formData.unitType === "PERCENT" || formData.unitType === "RATIO") {
       const avg = sum / 4;
       return Math.abs(avg - annual) <= TOLERANCE;
     }

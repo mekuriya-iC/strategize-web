@@ -69,6 +69,16 @@ export const GET_KPIS = gql`
           timeline
           target
         }
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          timeline
+          originalTarget
+          carryIn
+          effectiveTarget
+          status
+          version
+        }
         latestUpdate {
           kpiUpdateId
           achievedValue
@@ -164,6 +174,16 @@ export const GET_KPI = gql`
         timeline
         target
       }
+      quarterPlans {
+        kpiQuarterPlanId
+        quarterNumber
+        timeline
+        originalTarget
+        carryIn
+        effectiveTarget
+        status
+        version
+      }
     }
   }
 `;
@@ -195,6 +215,16 @@ export const GET_KPIS_BY_OBJECTIVE = gql`
         targets {
           timeline
           target
+        }
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          timeline
+          originalTarget
+          carryIn
+          effectiveTarget
+          status
+          version
         }
       }
       meta {
@@ -252,6 +282,16 @@ export const GET_MY_KPIS = gql`
         targets {
           timeline
           target
+        }
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          timeline
+          originalTarget
+          carryIn
+          effectiveTarget
+          status
+          version
         }
         latestUpdate {
           kpiUpdateId

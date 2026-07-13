@@ -150,7 +150,12 @@ export default function ApprovalsPage() {
   const router = useRouter();
   const { guards, isLoading } = usePermissions();
   const user = useAuthStore((state) => state.user);
-  const [activeTab, setActiveTab] = useState("objectives");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "objectives";
+    return new URLSearchParams(window.location.search).get("tab") === "logbook"
+      ? "logbook"
+      : "objectives";
+  });
   const [logbookStatusFilter, setLogbookStatusFilter] = useState("all");
   const [selectedLogbookEntry, setSelectedLogbookEntry] =
     useState<LogbookReviewEntry | null>(null);

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   MySubmissionsReport,
   KPIPerformanceAnalytics,
+  QuarterlyPerformanceReport,
 } from "@/components/reports";
 import UnifiedPerformanceReport from "@/components/reports/UnifiedPerformanceReport";
 import { exportReport } from "@/lib/utils/exportReport";
@@ -430,7 +431,7 @@ function ReportsContent() {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
           {/* KPI Performance - Full access only */}
           {hasFullAccess && (
             <TabsTrigger value="kpi-performance" className="gap-2">
@@ -439,6 +440,13 @@ function ReportsContent() {
               <span className="sm:hidden">KPI</span>
             </TabsTrigger>
           )}
+
+          {/* Quarterly KPI Performance - server-scoped for every role */}
+          <TabsTrigger value="quarterly" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">Quarterly KPI</span>
+            <span className="sm:hidden">Quarterly</span>
+          </TabsTrigger>
 
           {/* Unified Performance - All users */}
           <TabsTrigger value="performance" className="gap-2">
@@ -472,6 +480,13 @@ function ReportsContent() {
             />
           </TabsContent>
         )}
+
+        {/* Quarterly KPI Performance (All Users - Server Scoped) */}
+        <TabsContent value="quarterly" className="space-y-6">
+          <QuarterlyPerformanceReport
+            key={selectedPeriod?.strategicPeriodId ?? "no-period"}
+          />
+        </TabsContent>
 
         {/* Unified Performance (All Users - Role-Based) */}
         <TabsContent value="performance" className="space-y-6">

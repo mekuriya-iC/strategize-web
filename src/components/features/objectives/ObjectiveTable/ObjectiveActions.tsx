@@ -7,30 +7,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Eye,
-  Plus,
-  Users,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Send,
-  ShieldAlert,
-} from "lucide-react";
+import { Eye, Plus, MoreVertical, Edit, Trash2, Send } from "lucide-react";
 import { Objective, Kpi } from "@/types/graphql";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
 import usePermissions from "@/hooks/permissions/usePermissions";
 import { useAuthStore } from "@/stores";
 import EditObjectiveDialog from "@/components/objectives/EditObjectiveDialog";
 import DeleteObjectiveDialog from "@/components/objectives/DeleteObjectiveDialog";
 import AddKPIDialog from "@/components/objectives/AddKPIDialog";
 import ObjectiveWithKPIsSubmitDialog from "@/components/submissions/ObjectiveWithKPIsSubmitDialog";
-import ChangeObjectiveStatusDialog from "@/components/objectives/ChangeObjectiveStatusDialog";
 
 interface ObjectiveActionsProps {
   objective: Objective;
@@ -53,15 +38,14 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAddKPIDialog, setShowAddKPIDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   const { role, scope } = usePermissions();
   const currentUser = useAuthStore((state) => state.user);
 
   const isApproved =
     objective.status === "APPROVED" ||
-    (objective as any).cascadeStatus === "approved" ||
-    Boolean((objective as any).approvedAt);
+    objective.cascadeStatus === "APPROVED" ||
+    Boolean(objective.approvedAt);
   const canSubmit =
     objective.status === "NOT_SUBMITTED" || objective.status === "REJECTED";
   const isReadOnly = isApproved; // Rule 2: Objective becomes read-only after approval
@@ -180,17 +164,6 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
             </DropdownMenuItem>
           )}
 
-          {/* Status Change - Only for ADMIN/SUPER_ADMIN */}
-          {(role === "ADMIN" || role === "SUPER_ADMIN") && (
-            <DropdownMenuItem
-              onClick={() => setShowStatusDialog(true)}
-              className="cursor-pointer text-purple-600"
-            >
-              <ShieldAlert className="mr-2 h-4 w-4" />
-              <span>Change Status</span>
-            </DropdownMenuItem>
-          )}
-
           <DropdownMenuSeparator />
 
           {!isReadOnly ? (
@@ -262,15 +235,6 @@ const ObjectiveActions: React.FC<ObjectiveActionsProps> = ({
         parentId={objective.parent?.objectiveId}
         associatedKPIs={objectiveKPIs}
         onSubmitSuccess={onEditSuccess}
-      />
-
-      <ChangeObjectiveStatusDialog
-        open={showStatusDialog}
-        onOpenChange={setShowStatusDialog}
-        objectiveId={objective.objectiveId}
-        objectiveName={objective.title || objective.name || "Unnamed Objective"}
-        currentStatus={objective.status}
-        onSuccess={onEditSuccess}
       />
     </>
   );

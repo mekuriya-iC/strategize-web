@@ -3,7 +3,7 @@
  * Centralized type definitions for submission-related functionality
  */
 
-import type { SubmissionStatus } from "@/types/graphql";
+import type { KpiQuarterPlan, SubmissionStatus } from "@/types/graphql";
 
 export type SubmissionLevel = "DEPARTMENT" | "DIVISION" | "PERSONNEL";
 export type SubmissionType = "OBJECTIVE" | "KPI";
@@ -26,6 +26,7 @@ export interface SubmissionKpi extends SubmissionAssignee {
   targetValue?: number | string;
   kpiMode?: string;
   managerRetentionPercent?: number;
+  quarterPlans?: KpiQuarterPlan[];
   objective?: {
     objectiveId: string;
     name?: string;

@@ -28,6 +28,30 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
           description
           kpiMode
           managerRetentionPercent
+          quarterPlans {
+            kpiQuarterPlanId
+            quarterNumber
+            originalTarget
+            carryIn
+            effectiveTarget
+            status
+          }
+          quarterResults {
+            kpiQuarterResultId
+            quarterPlanId
+            calculationMode
+            directActual
+            aggregateActual
+            finalActual
+            finalAchievementRate
+            weightedScore
+            carryOut
+            managerCarryOut
+            teamCarryOut
+            status
+            calculatedAt
+            finalizedAt
+          }
         }
         level
         actualValue
@@ -45,6 +69,23 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
         managerAchievementRate
         teamAchievementRate
       }
+    }
+  }
+`;
+
+export const FINALIZE_KPI_QUARTER = gql`
+  mutation FinalizeKpiQuarter($kpiId: ID!, $quarterNumber: Int!) {
+    finalizeKpiQuarter(kpiId: $kpiId, quarterNumber: $quarterNumber) {
+      kpiQuarterResultId
+      quarterPlanId
+      status
+      finalActual
+      finalAchievementRate
+      weightedScore
+      carryOut
+      managerCarryOut
+      teamCarryOut
+      finalizedAt
     }
   }
 `;
@@ -96,6 +137,30 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
           description
           kpiMode
           managerRetentionPercent
+          quarterPlans {
+            kpiQuarterPlanId
+            quarterNumber
+            originalTarget
+            carryIn
+            effectiveTarget
+            status
+          }
+          quarterResults {
+            kpiQuarterResultId
+            quarterPlanId
+            calculationMode
+            directActual
+            aggregateActual
+            finalActual
+            finalAchievementRate
+            weightedScore
+            carryOut
+            managerCarryOut
+            teamCarryOut
+            status
+            calculatedAt
+            finalizedAt
+          }
         }
         level
         actualValue
@@ -132,6 +197,30 @@ export const GET_KPI_SCORES_BY_ENTITY = gql`
         measurementUnit
         kpiMode
         managerRetentionPercent
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          originalTarget
+          carryIn
+          effectiveTarget
+          status
+        }
+        quarterResults {
+          kpiQuarterResultId
+          quarterPlanId
+          calculationMode
+          directActual
+          aggregateActual
+          finalActual
+          finalAchievementRate
+          weightedScore
+          carryOut
+          managerCarryOut
+          teamCarryOut
+          status
+          calculatedAt
+          finalizedAt
+        }
       }
       level
       actualValue

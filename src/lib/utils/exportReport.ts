@@ -8,27 +8,29 @@ export type ExportFormat = "csv" | "json";
 /**
  * Convert data to CSV format
  */
-function convertToCSV(data: any[]): string {
+function convertToCSV(data: Array<Record<string, unknown>>): string {
   if (!data || data.length === 0) return "";
 
   const headers = Object.keys(data[0]);
   const csvRows = [];
 
   // Add header row
-  csvRows.push(headers.join(","));
+  csvRows.push(headers.map(escapeCSVValue).join(","));
 
   // Add data rows
   for (const row of data) {
-    const values = headers.map((header) => {
-      const value = row[header];
-      // Escape quotes and wrap in quotes if contains comma
-      const escaped = String(value).replace(/"/g, '""');
-      return escaped.includes(",") ? `"${escaped}"` : escaped;
-    });
+    const values = headers.map((header) => escapeCSVValue(row[header]));
     csvRows.push(values.join(","));
   }
 
   return csvRows.join("\n");
+}
+
+function escapeCSVValue(value: unknown): string {
+  const raw = value == null ? "" : String(value);
+  const safe = /^[\t\r ]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  const escaped = safe.replace(/"/g, '""');
+  return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
 }
 
 /**
@@ -49,18 +51,20 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 /**
  * Export report data to CSV
  */
-export function exportToCSV(data: any, filename: string) {
+export function exportToCSV(data: unknown, filename: string) {
   let csvContent = "";
 
   // Handle different data structures
   if (Array.isArray(data)) {
-    csvContent = convertToCSV(data);
-  } else if (typeof data === "object") {
+    csvContent = convertToCSV(data as Array<Record<string, unknown>>);
+  } else if (data !== null && typeof data === "object") {
     // Convert object to array of key-value pairs
-    const flatData = Object.entries(data).map(([key, value]) => ({
-      metric: key,
-      value: typeof value === "object" ? JSON.stringify(value) : value,
-    }));
+    const flatData = Object.entries(data as Record<string, unknown>).map(
+      ([key, value]) => ({
+        metric: key,
+        value: typeof value === "object" ? JSON.stringify(value) : value,
+      }),
+    );
     csvContent = convertToCSV(flatData);
   }
 
@@ -73,7 +77,7 @@ export function exportToCSV(data: any, filename: string) {
 /**
  * Export report data to JSON
  */
-export function exportToJSON(data: any, filename: string) {
+export function exportToJSON(data: unknown, filename: string) {
   const jsonContent = JSON.stringify(data, null, 2);
   const timestamp = new Date().toISOString().split("T")[0];
   const fullFilename = `${filename}_${timestamp}.json`;
@@ -85,10 +89,10 @@ export function exportToJSON(data: any, filename: string) {
  * Export report with metadata
  */
 export function exportReport(
-  data: any,
+  data: unknown,
   reportName: string,
   format: ExportFormat = "csv",
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>,
 ) {
   const reportData = {
     reportName,

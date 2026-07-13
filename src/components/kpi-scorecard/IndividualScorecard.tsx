@@ -3,7 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import { TrendingUp, Target, Award, AlertCircle, ArrowRight, Info } from "lucide-react";
+import {
+  TrendingUp,
+  Target,
+  Award,
+  AlertCircle,
+  ArrowRight,
+  Info,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_REALTIME_INDIVIDUAL_SCORECARD } from "@/lib/graphql/queries/kpi-scorecard";
@@ -20,6 +27,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
+import { QuarterPerformanceCell } from "./QuarterPerformanceCell";
+import type { KpiQuarterPlan, KpiQuarterResult } from "@/types/graphql";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -27,6 +36,10 @@ interface KpiScore {
     kpiId: string;
     name: string;
     description: string;
+    kpiMode?: string;
+    managerRetentionPercent?: number;
+    quarterPlans?: KpiQuarterPlan[];
+    quarterResults?: KpiQuarterResult[];
   };
   level: string;
   actualValue: number;
@@ -128,9 +141,7 @@ export default function IndividualScorecard({
   const assignments = assignmentsData?.kpiAssignmentsEmployee?.items || [];
 
   // Create a map of kpiId to assignment for quick lookup
-  const assignmentMap = new Map(
-    assignments.map((a: any) => [a.kpi.kpiId, a])
-  );
+  const assignmentMap = new Map(assignments.map((a: any) => [a.kpi.kpiId, a]));
 
   const getAchievementColor = (rate: number): string => {
     if (rate >= 1.0) return "text-green-600";
@@ -228,7 +239,13 @@ export default function IndividualScorecard({
                 onValueChange={setSelectedPeriodId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={activePeriod ? `${activePeriod.name} (Active)` : "Select period"} />
+                  <SelectValue
+                    placeholder={
+                      activePeriod
+                        ? `${activePeriod.name} (Active)`
+                        : "Select period"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {periods.map((period: any) => (
@@ -236,7 +253,8 @@ export default function IndividualScorecard({
                       key={period.strategicPeriodId}
                       value={period.strategicPeriodId}
                     >
-                      {period.name} {period.status === "ACTIVE" ? "(Active)" : ""}
+                      {period.name}{" "}
+                      {period.status === "ACTIVE" ? "(Active)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -264,10 +282,12 @@ export default function IndividualScorecard({
               No KPI assignments found for this period.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              KPIs must be assigned to you with targets and weights to see your scorecard.
+              KPIs must be assigned to you with targets and weights to see your
+              scorecard.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Scores are calculated automatically from your approved logbook entries.
+              Scores are calculated automatically from your approved logbook
+              entries.
             </p>
           </CardContent>
         </Card>
@@ -372,6 +392,9 @@ export default function IndividualScorecard({
                       <th className="text-left p-3 font-medium">KPI Name</th>
                       <th className="text-center p-3 font-medium">Level</th>
                       <th className="text-center p-3 font-medium">Mode</th>
+                      <th className="text-center p-3 font-medium">
+                        Quarterly Performance
+                      </th>
                       <th className="text-right p-3 font-medium">Actual</th>
                       <th className="text-right p-3 font-medium">Target</th>
                       <th className="text-right p-3 font-medium">
@@ -391,8 +414,9 @@ export default function IndividualScorecard({
                       const assignment = assignmentMap.get(kpiScore.kpi.kpiId);
                       const hasParentWeight = Boolean(
                         assignment &&
-                        (assignment as any).parentWeightAllocation !== null &&
-                        (assignment as any).parentWeightAllocation !== (assignment as any).weight
+                          (assignment as any).parentWeightAllocation !== null &&
+                          (assignment as any).parentWeightAllocation !==
+                            (assignment as any).weight,
                       );
 
                       return (
@@ -416,15 +440,29 @@ export default function IndividualScorecard({
                             </Badge>
                           </td>
                           <td className="text-center p-3">
-                            <KpiModeBadge 
-                              mode={(kpiScore.kpi as any).kpiMode || "AGGREGATED"} 
+                            <KpiModeBadge
+                              mode={
+                                (kpiScore.kpi as any).kpiMode || "AGGREGATED"
+                              }
                               size="sm"
                             />
-                            {(kpiScore.kpi as any).kpiMode === "HYBRID" && (kpiScore.kpi as any).managerRetentionPercent && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {(kpiScore.kpi as any).managerRetentionPercent}% mgr
-                              </p>
-                            )}
+                            {(kpiScore.kpi as any).kpiMode === "HYBRID" &&
+                              (kpiScore.kpi as any).managerRetentionPercent && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {
+                                    (kpiScore.kpi as any)
+                                      .managerRetentionPercent
+                                  }
+                                  % mgr
+                                </p>
+                              )}
+                          </td>
+                          <td className="p-3">
+                            <QuarterPerformanceCell
+                              kpiId={kpiScore.kpi.kpiId}
+                              plans={kpiScore.kpi.quarterPlans}
+                              results={kpiScore.kpi.quarterResults}
+                            />
                           </td>
                           <td className="text-right p-3 font-medium">
                             {formatNumber(kpiScore.actualValue)}
@@ -454,7 +492,11 @@ export default function IndividualScorecard({
                                     variant="secondary"
                                     className="text-xs bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
                                   >
-                                    {formatNumber((assignment as any).parentWeightAllocation)}%
+                                    {formatNumber(
+                                      (assignment as any)
+                                        .parentWeightAllocation,
+                                    )}
+                                    %
                                   </Badge>
                                   <span className="text-xs text-muted-foreground">
                                     To Dept
@@ -487,15 +529,13 @@ export default function IndividualScorecard({
                   <tfoot className="border-t-2 font-bold">
                     <tr>
                       <td className="p-3">Total</td>
-                      <td className="text-right p-3" colSpan={7}></td>
+                      <td className="text-right p-3" colSpan={8}></td>
                       <td className="text-right p-3 text-primary text-lg">
                         {formatNumber(scorecard.totalScore)}%
                       </td>
                       <td className="text-right p-3">
                         <Badge {...getAchievementBadge(totalScoreRate)}>
-                          {
-                            getAchievementBadge(totalScoreRate).label
-                          }
+                          {getAchievementBadge(totalScoreRate).label}
                         </Badge>
                       </td>
                     </tr>
@@ -538,19 +578,25 @@ export default function IndividualScorecard({
                     <div className="flex items-start gap-2">
                       <KpiModeBadge mode="AGGREGATED" size="sm" />
                       <p className="text-xs text-muted-foreground">
-                        <strong>Aggregated:</strong> Your manager's KPI aggregates results from the team. Your achievements contribute to their score.
+                        <strong>Aggregated:</strong> Your manager's KPI
+                        aggregates results from the team. Your achievements
+                        contribute to their score.
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
                       <KpiModeBadge mode="DIRECT" size="sm" />
                       <p className="text-xs text-muted-foreground">
-                        <strong>Direct:</strong> Manager's personal work KPI. Only their logbook entries count - not assigned to team members.
+                        <strong>Direct:</strong> Manager's personal work KPI.
+                        Only their logbook entries count - not assigned to team
+                        members.
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
                       <KpiModeBadge mode="HYBRID" size="sm" />
                       <p className="text-xs text-muted-foreground">
-                        <strong>Hybrid:</strong> Manager retains a percentage for their own work, remainder cascades from team. Both portions contribute to final score.
+                        <strong>Hybrid:</strong> Manager retains a percentage
+                        for their own work, remainder cascades from team. Both
+                        portions contribute to final score.
                       </p>
                     </div>
                   </div>
@@ -567,15 +613,20 @@ export default function IndividualScorecard({
                   </p>
                   <div className="ml-4 mt-2 space-y-1">
                     <p className="text-xs text-muted-foreground">
-                      • <strong>Local Weight:</strong> Used for your personal performance tracking and scorecard display
+                      • <strong>Local Weight:</strong> Used for your personal
+                      performance tracking and scorecard display
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      • <strong>Parent Contribution:</strong> The weight sent to your department when you achieve 100%
+                      • <strong>Parent Contribution:</strong> The weight sent to
+                      your department when you achieve 100%
                     </p>
                   </div>
                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-900">
                     <p className="text-xs text-blue-900 dark:text-blue-100">
-                      <strong>Example:</strong> Your KPI shows 8% locally for your tracking, but contributes 6% to the department when fully achieved. This allows flexible local display while maintaining proper cascade aggregation.
+                      <strong>Example:</strong> Your KPI shows 8% locally for
+                      your tracking, but contributes 6% to the department when
+                      fully achieved. This allows flexible local display while
+                      maintaining proper cascade aggregation.
                     </p>
                   </div>
                 </div>

@@ -15,9 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Objective as GraphQLObjective, KpiTargetInput, KpiStatus, KpiWeightType } from "@/types/graphql";
-import { handleSmartSubmission } from "@/utils/smartSubmission";
-import { getDetailedUnitLabel } from "@/utils/unitTypeDetection";
+import type {
+  Objective as GraphQLObjective,
+  KpiTargetInput,
+} from "@/types/graphql";
 import { buildYearRanges } from "./YearSelector";
 import { useKPIFormState } from "@/hooks/objectives/useKPIFormState";
 import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
@@ -26,7 +27,6 @@ import {
   KPIInformationCard,
   QuarterlyBreakdown,
   validateForm,
-  roundTarget,
 } from "./kpi-form";
 import { kpiLogger } from "@/lib/logger";
 
@@ -49,8 +49,9 @@ export default function KPIForm({
 }: KPIFormProps) {
   // Fetch strategic plans to get organizationId
   const { strategicPlans } = useStrategicPlansQuery();
-  const activeStrategicPlan = strategicPlans.find(plan => plan.isActive);
-  const organizationId = activeStrategicPlan?.organization?.organizationId || "";
+  const activeStrategicPlan = strategicPlans.find((plan) => plan.isActive);
+  const organizationId =
+    activeStrategicPlan?.organization?.organizationId || "";
 
   const state = useKPIFormState({
     objectiveId,
@@ -85,8 +86,6 @@ export default function KPIForm({
     getLevelAllocation,
     createKpi,
     updateKpi,
-    client,
-    strategicPeriodState,
   } = state;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,17 +126,20 @@ export default function KPIForm({
             { timeline: `${year}-Q1`, target: Number(quarters.q1 || 0) },
             { timeline: `${year}-Q2`, target: Number(quarters.q2 || 0) },
             { timeline: `${year}-Q3`, target: Number(quarters.q3 || 0) },
-            { timeline: `${year}-Q4`, target: Number(quarters.q4 || 0) }
+            { timeline: `${year}-Q4`, target: Number(quarters.q4 || 0) },
           );
         }
 
         // IMPORTANT: Also save the annual targets entered in "Define Annual Goals" (for independent KPIs)
         if (!parentId) {
-          targets.forEach(t => {
+          targets.forEach((t) => {
             if (t.timeline.trim() && !isNaN(Number(t.target))) {
               // Avoid duplicates if timeline already exists
-              if (!validTargets.some(vt => vt.timeline === t.timeline)) {
-                validTargets.push({ timeline: t.timeline, target: Number(t.target) });
+              if (!validTargets.some((vt) => vt.timeline === t.timeline)) {
+                validTargets.push({
+                  timeline: t.timeline,
+                  target: Number(t.target),
+                });
               }
             }
           });
@@ -146,13 +148,14 @@ export default function KPIForm({
         validTargets = targets
           .map((t) => ({ ...t, target: Number(t.target) }))
           .filter(
-            (t) => t.timeline.trim() && !isNaN(t.target) && t.target >= 0
+            (t) => t.timeline.trim() && !isNaN(t.target) && t.target >= 0,
           ) as KpiTargetInput[];
       }
 
       const kpiData = {
         name: formData.name.trim() || "",
-        baseline: formData.baseline !== "" ? Number(formData.baseline) : undefined,
+        baseline:
+          formData.baseline !== "" ? Number(formData.baseline) : undefined,
         weight: formData.weight ? Number(formData.weight) : 0,
         unitType: formData.weightType,
         targets: validTargets,
@@ -160,7 +163,10 @@ export default function KPIForm({
         frequency: "QUARTERLY", // Default to QUARTERLY
         measurementUnit: "NUMBER", // Default to NUMBER
         organizationId: organizationId, // Required by backend
-        targetValue: validTargets.length > 0 ? Math.max(...validTargets.map(t => t.target)) : 0, // Calculate from targets
+        targetValue:
+          validTargets.length > 0
+            ? Math.max(...validTargets.map((t) => t.target))
+            : 0, // Calculate from targets
         ...(parentId ? { parentId } : {}),
       };
 
@@ -172,32 +178,26 @@ export default function KPIForm({
       }
 
       if (isEditing && kpiId) {
-        const isCurrentlyRejected = kpi?.status === "REJECTED";
-
-        const mutationInput = {
-          kpiId,
-          ...kpiData,
-          // If it was rejected, reset it to NOT_SUBMITTED so it can be submitted again manually
-          ...(isCurrentlyRejected ? { status: "NOT_SUBMITTED" as KpiStatus } : {}),
-        };
-
-        await updateKpi({ input: mutationInput });
+        await updateKpi({ input: { kpiId, ...kpiData } });
         toast.success("KPI updated successfully!");
       } else {
-        const created = await createKpi({ input: kpiData });
-
-        if (objective?.type === "CORPORATE" && created?.kpiId) {
-          await updateKpi({ input: { kpiId: created.kpiId, status: "APPROVED" } });
-          toast.success("KPI created and auto-approved");
-        } else {
-          toast.success("KPI created successfully!");
-        }
+        await createKpi({ input: kpiData });
+        toast.success(
+          objective?.type === "CORPORATE"
+            ? "KPI created and auto-approved"
+            : "KPI created successfully!",
+        );
       }
 
       onSuccess();
     } catch (error) {
-      kpiLogger.error(`Error ${isEditing ? "updating" : "creating"} KPI:`, error);
-      toast.error(`Failed to ${isEditing ? "update" : "create"} KPI. Please try again.`);
+      kpiLogger.error(
+        `Error ${isEditing ? "updating" : "creating"} KPI:`,
+        error,
+      );
+      toast.error(
+        `Failed to ${isEditing ? "update" : "create"} KPI. Please try again.`,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -229,7 +229,9 @@ export default function KPIForm({
           canEditStructure={canEditStructure}
           kpiId={kpiId}
           onInputChange={handleInputChange}
-          onParentIdChange={(val) => setParentId(val === "none_standalone" ? "" : val)}
+          onParentIdChange={(val) =>
+            setParentId(val === "none_standalone" ? "" : val)
+          }
         />
 
         {/* Targets Card */}
@@ -252,19 +254,34 @@ export default function KPIForm({
               const isOver = totalIfSaved > 100.01;
 
               return (
-                <div className={`mt-2 p-3 rounded-lg border flex flex-col gap-2 ${isOver ? "bg-red-50 border-red-200" : "bg-purple-50 border-purple-200"}`}>
+                <div
+                  className={`mt-2 p-3 rounded-lg border flex flex-col gap-2 ${isOver ? "bg-red-50 border-red-200" : "bg-purple-50 border-purple-200"}`}
+                >
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex flex-col">
-                      <span className={`font-semibold ${isOver ? "text-red-900" : "text-purple-900"}`}>
+                      <span
+                        className={`font-semibold ${isOver ? "text-red-900" : "text-purple-900"}`}
+                      >
                         Level Strategic Budget ({objective?.type})
                       </span>
-                      <span className="text-[10px] text-gray-500 uppercase">Tracked across all objectives in this category</span>
+                      <span className="text-[10px] text-gray-500 uppercase">
+                        Tracked across all objectives in this category
+                      </span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className={`font-bold ${isOver ? "text-red-600 animate-bounce" : "text-purple-600"}`}>
+                      <span
+                        className={`font-bold ${isOver ? "text-red-600 animate-bounce" : "text-purple-600"}`}
+                      >
                         {totalIfSaved.toFixed(1)}% / 100%
                       </span>
-                      {isOver && <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter cursor-help" title="Redistribute weight from other KPIs at this level">Strategic Limit Exceeded</span>}
+                      {isOver && (
+                        <span
+                          className="text-[10px] text-red-500 font-bold uppercase tracking-tighter cursor-help"
+                          title="Redistribute weight from other KPIs at this level"
+                        >
+                          Strategic Limit Exceeded
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
@@ -274,16 +291,20 @@ export default function KPIForm({
                     />
                   </div>
                   <div className="flex justify-between text-[10px] font-medium">
-                    <span className="text-gray-500">Used by others: {levelAlloc.used.toFixed(1)}%</span>
-                    <span className={isOver ? "text-red-500" : "text-purple-500"}>
-                      {isOver ? "Redistribution needed" : `Available budget: ${(100 - levelAlloc.used).toFixed(1)}%`}
+                    <span className="text-gray-500">
+                      Used by others: {levelAlloc.used.toFixed(1)}%
+                    </span>
+                    <span
+                      className={isOver ? "text-red-500" : "text-purple-500"}
+                    >
+                      {isOver
+                        ? "Redistribution needed"
+                        : `Available budget: ${(100 - levelAlloc.used).toFixed(1)}%`}
                     </span>
                   </div>
                 </div>
               );
             })()}
-
-
 
             {/* Process Documentation */}
             <div className="bg-blue-50 p-4 rounded-lg mb-4">
@@ -347,9 +368,14 @@ export default function KPIForm({
                 {/* Yearly Targets section */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-gray-900">Define Annual Goals</h4>
+                    <h4 className="font-medium text-gray-900">
+                      Define Annual Goals
+                    </h4>
                     {!parentId && isQuarterlyMode && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700 border-blue-200"
+                      >
                         Independent KPI
                       </Badge>
                     )}
@@ -379,13 +405,15 @@ export default function KPIForm({
                                   <SelectItem key={yr} value={yr}>
                                     {yr}
                                   </SelectItem>
-                                )
+                                ),
                               )}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="flex-1">
-                        <Label htmlFor={`target-${index}`}>Annual Target Value</Label>
+                        <Label htmlFor={`target-${index}`}>
+                          Annual Target Value
+                        </Label>
                         <div className="grid grid-cols-1 gap-2">
                           <Input
                             id={`target-${index}`}
@@ -393,7 +421,11 @@ export default function KPIForm({
                             step="0.01"
                             value={target.target}
                             onChange={(e) =>
-                              handleTargetChange(index, "target", e.target.value)
+                              handleTargetChange(
+                                index,
+                                "target",
+                                e.target.value,
+                              )
                             }
                             placeholder="Enter annual target"
                             disabled={!canEditTargets}

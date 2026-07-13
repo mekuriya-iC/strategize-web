@@ -17,8 +17,9 @@ const ROLE_HIERARCHY: Record<string, number> = {
   COORDINATOR: 1,
   MANAGER: 2,
   DIRECTOR: 3,
-  ADMIN: 4,
-  SUPER_ADMIN: 5,
+  HR: 4,
+  ADMIN: 5,
+  SUPER_ADMIN: 6,
 };
 
 // Route permission configuration

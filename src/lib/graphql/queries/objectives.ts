@@ -79,6 +79,16 @@ export const GET_OBJECTIVES = gql`
             target
             timeline
           }
+          quarterPlans {
+            kpiQuarterPlanId
+            quarterNumber
+            timeline
+            originalTarget
+            carryIn
+            effectiveTarget
+            status
+            version
+          }
         }
       }
       meta {
@@ -166,6 +176,16 @@ export const GET_OBJECTIVE = gql`
           target
           timeline
         }
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          timeline
+          originalTarget
+          carryIn
+          effectiveTarget
+          status
+          version
+        }
       }
     }
   }
@@ -221,6 +241,16 @@ export const GET_OBJECTIVES_FOR_APPROVAL = gql`
           name
           targetValue
           measurementUnit
+          quarterPlans {
+            kpiQuarterPlanId
+            quarterNumber
+            timeline
+            originalTarget
+            carryIn
+            effectiveTarget
+            status
+            version
+          }
         }
       }
       meta {
@@ -276,6 +306,16 @@ export const GET_MY_OBJECTIVES = gql`
           measurementUnit
           status
           weight
+          quarterPlans {
+            kpiQuarterPlanId
+            quarterNumber
+            timeline
+            originalTarget
+            carryIn
+            effectiveTarget
+            status
+            version
+          }
         }
       }
       meta {

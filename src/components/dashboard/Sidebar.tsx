@@ -468,6 +468,20 @@ const navCategories: NavCategory[] = [
     permission: "nav:reports",
     links: [
       {
+        label: "Quarterly Performance",
+        href: "/dashboard/reports?tab=quarterly",
+        permission: "nav:reports",
+        icon: (
+          <Image
+            src="/images/dashboard/sidebar/reports.png"
+            alt="quarterly performance"
+            width={16}
+            height={16}
+            className="sidebar-icon-filter"
+          />
+        ),
+      },
+      {
         label: "Performance Reports",
         href: "/dashboard/reports?tab=performance",
         permission: "nav:reports",

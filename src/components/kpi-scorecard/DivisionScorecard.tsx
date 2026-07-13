@@ -3,7 +3,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import { Network, TrendingUp, Target, Award, AlertCircle, Info, User, Users } from "lucide-react";
+import {
+  Network,
+  TrendingUp,
+  Target,
+  Award,
+  AlertCircle,
+  Info,
+  User,
+  Users,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_TOTAL_SCORECARD_SCORE } from "@/lib/graphql/queries/kpi-scorecard";
@@ -19,6 +28,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
+import { QuarterPerformanceCell } from "./QuarterPerformanceCell";
+import type { KpiQuarterPlan, KpiQuarterResult } from "@/types/graphql";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -28,6 +39,8 @@ interface KpiScore {
     description: string;
     kpiMode?: string;
     managerRetentionPercent?: number;
+    quarterPlans?: KpiQuarterPlan[];
+    quarterResults?: KpiQuarterResult[];
   };
   level: string;
   actualValue: number;
@@ -349,6 +362,9 @@ export default function DivisionScorecard({
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">KPI Name</th>
                       <th className="text-center p-3 font-medium">Mode</th>
+                      <th className="text-center p-3 font-medium">
+                        Quarterly Performance
+                      </th>
                       <th className="text-right p-3 font-medium">
                         Actual (Aggregated)
                       </th>
@@ -369,9 +385,9 @@ export default function DivisionScorecard({
                         kpiScore.achievementRate,
                       );
                       const kpiMode = kpiScore.kpi.kpiMode || "AGGREGATED";
-                      const hasHybridBreakdown = 
-                        kpiMode === "HYBRID" && 
-                        kpiScore.managerActual !== undefined && 
+                      const hasHybridBreakdown =
+                        kpiMode === "HYBRID" &&
+                        kpiScore.managerActual !== undefined &&
                         kpiScore.teamActual !== undefined;
 
                       return (
@@ -402,11 +418,15 @@ export default function DivisionScorecard({
                                   (Div Head Only)
                                 </p>
                               )}
-                              {kpiMode === "HYBRID" && kpiScore.kpi.managerRetentionPercent && (
-                                <p className="text-xs text-muted-foreground">
-                                  {kpiScore.kpi.managerRetentionPercent}% mgr / {100 - kpiScore.kpi.managerRetentionPercent}% depts
-                                </p>
-                              )}
+                              {kpiMode === "HYBRID" &&
+                                kpiScore.kpi.managerRetentionPercent && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {kpiScore.kpi.managerRetentionPercent}% mgr
+                                    /{" "}
+                                    {100 - kpiScore.kpi.managerRetentionPercent}
+                                    % depts
+                                  </p>
+                                )}
                             </div>
                             {hasHybridBreakdown && (
                               <div className="mt-2 text-xs space-y-1 border-t pt-2">
@@ -416,10 +436,18 @@ export default function DivisionScorecard({
                                     Div Head:
                                   </span>
                                   <span className="font-medium">
-                                    {formatNumber(kpiScore.managerActual!)} / {formatNumber(kpiScore.managerTarget!)}
-                                    {kpiScore.managerAchievementRate !== undefined && (
-                                      <span className={`ml-1 ${getAchievementColor(kpiScore.managerAchievementRate)}`}>
-                                        ({formatPercentage(kpiScore.managerAchievementRate)})
+                                    {formatNumber(kpiScore.managerActual!)} /{" "}
+                                    {formatNumber(kpiScore.managerTarget!)}
+                                    {kpiScore.managerAchievementRate !==
+                                      undefined && (
+                                      <span
+                                        className={`ml-1 ${getAchievementColor(kpiScore.managerAchievementRate)}`}
+                                      >
+                                        (
+                                        {formatPercentage(
+                                          kpiScore.managerAchievementRate,
+                                        )}
+                                        )
                                       </span>
                                     )}
                                   </span>
@@ -430,16 +458,31 @@ export default function DivisionScorecard({
                                     Departments:
                                   </span>
                                   <span className="font-medium">
-                                    {formatNumber(kpiScore.teamActual!)} / {formatNumber(kpiScore.teamTarget!)}
-                                    {kpiScore.teamAchievementRate !== undefined && (
-                                      <span className={`ml-1 ${getAchievementColor(kpiScore.teamAchievementRate)}`}>
-                                        ({formatPercentage(kpiScore.teamAchievementRate)})
+                                    {formatNumber(kpiScore.teamActual!)} /{" "}
+                                    {formatNumber(kpiScore.teamTarget!)}
+                                    {kpiScore.teamAchievementRate !==
+                                      undefined && (
+                                      <span
+                                        className={`ml-1 ${getAchievementColor(kpiScore.teamAchievementRate)}`}
+                                      >
+                                        (
+                                        {formatPercentage(
+                                          kpiScore.teamAchievementRate,
+                                        )}
+                                        )
                                       </span>
                                     )}
                                   </span>
                                 </div>
                               </div>
                             )}
+                          </td>
+                          <td className="p-3">
+                            <QuarterPerformanceCell
+                              kpiId={kpiScore.kpi.kpiId}
+                              plans={kpiScore.kpi.quarterPlans}
+                              results={kpiScore.kpi.quarterResults}
+                            />
                           </td>
                           <td className="text-right p-3 font-medium">
                             {formatNumber(kpiScore.actualValue)}
@@ -482,7 +525,7 @@ export default function DivisionScorecard({
                   <tfoot className="border-t-2 font-bold">
                     <tr>
                       <td className="p-3">Total</td>
-                      <td className="text-right p-3" colSpan={5}></td>
+                      <td className="text-right p-3" colSpan={6}></td>
                       <td className="text-right p-3 text-primary text-lg">
                         {formatNumber(scorecard.totalScore)}%
                       </td>

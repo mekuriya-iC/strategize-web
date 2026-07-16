@@ -24,7 +24,14 @@ export function KpiModeSelector({
 }: KpiModeSelectorProps) {
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900">
-      <Label className="text-base font-semibold">Performance Tracking Mode</Label>
+      <div className="space-y-1">
+        <Label className="text-base font-semibold">Performance Tracking Mode</Label>
+        <p className="text-sm text-muted-foreground">
+          Choose how achievement is calculated: DIRECT uses logs entered against this KPI,
+          HYBRID combines direct work with child KPI results, and AGGREGATED uses child KPI
+          results only.
+        </p>
+      </div>
       <RadioGroup value={mode} onValueChange={onModeChange}>
         <div className="space-y-3">
           {/* AGGREGATED */}
@@ -37,7 +44,8 @@ export function KpiModeSelector({
                 <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">Team Results</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Performance calculated from subordinates. Manager enables team to achieve targets.
+                Performance is calculated only from child KPIs. This mode requires child KPIs;
+                direct achievement logs on this KPI are not used.
               </p>
             </label>
           </div>
@@ -73,6 +81,15 @@ export function KpiModeSelector({
           </div>
         </div>
       </RadioGroup>
+
+      {mode === "AGGREGATED" && (
+        <Alert className="border-amber-300 bg-amber-50 text-amber-950 dark:bg-amber-950/20">
+          <AlertDescription className="text-xs">
+            Aggregated KPIs must have child KPIs contributing results. Do not use this mode
+            when achievement will be logged directly against this KPI.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Manager Retention Slider for HYBRID mode */}
       {mode === "HYBRID" && (

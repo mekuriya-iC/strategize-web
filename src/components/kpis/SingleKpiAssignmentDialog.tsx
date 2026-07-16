@@ -36,6 +36,7 @@ import {
   BULK_ASSIGN_KPI_TO_DEPARTMENTS,
   BULK_ASSIGN_KPI_TO_DIVISIONS,
   CREATE_KPI_ASSIGNMENT_CORPORATE,
+  CREATE_KPI_ASSIGNMENT_DEPARTMENT,
 } from "@/lib/graphql/mutations/kpis";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
@@ -73,6 +74,9 @@ export default function SingleKpiAssignmentDialog({
   const [distributionMethod, setDistributionMethod] = useState<
     "equal" | "proportional" | "custom"
   >("proportional");
+  const [corporateTargetLevel, setCorporateTargetLevel] = useState<
+    "DIVISION" | "DEPARTMENT"
+  >("DIVISION");
   // Auto-populate assignees with the cascading portion of target
   const initializeAssignees = () => {
     const mode = (kpi as any).kpiMode || "AGGREGATED";
@@ -99,7 +103,7 @@ export default function SingleKpiAssignmentDialog({
       ? "EMPLOYEE"
       : objectiveType === "DIVISION"
         ? "DEPARTMENT"
-        : "DIVISION";
+        : corporateTargetLevel;
 
   // Query for parent assignment
   let queryVariables: any = null;
@@ -115,7 +119,7 @@ export default function SingleKpiAssignmentDialog({
       page: 1,
       limit: 1,
     };
-    skipQuery = !organizationId;
+    skipQuery = !organizationId || !strategicPeriodId;
   } else if (objectiveType === "DIVISION") {
     queryToUse = GET_KPI_ASSIGNMENTS_DIVISION;
     queryVariables = {
@@ -124,7 +128,7 @@ export default function SingleKpiAssignmentDialog({
       page: 1,
       limit: 100,
     };
-    skipQuery = !kpi.objective?.assigneeId;
+    skipQuery = !kpi.objective?.assigneeId || !strategicPeriodId;
   } else if (objectiveType === "DEPARTMENT") {
     queryToUse = GET_KPI_ASSIGNMENTS_DEPARTMENT;
     queryVariables = {
@@ -133,7 +137,7 @@ export default function SingleKpiAssignmentDialog({
       page: 1,
       limit: 100,
     };
-    skipQuery = !kpi.objective?.assigneeId;
+    skipQuery = !kpi.objective?.assigneeId || !strategicPeriodId;
   }
 
   const { data: assignmentData, loading: assignmentLoading } = useQuery(queryToUse, {
@@ -194,6 +198,18 @@ export default function SingleKpiAssignmentDialog({
     }
   );
 
+  const [createDepartmentAssignment, { loading: creatingDepartment }] =
+    useMutation(CREATE_KPI_ASSIGNMENT_DEPARTMENT, {
+      refetchQueries: "active",
+      onError: (error) => {
+        const { title, description } = parseGraphQLError(
+          error,
+          "Department assignment",
+        );
+        toast.error(title, { description });
+      },
+    });
+
   const [bulkAssignToEmployees, { loading: loadingEmployees }] = useMutation(
     BULK_ASSIGN_KPI_TO_EMPLOYEES,
     {
@@ -239,12 +255,17 @@ export default function SingleKpiAssignmentDialog({
     }
   );
 
-  const loading = loadingEmployees || loadingDepartments || loadingDivisions;
+  const loading =
+    loadingEmployees ||
+    loadingDepartments ||
+    loadingDivisions ||
+    creatingDepartment;
 
   const handleClose = () => {
     setOpen(false);
     setAssignees(initializeAssignees());
     setDistributionMethod("proportional");
+    setCorporateTargetLevel("DIVISION");
     setCap("1.5");
     onSuccess?.();
   };
@@ -337,6 +358,13 @@ export default function SingleKpiAssignmentDialog({
   const isValidWeightSum = Math.abs(parseFloat(totalWeight) - cascadingWeight) < 0.01;
 
   const handleSubmit = async () => {
+    if (!strategicPeriodId) {
+      toast.error(
+        "This KPI has no strategic period. Refresh the KPI list or assign a strategic period to its objective before cascading it.",
+      );
+      return;
+    }
+
     // For CORPORATE level, create corporate assignment first if it doesn't exist
     let assignmentId = parentAssignmentId;
     
@@ -423,6 +451,33 @@ export default function SingleKpiAssignmentDialog({
             },
           },
         });
+      } else if (
+        objectiveType === "CORPORATE" &&
+        childLevel === "DEPARTMENT"
+      ) {
+        await Promise.all(
+          assignees.map((assignee, index) =>
+            createDepartmentAssignment({
+              variables: {
+                input: {
+                  kpiId: kpi.kpiId,
+                  departmentId: assignee.id,
+                  strategicPeriodId,
+                  targetValue:
+                    distributionMethod === "equal"
+                      ? parseFloat(distributedTargets[index])
+                      : parseFloat(assignee.targetValue),
+                  weight: parseFloat(weights[index]),
+                  parentWeightAllocation: parseFloat(weights[index]),
+                  cap: capValue,
+                  assignedById: user?.employeeId,
+                },
+              },
+            }),
+          ),
+        );
+        toast.success(`KPI assigned to ${assignees.length} departments`);
+        handleClose();
       } else if (childLevel === "DEPARTMENT") {
         await bulkAssignToDepartments({
           variables: {
@@ -662,6 +717,46 @@ export default function SingleKpiAssignmentDialog({
                   </div>
                 );
               })()}
+
+              {objectiveType === "CORPORATE" && (
+                <div className="space-y-2">
+                  <Label>Assign corporate KPI to</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={
+                        corporateTargetLevel === "DIVISION"
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => {
+                        setCorporateTargetLevel("DIVISION");
+                        setAssignees(initializeAssignees());
+                      }}
+                    >
+                      Divisions
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        corporateTargetLevel === "DEPARTMENT"
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => {
+                        setCorporateTargetLevel("DEPARTMENT");
+                        setAssignees(initializeAssignees());
+                      }}
+                    >
+                      Departments
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select divisions for the normal cascade, or assign directly
+                    to departments that report against this corporate KPI.
+                  </p>
+                </div>
+              )}
 
               {/* Distribution Method */}
               <div className="space-y-2">

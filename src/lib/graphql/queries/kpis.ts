@@ -55,6 +55,12 @@ export const GET_KPIS = gql`
           type
           assigneeType
           assigneeId
+          strategicPeriod {
+            strategicPeriodId
+            name
+            startDate
+            endDate
+          }
         }
         createdBy {
           employeeId

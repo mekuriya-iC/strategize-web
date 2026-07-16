@@ -337,6 +337,7 @@ export interface Objective {
   level: string; // ObjectiveLevel: CORPORATE, DIVISION, DEPARTMENT, INDIVIDUAL, TEAM
   status: ObjectiveStatus;
   cascadeStatus?: string;
+  cascadeType?: "TARGET_ALLOCATION" | "SUPPORT";
   strategicPeriod: StrategicPeriod | null;
   createdBy?: {
     employeeId: string;
@@ -370,6 +371,24 @@ export interface Objective {
     weight: number;
     status: string;
     targetStatus?: string;
+    quarterPlans?: KpiQuarterPlan[];
+    quarterResults?: KpiQuarterResult[];
+    contributionLinks?: KpiContributionLink[];
+  }>;
+  supportSources?: Array<{
+    objectiveSupportSourceId: string;
+    instruction?: string | null;
+    expectedImpact?: string | null;
+    sourceCorporateKpi: {
+      kpiId: string;
+      name: string;
+      description?: string | null;
+      targetValue?: number | null;
+      weight?: number | null;
+      measurementUnit?: string | null;
+      unitType?: string | null;
+      targets?: KpiTarget[];
+    };
   }>;
   weight?: number;
   order?: number;
@@ -515,6 +534,18 @@ export interface KpiQuarterResult {
   calculationVersion: number;
   calculatedAt: string;
   finalizedAt?: string | null;
+}
+
+export interface KpiContributionLink {
+  kpiContributionLinkId: string;
+  relationship: "SUPPORT";
+  instruction?: string | null;
+  expectedImpact?: string | null;
+  supportingKpi: Pick<Kpi, "kpiId" | "name">;
+  sourceKpi: Pick<Kpi, "kpiId" | "name" | "targetValue" | "weight" | "unitType"> & {
+    description?: string | null;
+    measurementUnit?: string | null;
+  };
 }
 
 export type KpiMode = "AGGREGATED" | "DIRECT" | "HYBRID";
@@ -668,6 +699,23 @@ export interface CreateKpiInput {
   assignerId?: string;
   kpiMode?: string; // KPI mode: AGGREGATED, DIRECT, HYBRID
   managerRetentionPercent?: number; // For HYBRID mode: percentage manager retains (1-99)
+}
+
+export interface CreateSupportKpiInput {
+  objectiveId: string;
+  name: string;
+  description?: string;
+  measurementUnit: string;
+  frequency: string;
+  baselineValue?: number;
+  baseline?: number;
+  targetValue: number;
+  weight: number;
+  unitType?: string;
+  targets: KpiTargetInput[];
+  kpiMode?: string;
+  managerRetentionPercent?: number;
+  sourceCorporateKpiIds: string[];
 }
 
 export interface UpdateKpiInput {

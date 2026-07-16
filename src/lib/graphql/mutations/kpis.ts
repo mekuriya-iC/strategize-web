@@ -308,7 +308,6 @@ export const BULK_ASSIGN_KPI_TO_DEPARTMENTS = gql`
   mutation BulkAssignKpiToDepartments($input: BulkAssignKpiToDepartmentsInput!) {
     bulkAssignKpiToDepartments(input: $input) {
       kpiAssignmentDepartmentId
-      departmentId
       targetValue
       weight
       parentWeightAllocation
@@ -329,7 +328,6 @@ export const BULK_ASSIGN_KPI_TO_DIVISIONS = gql`
   mutation BulkAssignKpiToDivisions($input: BulkAssignKpiToDivisionsInput!) {
     bulkAssignKpiToDivisions(input: $input) {
       kpiAssignmentDivisionId
-      divisionId
       targetValue
       weight
       parentWeightAllocation

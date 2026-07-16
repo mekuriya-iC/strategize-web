@@ -42,6 +42,8 @@ export default function CreateKPIForm({
     setYearlyQuarters,
     isSubmitting,
     updateField,
+    selectedSupportSourceIds,
+    setSelectedSupportSourceIds,
     handleSubmit,
   } = useCreateKPIForm({
     objectiveId,
@@ -50,14 +52,21 @@ export default function CreateKPIForm({
       onSuccess?.();
     }, [onSuccess]),
     isCorporate: usesAnnualOnlyKpiTargets(objective),
+    isSupport: objective.cascadeType === "SUPPORT",
+    supportSourceIds: (objective.supportSources ?? []).map(
+      (source) => source.sourceCorporateKpi.kpiId,
+    ),
   });
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await handleSubmit();
-    } catch (e) {
-      toast.error("Failed to create KPI");
+    } catch (error) {
+      toast.error("Failed to create KPI", {
+        description:
+          error instanceof Error ? error.message : "An unexpected error occurred",
+      });
     }
   };
 
@@ -80,6 +89,8 @@ export default function CreateKPIForm({
   }, [objective.strategicPeriod]);
 
   const isCorporate = usesAnnualOnlyKpiTargets(objective);
+  const isSupport = objective.cascadeType === "SUPPORT";
+  const supportSources = objective.supportSources ?? [];
   const effectiveObjectiveType = objective?.assigneeType || objective?.type;
 
   const strategicYear = availableYears[0];
@@ -182,6 +193,8 @@ export default function CreateKPIForm({
     if (!strategicYear) return false;
     if (!hasAnnualTarget) return false;
     if (!isCorporate && !hasQuarterlyData) return false;
+    if (isSupport && supportSources.length === 0) return false;
+    if (isSupport && selectedSupportSourceIds.length === 0) return false;
     return true;
   }, [
     existingWeight,
@@ -192,6 +205,9 @@ export default function CreateKPIForm({
     hasAnnualTarget,
     isCorporate,
     hasQuarterlyData,
+    isSupport,
+    supportSources.length,
+    selectedSupportSourceIds.length,
   ]);
 
   // Sync yearlyQuarters with strategic period year only (not all years)
@@ -215,6 +231,77 @@ export default function CreateKPIForm({
 
       <form onSubmit={handleFormSubmit}>
         <div className="space-y-6">
+          {isSupport && (
+            <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+              <h3 className="font-semibold text-amber-950">
+                Corporate KPI support source <span className="text-red-600">*</span>
+              </h3>
+              <p className="mt-1 text-sm text-amber-900">
+                Select the Corporate KPI this local KPI will help deliver. Source
+                targets and weights are shown for context only and are not allocated
+                to this objective.
+              </p>
+
+              {supportSources.length === 0 ? (
+                <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+                  No Corporate KPI support sources are configured for this objective.
+                  KPI creation is unavailable until a source is assigned.
+                </p>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {supportSources.map((source) => {
+                    const sourceKpi = source.sourceCorporateKpi;
+                    const checked = selectedSupportSourceIds.includes(sourceKpi.kpiId);
+                    return (
+                      <label
+                        key={source.objectiveSupportSourceId}
+                        className="flex cursor-pointer gap-3 rounded-md border border-amber-200 bg-white p-3"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={supportSources.length === 1}
+                          onChange={(event) =>
+                            setSelectedSupportSourceIds((current) =>
+                              event.target.checked
+                                ? [...new Set([...current, sourceKpi.kpiId])]
+                                : current.filter((id) => id !== sourceKpi.kpiId),
+                            )
+                          }
+                          className="mt-1 h-4 w-4 accent-amber-700"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium text-slate-900">
+                            {sourceKpi.name}
+                          </span>
+                          <span className="mt-1 flex flex-wrap gap-x-4 text-xs text-slate-600">
+                            <span>Source target: {sourceKpi.targetValue ?? "—"}</span>
+                            <span>Source weight: {sourceKpi.weight ?? "—"}%</span>
+                          </span>
+                          {source.instruction && (
+                            <span className="mt-2 block text-sm text-slate-700">
+                              <strong>Instruction:</strong> {source.instruction}
+                            </span>
+                          )}
+                          {source.expectedImpact && (
+                            <span className="mt-1 block text-sm text-slate-700">
+                              <strong>Expected impact:</strong> {source.expectedImpact}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p className="mt-4 text-xs text-amber-800">
+                The local KPI below remains independent: set its own target, weight,
+                measurement unit, mode, and Q1–Q4 plan.
+              </p>
+            </section>
+          )}
+
           <KPIInformationCard
             formData={compatibleFormData}
             parentId={""} // No parent reference for creation
@@ -232,7 +319,7 @@ export default function CreateKPIForm({
           {(effectiveObjectiveType?.toUpperCase() === "DIVISION" ||
             effectiveObjectiveType?.toUpperCase() === "DEPARTMENT") && (
             <KpiModeSelector
-              mode={formData.kpiMode || "AGGREGATED"}
+              mode={formData.kpiMode || (isSupport ? "DIRECT" : "AGGREGATED")}
               onModeChange={(mode) => updateField("kpiMode", mode)}
               retentionPercent={formData.managerRetentionPercent || "30"}
               onRetentionChange={(percent) =>

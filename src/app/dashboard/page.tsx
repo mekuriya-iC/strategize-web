@@ -8,6 +8,7 @@ import AnalyticsSummary from "@/components/dashboard/AnalyticsSummary";
 import { OrganizationalHealthCard } from "@/components/dashboard/OrganizationalHealthCard";
 import { DepartmentHeatMap } from "@/components/dashboard/DepartmentHeatMap";
 import QuarterlyPerformanceOverview from "@/components/dashboard/QuarterlyPerformanceOverview";
+import SupportReadinessCard from "@/components/dashboard/SupportReadinessCard";
 
 // GraphQL queries for dashboard data
 const GET_TEAM_PERFORMANCE_SUMMARY = gql`
@@ -217,6 +218,8 @@ export default function DashboardPage() {
 
       {/* Approved, server-scoped quarterly performance is the dashboard authority. */}
       <QuarterlyPerformanceOverview />
+
+      {isLeadershipRole && <SupportReadinessCard />}
 
       {isLeadershipRole && teamPerformance && (
         <section className="space-y-3" aria-labelledby="team-performance-heading">

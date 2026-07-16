@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Edit, Trash2, MoreHorizontal, Send, Eye, Users } from "lucide-react";
 import DeleteKpiDialog from "@/components/objectives/DeleteKpiDialog";
 import SubmitDialog from "@/components/submissions/SubmitDialog";
-import SingleKpiAssignmentDialog from "@/components/kpis/SingleKpiAssignmentDialog";
+import AssignKPIDialog from "@/components/objectives/AssignKPIDialog";
 import { Kpi } from "@/types/graphql";
 import usePermissions from "@/hooks/permissions/usePermissions";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
@@ -33,6 +33,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({
   currentObjectiveType,
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
   const router = useRouter();
 
   const { role } = usePermissions();
@@ -42,9 +43,7 @@ const KPIActions: React.FC<KPIActionsProps> = ({
     (kpi.objective as any)?.cascadeStatus === "approved" ||
     Boolean((kpi.objective as any)?.approvedAt);
 
-  const isAssigned = React.useMemo(() => {
-    return allKpis.some((other) => other.parent?.kpiId === kpi.kpiId);
-  }, [allKpis, kpi.kpiId]);
+
 
   const objectiveContext = kpi.objective
     ? {
@@ -87,38 +86,46 @@ const KPIActions: React.FC<KPIActionsProps> = ({
     return userLevel > objectiveLevel;
   }, [role, kpi.objective?.type]);
 
-  // Check if this KPI has been assigned (has children)
-  const hasBeenAssigned = React.useMemo(() => {
-    return allKpis.some((other) => other.parent?.kpiId === kpi.kpiId);
-  }, [allKpis, kpi.kpiId]);
+  const childKpis = React.useMemo(
+    () => allKpis.filter((other) => other.parent?.kpiId === kpi.kpiId),
+    [allKpis, kpi.kpiId],
+  );
+  const hasBeenAssigned = childKpis.length > 0;
+  const targetOwnerAvailable = React.useMemo(() => {
+    const mode = kpi.kpiMode || "AGGREGATED";
+    if (mode === "DIRECT") return false;
+
+    const sourceTarget = Number(kpi.targetValue || 0);
+    const retention = mode === "HYBRID"
+      ? Number(kpi.managerRetentionPercent || 0)
+      : 0;
+    const allocatableTarget = sourceTarget * (1 - retention / 100);
+    const allocatedTarget = childKpis.reduce(
+      (sum, child) =>
+        sum + Number(child.assignedTargetValue ?? child.targetValue ?? 0),
+      0,
+    );
+
+    return allocatableTarget - allocatedTarget > 0.01;
+  }, [childKpis, kpi.kpiMode, kpi.managerRetentionPercent, kpi.targetValue]);
 
   // Determine if "Assign KPI" option should be shown
   const canAssignKpi = React.useMemo(() => {
     // Must be approved
     if (kpi.status !== "APPROVED") return false;
 
-    // Must not be already assigned
-    if (hasBeenAssigned) return false;
-
-    // DIRECT mode KPIs cannot cascade (manager logs directly)
-    const kpiMode = (kpi as any).kpiMode || "AGGREGATED";
-    if (kpiMode === "DIRECT") return false;
-
-    // Must be at a level that can cascade
     const objectiveType = kpi.objective?.type;
     if (!objectiveType) return false;
 
-    // CORPORATE → DIVISION/DEPARTMENT, DIVISION → DEPARTMENT, DEPARTMENT → EMPLOYEE
-    if (
-      objectiveType === "CORPORATE" ||
-      objectiveType === "DIVISION" ||
-      objectiveType === "DEPARTMENT"
-    ) {
-      return true;
-    }
+    // Corporate KPIs remain assignable for SUPPORT relationships even when
+    // their target-owner allocation is exhausted or their mode is DIRECT.
+    if (isCorporate) return true;
 
-    return false;
-  }, [kpi, hasBeenAssigned, allKpis]);
+    if ((kpi.kpiMode || "AGGREGATED") === "DIRECT") return false;
+    if (!targetOwnerAvailable) return false;
+
+    return objectiveType === "DIVISION" || objectiveType === "DEPARTMENT";
+  }, [isCorporate, kpi.kpiMode, kpi.objective?.type, kpi.status, targetOwnerAvailable]);
 
   return (
     <>
@@ -140,7 +147,16 @@ const KPIActions: React.FC<KPIActionsProps> = ({
 
           {/* Assign KPI - Show for approved, unassigned KPIs that can cascade */}
           {canAssignKpi && (
-            <SingleKpiAssignmentDialog kpi={kpi} onSuccess={onRefresh} />
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setShowAssignDialog(true);
+              }}
+              className="cursor-pointer"
+            >
+              <Users className="mr-2 h-4 w-4 text-blue-500" />
+              <span>Assign KPI</span>
+            </DropdownMenuItem>
           )}
 
           {/* DEBUG: Show why Assign KPI is not available */}
@@ -234,6 +250,13 @@ const KPIActions: React.FC<KPIActionsProps> = ({
         kpiId={kpi.kpiId}
         kpiName={kpi.name}
         onDeleteSuccess={onRefresh}
+      />
+      <AssignKPIDialog
+        open={showAssignDialog}
+        onOpenChange={setShowAssignDialog}
+        kpi={kpi}
+        targetOwnerAvailable={targetOwnerAvailable}
+        onSuccess={onRefresh}
       />
     </>
   );

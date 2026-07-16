@@ -116,6 +116,7 @@ export const GET_OBJECTIVE = gql`
       level
       status
       cascadeStatus
+      cascadeType
       assigneeType
       assigneeId
       assignerId
@@ -154,6 +155,24 @@ export const GET_OBJECTIVE = gql`
         type
         assigneeType
       }
+      supportSources {
+        objectiveSupportSourceId
+        instruction
+        expectedImpact
+        sourceCorporateKpi {
+          kpiId
+          name
+          description
+          targetValue
+          weight
+          measurementUnit
+          unitType
+          targets {
+            timeline
+            target
+          }
+        }
+      }
       kpis {
         kpiId
         name
@@ -185,6 +204,19 @@ export const GET_OBJECTIVE = gql`
           effectiveTarget
           status
           version
+        }
+        quarterResults {
+          kpiQuarterResultId
+          quarterPlanId
+          calculationMode
+          finalActual
+          finalAchievementRate
+          carryOut
+          managerCarryOut
+          teamCarryOut
+          status
+          calculatedAt
+          finalizedAt
         }
       }
     }

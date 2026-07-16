@@ -9,6 +9,7 @@ import {
   MySubmissionsReport,
   KPIPerformanceAnalytics,
   QuarterlyPerformanceReport,
+  SupportPerformanceReport,
 } from "@/components/reports";
 import UnifiedPerformanceReport from "@/components/reports/UnifiedPerformanceReport";
 import { exportReport } from "@/lib/utils/exportReport";
@@ -25,7 +26,8 @@ import {
   Calendar,
   Zap,
   TrendingDown,
-  Minus
+  Minus,
+  Network
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
@@ -431,7 +433,7 @@ function ReportsContent() {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
           {/* KPI Performance - Full access only */}
           {hasFullAccess && (
             <TabsTrigger value="kpi-performance" className="gap-2">
@@ -446,6 +448,13 @@ function ReportsContent() {
             <Calendar className="h-4 w-4" />
             <span className="hidden sm:inline">Quarterly KPI</span>
             <span className="sm:hidden">Quarterly</span>
+          </TabsTrigger>
+
+          {/* Support Performance - server-scoped for every role */}
+          <TabsTrigger value="support" className="gap-2">
+            <Network className="h-4 w-4" />
+            <span className="hidden sm:inline">Support</span>
+            <span className="sm:hidden">Support</span>
           </TabsTrigger>
 
           {/* Unified Performance - All users */}
@@ -484,6 +493,13 @@ function ReportsContent() {
         {/* Quarterly KPI Performance (All Users - Server Scoped) */}
         <TabsContent value="quarterly" className="space-y-6">
           <QuarterlyPerformanceReport
+            key={selectedPeriod?.strategicPeriodId ?? "no-period"}
+          />
+        </TabsContent>
+
+        {/* Support Performance (All Users - Server Scoped) */}
+        <TabsContent value="support" className="space-y-6">
+          <SupportPerformanceReport
             key={selectedPeriod?.strategicPeriodId ?? "no-period"}
           />
         </TabsContent>

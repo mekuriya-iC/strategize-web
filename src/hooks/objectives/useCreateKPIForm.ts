@@ -1,11 +1,17 @@
 import { useState, useCallback } from "react";
+import { useMutation } from "@apollo/client";
 import { useKPIMutations } from "@/hooks/objectives/useKPIMutations";
+import { CREATE_SUPPORT_KPI } from "@/lib/graphql/mutations/supportRelationships";
+import { GET_KPIS } from "@/lib/graphql/queries/kpis";
+import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { invalidateAfterMutation } from "@/stores/cacheStore";
 import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import type {
   KpiWeightType,
   KpiStatus,
   KpiUnitType,
   CreateKpiInput,
+  CreateSupportKpiInput,
   KpiTargetInput,
 } from "@/types/graphql";
 
@@ -31,14 +37,32 @@ interface UseCreateKPIFormProps {
   objectiveId: string;
   onSuccess?: () => void;
   isCorporate?: boolean;
+  isSupport?: boolean;
+  supportSourceIds?: string[];
 }
+
+const measurementUnitFor = (unitType: KpiUnitType): string =>
+  unitType === "PERCENT" ? "PERCENTAGE" : unitType;
 
 export function useCreateKPIForm({
   objectiveId,
   onSuccess,
   isCorporate = false,
+  isSupport = false,
+  supportSourceIds = [],
 }: UseCreateKPIFormProps) {
   const { createKpi } = useKPIMutations();
+  const [createSupportKpi] = useMutation(CREATE_SUPPORT_KPI, {
+    onCompleted: () => invalidateAfterMutation.kpi(),
+    refetchQueries: [
+      { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
+      { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
+      "GetObjectives",
+    ],
+  });
+  const [selectedSupportSourceIds, setSelectedSupportSourceIds] = useState<
+    string[]
+  >(() => (supportSourceIds.length === 1 ? supportSourceIds : []));
 
   // Fetch strategic plans to get organizationId
   const { strategicPlans } = useStrategicPlansQuery();
@@ -53,7 +77,7 @@ export function useCreateKPIForm({
     weightType: "PERCENT",
     status: "NOT_SUBMITTED",
     unitType: "NUMBER",
-    kpiMode: "AGGREGATED",
+    kpiMode: isSupport ? "DIRECT" : "AGGREGATED",
     managerRetentionPercent: "30",
   });
 
@@ -156,18 +180,45 @@ export function useCreateKPIForm({
         unitType: formData.unitType,
         strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
         frequency: "QUARTERLY", // Default to QUARTERLY
-        measurementUnit: "NUMBER", // Default to NUMBER
+        measurementUnit: measurementUnitFor(formData.unitType),
         organizationId: organizationId, // Required by backend
         targetValue: annualValue, // Use the annual target value directly
         targets: targets,
-        kpiMode: formData.kpiMode || "AGGREGATED",
+        kpiMode: formData.kpiMode || (isSupport ? "DIRECT" : "AGGREGATED"),
         managerRetentionPercent:
           formData.kpiMode === "HYBRID" && formData.managerRetentionPercent
             ? parseFloat(formData.managerRetentionPercent)
             : undefined,
       };
 
-      await createKpi({ input });
+      if (isSupport) {
+        if (supportSourceIds.length === 0) {
+          throw new Error(
+            "This support objective has no Corporate KPI sources. KPI creation is unavailable.",
+          );
+        }
+        if (selectedSupportSourceIds.length === 0) {
+          throw new Error("Select at least one Corporate KPI to support.");
+        }
+
+        const supportInput: CreateSupportKpiInput = {
+          objectiveId,
+          name: input.name,
+          baseline: input.baseline,
+          weight: input.weight ?? 0,
+          unitType: input.unitType,
+          frequency: input.frequency,
+          measurementUnit: input.measurementUnit,
+          targetValue: input.targetValue,
+          targets: input.targets ?? [],
+          kpiMode: input.kpiMode,
+          managerRetentionPercent: input.managerRetentionPercent,
+          sourceCorporateKpiIds: selectedSupportSourceIds,
+        };
+        await createSupportKpi({ variables: { input: supportInput } });
+      } else {
+        await createKpi({ input });
+      }
 
       // client.refetchQueries is handled by mutations, but we can do extra safety
       // await client.refetchQueries({ include: ["GetKPIs", "GetObjective"] });
@@ -190,6 +241,10 @@ export function useCreateKPIForm({
     annualTargets,
     objectiveId,
     createKpi,
+    createSupportKpi,
+    isSupport,
+    supportSourceIds,
+    selectedSupportSourceIds,
     onSuccess,
     isCorporate,
     organizationId,
@@ -203,6 +258,8 @@ export function useCreateKPIForm({
     setYearlyQuarters,
     isSubmitting,
     updateField,
+    selectedSupportSourceIds,
+    setSelectedSupportSourceIds,
     handleSubmit,
   };
 }

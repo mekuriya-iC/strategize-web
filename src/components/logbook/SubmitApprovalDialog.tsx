@@ -35,11 +35,18 @@ const uploadEvidenceFile = async (file: File): Promise<string> => {
   });
 
   if (!response.ok) {
-    throw new Error("File upload failed");
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message || `File upload failed (${response.status})`);
   }
 
   const result = await response.json();
-  return result.url || `${getApiBaseUrl()}/storage/${result.filename}`;
+  if (typeof result.url === "string" && /^https?:\/\//i.test(result.url)) {
+    return result.url;
+  }
+  if (typeof result.url === "string" && result.url.startsWith("/")) {
+    return `${getApiBaseUrl()}${result.url}`;
+  }
+  return `${getApiBaseUrl()}/storage/${result.filename}`;
 };
 
 interface LogbookItem {

@@ -5,3 +5,4 @@ export { default as MySubmissionsReport } from './MySubmissionsReport';
 export { default as KPIPerformanceAnalytics } from './KPIPerformanceAnalytics';
 export { default as UnifiedPerformanceReport } from './UnifiedPerformanceReport';
 export { default as QuarterlyPerformanceReport } from './QuarterlyPerformanceReport';
+export { default as SupportPerformanceReport } from './SupportPerformanceReport';

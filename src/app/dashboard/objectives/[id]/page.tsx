@@ -3,11 +3,13 @@ import React, { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Users, Send } from "lucide-react";
+import { ArrowLeft, Handshake, Plus, Users, Send } from "lucide-react";
 import { useObjective } from "@/hooks/objectives/useObjectives";
 import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { useQuery } from "@apollo/client";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { GET_KPI_CONTRIBUTION_LINKS } from "@/lib/graphql/queries/supportRelationships";
+import type { Kpi, KpiContributionLink } from "@/types/graphql";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
@@ -71,6 +73,12 @@ export default function ObjectiveDetailPage() {
   });
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
+  });
+  const { data: contributionLinksData } = useQuery<{
+    kpiContributionLinks: { items: KpiContributionLink[] };
+  }>(GET_KPI_CONTRIBUTION_LINKS, {
+    variables: { page: 1, limit: 1000 },
+    skip: objective?.cascadeType !== "SUPPORT",
   });
 
   // Fetch all objectives to check for children (assignment status)
@@ -147,6 +155,18 @@ export default function ObjectiveDetailPage() {
   const objectiveKPIs = kpis.filter(
     (kpi) => kpi.objective?.objectiveId === objectiveId,
   );
+  const objectiveLocalKPIs = ((objective?.kpis ?? []) as unknown as Kpi[]);
+  const contributionLinks = contributionLinksData?.kpiContributionLinks?.items ?? [];
+  const contributionLinksByKpi = useMemo(() => {
+    return contributionLinks.reduce<Record<string, KpiContributionLink[]>>(
+      (linksByKpi, link) => {
+        const kpiId = link.supportingKpi.kpiId;
+        linksByKpi[kpiId] = [...(linksByKpi[kpiId] ?? []), link];
+        return linksByKpi;
+      },
+      {},
+    );
+  }, [contributionLinks]);
 
   // Weight allocation is per objective (100% budget on this objective only)
   const kpisForWeight = useMemo(
@@ -543,6 +563,119 @@ export default function ObjectiveDetailPage() {
           </div>
         )}
       </div>
+
+      {objective.cascadeType === "SUPPORT" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-6">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="rounded-full bg-amber-100 p-2">
+              <Handshake className="h-5 w-5 text-amber-700" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-amber-950">
+                Support contribution assignment
+              </h2>
+              <p className="text-sm text-amber-800">
+                This objective supports Corporate outcomes without receiving a
+                share of their target or weight. Create local operational KPIs
+                to describe and measure your department&apos;s impact.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {(objective.supportSources ?? []).map((source) => (
+              <div
+                key={source.objectiveSupportSourceId}
+                className="rounded-lg border border-amber-200 bg-white p-4"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                  Corporate KPI supported
+                </p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {source.sourceCorporateKpi.name}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                  <span>Target: {source.sourceCorporateKpi.targetValue ?? "—"}</span>
+                  <span>Weight: {source.sourceCorporateKpi.weight ?? "—"}%</span>
+                </div>
+                {source.instruction && (
+                  <p className="mt-3 text-sm text-slate-700">
+                    <span className="font-medium">Instruction:</span>{" "}
+                    {source.instruction}
+                  </p>
+                )}
+                {source.expectedImpact && (
+                  <p className="mt-2 text-sm text-slate-700">
+                    <span className="font-medium">Expected impact:</span>{" "}
+                    {source.expectedImpact}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-lg border border-amber-300 bg-white p-4">
+            <p className="text-sm font-semibold text-amber-950">
+              Local KPI results are independent and do not change Corporate KPI achievement.
+            </p>
+            <p className="mt-1 text-xs text-amber-800">
+              These Q1–Q4 results measure this support objective&apos;s local delivery only.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900">Local KPI quarterly results</h3>
+            {objectiveLocalKPIs.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-amber-300 bg-white p-4 text-sm text-slate-600">
+                No local KPIs have been created for this support objective.
+              </p>
+            ) : (
+              objectiveLocalKPIs.map((kpi) => {
+                const links = contributionLinksByKpi[kpi.kpiId] ?? [];
+                const supportedNames = links.map((link) => link.sourceKpi.name);
+                return (
+                  <div key={kpi.kpiId} className="rounded-lg border border-amber-200 bg-white p-4">
+                    <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-start">
+                      <p className="font-medium text-slate-900">{kpi.name}</p>
+                      <p className="text-xs text-slate-600">
+                        Supports: {supportedNames.length > 0 ? supportedNames.join(", ") : "—"}
+                      </p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                      {[1, 2, 3, 4].map((quarterNumber) => {
+                        const plan = kpi.quarterPlans?.find(
+                          (item) => item.quarterNumber === quarterNumber,
+                        );
+                        const result = kpi.quarterResults?.find(
+                          (item) => item.quarterPlanId === plan?.kpiQuarterPlanId,
+                        );
+                        const formatNumber = (value?: number | null, suffix = "") =>
+                          value == null || !Number.isFinite(Number(value))
+                            ? "—"
+                            : `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}${suffix}`;
+                        return (
+                          <div key={quarterNumber} className="rounded-md border bg-slate-50 p-3 text-xs">
+                            <p className="font-semibold text-slate-800">Q{quarterNumber}</p>
+                            <dl className="mt-2 space-y-1 text-slate-600">
+                              <div className="flex justify-between gap-2"><dt>Target</dt><dd>{formatNumber(plan?.effectiveTarget)}</dd></div>
+                              <div className="flex justify-between gap-2"><dt>Actual</dt><dd>{formatNumber(result?.finalActual)}</dd></div>
+                              <div className="flex justify-between gap-2"><dt>Achievement</dt><dd>{formatNumber(result?.finalAchievementRate, "%")}</dd></div>
+                              <div className="flex justify-between gap-2"><dt>Status</dt><dd>{result?.status ?? plan?.status?.replaceAll("_", " ") ?? "—"}</dd></div>
+                              {result?.carryOut != null && (
+                                <div className="flex justify-between gap-2"><dt>Carry</dt><dd>{formatNumber(result.carryOut)}</dd></div>
+                              )}
+                            </dl>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Objective Details Card */}
       <div className="bg-white rounded-lg border p-6">

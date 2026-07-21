@@ -138,6 +138,19 @@ export const ASSIGN_OBJECTIVE = gql`
         managerRetentionPercent
         targetValue
         assignedTargetValue
+        unitType
+        measurementUnit
+        calculationBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+        aggregationMethod
+        weightingBasisKpiId
         parent {
           kpiId
           name

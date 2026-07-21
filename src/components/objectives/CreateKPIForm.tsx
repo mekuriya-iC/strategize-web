@@ -4,20 +4,31 @@ import React, { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useCreateKPIForm } from "@/hooks/objectives/useCreateKPIForm";
+import {
+  useCreateKPIForm,
+  type CreateKPIFormData,
+} from "@/hooks/objectives/useCreateKPIForm";
 import {
   KPIFormHeader,
   KPIInformationCard,
   QuarterlyBreakdown,
 } from "./kpi-form";
 import { KpiModeSelector } from "./KpiModeSelector";
+import { KpiAggregationSelector } from "./KpiAggregationSelector";
+import { BasisCalculationCard } from "./BasisCalculationCard";
 import { buildYearRanges } from "@/components/objectives/YearSelector";
-import type { Objective, Kpi } from "@/types/graphql";
+import type {
+  KpiCalculationBasisSource,
+  Objective,
+  Kpi,
+} from "@/types/graphql";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import {
   getKpisForObjectiveWeight,
   sumKpiWeights,
   usesAnnualOnlyKpiTargets,
 } from "@/lib/objectives/kpiWeightScope";
+import { basisQuartersEqualAnnual } from "@/utils/basisCalculation";
 
 interface CreateKPIFormProps {
   objectiveId: string;
@@ -40,6 +51,8 @@ export default function CreateKPIForm({
     setAnnualTargets,
     yearlyQuarters,
     setYearlyQuarters,
+    basisQuarters,
+    setBasisQuarters,
     isSubmitting,
     updateField,
     selectedSupportSourceIds,
@@ -79,7 +92,7 @@ export default function CreateKPIForm({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    updateField(field as any, value);
+    updateField(field as keyof CreateKPIFormData, value);
   };
 
   // Calculate available years from strategic period
@@ -100,7 +113,7 @@ export default function CreateKPIForm({
       case "PERCENT":
         return "%";
       case "CURRENCY":
-        return "Million/ETB";
+        return "ETB";
       case "HOUR":
         return "hrs";
       case "RATIO":
@@ -145,8 +158,7 @@ export default function CreateKPIForm({
 
     const TOLERANCE = 0.01;
     if (formData.unitType === "PERCENT" || formData.unitType === "RATIO") {
-      const avg = sum / 4;
-      return Math.abs(avg - annual) <= TOLERANCE;
+      return values.every((value) => Math.abs(value - annual) <= TOLERANCE);
     }
 
     return Math.abs(sum - annual) <= TOLERANCE;
@@ -159,7 +171,7 @@ export default function CreateKPIForm({
   ]);
 
   // 100% weight budget applies to KPIs on this objective only
-  const { existingWeight, remainingWeight } = useMemo(() => {
+  const { existingWeight } = useMemo(() => {
     const scoped = getKpisForObjectiveWeight(
       objectiveId,
       existingKPIs.length > 0 ? existingKPIs : (objective.kpis as Kpi[]) || [],
@@ -185,22 +197,49 @@ export default function CreateKPIForm({
     return true;
   }, [formData.name, formData.baseline, formData.weight]);
 
+  const hasValidBasis = useMemo(() => {
+    if (formData.unitType !== "PERCENT" && formData.unitType !== "RATIO") {
+      return true;
+    }
+    if (formData.calculationBasisSource === "NONE") return true;
+    if (!formData.numeratorLabel.trim() || !formData.denominatorLabel.trim()) {
+      return false;
+    }
+    if (formData.calculationBasisSource === "LINKED_KPI") {
+      return !!formData.weightingBasisKpiId;
+    }
+    const annualBasis = Number(formData.directBasisValue);
+    return (
+      Number.isFinite(annualBasis) &&
+      annualBasis > 0 &&
+      (isCorporate ||
+        basisQuartersEqualAnnual(formData.directBasisValue, basisQuarters))
+    );
+  }, [formData, isCorporate, basisQuarters]);
+
   const canSubmit = useMemo(() => {
     const totalWeight = existingWeight + (parseFloat(formData.weight) || 0);
     if (isSubmitting) return false;
     if (totalWeight > 100) return false;
-    if (!hasValidBasicFields) return false;
+    if (!hasValidBasicFields || !hasValidBasis) return false;
     if (!strategicYear) return false;
     if (!hasAnnualTarget) return false;
     if (!isCorporate && !hasQuarterlyData) return false;
     if (isSupport && supportSources.length === 0) return false;
     if (isSupport && selectedSupportSourceIds.length === 0) return false;
+    if (
+      !isSupport &&
+      formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
+      formData.calculationBasisSource !== "DIRECT_VALUE" &&
+      !formData.weightingBasisKpiId
+    ) return false;
     return true;
   }, [
     existingWeight,
     formData.weight,
     isSubmitting,
     hasValidBasicFields,
+    hasValidBasis,
     strategicYear,
     hasAnnualTarget,
     isCorporate,
@@ -208,7 +247,33 @@ export default function CreateKPIForm({
     isSupport,
     supportSources.length,
     selectedSupportSourceIds.length,
+    formData.aggregationMethod,
+    formData.weightingBasisKpiId,
+    formData.calculationBasisSource,
   ]);
+
+  const handleBasisSourceChange = (source: KpiCalculationBasisSource) => {
+    updateField("calculationBasisSource", source);
+    if (source === "DIRECT_VALUE" || source === "LINKED_KPI") {
+      updateField("aggregationMethod", "DENOMINATOR_WEIGHTED_AVERAGE");
+      updateField("carryPolicy", "NONE");
+    }
+    if (source === "DIRECT_VALUE") updateField("weightingBasisKpiId", "");
+  };
+
+  const handleAnnualTargetChange = (value: string) => {
+    if (!strategicYear) return;
+    setAnnualTargets((prev) => ({ ...prev, [strategicYear]: value }));
+    if (
+      !isCorporate &&
+      (formData.unitType === "PERCENT" || formData.unitType === "RATIO")
+    ) {
+      setYearlyQuarters((prev) => ({
+        ...prev,
+        [strategicYear]: { q1: value, q2: value, q3: value, q4: value },
+      }));
+    }
+  };
 
   // Sync yearlyQuarters with strategic period year only (not all years)
   React.useEffect(() => {
@@ -329,6 +394,55 @@ export default function CreateKPIForm({
             />
           )}
 
+          {!isSupport && (
+            <BasisCalculationCard
+              unitType={formData.unitType}
+              targetValue={annualTargets[strategicYear || ""] || ""}
+              source={formData.calculationBasisSource}
+              onSourceChange={handleBasisSourceChange}
+              numeratorLabel={formData.numeratorLabel}
+              onNumeratorLabelChange={(value) => updateField("numeratorLabel", value)}
+              denominatorLabel={formData.denominatorLabel}
+              onDenominatorLabelChange={(value) => updateField("denominatorLabel", value)}
+              basisUnitType={formData.basisUnitType}
+              onBasisUnitTypeChange={(value) => updateField("basisUnitType", value)}
+              directBasisValue={formData.directBasisValue}
+              onDirectBasisValueChange={(value) => updateField("directBasisValue", value)}
+              basisQuarters={basisQuarters}
+              onBasisQuartersChange={setBasisQuarters}
+              basisKpiId={formData.weightingBasisKpiId}
+              onBasisKpiChange={(value) => updateField("weightingBasisKpiId", value)}
+              candidateKpis={
+                existingKPIs.length > 0
+                  ? existingKPIs
+                  : ((objective.kpis as Kpi[] | undefined) ?? [])
+              }
+              isCorporate={isCorporate}
+            />
+          )}
+
+          {!isSupport && (
+            <KpiAggregationSelector
+              method={formData.aggregationMethod}
+              onMethodChange={(value) => updateField("aggregationMethod", value)}
+              basisKpiId={formData.weightingBasisKpiId}
+              onBasisChange={(value) => updateField("weightingBasisKpiId", value)}
+              weightSource={formData.aggregationWeightSource}
+              onWeightSourceChange={(value) =>
+                updateField("aggregationWeightSource", value)
+              }
+              carryPolicy={formData.carryPolicy}
+              onCarryPolicyChange={(value) => updateField("carryPolicy", value)}
+              unitType={formData.unitType}
+              calculationBasisSource={formData.calculationBasisSource}
+              candidateKpis={
+                existingKPIs.length > 0
+                  ? existingKPIs
+                  : ((objective.kpis as Kpi[] | undefined) ?? [])
+              }
+            />
+          )}
+
           {/* Weight Allocation Display */}
           <div
             className={`p-4 rounded-lg mb-6 border ${existingWeight + (parseFloat(formData.weight) || 0) > 100 ? "bg-red-50 border-red-200" : "bg-zinc-50 border-zinc-200"}`}
@@ -377,18 +491,15 @@ export default function CreateKPIForm({
                   Annual Target ({strategicYear})
                 </label>
                 <div className="relative">
-                  <input
-                    type="number"
+                  <FormattedNumberInput
                     value={annualTargets[strategicYear] || ""}
-                    onChange={(e) =>
-                      setAnnualTargets((prev) => ({
-                        ...prev,
-                        [strategicYear]: e.target.value,
-                      }))
-                    }
+                    onValueChange={handleAnnualTargetChange}
+                    currency={formData.unitType === "CURRENCY"}
                     className="w-full pl-3 pr-12 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="0.00"
-                    step="0.01"
+                    placeholder={
+                      formData.unitType === "CURRENCY" ? "283,654,789" : "0.00"
+                    }
+                    step="any"
                     min="0"
                   />
                   <span className="absolute right-3 top-2 text-gray-400 text-xs font-medium pointer-events-none">
@@ -422,7 +533,7 @@ export default function CreateKPIForm({
                     kpiId: "new",
                     name: formData.name,
                     unitType: formData.unitType,
-                  } as any
+                  } as Kpi
                 }
                 canEditTargets={true}
                 isEditing={false}

@@ -2,7 +2,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Label } from "@/components/ui/label";
 import type { Kpi, KpiQuarterPlanStatus } from "@/types/graphql";
 import type {
@@ -82,6 +82,10 @@ export function QuarterlyBreakdown({
         const isPercent = kpi?.unitType
           ? kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"
           : weightType === "PERCENT" || weightType === "RATIO";
+        const isCurrency = kpi?.unitType === "CURRENCY";
+        const isFormulaKpi =
+          kpi?.calculationType === "RATIO_FORMULA" ||
+          kpi?.calculationType === "WEIGHTED_INDEX";
 
         const validation = validateQuarterlyBreakdown(
           year,
@@ -110,6 +114,7 @@ export function QuarterlyBreakdown({
                 </div>
                 {/* Auto Distribute Button */}
                 {canEditTargets &&
+                  !isFormulaKpi &&
                   validation.assignedTarget !== null &&
                   validation.assignedTarget > 0 && (
                     <Button
@@ -164,7 +169,7 @@ export function QuarterlyBreakdown({
             </div>
 
             {/* Validation Status */}
-            {validation.assignedTarget !== null && (
+            {validation.assignedTarget !== null && !isFormulaKpi && (
               <div
                 className={`mb-4 p-3 rounded-lg ${
                   validation.isValid
@@ -211,6 +216,14 @@ export function QuarterlyBreakdown({
               </div>
             )}
 
+            {isFormulaKpi && (
+              <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-700">
+                Formula KPI quarter targets are validated against their exact
+                ratio or weighted component inputs below, not by a simple
+                quarterly average.
+              </div>
+            )}
+
             {/* Quarter Inputs */}
             <div className="grid grid-cols-4 gap-4">
               {(["q1", "q2", "q3", "q4"] as const).map((quarter, index) => {
@@ -243,21 +256,21 @@ export function QuarterlyBreakdown({
                         </Badge>
                       )}
                     </div>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                    <FormattedNumberInput
+                      step="any"
+                      min="0"
                       value={quarters[quarter]}
-                      onChange={(e) => {
+                      currency={isCurrency}
+                      onValueChange={(value) => {
                         onYearlyQuartersChange((prev) => ({
                           ...prev,
                           [year]: {
                             ...prev[year],
-                            [quarter]: e.target.value,
+                            [quarter]: value,
                           },
                         }));
                       }}
-                      placeholder="0"
+                      placeholder={isCurrency ? "283,654,789" : "0"}
                       disabled={!canEditTargets || planLocked}
                       className={
                         validation.isValid

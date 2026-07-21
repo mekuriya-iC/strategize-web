@@ -3,28 +3,15 @@
 import { LogbookTableRow } from "./LogbookTableRow";
 import { LogbookTableCard } from "./LogbookTableCard";
 import { Checkbox } from "@/components/ui/checkbox";
-
-interface LogbookItem {
-  id: string;
-  activity: string;
-  description: string;
-  outcome: string;
-  entryDate: string;
-  attachmentUrl?: string | null;
-  status?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  employee?: any;
-}
+import type { FrontendLogbookItem } from "@/types/logbook";
 
 interface LogbookTableProps {
-  data: LogbookItem[];
+  data: FrontendLogbookItem[];
   selectedItems: string[];
   onSelectAll: (checked: boolean) => void;
   onSelectItem: (id: string, checked: boolean) => void;
   onRefetch: () => void;
-  onEditEntry?: (entry: LogbookItem) => void;
+  onEditEntry?: (entry: FrontendLogbookItem) => void;
 }
 
 export function LogbookTable({

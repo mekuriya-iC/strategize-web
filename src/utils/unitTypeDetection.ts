@@ -11,7 +11,15 @@ export const getDetailedUnitLabel = (kpi: Kpi): string => {
     return "%";
   }
 
-  // For NUMBER type, analyze the name to determine if it's million ETB or count
+  if (unitType === "RATIO") {
+    return "ratio";
+  }
+
+  if (unitType === "CURRENCY") {
+    return "ETB";
+  }
+
+  // For legacy NUMBER values, analyze the name to determine the display unit
   const nameLower = name.toLowerCase();
 
   // Check for revenue, profit, cost, financial indicators (million ETB)
@@ -70,8 +78,8 @@ export const getUnitTypeDisplayName = (unitType: ExtendedUnitType): string => {
 export const detectKPIType = (kpi: Kpi): "SUMMABLE" | "PERCENTAGE" => {
   const unitType = kpi.unitType; // "NUMBER" | "PERCENT"
 
-  // PERCENT unit type = Percentage KPIs (satisfaction, rates, etc.)
-  if (unitType === "PERCENT") {
+  // Percentage and ratio KPIs are rate-like: each child keeps the target rate.
+  if (unitType === "PERCENT" || unitType === "RATIO") {
     return "PERCENTAGE";
   }
 

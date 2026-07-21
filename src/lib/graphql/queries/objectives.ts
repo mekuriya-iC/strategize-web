@@ -72,6 +72,22 @@ export const GET_OBJECTIVES = gql`
           unitType
           status
           targetValue
+          calculationBasisSource
+          directBasisValue
+          directBasisTargets {
+            timeline
+            value
+          }
+          numeratorLabel
+          denominatorLabel
+          basisUnitType
+          aggregationMethod
+          weightingBasisKpiId
+          aggregationWeightSource
+          carryPolicy
+          kpiMode
+          managerRetentionPercent
+          measurementUnit
           parent {
             kpiId
           }
@@ -86,6 +102,7 @@ export const GET_OBJECTIVES = gql`
             originalTarget
             carryIn
             effectiveTarget
+          directBasisTarget
             status
             version
           }
@@ -185,6 +202,21 @@ export const GET_OBJECTIVE = gql`
         frequency
         measurementUnit
         targetValue
+        calculationBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+        aggregationMethod
+        weightingBasisKpiId
+        aggregationWeightSource
+        carryPolicy
+        kpiMode
+        managerRetentionPercent
         createdAt
         updatedAt
         parent {
@@ -202,6 +234,7 @@ export const GET_OBJECTIVE = gql`
           originalTarget
           carryIn
           effectiveTarget
+          directBasisTarget
           status
           version
         }
@@ -211,6 +244,8 @@ export const GET_OBJECTIVE = gql`
           calculationMode
           finalActual
           finalAchievementRate
+          rollupNumeratorExact
+          rollupDenominatorExact
           carryOut
           managerCarryOut
           teamCarryOut
@@ -280,6 +315,7 @@ export const GET_OBJECTIVES_FOR_APPROVAL = gql`
             originalTarget
             carryIn
             effectiveTarget
+          directBasisTarget
             status
             version
           }
@@ -345,6 +381,7 @@ export const GET_MY_OBJECTIVES = gql`
             originalTarget
             carryIn
             effectiveTarget
+          directBasisTarget
             status
             version
           }

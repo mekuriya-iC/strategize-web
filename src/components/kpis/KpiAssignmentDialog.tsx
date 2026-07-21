@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { parseGraphQLError } from "@/utils/errorParsing";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getUnitLabel, getUnitName } from "@/utils/kpi-format";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import {
   Tooltip,
   TooltipContent,
@@ -88,7 +89,7 @@ const getMeasurementUnitDisplay = (kpi: KpiAssignmentDialogProps["kpi"]): KpiUni
     case "percentage":
       return { valueLabel: "%", fullName: "Percentage" };
     case "currency":
-      return { valueLabel: "Million ETB", fullName: "Currency (Million ETB)" };
+      return { valueLabel: "ETB", fullName: "Currency (ETB)" };
     case "hour":
       return { valueLabel: "hrs", fullName: "Hours" };
     case "rating":
@@ -576,15 +577,18 @@ export default function KpiAssignmentDialog({
               Target Value <span className="text-red-500">*</span>
             </Label>
             <div className="flex gap-2">
-              <Input
+              <FormattedNumberInput
                 id="targetValue"
-                type="number"
                 step="0.01"
                 value={targetValue}
-                onChange={(e) => {
-                  setTargetValue(e.target.value);
+                onValueChange={(value) => {
+                  setTargetValue(value);
                   setHasEditedTarget(true);
                 }}
+                currency={
+                  resolvedKpi.unitType === "CURRENCY" ||
+                  resolvedKpi.measurementUnit === "currency"
+                }
                 className="flex-1"
               />
               <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
@@ -592,7 +596,7 @@ export default function KpiAssignmentDialog({
               </div>
             </div>
             <p className="text-xs text-gray-500">
-              Live KPI target: {resolvedTarget}
+              Live KPI target: {Number(resolvedTarget).toLocaleString()}
               {resolvedMeasurementUnit.valueLabel
                 ? ` ${resolvedMeasurementUnit.valueLabel}`
                 : ""}

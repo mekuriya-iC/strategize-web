@@ -56,6 +56,12 @@ interface AssignmentContextType {
   // We will bring that here.
   targets: Record<string, Record<string, number | null>>; // kpiId -> { assigneeId: targetValue }
   setTarget: (kpiId: string, assigneeId: string, value: number | null) => void;
+  directBasisAllocations: Record<string, Record<string, string>>;
+  setDirectBasisAllocation: (
+    kpiId: string,
+    assigneeId: string,
+    value: string,
+  ) => void;
 
   // Bulk Assignment Helper
   bulkAssignmentValues: Record<string, number>;
@@ -104,6 +110,9 @@ export function AssignmentProvider({
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [targets, setTargets] = useState<
     Record<string, Record<string, number | null>>
+  >({});
+  const [directBasisAllocations, setDirectBasisAllocations] = useState<
+    Record<string, Record<string, string>>
   >({});
   const [bulkAssignmentValues, setBulkAssignmentValues] = useState<
     Record<string, number>
@@ -167,11 +176,25 @@ export function AssignmentProvider({
   const clearAssignments = useCallback(() => {
     setAssignments([]);
     setTargets({});
+    setDirectBasisAllocations({});
   }, []);
 
   const setTarget = useCallback(
     (kpiId: string, assigneeId: string, value: number | null) => {
       setTargets((prev) => ({
+        ...prev,
+        [kpiId]: {
+          ...(prev[kpiId] || {}),
+          [assigneeId]: value,
+        },
+      }));
+    },
+    [],
+  );
+
+  const setDirectBasisAllocation = useCallback(
+    (kpiId: string, assigneeId: string, value: string) => {
+      setDirectBasisAllocations((prev) => ({
         ...prev,
         [kpiId]: {
           ...(prev[kpiId] || {}),
@@ -209,6 +232,8 @@ export function AssignmentProvider({
       clearAssignments,
       targets,
       setTarget,
+      directBasisAllocations,
+      setDirectBasisAllocation,
       bulkAssignmentValues,
       setBulkAssignmentValue,
     }),
@@ -221,6 +246,7 @@ export function AssignmentProvider({
       selectedKPIs,
       assignments,
       targets,
+      directBasisAllocations,
       bulkAssignmentValues,
       toggleAssignee,
       clearSelectedAssignees,
@@ -230,6 +256,7 @@ export function AssignmentProvider({
       removeAssignment,
       clearAssignments,
       setTarget,
+      setDirectBasisAllocation,
       setBulkAssignmentValue,
     ],
   );

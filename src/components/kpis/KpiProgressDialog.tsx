@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -28,6 +29,12 @@ interface KpiProgressDialogProps {
     targetValue: number;
     measurementUnit: string;
     baselineValue?: number;
+    unitType?: string | null;
+    calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
+    directBasisValue?: string | null;
+    numeratorLabel?: string | null;
+    denominatorLabel?: string | null;
+    basisUnitType?: string | null;
   };
   strategicPeriodId: string;
   onSuccess?: () => void;
@@ -42,6 +49,19 @@ export default function KpiProgressDialog({
 }: KpiProgressDialogProps) {
   const [open, setOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const isBasisDriven =
+    kpi.calculationBasisSource === "DIRECT_VALUE" ||
+    kpi.calculationBasisSource === "LINKED_KPI";
+  const isCurrency = isBasisDriven
+    ? kpi.basisUnitType === "CURRENCY"
+    : kpi.measurementUnit?.toUpperCase() === "CURRENCY";
+  const unitLabel = isCurrency
+    ? "ETB"
+    : isBasisDriven
+      ? kpi.basisUnitType || "value"
+      : kpi.measurementUnit;
+  const formatValue = (value: number) =>
+    isCurrency ? value.toLocaleString() : value;
   const [formData, setFormData] = useState({
     achievedValue: "",
     reportingDate: new Date().toISOString().split("T")[0],
@@ -81,17 +101,26 @@ export default function KpiProgressDialog({
     });
   };
 
-  const calculateProgress = () => {
+  const calculateResult = () => {
     const achieved = parseFloat(formData.achievedValue);
     if (isNaN(achieved)) return 0;
+    if (!isBasisDriven || kpi.calculationBasisSource !== "DIRECT_VALUE") {
+      return achieved;
+    }
+    const basis = Number(kpi.directBasisValue || 0);
+    if (!Number.isFinite(basis) || basis <= 0) return 0;
+    return (achieved / basis) * (kpi.unitType === "PERCENT" ? 100 : 1);
+  };
 
-    const baseline = kpi.baselineValue || 0;
+  const calculateProgress = () => {
+    const result = calculateResult();
+    const baseline = isBasisDriven ? 0 : kpi.baselineValue || 0;
     const target = kpi.targetValue;
     const range = target - baseline;
 
-    if (range === 0) return achieved >= target ? 100 : 0;
+    if (range === 0) return result >= target ? 100 : 0;
 
-    const progress = ((achieved - baseline) / range) * 100;
+    const progress = ((result - baseline) / range) * 100;
     return Math.max(0, Math.min(100, progress));
   };
 
@@ -163,19 +192,26 @@ export default function KpiProgressDialog({
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Baseline</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {kpi.baselineValue || 0} {kpi.measurementUnit}
+                {isBasisDriven
+                  ? "Calculated"
+                  : `${formatValue(kpi.baselineValue || 0)} ${unitLabel}`}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Target</p>
               <p className="text-lg font-semibold text-blue-600">
-                {kpi.targetValue} {kpi.measurementUnit}
+                {formatValue(kpi.targetValue)}{kpi.unitType === "PERCENT" ? "%" : kpi.unitType === "RATIO" ? ":1" : ` ${unitLabel}`}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Required</p>
               <p className="text-lg font-semibold text-green-600">
-                {(kpi.targetValue - (kpi.baselineValue || 0)).toFixed(2)} {kpi.measurementUnit}
+                {isBasisDriven && kpi.calculationBasisSource === "DIRECT_VALUE"
+                  ? `${formatValue(
+                      (Number(kpi.directBasisValue || 0) * kpi.targetValue) /
+                        (kpi.unitType === "PERCENT" ? 100 : 1),
+                    )} ${unitLabel}`
+                  : `${formatValue(kpi.targetValue - (kpi.baselineValue || 0))} ${unitLabel}`}
               </p>
             </div>
           </div>
@@ -183,22 +219,26 @@ export default function KpiProgressDialog({
           {/* Achieved Value */}
           <div className="space-y-2">
             <Label htmlFor="achievedValue">
-              Achieved Value <span className="text-red-500">*</span>
+              {isBasisDriven ? kpi.numeratorLabel || "Numerator value" : "Achieved Value"} <span className="text-red-500">*</span>
             </Label>
             <div className="flex gap-2">
-              <Input
+              <FormattedNumberInput
                 id="achievedValue"
-                type="number"
                 step="0.01"
-                placeholder="Enter achieved value"
-                value={formData.achievedValue}
-                onChange={(e) =>
-                  setFormData({ ...formData, achievedValue: e.target.value })
+                placeholder={
+                  isCurrency
+                    ? `Enter ${kpi.numeratorLabel || "amount"} in ETB`
+                    : `Enter ${isBasisDriven ? kpi.numeratorLabel || "numerator value" : "achieved value"}`
                 }
+                value={formData.achievedValue}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, achievedValue: value })
+                }
+                currency={isCurrency}
                 className="flex-1"
               />
               <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
-                {kpi.measurementUnit}
+                {unitLabel}
               </div>
             </div>
           </div>
@@ -225,7 +265,9 @@ export default function KpiProgressDialog({
                   Status: <strong>{progressStatus.replace(/_/g, " ")}</strong>
                 </span>
                 <span className="text-xs text-blue-600 dark:text-blue-400">
-                  {parseFloat(formData.achievedValue).toFixed(2)} / {kpi.targetValue}
+                  {isBasisDriven
+                    ? `${calculateResult().toFixed(3)}${kpi.unitType === "PERCENT" ? "%" : kpi.unitType === "RATIO" ? ":1" : ""} / ${kpi.targetValue}${kpi.unitType === "PERCENT" ? "%" : kpi.unitType === "RATIO" ? ":1" : ""}`
+                    : `${parseFloat(formData.achievedValue).toFixed(2)} / ${kpi.targetValue}`}
                 </span>
               </div>
             </div>

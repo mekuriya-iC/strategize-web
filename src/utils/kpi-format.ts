@@ -20,7 +20,7 @@ export function getUnitLabel(unitType: KpiUnitType | string): string {
     case "PERCENT":
       return "%";
     case "CURRENCY":
-      return "Million ETB";
+      return "ETB";
     case "HOUR":
       return "hrs";
     case "RATIO":
@@ -42,7 +42,7 @@ export function getUnitName(unitType: KpiUnitType | string): string {
     case "PERCENT":
       return "Percentage";
     case "CURRENCY":
-      return "Currency (Million ETB)";
+      return "Currency (ETB)";
     case "HOUR":
       return "Hours";
     case "RATIO":
@@ -82,6 +82,24 @@ export function formatKpiValue(
     return "-";
   }
 
+  // Special handling for RATIO unit type
+  if (unitType === "RATIO") {
+    // Convert decimal to ratio format (e.g., 0.3333 -> "1:3")
+    let ratioStr: string;
+    if (numValue < 1 && numValue > 0) {
+      // Less than 1: display as 1:X
+      const denominator = Math.round(1 / numValue);
+      ratioStr = `1:${denominator}`;
+    } else if (numValue >= 1) {
+      // Greater than or equal to 1: display as X:1
+      const numerator = numValue.toFixed(decimals ?? 1);
+      ratioStr = `${numerator}:1`;
+    } else {
+      ratioStr = "0:0";
+    }
+    return showUnit ? `${ratioStr}` : ratioStr;
+  }
+
   // Determine decimal places
   let decimalPlaces = decimals;
   if (decimalPlaces === undefined) {
@@ -106,7 +124,19 @@ export function formatKpiValue(
       case "PERCENT":
         return `${formatted}%`;
       case "CURRENCY":
-        return compact ? `${formatted} Million ETB` : `${numValue.toLocaleString()} Million ETB`;
+        return `${
+          compact
+            ? formatted
+            : numValue.toLocaleString(
+                undefined,
+                decimals === undefined
+                  ? { maximumFractionDigits: 2 }
+                  : {
+                      minimumFractionDigits: decimalPlaces,
+                      maximumFractionDigits: decimalPlaces,
+                    },
+              )
+        } ETB`;
       case "HOUR":
         return `${formatted} hrs`;
       case "RATIO":

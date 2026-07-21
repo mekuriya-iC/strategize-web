@@ -16,27 +16,14 @@ import { REMOVE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
 import { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
-
-interface LogbookItem {
-  id: string;
-  activity: string;
-  description: string;
-  outcome: string;
-  entryDate: string;
-  attachmentUrl?: string | null;
-  status?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  employee?: any;
-}
+import type { FrontendLogbookItem } from "@/types/logbook";
 
 interface LogbookTableCardProps {
-  item: LogbookItem;
+  item: FrontendLogbookItem;
   isSelected: boolean;
   onSelect: (checked: boolean) => void;
   onRefetch: () => void;
-  onEditEntry?: (entry: LogbookItem) => void;
+  onEditEntry?: (entry: FrontendLogbookItem) => void;
 }
 
 export function LogbookTableCard({

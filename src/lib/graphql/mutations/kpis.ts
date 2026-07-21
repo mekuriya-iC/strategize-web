@@ -27,6 +27,26 @@ export const CREATE_KPI = gql`
       order
       kpiMode
       managerRetentionPercent
+      aggregationMethod
+      weightingBasisKpiId
+      aggregationWeightSource
+      carryPolicy
+      calculationType
+      calculationBasisSource
+      directBasisValue
+      directBasisTargets {
+        timeline
+        value
+      }
+      numeratorLabel
+      denominatorLabel
+      basisUnitType
+      weightingBasisKpi {
+        kpiId
+        name
+        unitType
+        targetValue
+      }
       createdAt
       objective {
         objectiveId
@@ -66,6 +86,26 @@ export const UPDATE_KPI = gql`
       order
       kpiMode
       managerRetentionPercent
+      aggregationMethod
+      weightingBasisKpiId
+      aggregationWeightSource
+      carryPolicy
+      calculationType
+      calculationBasisSource
+      directBasisValue
+      directBasisTargets {
+        timeline
+        value
+      }
+      numeratorLabel
+      denominatorLabel
+      basisUnitType
+      weightingBasisKpi {
+        kpiId
+        name
+        unitType
+        targetValue
+      }
       updatedAt
       objective {
         objectiveId

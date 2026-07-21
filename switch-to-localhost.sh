@@ -8,6 +8,7 @@ cat > .env.local << 'EOF'
 # Backend GraphQL endpoint
 GRAPHQL_SCHEMA_URL=http://localhost:3000/graphql
 NEXT_PUBLIC_GRAPHQL_URL=http://localhost:3000/graphql
+API_GRAPHQL_URL=http://localhost:3000/graphql
 
 # Default Organization ID (UUID format required by backend)
 # Replace with your actual organization ID from the database

@@ -15,7 +15,9 @@ import {
 import { apolloLogger } from "@/lib/logger";
 
 const httpLink = createHttpLink({
-  uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/graphql",
+  // Browser requests stay on the current web origin. The Next.js route proxies
+  // them to the API, avoiding stale LAN addresses and browser CORS preflights.
+  uri: "/api/graphql",
 });
 
 // Auth link - adds token to every request

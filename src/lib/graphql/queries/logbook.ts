@@ -5,6 +5,125 @@ import { gql } from "@apollo/client";
  * Matches backend schema exactly
  */
 
+const LOGBOOK_FORMULA_CONTEXT_FIELDS = gql`
+  fragment LogbookFormulaContextFields on KpiFormulaDefinition {
+    id
+    organizationId
+    kpiId
+    calculationType
+    components {
+      id
+      organizationId
+      formulaDefinitionId
+      position
+      sourceType
+      metricDefinitionId
+      metricDefinition {
+        id
+        organizationId
+        code
+        name
+        description
+        unitType
+        measurementUnit
+        temporalRollupMethod
+        isActive
+        createdAt
+        updatedAt
+      }
+      sourceKpiId
+      sourceKpi {
+        kpiId
+        name
+        description
+        unitType
+        measurementUnit
+        isActive
+      }
+      weight
+      createdAt
+    }
+    numeratorSourceType
+    numeratorMetricDefinitionId
+    numeratorMetricDefinition {
+      id
+      organizationId
+      code
+      name
+      description
+      unitType
+      measurementUnit
+      temporalRollupMethod
+      isActive
+      createdAt
+      updatedAt
+    }
+    numeratorKpiId
+    numeratorKpi {
+      kpiId
+      name
+      description
+      unitType
+      measurementUnit
+      isActive
+    }
+    denominatorSourceType
+    denominatorMetricDefinitionId
+    denominatorMetricDefinition {
+      id
+      organizationId
+      code
+      name
+      description
+      unitType
+      measurementUnit
+      temporalRollupMethod
+      isActive
+      createdAt
+      updatedAt
+    }
+    denominatorKpiId
+    denominatorKpi {
+      kpiId
+      name
+      description
+      unitType
+      measurementUnit
+      isActive
+    }
+    multiplier
+    temporalRollupMethod
+    zeroDenominatorPolicy
+    resultDirection
+    status
+    version
+    effectiveFrom
+    effectiveTo
+    createdById
+    approvedById
+    approvedAt
+    createdAt
+    updatedAt
+  }
+`;
+
+export const GET_LOGBOOK_FORMULA_FOR_CONTEXT = gql`
+  ${LOGBOOK_FORMULA_CONTEXT_FIELDS}
+  query GetLogbookFormulaForContext(
+    $organizationId: ID!
+    $kpiId: ID!
+    $entryDate: String!
+  ) {
+    logbookFormulaForContext(
+      organizationId: $organizationId
+      kpiId: $kpiId
+      entryDate: $entryDate
+    ) {
+      ...LogbookFormulaContextFields
+    }
+  }
+`;
+
 // Get paginated logbook entries
 export const GET_LOGBOOK_ENTRIES = gql`
   query GetLogbookEntries(
@@ -29,6 +148,39 @@ export const GET_LOGBOOK_ENTRIES = gql`
         activityDescription
         entryStatus
         linkedKpiId
+        linkedKpi {
+          kpiId
+          name
+          targetValue
+          unitType
+          measurementUnit
+          calculationType
+          calculationBasisSource
+          directBasisValue
+          numeratorLabel
+          denominatorLabel
+          basisUnitType
+        }
+        quarterPlan {
+          kpiQuarterPlanId
+          quarterNumber
+          timeline
+          status
+        }
+        metricObservations {
+          id
+          metricDefinitionId
+          value
+          observedAt
+          metricDefinition {
+            id
+            code
+            name
+            unitType
+            measurementUnit
+            temporalRollupMethod
+          }
+        }
         kpiTargetValue
         kpiAchievedValue
         kpiCompletionPercent
@@ -92,6 +244,40 @@ export const GET_LOGBOOK_ENTRY = gql`
       entryDate
       activityDescription
       entryStatus
+      linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+        targetValue
+        unitType
+        measurementUnit
+        calculationType
+        calculationBasisSource
+        directBasisValue
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+      }
+      quarterPlan {
+        kpiQuarterPlanId
+        quarterNumber
+        timeline
+        status
+      }
+      metricObservations {
+        id
+        metricDefinitionId
+        value
+        observedAt
+        metricDefinition {
+          id
+          code
+          name
+          unitType
+          measurementUnit
+          temporalRollupMethod
+        }
+      }
       kpiTargetValue
       kpiAchievedValue
       kpiCompletionPercent

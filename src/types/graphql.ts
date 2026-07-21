@@ -318,15 +318,9 @@ export interface PaginatedStrategicPeriods {
 
 // Objective Types
 export type ObjectiveType =
-  | "CORPORATE"
-  | "DIVISION"
-  | "DEPARTMENT"
-  | "PERSONNEL";
+  "CORPORATE" | "DIVISION" | "DEPARTMENT" | "PERSONNEL";
 export type ObjectiveStatus =
-  | "NOT_SUBMITTED"
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED";
+  "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 
 export interface Objective {
   objectiveId: string;
@@ -445,25 +439,27 @@ export interface PaginatedObjectives {
 // KPI Types
 export type KpiWeightType = "NUMBER" | "PERCENT";
 export type KpiUnitType =
-  | "NUMBER"
-  | "PERCENT"
-  | "CURRENCY"
-  | "HOUR"
-  | "RATIO"
-  | "COUNT";
+  "NUMBER" | "PERCENT" | "CURRENCY" | "HOUR" | "RATIO" | "COUNT";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiTargetStatus =
-  | "NOT_SUBMITTED"
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED";
+  "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiQuarterPlanStatus =
-  | "DRAFT"
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
-  | "LOCKED";
+  "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "LOCKED";
 export type KpiQuarterPlanSource = "LEGACY_BACKFILL" | "MANUAL" | "SYSTEM";
+export type KpiCalculationBasisSource =
+  | "NONE"
+  | "DIRECT_VALUE"
+  | "LINKED_KPI";
+
+export interface DirectBasisTarget {
+  timeline: string;
+  value: string;
+}
+
+export interface DirectBasisTargetInput {
+  timeline: string;
+  value: string;
+}
 
 export interface KpiQuarterPlan {
   kpiQuarterPlanId: string;
@@ -476,6 +472,7 @@ export interface KpiQuarterPlan {
   originalTarget: number;
   carryIn: number;
   effectiveTarget: number;
+  directBasisTarget?: string | null;
   managerOriginalTarget?: number | null;
   managerCarryIn?: number | null;
   managerEffectiveTarget?: number | null;
@@ -507,10 +504,7 @@ export interface KpiTargetInput {
 
 export type KpiQuarterResultStatus = "PROVISIONAL" | "FINAL";
 export type ScorecardLevel =
-  | "INDIVIDUAL"
-  | "DEPARTMENT"
-  | "DIVISION"
-  | "CORPORATE";
+  "INDIVIDUAL" | "DEPARTMENT" | "DIVISION" | "CORPORATE";
 
 export interface KpiQuarterResult {
   kpiQuarterResultId: string;
@@ -522,11 +516,17 @@ export interface KpiQuarterResult {
   calculationMode: "AGGREGATED" | "DIRECT" | "HYBRID";
   directActual?: number | null;
   directAchievementRate?: number | null;
+  directAchievementRateExact?: string | null;
   aggregateActual?: number | null;
   aggregateAchievementRate?: number | null;
+  aggregateAchievementRateExact?: string | null;
+  rollupNumeratorExact?: string | null;
+  rollupDenominatorExact?: string | null;
   finalActual: number;
   finalAchievementRate: number;
+  finalAchievementRateExact?: string | null;
   weightedScore: number;
+  weightedScoreExact?: string | null;
   carryOut: number;
   managerCarryOut?: number | null;
   teamCarryOut?: number | null;
@@ -542,18 +542,24 @@ export interface KpiContributionLink {
   instruction?: string | null;
   expectedImpact?: string | null;
   supportingKpi: Pick<Kpi, "kpiId" | "name">;
-  sourceKpi: Pick<Kpi, "kpiId" | "name" | "targetValue" | "weight" | "unitType"> & {
+  sourceKpi: Pick<
+    Kpi,
+    "kpiId" | "name" | "targetValue" | "weight" | "unitType"
+  > & {
     description?: string | null;
     measurementUnit?: string | null;
   };
 }
 
 export type KpiMode = "AGGREGATED" | "DIRECT" | "HYBRID";
+export type KpiAggregationMethod =
+  "SUM" | "SIMPLE_AVERAGE" | "DENOMINATOR_WEIGHTED_AVERAGE";
+export type KpiAggregationWeightSource = "PLANNED_TARGET" | "APPROVED_ACTUAL";
+export type KpiCalculationType =
+  "MANUAL_VALUE" | "RATIO_FORMULA" | "WEIGHTED_INDEX";
+export type KpiCarryPolicy = "ADDITIVE" | "NONE";
 export type KpiQuarterReportScope =
-  | "SELF"
-  | "DEPARTMENT"
-  | "DIVISION"
-  | "ORGANIZATION";
+  "SELF" | "DEPARTMENT" | "DIVISION" | "ORGANIZATION";
 
 export interface KpiQuarterReportFilterOption {
   id: string;
@@ -577,8 +583,7 @@ export interface KpiQuarterReportSummary {
   pendingResultCount: number;
 }
 
-export interface KpiQuarterReportQuarterSummary
-  extends KpiQuarterReportSummary {
+export interface KpiQuarterReportQuarterSummary extends KpiQuarterReportSummary {
   quarterNumber: number;
 }
 
@@ -603,6 +608,9 @@ export interface KpiQuarterReportRow {
   employeeId?: string | null;
   employeeName?: string | null;
   kpiMode: KpiMode;
+  aggregationMethod: KpiAggregationMethod;
+  weightingBasisKpiId?: string | null;
+  weightingBasisKpiName?: string | null;
   unitType?: KpiUnitType | null;
   measurementUnit: string;
   customUnitLabel?: string | null;
@@ -613,6 +621,7 @@ export interface KpiQuarterReportRow {
   originalTarget: number;
   carryIn: number;
   effectiveTarget: number;
+  directBasisTarget?: string | null;
   managerOriginalTarget?: number | null;
   managerCarryIn?: number | null;
   managerEffectiveTarget?: number | null;
@@ -623,10 +632,30 @@ export interface KpiQuarterReportRow {
   directActual?: number | null;
   directAchievementRate?: number | null;
   aggregateActual?: number | null;
+  aggregateActualExact?: string | null;
+  aggregationNumeratorExact?: string | null;
+  aggregationDenominatorExact?: string | null;
+  rollupNumeratorExact?: string | null;
+  rollupDenominatorExact?: string | null;
+  finalActualExact?: string | null;
+  finalActualDecimal?: string | null;
+  formulaCalculationStatus?:
+    "CALCULATED" | "ZERO_RESULT" | "NOT_CALCULABLE" | null;
+  formulaNumeratorExact?: string | null;
+  formulaNumeratorDecimal?: string | null;
+  formulaDenominatorExact?: string | null;
+  formulaDenominatorDecimal?: string | null;
+  formulaResultExact?: string | null;
+  formulaResultDecimal?: string | null;
+  formulaCalculationVersion?: number | null;
   aggregateAchievementRate?: number | null;
+  aggregateAchievementRateExact?: string | null;
+  directAchievementRateExact?: string | null;
   actual?: number | null;
   achievementRate?: number | null;
+  achievementRateExact?: string | null;
   annualContribution?: number | null;
+  annualContributionExact?: string | null;
   carryOut?: number | null;
   managerCarryOut?: number | null;
   teamCarryOut?: number | null;
@@ -669,6 +698,21 @@ export interface Kpi {
   assignedTargetValue?: number; // Target value assigned to current user (from assignment)
   kpiMode?: string; // AGGREGATED, DIRECT, HYBRID
   managerRetentionPercent?: number; // For HYBRID mode
+  aggregationMethod?: KpiAggregationMethod;
+  weightingBasisKpiId?: string | null;
+  weightingBasisKpi?: Pick<
+    Kpi,
+    "kpiId" | "name" | "unitType" | "targetValue"
+  > | null;
+  aggregationWeightSource?: KpiAggregationWeightSource;
+  carryPolicy?: KpiCarryPolicy;
+  calculationType?: KpiCalculationType;
+  calculationBasisSource?: KpiCalculationBasisSource;
+  directBasisValue?: string | null;
+  directBasisTargets?: DirectBasisTarget[];
+  numeratorLabel?: string | null;
+  denominatorLabel?: string | null;
+  basisUnitType?: KpiUnitType | null;
   assigneeId?: string; // ID of the person assigned to this KPI
   assigneeType?: string; // Type of assignee (PERSONNEL, DEPARTMENT, DIVISION, CORPORATE)
   parent?: { kpiId: string; name?: string } | null;
@@ -699,6 +743,16 @@ export interface CreateKpiInput {
   assignerId?: string;
   kpiMode?: string; // KPI mode: AGGREGATED, DIRECT, HYBRID
   managerRetentionPercent?: number; // For HYBRID mode: percentage manager retains (1-99)
+  aggregationMethod?: KpiAggregationMethod;
+  weightingBasisKpiId?: string | null;
+  aggregationWeightSource?: KpiAggregationWeightSource;
+  carryPolicy?: KpiCarryPolicy;
+  calculationBasisSource?: KpiCalculationBasisSource;
+  directBasisValue?: string | null;
+  directBasisTargets?: DirectBasisTargetInput[];
+  numeratorLabel?: string | null;
+  denominatorLabel?: string | null;
+  basisUnitType?: KpiUnitType | null;
 }
 
 export interface CreateSupportKpiInput {
@@ -732,6 +786,16 @@ export interface UpdateKpiInput {
   parentId?: string;
   kpiMode?: string;
   managerRetentionPercent?: number;
+  aggregationMethod?: KpiAggregationMethod;
+  weightingBasisKpiId?: string | null;
+  aggregationWeightSource?: KpiAggregationWeightSource;
+  carryPolicy?: KpiCarryPolicy;
+  calculationBasisSource?: KpiCalculationBasisSource;
+  directBasisValue?: string | null;
+  directBasisTargets?: DirectBasisTargetInput[];
+  numeratorLabel?: string | null;
+  denominatorLabel?: string | null;
+  basisUnitType?: KpiUnitType | null;
 }
 
 export interface PaginatedKpis {

@@ -3,6 +3,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -48,7 +49,7 @@ export function KPIInformationCard({
       case "PERCENT":
         return "e.g., 75";
       case "CURRENCY":
-        return "e.g., 1000000 (Million/ETB)";
+        return "e.g., 283,654,789";
       case "HOUR":
         return "e.g., 300";
       case "RATIO":
@@ -142,12 +143,12 @@ export function KPIInformationCard({
           <div>
             <Label htmlFor="baseline">Baseline Value (Optional)</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Input
+              <FormattedNumberInput
                 id="baseline"
-                type="number"
                 step="0.01"
                 value={formData.baseline}
-                onChange={(e) => onInputChange("baseline", e.target.value)}
+                onValueChange={(value) => onInputChange("baseline", value)}
+                currency={formData.unitType === "CURRENCY"}
                 placeholder={unitPlaceholder}
                 disabled={!canEditStructure}
               />
@@ -169,7 +170,7 @@ export function KPIInformationCard({
                   <SelectContent>
                     <SelectItem value="NUMBER">Number (#)</SelectItem>
                     <SelectItem value="PERCENT">Percent (%)</SelectItem>
-                    <SelectItem value="CURRENCY">Currency (Million/ETB)</SelectItem>
+                    <SelectItem value="CURRENCY">Currency (ETB)</SelectItem>
                     <SelectItem value="HOUR">Hours (hrs)</SelectItem>
                     <SelectItem value="RATIO">Ratio (x:y)</SelectItem>
                     <SelectItem value="COUNT">Count (n)</SelectItem>

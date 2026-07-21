@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import {
   Select,
   SelectContent,
@@ -823,14 +824,18 @@ export default function SingleKpiAssignmentDialog({
                               </span>
                             </div>
                           ) : (
-                            <Input
-                              type="number"
+                            <FormattedNumberInput
                               step="0.01"
-                              placeholder="Target"
-                              value={assignee.targetValue}
-                              onChange={(e) =>
-                                updateAssignee(index, "targetValue", e.target.value)
+                              placeholder={
+                                kpi.unitType === "CURRENCY"
+                                  ? "283,654,789"
+                                  : "Target"
                               }
+                              value={assignee.targetValue}
+                              onValueChange={(value) =>
+                                updateAssignee(index, "targetValue", value)
+                              }
+                              currency={kpi.unitType === "CURRENCY"}
                             />
                           )}
                         </div>

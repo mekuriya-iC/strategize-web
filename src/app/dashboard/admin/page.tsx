@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Filter, ChevronDown, Shield, Users, Settings, Database } from "lucide-react";
+import { Filter, ChevronDown, Shield, Users, Settings, Database, Calculator } from "lucide-react";
 
 export default function AdminPanelPage() {
   const router = useRouter();
@@ -133,6 +133,18 @@ export default function AdminPanelPage() {
           <div className="text-center">
             <div className="font-medium text-sm sm:text-base">System Configuration</div>
             <div className="text-xs text-gray-500 hidden sm:block">Configure system settings</div>
+          </div>
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-20 sm:h-24 flex flex-col items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+          onClick={() => router.push("/dashboard/admin/kpi-formulas")}
+        >
+          <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
+          <div className="text-center">
+            <div className="font-medium text-sm sm:text-base">KPI Formulas</div>
+            <div className="text-xs text-gray-500 hidden sm:block">Metrics, templates & formulas</div>
           </div>
         </Button>
 

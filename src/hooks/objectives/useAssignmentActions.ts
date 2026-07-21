@@ -15,7 +15,27 @@ import { buildYearRanges } from "@/components/objectives/YearSelector";
 import { detectKPIType, getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import { appLogger } from "@/lib/logger";
 import { buildAssignedQuarterTargets } from "@/utils/quarterTargetAllocation";
+import {
+  buildDirectBasisTargets,
+  decimalValuesEqualTotal,
+  multiplyBasisByPercent,
+  splitBasisEvenly,
+} from "@/utils/basisCalculation";
+import type { Kpi } from "@/types/graphql";
 
+const measurementUnitFor = (unitType?: string | null): string =>
+  unitType === "PERCENT" ? "PERCENTAGE" : unitType || "NUMBER";
+
+function annualRateTarget(kpi: Kpi): number {
+  if (Number.isFinite(Number(kpi.targetValue))) return Number(kpi.targetValue);
+  const annual = kpi.targets?.find((target) => !target.timeline.includes("-Q"));
+  if (annual) return Number(annual.target);
+  const quarters = kpi.targets?.filter((target) => target.timeline.includes("-Q")) || [];
+  return quarters.length
+    ? quarters.reduce((sum, target) => sum + Number(target.target), 0) /
+        quarters.length
+    : 0;
+}
 
 function getAssigneeObjectiveType(
   sourceType: string,
@@ -43,6 +63,7 @@ export function useAssignmentActions({
     sourceObjective,
     availableKPIs,
     targets,
+    directBasisAllocations,
     assigneeType,
     clearAssignments,
     clearSelectedAssignees,
@@ -84,6 +105,33 @@ export function useAssignmentActions({
     setIsSubmitting(true);
 
     try {
+      for (const sourceKpi of availableKPIs) {
+        if (sourceKpi.calculationBasisSource !== "DIRECT_VALUE") continue;
+        const relevantAssignments = assignments.filter((assignment) =>
+          assignment.kpis.includes(sourceKpi.kpiId),
+        );
+        if (relevantAssignments.length === 0) continue;
+        const retention =
+          sourceKpi.kpiMode === "HYBRID"
+            ? Number(sourceKpi.managerRetentionPercent || 0)
+            : 0;
+        const cascadeBasis =
+          multiplyBasisByPercent(
+            sourceKpi.directBasisValue || "0",
+            100 - retention,
+          ) || "0";
+        const allocations = relevantAssignments.map(
+          (assignment) =>
+            directBasisAllocations[sourceKpi.kpiId]?.[assignment.assigneeId] ||
+            "",
+        );
+        if (!decimalValuesEqualTotal(cascadeBasis, allocations)) {
+          throw new Error(
+            `Basis allocations for "${sourceKpi.name}" must sum exactly to ${Number(cascadeBasis).toLocaleString()}`,
+          );
+        }
+      }
+
       const assignerId = await getAssignerId();
       if (!assignerId) throw new Error("Could not identify current user ID");
 
@@ -146,8 +194,23 @@ export function useAssignmentActions({
             const sourceKpi = availableKPIs.find((k) => k.kpiId === kpiId);
             // Strict check: Ensure we only adding the KPI if it's in the current assignment's list
             if (sourceKpi && !existingKpiNames.has(sourceKpi.name)) {
-              const assignedTarget =
-                targets[sourceKpi.kpiId]?.[assignment.assigneeId] ?? 0;
+              const isDirectBasis =
+                sourceKpi.calculationBasisSource === "DIRECT_VALUE";
+              const assignedTarget = isDirectBasis
+                ? annualRateTarget(sourceKpi)
+                : targets[sourceKpi.kpiId]?.[assignment.assigneeId] ?? 0;
+              const assignedBasis = isDirectBasis
+                ? directBasisAllocations[sourceKpi.kpiId]?.[
+                    assignment.assigneeId
+                  ] || ""
+                : undefined;
+              const directBasisTargets =
+                isDirectBasis && assignedBasis
+                  ? buildDirectBasisTargets(
+                      getTimelineFromContext(),
+                      splitBasisEvenly(assignedBasis),
+                    )
+                  : undefined;
               await createKpi({
                 input: {
                   name: sourceKpi.name,
@@ -157,7 +220,7 @@ export function useAssignmentActions({
                   strategicObjectiveId: targetObjectiveId,
                   parentId: sourceKpi.kpiId,
                   frequency: "QUARTERLY",
-                  measurementUnit: "NUMBER",
+                  measurementUnit: measurementUnitFor(sourceKpi.unitType),
                   organizationId,
                   targetValue: assignedTarget,
                   targets: buildAssignedQuarterTargets(
@@ -171,6 +234,20 @@ export function useAssignmentActions({
                     assignment.assigneeType === "PERSONNEL"
                       ? "DIRECT"
                       : "AGGREGATED",
+                  calculationBasisSource:
+                    sourceKpi.calculationBasisSource || "NONE",
+                  directBasisValue: assignedBasis,
+                  directBasisTargets,
+                  numeratorLabel: sourceKpi.numeratorLabel,
+                  denominatorLabel: sourceKpi.denominatorLabel,
+                  basisUnitType: sourceKpi.basisUnitType,
+                  aggregationMethod: sourceKpi.aggregationMethod,
+                  weightingBasisKpiId:
+                    sourceKpi.calculationBasisSource === "DIRECT_VALUE"
+                      ? undefined
+                      : sourceKpi.weightingBasisKpiId,
+                  aggregationWeightSource: sourceKpi.aggregationWeightSource,
+                  carryPolicy: sourceKpi.carryPolicy,
                 },
               });
             }
@@ -191,25 +268,27 @@ export function useAssignmentActions({
         if (freshObjective) {
           for (const sourceKpiId of assignment.kpis) {
             // STRICT: Get target ONLY for the current assignment.assigneeId
-            const targetValue = targets[sourceKpiId]?.[assignment.assigneeId];
+            const sourceKpi = availableKPIs.find(
+              (k) => k.kpiId === sourceKpiId,
+            );
+            const isDirectBasis =
+              sourceKpi?.calculationBasisSource === "DIRECT_VALUE";
+            const targetValue = isDirectBasis && sourceKpi
+              ? annualRateTarget(sourceKpi)
+              : targets[sourceKpiId]?.[assignment.assigneeId];
 
             if (targetValue === undefined || targetValue === null) {
               continue;
             }
 
             // Map Source KPI ID -> Child KPI ID
-            const sourceKpiName = availableKPIs.find(
-              (k) => k.kpiId === sourceKpiId,
-            )?.name;
+            const sourceKpiName = sourceKpi?.name;
             const childKpi = freshObjective.kpis?.find(
               (k: any) =>
                 k.parent?.kpiId === sourceKpiId || k.name === sourceKpiName,
             );
 
             if (childKpi) {
-              const sourceKpi = availableKPIs.find(
-                (k) => k.kpiId === sourceKpiId,
-              );
               const assignedQuarterTargets = sourceKpi
                 ? buildAssignedQuarterTargets(
                     sourceKpi,
@@ -224,11 +303,36 @@ export function useAssignmentActions({
                 );
               }
 
+              const assignedBasis = isDirectBasis
+                ? directBasisAllocations[sourceKpiId]?.[assignment.assigneeId] || ""
+                : undefined;
+              const directBasisTargets =
+                isDirectBasis && assignedBasis
+                  ? buildDirectBasisTargets(
+                      getTimelineFromContext(),
+                      splitBasisEvenly(assignedBasis),
+                    )
+                  : undefined;
+
               await updateKpi({
                 input: {
                   kpiId: childKpi.kpiId,
                   targetValue,
                   targets: assignedQuarterTargets,
+                  calculationBasisSource:
+                    sourceKpi?.calculationBasisSource || "NONE",
+                  directBasisValue: assignedBasis,
+                  directBasisTargets,
+                  numeratorLabel: sourceKpi?.numeratorLabel,
+                  denominatorLabel: sourceKpi?.denominatorLabel,
+                  basisUnitType: sourceKpi?.basisUnitType,
+                  aggregationMethod: sourceKpi?.aggregationMethod,
+                  weightingBasisKpiId:
+                    sourceKpi?.calculationBasisSource === "DIRECT_VALUE"
+                      ? null
+                      : sourceKpi?.weightingBasisKpiId,
+                  aggregationWeightSource: sourceKpi?.aggregationWeightSource,
+                  carryPolicy: sourceKpi?.carryPolicy,
                   ...(assignment.assigneeType === "PERSONNEL"
                     ? { kpiMode: "DIRECT" }
                     : {}),

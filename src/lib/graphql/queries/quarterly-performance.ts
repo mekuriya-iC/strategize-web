@@ -89,6 +89,9 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         employeeId
         employeeName
         kpiMode
+        aggregationMethod
+        weightingBasisKpiId
+        weightingBasisKpiName
         unitType
         measurementUnit
         customUnitLabel
@@ -99,6 +102,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         originalTarget
         carryIn
         effectiveTarget
+        directBasisTarget
         managerOriginalTarget
         managerCarryIn
         managerEffectiveTarget
@@ -108,11 +112,30 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         planStatus
         directActual
         directAchievementRate
+        directAchievementRateExact
         aggregateActual
+        aggregateActualExact
+        aggregationNumeratorExact
+        aggregationDenominatorExact
+        rollupNumeratorExact
+        rollupDenominatorExact
+        finalActualExact
+        finalActualDecimal
+        formulaCalculationStatus
+        formulaNumeratorExact
+        formulaNumeratorDecimal
+        formulaDenominatorExact
+        formulaDenominatorDecimal
+        formulaResultExact
+        formulaResultDecimal
+        formulaCalculationVersion
         aggregateAchievementRate
+        aggregateAchievementRateExact
         actual
         achievementRate
+        achievementRateExact
         annualContribution
+        annualContributionExact
         carryOut
         managerCarryOut
         teamCarryOut

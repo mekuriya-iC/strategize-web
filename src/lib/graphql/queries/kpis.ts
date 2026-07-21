@@ -44,6 +44,26 @@ export const GET_KPIS = gql`
         assignerId
         kpiMode
         managerRetentionPercent
+        aggregationMethod
+        weightingBasisKpiId
+        aggregationWeightSource
+        carryPolicy
+      calculationType
+      calculationBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+        weightingBasisKpi {
+          kpiId
+          name
+          unitType
+          targetValue
+        }
         createdAt
         updatedAt
         isDeleted
@@ -82,6 +102,7 @@ export const GET_KPIS = gql`
           originalTarget
           carryIn
           effectiveTarget
+        directBasisTarget
           status
           version
         }
@@ -134,6 +155,26 @@ export const GET_KPI = gql`
       assignerId
       kpiMode
       managerRetentionPercent
+      aggregationMethod
+      weightingBasisKpiId
+      aggregationWeightSource
+      carryPolicy
+      calculationType
+      calculationBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+      weightingBasisKpi {
+        kpiId
+        name
+        unitType
+        targetValue
+      }
       createdAt
       updatedAt
       isDeleted
@@ -187,8 +228,21 @@ export const GET_KPI = gql`
         originalTarget
         carryIn
         effectiveTarget
+        directBasisTarget
         status
         version
+      }
+      quarterResults {
+        kpiQuarterResultId
+        quarterPlanId
+        calculationMode
+        finalActual
+        finalAchievementRate
+        rollupNumeratorExact
+        rollupDenominatorExact
+        status
+        calculatedAt
+        finalizedAt
       }
     }
   }
@@ -213,6 +267,19 @@ export const GET_KPIS_BY_OBJECTIVE = gql`
         status
         order
         isActive
+        calculationBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+        aggregationMethod
+        weightingBasisKpiId
+        aggregationWeightSource
+        carryPolicy
         createdAt
         createdBy {
           employeeId
@@ -229,6 +296,7 @@ export const GET_KPIS_BY_OBJECTIVE = gql`
           originalTarget
           carryIn
           effectiveTarget
+        directBasisTarget
           status
           version
         }
@@ -274,6 +342,20 @@ export const GET_MY_KPIS = gql`
         assigneeId
         kpiMode
         managerRetentionPercent
+        aggregationMethod
+        weightingBasisKpiId
+        aggregationWeightSource
+        carryPolicy
+      calculationType
+      calculationBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
         status
         targetStatus
         isActive
@@ -296,6 +378,7 @@ export const GET_MY_KPIS = gql`
           originalTarget
           carryIn
           effectiveTarget
+        directBasisTarget
           status
           version
         }

@@ -239,18 +239,26 @@ export function AddTaskDialog({
     if (session) {
       const sessionEndDate = new Date(session.endDate);
       const taskEndDateTime = buildDateTime(endDate, endTime);
-      
+
       if (taskEndDateTime > sessionEndDate) {
-        toast.error(`Task end date cannot be after session end date (${format(sessionEndDate, "MMM d, yyyy")})`);
+        toast.error(
+          `Task end date cannot be after session end date (${format(sessionEndDate, "MMM d, yyyy")})`,
+        );
         return;
       }
     }
 
     // Validation for unmet tasks being marked as done
-    const isUnmetTask = ["KPI_UNMET", "INITIATIVE_UNMET", "SELF_DEVELOPMENT_UNMET"].includes(taskType);
+    const isUnmetTask = [
+      "KPI_UNMET",
+      "INITIATIVE_UNMET",
+      "SELF_DEVELOPMENT_UNMET",
+    ].includes(taskType);
     if (checkoutStatus === "DONE" && isUnmetTask) {
       if (!attachment || !remark.trim()) {
-        toast.error("Attachment and remark are required when marking unmet tasks as done");
+        toast.error(
+          "Attachment and remark are required when marking unmet tasks as done",
+        );
         return;
       }
     }
@@ -260,11 +268,14 @@ export function AddTaskDialog({
         taskTitle: task.trim(),
         taskLinkType: taskType,
         linkedKpiId:
-          (taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") && linkedKpi
+          (taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") &&
+          linkedKpi
             ? linkedKpi
             : null,
         linkedInitiativeId:
-          (taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET") && linkedInitiative
+          (taskType === "INITIATIVE_FULFILLED" ||
+            taskType === "INITIATIVE_UNMET") &&
+          linkedInitiative
             ? linkedInitiative
             : null,
         relatedToEmployeeId: relatedTo || null,
@@ -274,7 +285,6 @@ export function AddTaskDialog({
         taskStatus: checkoutStatus || "NOT_DONE",
         evidenceUrl: attachment?.name || null,
         challenges: remark.trim() || null,
-        requiresApproval: false,
         isMidWeekTask: isMidWeekTask,
       };
 
@@ -304,7 +314,11 @@ export function AddTaskDialog({
       }
 
       // Show logbook message for fulfilled tasks
-      const fulfilledTypes = ["KPI_FULFILLED", "INITIATIVE_FULFILLED", "SELF_DEVELOPMENT_FULFILLED"];
+      const fulfilledTypes = [
+        "KPI_FULFILLED",
+        "INITIATIVE_FULFILLED",
+        "SELF_DEVELOPMENT_FULFILLED",
+      ];
       if (fulfilledTypes.includes(taskType)) {
         toast.success("Task added to logbook for approval");
       }
@@ -313,13 +327,17 @@ export function AddTaskDialog({
       resetForm();
     } catch (error: any) {
       console.error("Task operation error:", error);
-      
+
       // Check if error is about date validation from backend
-      if (error.message?.includes("end date") || error.message?.includes("session")) {
+      if (
+        error.message?.includes("end date") ||
+        error.message?.includes("session")
+      ) {
         toast.error(error.message);
       } else {
         toast.error(
-          error.message || `Failed to ${editingTask ? "update" : "create"} task`,
+          error.message ||
+            `Failed to ${editingTask ? "update" : "create"} task`,
         );
       }
     }
@@ -440,14 +458,16 @@ export function AddTaskDialog({
                 onChange={(e) => setTask(e.target.value)}
                 className="h-10 text-sm"
               />
-              
+
               {/* Mid-Week Task Checkbox */}
               {!editingTask && (
                 <div className="flex items-center space-x-2 pt-2">
                   <Checkbox
                     id="midWeekTask"
                     checked={isMidWeekTask}
-                    onCheckedChange={(checked) => setIsMidWeekTask(checked as boolean)}
+                    onCheckedChange={(checked) =>
+                      setIsMidWeekTask(checked as boolean)
+                    }
                     disabled={!isMidWeekTask && midWeekTaskCount >= 3}
                   />
                   <label
@@ -500,7 +520,11 @@ export function AddTaskDialog({
               </Label>
               <div className="flex gap-2">
                 {/* ✅ Calendar Popover */}
-                <Popover open={startDateOpen} onOpenChange={setStartDateOpen} modal={true}>
+                <Popover
+                  open={startDateOpen}
+                  onOpenChange={setStartDateOpen}
+                  modal={true}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -530,7 +554,11 @@ export function AddTaskDialog({
                 </Popover>
 
                 {/* ✅ Time Popover */}
-                <Popover open={startTimeOpen} onOpenChange={setStartTimeOpen} modal={true}>
+                <Popover
+                  open={startTimeOpen}
+                  onOpenChange={setStartTimeOpen}
+                  modal={true}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -563,7 +591,11 @@ export function AddTaskDialog({
                 End Date & Time
               </Label>
               <div className="flex gap-2">
-                <Popover open={endDateOpen} onOpenChange={setEndDateOpen} modal={true}>
+                <Popover
+                  open={endDateOpen}
+                  onOpenChange={setEndDateOpen}
+                  modal={true}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -595,7 +627,11 @@ export function AddTaskDialog({
                   </PopoverContent>
                 </Popover>
 
-                <Popover open={endTimeOpen} onOpenChange={setEndTimeOpen} modal={true}>
+                <Popover
+                  open={endTimeOpen}
+                  onOpenChange={setEndTimeOpen}
+                  modal={true}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"

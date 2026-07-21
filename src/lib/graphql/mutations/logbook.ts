@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Logbook Mutations
@@ -13,6 +13,32 @@ export const CREATE_LOGBOOK_ENTRY = gql`
       entryDate
       activityDescription
       entryStatus
+      linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+        calculationType
+      }
+      quarterPlan {
+        kpiQuarterPlanId
+        quarterNumber
+        timeline
+        status
+      }
+      metricObservations {
+        id
+        metricDefinitionId
+        value
+        observedAt
+        metricDefinition {
+          id
+          code
+          name
+          unitType
+          measurementUnit
+          temporalRollupMethod
+        }
+      }
       kpiTargetValue
       kpiAchievedValue
       kpiCompletionPercent
@@ -39,6 +65,32 @@ export const UPDATE_LOGBOOK_ENTRY = gql`
       entryDate
       activityDescription
       entryStatus
+      linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+        calculationType
+      }
+      quarterPlan {
+        kpiQuarterPlanId
+        quarterNumber
+        timeline
+        status
+      }
+      metricObservations {
+        id
+        metricDefinitionId
+        value
+        observedAt
+        metricDefinition {
+          id
+          code
+          name
+          unitType
+          measurementUnit
+          temporalRollupMethod
+        }
+      }
       kpiTargetValue
       kpiAchievedValue
       kpiCompletionPercent

@@ -119,8 +119,8 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                             return null;
                         })()}
 
-                        {/* Quarterly Breakdown Display */}
-                        {qByYear[y] && (
+                        {/* Quarterly Breakdown Display - Only show for non-CORPORATE levels */}
+                        {qByYear[y] && kpi.objective?.type !== "CORPORATE" && (
                             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 border-t border-gray-50 pt-1.5">
                                 {["q1", "q2", "q3", "q4"].map((qKey) => {
                                     const val = (qByYear[y] as any)[qKey];

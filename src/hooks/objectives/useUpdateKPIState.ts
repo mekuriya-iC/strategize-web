@@ -796,17 +796,17 @@ export function useUpdateKPIState({
           formData.kpiMode === "HYBRID" && formData.managerRetentionPercent
             ? parseFloat(formData.managerRetentionPercent)
             : undefined,
-        aggregationMethod: formData.aggregationMethod,
+        aggregationMethod: formData.aggregationMethod || "SUM",
         weightingBasisKpiId:
           formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
           basisSource !== "DIRECT_VALUE"
             ? formData.weightingBasisKpiId || null
             : null,
-        aggregationWeightSource: formData.aggregationWeightSource,
+        aggregationWeightSource: formData.aggregationWeightSource || "PLANNED_TARGET",
         carryPolicy:
           formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
             ? "NONE"
-            : formData.carryPolicy,
+            : (formData.carryPolicy || "ADDITIVE"),
         calculationBasisSource: basisSource,
         directBasisValue:
           basisSource === "DIRECT_VALUE" ? formData.directBasisValue : null,

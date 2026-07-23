@@ -73,6 +73,7 @@ export const GET_OBJECTIVES = gql`
           status
           targetValue
           calculationBasisSource
+          actualBasisSource
           directBasisValue
           directBasisTargets {
             timeline
@@ -203,6 +204,7 @@ export const GET_OBJECTIVE = gql`
         measurementUnit
         targetValue
         calculationBasisSource
+        actualBasisSource
         directBasisValue
         directBasisTargets {
           timeline

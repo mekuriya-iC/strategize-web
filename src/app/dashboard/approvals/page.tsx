@@ -95,6 +95,10 @@ type LogbookReviewEntry = {
   entryStatus?: string | null;
   contributionUnit?: string | null;
   kpiCompletionPercent?: number | null;
+  kpiResultInputMode?: string | null;
+  kpiActualNumeratorExact?: string | null;
+  kpiActualRateExact?: string | null;
+  kpiActualBasisExact?: string | null;
   evidenceDescription?: string | null;
   evidenceUrl?: string | null;
   decisionsMade?: string | null;
@@ -107,6 +111,9 @@ type LogbookReviewEntry = {
     kpiId: string;
     name?: string | null;
     calculationType?: LogbookKpiCalculationType | null;
+    actualBasisSource?: string | null;
+    numeratorLabel?: string | null;
+    denominatorLabel?: string | null;
   } | null;
   quarterPlan?: {
     quarterNumber: number;
@@ -850,6 +857,55 @@ export default function ApprovalsPage() {
                         </p>
                       )}
                   </div>
+                </div>
+              )}
+
+              {(selectedLogbookEntry.kpiActualNumeratorExact ||
+                selectedLogbookEntry.kpiActualBasisExact ||
+                selectedLogbookEntry.kpiActualRateExact) && (
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <Label className="text-sm font-semibold text-blue-950">
+                    Exact KPI result components
+                  </Label>
+                  <div className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-blue-700">
+                        {selectedLogbookEntry.linkedKpi?.numeratorLabel ||
+                          "Numerator"}
+                      </p>
+                      <p className="font-mono font-medium">
+                        {selectedLogbookEntry.kpiActualNumeratorExact ||
+                          "Derived by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-700">
+                        {selectedLogbookEntry.linkedKpi?.denominatorLabel ||
+                          "Denominator"}
+                      </p>
+                      <p className="font-mono font-medium">
+                        {selectedLogbookEntry.kpiActualBasisExact ||
+                          "Resolved by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-700">Result</p>
+                      <p className="font-mono font-medium">
+                        {selectedLogbookEntry.kpiActualRateExact ||
+                          "Derived by server"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-800">
+                    Denominator source:{" "}
+                    {selectedLogbookEntry.linkedKpi?.actualBasisSource ===
+                    "ENTER_ACTUAL_BASIS"
+                      ? "Entered actual denominator"
+                      : selectedLogbookEntry.linkedKpi?.actualBasisSource ===
+                          "LINKED_KPI_ACTUAL"
+                        ? "Linked KPI approved actual"
+                        : "Approved denominator plan"}
+                  </p>
                 </div>
               )}
 

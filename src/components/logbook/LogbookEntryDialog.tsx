@@ -29,13 +29,18 @@ import {
 import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/lib/utils";
 import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
-import { GET_LOGBOOK_FORMULA_FOR_CONTEXT } from "@/lib/graphql/queries/logbook";
+import {
+  GET_KPI_RESULT_ENTRY_CONTEXT,
+  GET_LOGBOOK_FORMULA_FOR_CONTEXT,
+} from "@/lib/graphql/queries/logbook";
 import {
   getOrderedLogbookFormulaSources,
   isLogbookFormulaCalculationType,
   type FrontendLogbookItem,
   type LogbookFormulaForContextQueryData,
   type LogbookFormulaForContextQueryVariables,
+  type KpiResultEntryContextQueryData,
+  type KpiResultEntryContextQueryVariables,
   type LogbookKpisQueryData,
   type LogbookKpisQueryVariables,
   type LogbookMetricFormulaSource,
@@ -49,6 +54,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { KpiResultInputMode, KpiUnitType } from "@/types/graphql";
+import {
+  KpiResultEntryFields,
+  getResultEntryResolvedBasis,
+  isKpiResultEntryValid,
+} from "@/components/kpis/KpiResultEntryFields";
+import { calculateKpiResultPreview } from "@/utils/basisCalculation";
 
 interface LogbookEntryDialogProps {
   open: boolean;
@@ -152,6 +164,11 @@ export function LogbookEntryDialog({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [linkedKpiId, setLinkedKpiId] = useState("");
   const [kpiAchievedValue, setKpiAchievedValue] = useState("");
+  const [kpiResultInputMode, setKpiResultInputMode] =
+    useState<KpiResultInputMode>("NUMERATOR");
+  const [kpiActualNumeratorExact, setKpiActualNumeratorExact] = useState("");
+  const [kpiActualRateExact, setKpiActualRateExact] = useState("");
+  const [kpiActualBasisExact, setKpiActualBasisExact] = useState("");
   const [kpiTargetValue, setKpiTargetValue] = useState("");
   const [contributionUnit, setContributionUnit] = useState("");
   const [metricObservationValues, setMetricObservationValues] = useState<
@@ -170,41 +187,34 @@ export function LogbookEntryDialog({
     !isFormulaKpi &&
     (selectedKpi?.calculationBasisSource === "DIRECT_VALUE" ||
       selectedKpi?.calculationBasisSource === "LINKED_KPI");
-  const entryQuarterNumber = (() => {
-    if (!selectedPeriod?.startDate) return null;
-    const periodStart = new Date(`${selectedPeriod.startDate}T00:00:00`);
-    const monthDifference =
-      (entryDate.getFullYear() - periodStart.getFullYear()) * 12 +
-      entryDate.getMonth() -
-      periodStart.getMonth();
-    if (monthDifference < 0 || monthDifference >= 12) return null;
-    return Math.floor(monthDifference / 3) + 1;
-  })();
-  const directQuarterBasis =
-    selectedKpi?.calculationBasisSource === "DIRECT_VALUE"
-      ? selectedKpi.quarterPlans?.find(
-          (plan) => plan.quarterNumber === entryQuarterNumber,
-        )?.directBasisTarget ?? null
-      : null;
-  const basisMultiplier = selectedKpi?.unitType === "PERCENT" ? 100 : 1;
-  const basisEntryResult =
-    isBasisDrivenKpi && directQuarterBasis && Number(directQuarterBasis) > 0
-      ? (Number(kpiAchievedValue || 0) / Number(directQuarterBasis)) *
-        basisMultiplier
-      : null;
-  const requiredQuarterNumerator =
-    directQuarterBasis && selectedKpi?.targetValue != null
-      ? (Number(directQuarterBasis) * Number(selectedKpi.targetValue)) /
-        basisMultiplier
-      : null;
-  const basisUnitLabel =
-    selectedKpi?.basisUnitType === "CURRENCY"
-      ? "ETB"
-      : selectedKpi?.basisUnitType === "HOUR"
-        ? "hours"
-        : selectedKpi?.basisUnitType === "COUNT"
-          ? "count"
-          : "value";
+  const { data: resultContextData, loading: resultContextLoading } = useQuery<
+    KpiResultEntryContextQueryData,
+    KpiResultEntryContextQueryVariables
+  >(GET_KPI_RESULT_ENTRY_CONTEXT, {
+    variables: {
+      kpiId: linkedKpiId,
+      entryDate: format(entryDate, "yyyy-MM-dd"),
+    },
+    skip: !open || !linkedKpiId || !isBasisDrivenKpi,
+    fetchPolicy: "cache-and-network",
+  });
+  const resultEntryContext = resultContextData?.kpiResultEntryContext;
+  const actualBasisSource =
+    resultEntryContext?.actualBasisSource ||
+    selectedKpi?.actualBasisSource ||
+    "USE_APPROVED_BASIS";
+  const resolvedBasisExact = getResultEntryResolvedBasis({
+    actualBasisSource,
+    actualBasisExact: kpiActualBasisExact,
+    context: resultEntryContext,
+  });
+  const resultPreview = calculateKpiResultPreview({
+    inputMode: kpiResultInputMode,
+    numeratorExact: kpiActualNumeratorExact,
+    rateExact: kpiActualRateExact,
+    basisExact: resolvedBasisExact,
+    unitType: (selectedKpi?.unitType || "PERCENT") as KpiUnitType,
+  });
   const { data: formulaData, loading: formulaLoading } = useQuery<
     LogbookFormulaForContextQueryData,
     LogbookFormulaForContextQueryVariables
@@ -245,6 +255,10 @@ export function LogbookEntryDialog({
     setAttachment(null);
     setLinkedKpiId("");
     setKpiAchievedValue("");
+    setKpiResultInputMode("NUMERATOR");
+    setKpiActualNumeratorExact("");
+    setKpiActualRateExact("");
+    setKpiActualBasisExact("");
     setKpiTargetValue("");
     setContributionUnit("");
     setMetricObservationValues({});
@@ -275,6 +289,20 @@ export function LogbookEntryDialog({
         ) && editingEntry.kpiAchievedValue != null
           ? String(editingEntry.kpiAchievedValue)
           : "",
+      );
+      setKpiResultInputMode(editingEntry.kpiResultInputMode || "NUMERATOR");
+      setKpiActualNumeratorExact(
+        editingEntry.kpiActualNumeratorExact ||
+          (editingEntry.kpiAchievedValue != null
+            ? String(editingEntry.kpiAchievedValue)
+            : ""),
+      );
+      setKpiActualRateExact(editingEntry.kpiActualRateExact || "");
+      setKpiActualBasisExact(
+        editingEntry.kpiActualBasisExact ||
+          (editingEntry.kpiActualDenominator != null
+            ? String(editingEntry.kpiActualDenominator)
+            : ""),
       );
       setKpiTargetValue(
         editingEntry.kpiTargetValue != null
@@ -308,6 +336,10 @@ export function LogbookEntryDialog({
     const nextKpiId = value === "none" ? "" : value;
     setLinkedKpiId(nextKpiId);
     setMetricObservationValues({});
+    setKpiResultInputMode("NUMERATOR");
+    setKpiActualNumeratorExact("");
+    setKpiActualRateExact("");
+    setKpiActualBasisExact("");
 
     const selectedKpi = availableKpis.find(
       (kpi) => kpi.kpiId === nextKpiId,
@@ -338,15 +370,40 @@ export function LogbookEntryDialog({
     }
 
     const achieved =
-      !isFormulaKpi && kpiAchievedValue ? Number(kpiAchievedValue) : null;
+      !isFormulaKpi && !isBasisDrivenKpi && kpiAchievedValue
+        ? Number(kpiAchievedValue)
+        : null;
     const target = kpiTargetValue ? Number(kpiTargetValue) : null;
+    const basisAvailable =
+      actualBasisSource === "ENTER_ACTUAL_BASIS"
+        ? Number(kpiActualBasisExact) > 0
+        : Boolean(resultEntryContext?.basisAvailable);
 
     if (
       linkedKpiId &&
       !isFormulaKpi &&
+      !isBasisDrivenKpi &&
       (achieved == null || Number.isNaN(achieved))
     ) {
       toast.error("Please enter the KPI achieved value");
+      return;
+    }
+    if (
+      isBasisDrivenKpi &&
+      !isKpiResultEntryValid({
+        inputMode: kpiResultInputMode,
+        numeratorExact: kpiActualNumeratorExact,
+        rateExact: kpiActualRateExact,
+        resolvedBasisExact,
+        basisAvailable,
+      })
+    ) {
+      toast.error(
+        resultEntryContext?.message ||
+          (actualBasisSource === "LINKED_KPI_ACTUAL"
+            ? "The linked KPI actual is not approved or available yet"
+            : `Enter a valid ${selectedKpi?.denominatorLabel || "denominator"}`),
+      );
       return;
     }
     if (isFormulaKpi) {
@@ -394,12 +451,37 @@ export function LogbookEntryDialog({
       };
 
       if (!isFormulaKpi) {
-        entryData.kpiAchievedValue = achieved;
         const resultForProgress = isBasisDrivenKpi
-          ? basisEntryResult
+          ? Number(resultPreview.rateExact)
           : achieved;
+        entryData.kpiAchievedValue = isBasisDrivenKpi
+          ? Number(resultPreview.numeratorExact)
+          : achieved;
+        entryData.kpiActualDenominator = isBasisDrivenKpi
+          ? Number(resolvedBasisExact)
+          : null;
+        entryData.kpiResultInputMode = isBasisDrivenKpi
+          ? kpiResultInputMode
+          : null;
+        entryData.kpiActualNumeratorExact = isBasisDrivenKpi
+          ? kpiResultInputMode === "NUMERATOR"
+            ? kpiActualNumeratorExact
+            : null
+          : null;
+        entryData.kpiActualRateExact = isBasisDrivenKpi
+          ? kpiResultInputMode === "RATE_AND_BASIS"
+            ? kpiActualRateExact
+            : null
+          : null;
+        entryData.kpiActualBasisExact =
+          isBasisDrivenKpi && actualBasisSource === "ENTER_ACTUAL_BASIS"
+            ? kpiActualBasisExact
+            : null;
         entryData.kpiCompletionPercent =
-          resultForProgress != null && target && target > 0
+          resultForProgress != null &&
+          Number.isFinite(resultForProgress) &&
+          target &&
+          target > 0
             ? Number(((resultForProgress / target) * 100).toFixed(2))
             : null;
       }
@@ -689,91 +771,67 @@ export function LogbookEntryDialog({
                 </div>
               ) : linkedKpiId ? (
                 <div className="space-y-3">
-                  {isBasisDrivenKpi && (
-                    <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
-                      <p className="font-medium">
-                        Enter {selectedKpi?.numeratorLabel || "the numerator value"}, not the finished {selectedKpi?.unitType === "RATIO" ? "ratio" : "percentage"}.
-                      </p>
-                      <p className="mt-1 text-xs text-blue-800">
-                        The approved scorecard result is calculated as {selectedKpi?.numeratorLabel || "numerator"} ÷ {selectedKpi?.denominatorLabel || "basis"}{selectedKpi?.unitType === "PERCENT" ? " × 100" : ""}.
-                      </p>
-                      {directQuarterBasis && (
-                        <div className="mt-2 grid gap-1 text-xs sm:grid-cols-3">
-                          <span>
-                            Q{entryQuarterNumber} {selectedKpi?.denominatorLabel || "basis"}: <strong>{Number(directQuarterBasis).toLocaleString()} {basisUnitLabel}</strong>
-                          </span>
-                          <span>
-                            Required numerator: <strong>{Number(requiredQuarterNumerator || 0).toLocaleString()} {basisUnitLabel}</strong>
-                          </span>
-                          <span>
-                            Entry-only result preview: <strong>{basisEntryResult == null ? "—" : selectedKpi?.unitType === "RATIO" ? `${basisEntryResult.toFixed(3)}:1` : `${basisEntryResult.toFixed(2)}%`}</strong>
-                          </span>
-                        </div>
-                      )}
-                      {selectedKpi?.calculationBasisSource === "LINKED_KPI" && (
-                        <p className="mt-2 text-xs text-blue-800">
-                          The denominator is resolved from the linked basis KPI after approval.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600 dark:text-gray-400">
-                        {isBasisDrivenKpi
-                          ? selectedKpi?.numeratorLabel || "Numerator value"
-                          : "Achieved Value"}
-                      </Label>
-                      <FormattedNumberInput
-                        step="any"
-                        min="0"
-                        value={kpiAchievedValue}
-                        onValueChange={setKpiAchievedValue}
-                        currency={
-                          isBasisDrivenKpi
-                            ? selectedKpi?.basisUnitType === "CURRENCY"
-                            : selectedKpi?.unitType === "CURRENCY"
-                        }
-                        placeholder="0"
-                        className="h-10 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600 dark:text-gray-400">
-                        {isBasisDrivenKpi ? "Target result" : "Target Value"}
-                      </Label>
-                      <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={kpiTargetValue}
-                        onChange={(e) => setKpiTargetValue(e.target.value)}
-                        placeholder="Target"
-                        disabled={isBasisDrivenKpi}
-                        className="h-10 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600 dark:text-gray-400">
-                        Unit
-                      </Label>
-                      {isBasisDrivenKpi ? (
-                        <Input
-                          value={basisUnitLabel}
-                          disabled
+                  {isBasisDrivenKpi ? (
+                    <KpiResultEntryFields
+                      unitType={(selectedKpi?.unitType || "PERCENT") as KpiUnitType}
+                      inputMode={kpiResultInputMode}
+                      onInputModeChange={setKpiResultInputMode}
+                      numeratorExact={kpiActualNumeratorExact}
+                      onNumeratorExactChange={setKpiActualNumeratorExact}
+                      rateExact={kpiActualRateExact}
+                      onRateExactChange={setKpiActualRateExact}
+                      actualBasisExact={kpiActualBasisExact}
+                      onActualBasisExactChange={setKpiActualBasisExact}
+                      context={resultEntryContext}
+                      contextLoading={resultContextLoading}
+                      fallbackActualBasisSource={selectedKpi?.actualBasisSource}
+                      fallbackNumeratorLabel={selectedKpi?.numeratorLabel}
+                      fallbackDenominatorLabel={selectedKpi?.denominatorLabel}
+                      fallbackBasisUnitType={selectedKpi?.basisUnitType}
+                    />
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Achieved Value
+                        </Label>
+                        <FormattedNumberInput
+                          step="any"
+                          min="0"
+                          value={kpiAchievedValue}
+                          onValueChange={setKpiAchievedValue}
+                          currency={selectedKpi?.unitType === "CURRENCY"}
+                          placeholder="0"
                           className="h-10 text-sm"
                         />
-                      ) : (
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Target Value
+                        </Label>
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={kpiTargetValue}
+                          onChange={(e) => setKpiTargetValue(e.target.value)}
+                          placeholder="Target"
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Unit
+                        </Label>
                         <Input
                           value={contributionUnit}
                           onChange={(e) => setContributionUnit(e.target.value)}
                           placeholder="%, ETB, tasks..."
                           className="h-10 text-sm"
                         />
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               ) : null}
             </div>

@@ -158,6 +158,12 @@ export default function UpdateKPIForm({
 
   const handleBasisSourceChange = (source: KpiCalculationBasisSource) => {
     updateField("calculationBasisSource", source);
+    if (
+      source !== "LINKED_KPI" &&
+      formData.actualBasisSource === "LINKED_KPI_ACTUAL"
+    ) {
+      updateField("actualBasisSource", "USE_APPROVED_BASIS");
+    }
     if (source === "DIRECT_VALUE" || source === "LINKED_KPI") {
       updateField("aggregationMethod", "DENOMINATOR_WEIGHTED_AVERAGE");
       updateField("carryPolicy", "NONE");
@@ -317,6 +323,10 @@ export default function UpdateKPIForm({
             targetValue={annualTarget}
             source={formData.calculationBasisSource}
             onSourceChange={handleBasisSourceChange}
+            actualBasisSource={formData.actualBasisSource}
+            onActualBasisSourceChange={(value) =>
+              updateField("actualBasisSource", value)
+            }
             numeratorLabel={formData.numeratorLabel}
             onNumeratorLabelChange={(value) => updateField("numeratorLabel", value)}
             denominatorLabel={formData.denominatorLabel}

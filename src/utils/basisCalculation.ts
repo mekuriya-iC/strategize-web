@@ -1,6 +1,7 @@
 import type {
   DirectBasisTargetInput,
   KpiCalculationBasisSource,
+  KpiResultInputMode,
   KpiUnitType,
 } from "@/types/graphql";
 
@@ -130,6 +131,175 @@ export function splitBasisAmong(annualBasis: string, count: number): string[] {
       precision,
     ),
   );
+}
+
+export function allocateBasisQuarters(
+  annualAllocations: string[],
+  parentQuarterValues: string[],
+): BasisQuarterValues[] | null {
+  if (annualAllocations.length === 0 || parentQuarterValues.length !== 4) {
+    return null;
+  }
+  const parsed = [...annualAllocations, ...parentQuarterValues].map(decimalParts);
+  if (parsed.some((value) => value === null)) return null;
+
+  const precision = Math.max(...parsed.map((value) => value!.precision));
+  const rows = annualAllocations.map((value) => scaledValue(value, precision)!);
+  const columns = parentQuarterValues.map(
+    (value) => scaledValue(value, precision)!,
+  );
+  const rowTotal = rows.reduce((sum, value) => sum + value, BigInt(0));
+  const columnTotal = columns.reduce((sum, value) => sum + value, BigInt(0));
+  if (rowTotal <= BigInt(0) || rowTotal !== columnTotal) return null;
+
+  // Start with proportional floor allocations. The remaining row and column
+  // deficits are only rounding units, then distribute those units exactly.
+  const matrix = rows.map((row) =>
+    columns.map((column) => (row * column) / rowTotal),
+  );
+  const rowDeficits = rows.map(
+    (row, rowIndex) =>
+      row - matrix[rowIndex].reduce((sum, value) => sum + value, BigInt(0)),
+  );
+  const columnDeficits = columns.map(
+    (column, columnIndex) =>
+      column -
+      matrix.reduce(
+        (sum, row) => sum + row[columnIndex],
+        BigInt(0),
+      ),
+  );
+
+  for (let rowIndex = 0; rowIndex < matrix.length; rowIndex += 1) {
+    for (
+      let columnIndex = 0;
+      columnIndex < 4 && rowDeficits[rowIndex] > BigInt(0);
+      columnIndex += 1
+    ) {
+      if (columnDeficits[columnIndex] <= BigInt(0)) continue;
+      const adjustment =
+        rowDeficits[rowIndex] < columnDeficits[columnIndex]
+          ? rowDeficits[rowIndex]
+          : columnDeficits[columnIndex];
+      matrix[rowIndex][columnIndex] += adjustment;
+      rowDeficits[rowIndex] -= adjustment;
+      columnDeficits[columnIndex] -= adjustment;
+    }
+  }
+
+  if (
+    rowDeficits.some((value) => value !== BigInt(0)) ||
+    columnDeficits.some((value) => value !== BigInt(0))
+  ) {
+    return null;
+  }
+
+  return matrix.map((quarters) => ({
+    q1: formatScaled(quarters[0], precision),
+    q2: formatScaled(quarters[1], precision),
+    q3: formatScaled(quarters[2], precision),
+    q4: formatScaled(quarters[3], precision),
+  }));
+}
+
+export interface KpiResultPreview {
+  numeratorExact: string | null;
+  basisExact: string | null;
+  rateExact: string | null;
+}
+
+export const isExactDecimal = (value?: string | null): boolean => {
+  if (value === undefined || value === null || value.trim() === "") return false;
+  return decimalParts(value) !== null;
+};
+
+export const isPositiveExactDecimal = (value?: string | null): boolean => {
+  if (!value) return false;
+  const parts = decimalParts(value);
+  return parts !== null && parts.digits > BigInt(0);
+};
+
+function divideExactDecimal(
+  numerator: string,
+  denominator: string,
+  multiplier: 1 | 100,
+  precision = 12,
+): string | null {
+  const numeratorParts = decimalParts(numerator);
+  const denominatorParts = decimalParts(denominator);
+  if (
+    !numeratorParts ||
+    !denominatorParts ||
+    denominatorParts.digits <= BigInt(0)
+  ) {
+    return null;
+  }
+
+  const scaledNumerator =
+    numeratorParts.digits *
+    BigInt(multiplier) *
+    BigInt(10) ** BigInt(denominatorParts.precision + precision);
+  const scaledDenominator =
+    denominatorParts.digits *
+    BigInt(10) ** BigInt(numeratorParts.precision);
+  const rounded =
+    (scaledNumerator + scaledDenominator / BigInt(2)) / scaledDenominator;
+  return formatScaled(rounded, precision);
+}
+
+function multiplyRateByBasisExact(
+  rate: string,
+  basis: string,
+  multiplier: 1 | 100,
+): string | null {
+  const rateParts = decimalParts(rate);
+  const basisParts = decimalParts(basis);
+  if (!rateParts || !basisParts) return null;
+
+  return formatScaled(
+    rateParts.digits * basisParts.digits,
+    rateParts.precision + basisParts.precision + (multiplier === 100 ? 2 : 0),
+  );
+}
+
+export function calculateKpiResultPreview({
+  inputMode,
+  numeratorExact,
+  rateExact,
+  basisExact,
+  unitType,
+}: {
+  inputMode: KpiResultInputMode;
+  numeratorExact?: string | null;
+  rateExact?: string | null;
+  basisExact?: string | null;
+  unitType: KpiUnitType;
+}): KpiResultPreview {
+  const normalizedBasis = basisExact?.replace(/,/g, "").trim() || null;
+  if (!normalizedBasis || !isPositiveExactDecimal(normalizedBasis)) {
+    return { numeratorExact: null, basisExact: normalizedBasis, rateExact: null };
+  }
+
+  const multiplier = getRateMultiplier(unitType);
+  if (inputMode === "NUMERATOR") {
+    const normalizedNumerator = numeratorExact?.replace(/,/g, "").trim() || null;
+    return {
+      numeratorExact: normalizedNumerator,
+      basisExact: normalizedBasis,
+      rateExact: normalizedNumerator
+        ? divideExactDecimal(normalizedNumerator, normalizedBasis, multiplier)
+        : null,
+    };
+  }
+
+  const normalizedRate = rateExact?.replace(/,/g, "").trim() || null;
+  return {
+    numeratorExact: normalizedRate
+      ? multiplyRateByBasisExact(normalizedRate, normalizedBasis, multiplier)
+      : null,
+    basisExact: normalizedBasis,
+    rateExact: normalizedRate,
+  };
 }
 
 export function calculateRequiredNumerator(

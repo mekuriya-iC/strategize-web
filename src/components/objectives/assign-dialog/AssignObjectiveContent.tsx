@@ -2,28 +2,31 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Users, CheckCircle, AlertCircle } from "lucide-react";
+import { Building2, Users, CheckCircle } from "lucide-react";
 import { AssigneeTab } from "./AssigneeTab";
 import { KPISelectionCard } from "./KPISelectionCard";
 import { TargetAssignmentCard } from "./TargetAssignmentCard";
 import { AssignmentListCard } from "./AssignmentListCard";
-import { AssignmentPreviewCard } from "./AssignmentPreviewCard";
-import { useAssignmentContext } from "@/context/AssignmentContext";
+import {
+    useAssignmentContext,
+    type AssigneeType,
+} from "@/context/AssignmentContext";
 import { useAssignmentActions } from "@/hooks/objectives/useAssignmentActions";
-import { useAssignmentData } from "@/hooks/objectives/useAssignmentData";
 
 export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () => void; onClose: () => void }) {
     const {
         sourceObjective: objective,
         assigneeType,
         setAssigneeType,
-        selectedAssignees,
-        selectedKPIs,
         availableKPIs,
         assignments,
-        addAssignment,
         removeAssignment
     } = useAssignmentContext();
 
@@ -52,43 +55,6 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
         return count || 1;
     };
 
-    // Add to assignment list handler
-    const handleAddToAssignments = () => {
-        selectedAssignees.forEach(assigneeId => {
-            // We need name here. In context refactor, we stored ID only.
-            // We assume the hook `useAssignmentData` has the data. 
-            // However, getting the name strictly from ID without looking up the list is hard.
-            // Ideally, `toggleAssignee` should store object, or we look it up here.
-            // Simplification: We will just push IDs, and let visual components lookup names.
-            // BUT `assignments` in context expects `assigneeName`.
-            // Let's rely on looking up via `useAssignmentData` cache or passed items? 
-            // Actually `AssigneeTab` has the items. 
-            // BETTER: `toggleAssignee` in context could accept `{ id, name, type }`?
-            // For now, let's fix this in a follow-up if needed, but assuming we can look it up or passed name.
-            // Wait, `selectedAssignees` is just string[].
-            // Let's modify usage in `AssigneeTab` to simple toggle. 
-
-            // Real fix: We need the name to store in `assignments`.
-            // Since we don't have easy access to the list here (it's inside useAssignmentData which fetches based on type),
-            // We can change `selectedAssignees` to store objects or fetch data here.
-            // Let's assume we can fetch data here? No, that causes waterfall.
-            // Let's compromise: The User sees "selectedAssignees" in the tab.
-            // When they click "Add", we iterate and find names?
-            // Or simpler: change context `toggleAssignee` to take `name`.
-        });
-
-        // Actually, let's look at `useAssignmentContext`. `addAssignment` takes `Assignment` object.
-        // We need to construct it.
-        // We can't easily construct it here without the list of items.
-
-        // ALERT: Structural Gap.
-        // `AssigneeTab` has the data.
-        // We should probably move "Add to List" button INSIDE `AssigneeTab`? 
-        // OR have `AssigneeTab` hoist the data up?
-        // OR have `useAssignmentData` be called here too?
-
-        // Let's call `useAssignmentData` here to get the current items to lookup names.
-    };
 
 
     return (
@@ -103,7 +69,7 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
 
             <Tabs
                 value={assigneeType}
-                onValueChange={(value) => setAssigneeType(value as any)}
+                onValueChange={(value) => setAssigneeType(value as AssigneeType)}
             >
                 <TabsList className={`grid w-full grid-cols-${getTabCount()}`}>
                     {effectiveLevel === "CORPORATE" && (
@@ -168,7 +134,12 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
 
 // Sub-component to handle the "Add to List" logic which requires data access
 function AddToAssignmentButton() {
-    const { selectedAssignees, selectedKPIs, assigneeType, addAssignment, clearSelectedAssignees } = useAssignmentContext();
+    const {
+        selectedAssignees,
+        selectedKPIs,
+        addAssignment,
+        clearSelectedAssignees,
+    } = useAssignmentContext();
 
     const handleAdd = () => {
         selectedAssignees.forEach(assignee => {
@@ -185,8 +156,11 @@ function AddToAssignmentButton() {
     if (selectedAssignees.length === 0 || selectedKPIs.length === 0) return null;
 
     return (
-        <div className="flex justify-center">
-            <Button onClick={handleAdd} className="bg-green-600 hover:bg-green-700 text-white">
+        <div className="space-y-2 text-center">
+            <Button
+                onClick={handleAdd}
+                className="bg-green-600 hover:bg-green-700 text-white"
+            >
                 Add {selectedAssignees.length} to Assignment List
             </Button>
         </div>

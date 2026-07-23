@@ -71,6 +71,18 @@ export function KPISelectionCard() {
                         Cascade portion: {100 - kpi.managerRetentionPercent}%
                       </span>
                     )}
+                    {kpi.calculationBasisSource === "DIRECT_VALUE" && (
+                      <span>Approved denominator allocation required</span>
+                    )}
+                    {kpi.calculationBasisSource === "LINKED_KPI" && (
+                      <span className="text-blue-700">
+                        Requires linked denominator KPI:{" "}
+                        {kpis.find(
+                          (candidate) =>
+                            candidate.kpiId === kpi.weightingBasisKpiId,
+                        )?.name || "not available in this objective"}
+                      </span>
+                    )}
                     {isDirect && <span>Direct KPI: not cascaded</span>}
                   </div>
                 </div>

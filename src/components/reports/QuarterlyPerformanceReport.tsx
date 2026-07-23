@@ -967,7 +967,7 @@ function QuarterDetailDialog({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">
-                Denominator-weighted calculation
+                Numerator / denominator component rollup
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -998,8 +998,9 @@ function QuarterDetailDialog({
                   </p>
                 )}
               <p className="text-xs text-muted-foreground">
-                Child percentages are multiplied by their full basis values. No
-                child weight is rounded before aggregation.
+                Child numerators and denominators are summed before the rate is
+                calculated. Child rates are never averaged, and no component is
+                rounded before aggregation.
               </p>
             </CardContent>
           </Card>

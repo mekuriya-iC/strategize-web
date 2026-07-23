@@ -57,6 +57,21 @@ export interface Kpi {
   weightingBasisKpiId?: string | null;
   aggregationWeightSource?: "PLANNED_TARGET" | "APPROVED_ACTUAL";
   carryPolicy?: "ADDITIVE" | "NONE";
+  calculationType?: "MANUAL_VALUE" | "RATIO_FORMULA" | "WEIGHTED_INDEX";
+  calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI";
+  actualBasisSource?:
+    | "USE_APPROVED_BASIS"
+    | "ENTER_ACTUAL_BASIS"
+    | "LINKED_KPI_ACTUAL";
+  directBasisValue?: string | null;
+  directBasisTargets?: Array<{ timeline: string; value: string }>;
+  numeratorLabel?: string | null;
+  denominatorLabel?: string | null;
+  basisUnitType?: string | null;
+  quarterPlans?: Array<{
+    quarterNumber: number;
+    directBasisTarget?: string | null;
+  }>;
   weightingBasisKpi?: { kpiId: string; name: string; unitType?: string } | null;
   objective?: KpiObjective;
   createdBy?: KpiCreatedBy;

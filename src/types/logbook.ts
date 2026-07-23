@@ -1,3 +1,8 @@
+import type {
+  KpiActualBasisSource,
+  KpiResultInputMode,
+} from "@/types/graphql";
+
 export type LogbookKpiCalculationType =
   | "MANUAL_VALUE"
   | "RATIO_FORMULA"
@@ -101,6 +106,7 @@ export interface LogbookKpiOption {
   managerRetentionPercent?: number | null;
   calculationType?: LogbookKpiCalculationType | null;
   calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
+  actualBasisSource?: KpiActualBasisSource | null;
   directBasisValue?: string | null;
   numeratorLabel?: string | null;
   denominatorLabel?: string | null;
@@ -124,6 +130,31 @@ export interface LogbookKpisQueryVariables {
   page?: number;
   limit?: number;
   strategicPeriodId?: string;
+}
+
+export interface KpiResultEntryContext {
+  quarterPlanId?: string | null;
+  quarterNumber?: number | null;
+  actualBasisSource: KpiActualBasisSource;
+  numeratorLabel?: string | null;
+  denominatorLabel?: string | null;
+  basisUnitType?: string | null;
+  approvedBasisExact?: string | null;
+  linkedBasisKpiId?: string | null;
+  linkedBasisKpiName?: string | null;
+  linkedActualBasisExact?: string | null;
+  resolvedBasisExact?: string | null;
+  basisAvailable: boolean;
+  message?: string | null;
+}
+
+export interface KpiResultEntryContextQueryData {
+  kpiResultEntryContext?: KpiResultEntryContext | null;
+}
+
+export interface KpiResultEntryContextQueryVariables {
+  kpiId: string;
+  entryDate: string;
 }
 
 interface LogbookFormulaSourceBase {
@@ -295,6 +326,7 @@ export interface FrontendLogbookItem {
     measurementUnit?: string | null;
     calculationType?: LogbookKpiCalculationType | null;
     calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
+    actualBasisSource?: KpiActualBasisSource | null;
     directBasisValue?: string | null;
     numeratorLabel?: string | null;
     denominatorLabel?: string | null;
@@ -313,6 +345,11 @@ export interface FrontendLogbookItem {
   metricObservations?: LogbookMetricObservation[];
   kpiTargetValue?: number | null;
   kpiAchievedValue?: number | null;
+  kpiActualDenominator?: number | null;
+  kpiResultInputMode?: KpiResultInputMode | null;
+  kpiActualNumeratorExact?: string | null;
+  kpiActualRateExact?: string | null;
+  kpiActualBasisExact?: string | null;
   kpiCompletionPercent?: number | null;
   contributionUnit?: string;
   strategicPeriodId?: string;

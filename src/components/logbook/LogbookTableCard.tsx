@@ -150,6 +150,21 @@ export function LogbookTableCard({
             </div>
           )}
 
+          {(item.kpiActualNumeratorExact ||
+            item.kpiActualBasisExact ||
+            item.kpiActualRateExact) && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+              <label className="text-xs font-medium uppercase text-blue-800">
+                KPI result components
+              </label>
+              <div className="mt-2 grid gap-2 text-xs">
+                <span>Numerator: {item.kpiActualNumeratorExact || "Derived"}</span>
+                <span>Denominator: {item.kpiActualBasisExact || "Resolved"}</span>
+                <span>Result: {item.kpiActualRateExact || "Derived"}</span>
+              </div>
+            </div>
+          )}
+
           {item.outcome && (
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">

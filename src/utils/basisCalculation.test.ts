@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  allocateBasisQuarters,
   basisQuartersEqualAnnual,
   buildDirectBasisTargets,
+  calculateKpiResultPreview,
   calculateRequiredNumerator,
   decimalValuesEqualTotal,
   multiplyBasisByPercent,
@@ -38,6 +40,40 @@ describe("basis calculation", () => {
     expect(calculateRequiredNumerator("3", "800", "RATIO")).toBe(2400);
   });
 
+  it("derives an exact-ish percentage from numerator and denominator strings", () => {
+    expect(
+      calculateKpiResultPreview({
+        inputMode: "NUMERATOR",
+        numeratorExact: "1",
+        basisExact: "3",
+        unitType: "PERCENT",
+      }),
+    ).toEqual({
+      numeratorExact: "1",
+      basisExact: "3",
+      rateExact: "33.333333333333",
+    });
+  });
+
+  it("derives percentage and ratio numerators from rate plus basis", () => {
+    expect(
+      calculateKpiResultPreview({
+        inputMode: "RATE_AND_BASIS",
+        rateExact: "25",
+        basisExact: "800",
+        unitType: "PERCENT",
+      }).numeratorExact,
+    ).toBe("200");
+    expect(
+      calculateKpiResultPreview({
+        inputMode: "RATE_AND_BASIS",
+        rateExact: "3",
+        basisExact: "800",
+        unitType: "RATIO",
+      }).numeratorExact,
+    ).toBe("2400");
+  });
+
   it("builds the direct basis input shape for Q1-Q4", () => {
     expect(
       buildDirectBasisTargets("2026", {
@@ -63,5 +99,29 @@ describe("basis calculation", () => {
 
     expect(allocations).toEqual(["33.33", "33.33", "33.34"]);
     expect(decimalValuesEqualTotal("100", allocations)).toBe(true);
+  });
+
+  it("allocates custom parent quarters proportionally and reconciles every row and column", () => {
+    const allocations = allocateBasisQuarters(
+      ["30", "50", "70"],
+      ["15", "30", "45", "60"],
+    );
+
+    expect(allocations).not.toBeNull();
+    expect(
+      allocations!.map((quarters) =>
+        [quarters.q1, quarters.q2, quarters.q3, quarters.q4]
+          .map(Number)
+          .reduce((sum, value) => sum + value, 0),
+      ),
+    ).toEqual([30, 50, 70]);
+    expect(
+      (["q1", "q2", "q3", "q4"] as const).map((quarter) =>
+        allocations!.reduce(
+          (sum, allocation) => sum + Number(allocation[quarter]),
+          0,
+        ),
+      ),
+    ).toEqual([15, 30, 45, 60]);
   });
 });

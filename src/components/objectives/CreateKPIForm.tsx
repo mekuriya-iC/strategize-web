@@ -208,6 +208,7 @@ export default function CreateKPIForm({
     if (formData.calculationBasisSource === "LINKED_KPI") {
       return !!formData.weightingBasisKpiId;
     }
+    if (formData.actualBasisSource === "LINKED_KPI_ACTUAL") return false;
     const annualBasis = Number(formData.directBasisValue);
     return (
       Number.isFinite(annualBasis) &&
@@ -227,6 +228,12 @@ export default function CreateKPIForm({
     if (!isCorporate && !hasQuarterlyData) return false;
     if (isSupport && supportSources.length === 0) return false;
     if (isSupport && selectedSupportSourceIds.length === 0) return false;
+    if (
+      !isSupport &&
+      (formData.unitType === "PERCENT" || formData.unitType === "RATIO") &&
+      formData.kpiMode !== "DIRECT" &&
+      formData.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE"
+    ) return false;
     if (
       !isSupport &&
       formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
@@ -250,10 +257,18 @@ export default function CreateKPIForm({
     formData.aggregationMethod,
     formData.weightingBasisKpiId,
     formData.calculationBasisSource,
+    formData.kpiMode,
+    formData.unitType,
   ]);
 
   const handleBasisSourceChange = (source: KpiCalculationBasisSource) => {
     updateField("calculationBasisSource", source);
+    if (
+      source !== "LINKED_KPI" &&
+      formData.actualBasisSource === "LINKED_KPI_ACTUAL"
+    ) {
+      updateField("actualBasisSource", "USE_APPROVED_BASIS");
+    }
     if (source === "DIRECT_VALUE" || source === "LINKED_KPI") {
       updateField("aggregationMethod", "DENOMINATOR_WEIGHTED_AVERAGE");
       updateField("carryPolicy", "NONE");
@@ -400,6 +415,10 @@ export default function CreateKPIForm({
               targetValue={annualTargets[strategicYear || ""] || ""}
               source={formData.calculationBasisSource}
               onSourceChange={handleBasisSourceChange}
+              actualBasisSource={formData.actualBasisSource}
+              onActualBasisSourceChange={(value) =>
+                updateField("actualBasisSource", value)
+              }
               numeratorLabel={formData.numeratorLabel}
               onNumeratorLabelChange={(value) => updateField("numeratorLabel", value)}
               denominatorLabel={formData.denominatorLabel}

@@ -15,6 +15,7 @@ import type {
   KpiAggregationWeightSource,
   KpiCarryPolicy,
   KpiCalculationBasisSource,
+  KpiActualBasisSource,
 } from "@/types/graphql";
 import {
   basisQuartersEqualAnnual,
@@ -44,6 +45,7 @@ export interface UpdateKPIFormData {
   aggregationWeightSource: KpiAggregationWeightSource;
   carryPolicy: KpiCarryPolicy;
   calculationBasisSource: KpiCalculationBasisSource;
+  actualBasisSource: KpiActualBasisSource;
   directBasisValue: string;
   numeratorLabel: string;
   denominatorLabel: string;
@@ -101,6 +103,7 @@ export function useUpdateKPIState({
     aggregationWeightSource: "PLANNED_TARGET",
     carryPolicy: "ADDITIVE",
     calculationBasisSource: "NONE",
+    actualBasisSource: "USE_APPROVED_BASIS",
     directBasisValue: "",
     numeratorLabel: "",
     denominatorLabel: "",
@@ -171,6 +174,11 @@ export function useUpdateKPIState({
           kpi.aggregationWeightSource || "PLANNED_TARGET",
         carryPolicy: kpi.carryPolicy || "ADDITIVE",
         calculationBasisSource: kpi.calculationBasisSource || "NONE",
+        actualBasisSource:
+          kpi.actualBasisSource ||
+          (kpi.calculationBasisSource === "LINKED_KPI"
+            ? "LINKED_KPI_ACTUAL"
+            : "USE_APPROVED_BASIS"),
         directBasisValue: kpi.directBasisValue || "",
         numeratorLabel: kpi.numeratorLabel || "",
         denominatorLabel: kpi.denominatorLabel || "",
@@ -774,6 +782,23 @@ export function useUpdateKPIState({
         }
       }
       if (
+        (formData.unitType === "PERCENT" || formData.unitType === "RATIO") &&
+        formData.kpiMode !== "DIRECT" &&
+        formData.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE"
+      ) {
+        throw new Error(
+          "Aggregated percentage/ratio KPIs require denominator-weighted component rollup",
+        );
+      }
+      if (
+        formData.actualBasisSource === "LINKED_KPI_ACTUAL" &&
+        basisSource !== "LINKED_KPI"
+      ) {
+        throw new Error(
+          "Linked KPI actual requires a linked approved denominator KPI",
+        );
+      }
+      if (
         formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
         basisSource !== "DIRECT_VALUE" &&
         !formData.weightingBasisKpiId
@@ -808,6 +833,8 @@ export function useUpdateKPIState({
             ? "NONE"
             : (formData.carryPolicy || "ADDITIVE"),
         calculationBasisSource: basisSource,
+        actualBasisSource:
+          basisSource !== "NONE" ? formData.actualBasisSource : undefined,
         directBasisValue:
           basisSource === "DIRECT_VALUE" ? formData.directBasisValue : null,
         directBasisTargets:

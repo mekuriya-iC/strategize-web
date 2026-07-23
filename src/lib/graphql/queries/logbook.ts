@@ -124,6 +124,26 @@ export const GET_LOGBOOK_FORMULA_FOR_CONTEXT = gql`
   }
 `;
 
+export const GET_KPI_RESULT_ENTRY_CONTEXT = gql`
+  query GetKpiResultEntryContext($kpiId: ID!, $entryDate: String!) {
+    kpiResultEntryContext(kpiId: $kpiId, entryDate: $entryDate) {
+      quarterPlanId
+      quarterNumber
+      actualBasisSource
+      numeratorLabel
+      denominatorLabel
+      basisUnitType
+      approvedBasisExact
+      linkedBasisKpiId
+      linkedBasisKpiName
+      linkedActualBasisExact
+      resolvedBasisExact
+      basisAvailable
+      message
+    }
+  }
+`;
+
 // Get paginated logbook entries
 export const GET_LOGBOOK_ENTRIES = gql`
   query GetLogbookEntries(
@@ -156,6 +176,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
           measurementUnit
           calculationType
           calculationBasisSource
+          actualBasisSource
           directBasisValue
           numeratorLabel
           denominatorLabel
@@ -183,6 +204,11 @@ export const GET_LOGBOOK_ENTRIES = gql`
         }
         kpiTargetValue
         kpiAchievedValue
+        kpiActualDenominator
+        kpiResultInputMode
+        kpiActualNumeratorExact
+        kpiActualRateExact
+        kpiActualBasisExact
         kpiCompletionPercent
         contributionUnit
         evidenceUrl
@@ -253,6 +279,7 @@ export const GET_LOGBOOK_ENTRY = gql`
         measurementUnit
         calculationType
         calculationBasisSource
+        actualBasisSource
         directBasisValue
         numeratorLabel
         denominatorLabel
@@ -280,6 +307,11 @@ export const GET_LOGBOOK_ENTRY = gql`
       }
       kpiTargetValue
       kpiAchievedValue
+      kpiActualDenominator
+      kpiResultInputMode
+      kpiActualNumeratorExact
+      kpiActualRateExact
+      kpiActualBasisExact
       kpiCompletionPercent
       contributionUnit
       evidenceUrl

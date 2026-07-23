@@ -16,11 +16,27 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Upload } from "lucide-react";
-import { useMutation } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { CREATE_KPI_UPDATE } from "@/lib/graphql/mutations/kpis";
 import { GET_KPI_UPDATES } from "@/lib/graphql/queries/kpis";
+import { GET_KPI_RESULT_ENTRY_CONTEXT } from "@/lib/graphql/queries/logbook";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores";
+import type {
+  KpiActualBasisSource,
+  KpiResultInputMode,
+  KpiUnitType,
+} from "@/types/graphql";
+import type {
+  KpiResultEntryContextQueryData,
+  KpiResultEntryContextQueryVariables,
+} from "@/types/logbook";
+import {
+  KpiResultEntryFields,
+  getResultEntryResolvedBasis,
+  isKpiResultEntryValid,
+} from "@/components/kpis/KpiResultEntryFields";
+import { calculateKpiResultPreview } from "@/utils/basisCalculation";
 
 interface KpiProgressDialogProps {
   kpi: {
@@ -31,6 +47,7 @@ interface KpiProgressDialogProps {
     baselineValue?: number;
     unitType?: string | null;
     calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
+    actualBasisSource?: KpiActualBasisSource | null;
     directBasisValue?: string | null;
     numeratorLabel?: string | null;
     denominatorLabel?: string | null;
@@ -68,6 +85,39 @@ export default function KpiProgressDialog({
     notes: "",
     evidenceUrl: "",
   });
+  const [resultInputMode, setResultInputMode] =
+    useState<KpiResultInputMode>("NUMERATOR");
+  const [actualNumeratorExact, setActualNumeratorExact] = useState("");
+  const [actualRateExact, setActualRateExact] = useState("");
+  const [actualBasisExact, setActualBasisExact] = useState("");
+  const { data: resultContextData, loading: resultContextLoading } = useQuery<
+    KpiResultEntryContextQueryData,
+    KpiResultEntryContextQueryVariables
+  >(GET_KPI_RESULT_ENTRY_CONTEXT, {
+    variables: {
+      kpiId: kpi.kpiId,
+      entryDate: formData.reportingDate,
+    },
+    skip: !open || !isBasisDriven || !formData.reportingDate,
+    fetchPolicy: "cache-and-network",
+  });
+  const resultEntryContext = resultContextData?.kpiResultEntryContext;
+  const actualBasisSource =
+    resultEntryContext?.actualBasisSource ||
+    kpi.actualBasisSource ||
+    "USE_APPROVED_BASIS";
+  const resolvedBasisExact = getResultEntryResolvedBasis({
+    actualBasisSource,
+    actualBasisExact,
+    context: resultEntryContext,
+  });
+  const resultPreview = calculateKpiResultPreview({
+    inputMode: resultInputMode,
+    numeratorExact: actualNumeratorExact,
+    rateExact: actualRateExact,
+    basisExact: resolvedBasisExact,
+    unitType: (kpi.unitType || "PERCENT") as KpiUnitType,
+  });
 
   const [createKpiUpdate, { loading }] = useMutation(CREATE_KPI_UPDATE, {
     refetchQueries: [
@@ -99,17 +149,16 @@ export default function KpiProgressDialog({
       notes: "",
       evidenceUrl: "",
     });
+    setResultInputMode("NUMERATOR");
+    setActualNumeratorExact("");
+    setActualRateExact("");
+    setActualBasisExact("");
   };
 
   const calculateResult = () => {
+    if (isBasisDriven) return Number(resultPreview.rateExact || 0);
     const achieved = parseFloat(formData.achievedValue);
-    if (isNaN(achieved)) return 0;
-    if (!isBasisDriven || kpi.calculationBasisSource !== "DIRECT_VALUE") {
-      return achieved;
-    }
-    const basis = Number(kpi.directBasisValue || 0);
-    if (!Number.isFinite(basis) || basis <= 0) return 0;
-    return (achieved / basis) * (kpi.unitType === "PERCENT" ? 100 : 1);
+    return Number.isFinite(achieved) ? achieved : 0;
   };
 
   const calculateProgress = () => {
@@ -132,10 +181,35 @@ export default function KpiProgressDialog({
   };
 
   const handleSubmit = async () => {
-    const achieved = parseFloat(formData.achievedValue);
-    if (isNaN(achieved)) {
+    const achieved = isBasisDriven
+      ? calculateResult()
+      : parseFloat(formData.achievedValue);
+    if (!isBasisDriven && isNaN(achieved)) {
       toast.error("Please enter a valid achieved value");
       return;
+    }
+    if (isBasisDriven) {
+      const basisAvailable =
+        actualBasisSource === "ENTER_ACTUAL_BASIS"
+          ? Number(actualBasisExact) > 0
+          : Boolean(resultEntryContext?.basisAvailable);
+      if (
+        !isKpiResultEntryValid({
+          inputMode: resultInputMode,
+          numeratorExact: actualNumeratorExact,
+          rateExact: actualRateExact,
+          resolvedBasisExact,
+          basisAvailable,
+        })
+      ) {
+        toast.error(
+          resultEntryContext?.message ||
+            (actualBasisSource === "LINKED_KPI_ACTUAL"
+              ? "The linked KPI actual is not approved or available yet"
+              : "Enter a valid result and denominator"),
+        );
+        return;
+      }
     }
 
     const progressPercentage = calculateProgress();
@@ -206,45 +280,64 @@ export default function KpiProgressDialog({
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Required</p>
               <p className="text-lg font-semibold text-green-600">
-                {isBasisDriven && kpi.calculationBasisSource === "DIRECT_VALUE"
-                  ? `${formatValue(
-                      (Number(kpi.directBasisValue || 0) * kpi.targetValue) /
-                        (kpi.unitType === "PERCENT" ? 100 : 1),
-                    )} ${unitLabel}`
+                {isBasisDriven
+                  ? resolvedBasisExact
+                    ? `${formatValue(
+                        (Number(resolvedBasisExact) * kpi.targetValue) /
+                          (kpi.unitType === "PERCENT" ? 100 : 1),
+                      )} ${unitLabel}`
+                    : "Waiting for denominator"
                   : `${formatValue(kpi.targetValue - (kpi.baselineValue || 0))} ${unitLabel}`}
               </p>
             </div>
           </div>
 
-          {/* Achieved Value */}
-          <div className="space-y-2">
-            <Label htmlFor="achievedValue">
-              {isBasisDriven ? kpi.numeratorLabel || "Numerator value" : "Achieved Value"} <span className="text-red-500">*</span>
-            </Label>
-            <div className="flex gap-2">
-              <FormattedNumberInput
-                id="achievedValue"
-                step="0.01"
-                placeholder={
-                  isCurrency
-                    ? `Enter ${kpi.numeratorLabel || "amount"} in ETB`
-                    : `Enter ${isBasisDriven ? kpi.numeratorLabel || "numerator value" : "achieved value"}`
-                }
-                value={formData.achievedValue}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, achievedValue: value })
-                }
-                currency={isCurrency}
-                className="flex-1"
-              />
-              <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
-                {unitLabel}
+          {isBasisDriven ? (
+            <KpiResultEntryFields
+              unitType={(kpi.unitType || "PERCENT") as KpiUnitType}
+              inputMode={resultInputMode}
+              onInputModeChange={setResultInputMode}
+              numeratorExact={actualNumeratorExact}
+              onNumeratorExactChange={setActualNumeratorExact}
+              rateExact={actualRateExact}
+              onRateExactChange={setActualRateExact}
+              actualBasisExact={actualBasisExact}
+              onActualBasisExactChange={setActualBasisExact}
+              context={resultEntryContext}
+              contextLoading={resultContextLoading}
+              fallbackActualBasisSource={kpi.actualBasisSource}
+              fallbackNumeratorLabel={kpi.numeratorLabel}
+              fallbackDenominatorLabel={kpi.denominatorLabel}
+              fallbackBasisUnitType={kpi.basisUnitType}
+            />
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="achievedValue">
+                Achieved Value <span className="text-red-500">*</span>
+              </Label>
+              <div className="flex gap-2">
+                <FormattedNumberInput
+                  id="achievedValue"
+                  step="0.01"
+                  placeholder={
+                    isCurrency ? "Enter achieved value in ETB" : "Enter achieved value"
+                  }
+                  value={formData.achievedValue}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, achievedValue: value })
+                  }
+                  currency={isCurrency}
+                  className="flex-1"
+                />
+                <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
+                  {unitLabel}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Progress Preview */}
-          {formData.achievedValue && (
+          {(isBasisDriven ? resultPreview.rateExact : formData.achievedValue) && (
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -335,7 +428,15 @@ export default function KpiProgressDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !formData.achievedValue || !formData.reportingDate}
+            disabled={
+              loading ||
+              !formData.reportingDate ||
+              (isBasisDriven
+                ? !(resultInputMode === "NUMERATOR"
+                    ? actualNumeratorExact
+                    : actualRateExact)
+                : !formData.achievedValue)
+            }
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Submitting..." : "Submit Progress"}

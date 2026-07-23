@@ -106,11 +106,7 @@ export function SubmitApprovalDialog({
   const hasMetricSources = formulaSources.some(
     (source) => source.sourceType === "METRIC",
   );
-  const [quantity, setQuantity] = useState(
-    isFormulaKpi || item.kpiAchievedValue == null
-      ? ""
-      : String(item.kpiAchievedValue),
-  );
+
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([
     { id: "1", type: "email", value: "Enter email date and subject" },
   ]);
@@ -166,8 +162,6 @@ export function SubmitApprovalDialog({
         .map((evidence) => `${evidence.type}: ${evidence.value}`)
         .join("\n");
 
-      const parsedQuantity =
-        !isFormulaKpi && quantity ? Number(quantity) : null;
       const input: Record<string, unknown> = {
         logbookEntryId: item.id,
         entryStatus: "SUBMITTED",
@@ -178,13 +172,7 @@ export function SubmitApprovalDialog({
         decisionsMade: remark || null,
       };
 
-      if (
-        !isFormulaKpi &&
-        parsedQuantity !== null &&
-        Number.isFinite(parsedQuantity)
-      ) {
-        input.kpiAchievedValue = parsedQuantity;
-      }
+
 
       const firstEvidenceUrl = uploadedEvidence.find(
         (evidence) =>
@@ -601,20 +589,39 @@ export function SubmitApprovalDialog({
                   )}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  KPI Achievement Value
+                  KPI result submitted with this entry
                 </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Enter achievement value (e.g., 50, 75.5, 100)"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Enter the actual value you achieved for this KPI (not a
-                  percentage)
+                {item.kpiActualNumeratorExact || item.kpiActualBasisExact ? (
+                  <div className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-gray-500">Numerator</p>
+                      <p className="font-mono font-medium">
+                        {item.kpiActualNumeratorExact ?? "Derived by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Denominator</p>
+                      <p className="font-mono font-medium">
+                        {item.kpiActualBasisExact ?? "Resolved by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Result</p>
+                      <p className="font-mono font-medium">
+                        {item.kpiActualRateExact ?? "Derived by server"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="font-medium text-gray-900">
+                    {item.kpiAchievedValue ?? "No KPI value recorded"}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500">
+                  To change the KPI result or denominator, close this dialog and edit
+                  the logbook entry. Submission does not overwrite result components.
                 </p>
               </div>
             )}

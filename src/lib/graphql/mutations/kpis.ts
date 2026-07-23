@@ -33,6 +33,7 @@ export const CREATE_KPI = gql`
       carryPolicy
       calculationType
       calculationBasisSource
+      actualBasisSource
       directBasisValue
       directBasisTargets {
         timeline
@@ -92,6 +93,7 @@ export const UPDATE_KPI = gql`
       carryPolicy
       calculationType
       calculationBasisSource
+      actualBasisSource
       directBasisValue
       directBasisTargets {
         timeline

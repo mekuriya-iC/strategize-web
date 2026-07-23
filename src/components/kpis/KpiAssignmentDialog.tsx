@@ -48,6 +48,7 @@ interface KpiAssignmentDialogProps {
     measurementUnit: string;
     unitType?: string;
     customUnitLabel?: string;
+    calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
     weight?: number | null;
     status?: string;
     objective?: {
@@ -148,6 +149,10 @@ export default function KpiAssignmentDialog({
     resolvedKpi?.assignedTargetValue ?? resolvedKpi?.targetValue ?? 0;
   const resolvedWeight = resolvedKpi?.weight ?? 100;
   const resolvedMeasurementUnit = getMeasurementUnitDisplay(resolvedKpi);
+  const isBasisDrivenRate =
+    (resolvedKpi.unitType === "PERCENT" || resolvedKpi.unitType === "RATIO") &&
+    (resolvedKpi.calculationBasisSource === "DIRECT_VALUE" ||
+      resolvedKpi.calculationBasisSource === "LINKED_KPI");
 
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {
     variables: {
@@ -294,6 +299,12 @@ export default function KpiAssignmentDialog({
   };
 
   const handleSubmit = async () => {
+    if (isBasisDrivenRate) {
+      toast.error(
+        "Use the objective cascade dialog to assign this KPI so its approved denominator data is preserved.",
+      );
+      return;
+    }
     if (!selectedId) {
       toast.error("Please select an assignee");
       return;
@@ -470,6 +481,18 @@ export default function KpiAssignmentDialog({
               </p>
             </div>
           </div>
+
+          {isBasisDrivenRate && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-semibold">Objective cascade required</p>
+              <p className="mt-1">
+                This percentage/ratio KPI uses numerator and denominator data. This
+                target-only assignment dialog cannot preserve approved denominator
+                allocations or linked KPI dependencies. Assign it from its objective
+                using <strong>Assign Objective</strong>.
+              </p>
+            </div>
+          )}
 
           {/* Assignment Type */}
           <div className="space-y-2">
@@ -748,7 +771,7 @@ export default function KpiAssignmentDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !selectedId}
+            disabled={loading || !selectedId || isBasisDrivenRate}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Assigning..." : "Assign KPI"}

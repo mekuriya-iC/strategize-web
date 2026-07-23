@@ -250,6 +250,7 @@ export default function KpiDetailPage() {
                   baselineValue: kpi.baselineValue,
                   unitType: kpi.unitType,
                   calculationBasisSource: kpi.calculationBasisSource,
+                  actualBasisSource: kpi.actualBasisSource,
                   directBasisValue: kpi.directBasisValue,
                   numeratorLabel: kpi.numeratorLabel,
                   denominatorLabel: kpi.denominatorLabel,
@@ -263,6 +264,8 @@ export default function KpiDetailPage() {
                   name: kpi.name,
                   targetValue: kpi.targetValue,
                   measurementUnit: kpi.measurementUnit,
+                  unitType: kpi.unitType,
+                  calculationBasisSource: kpi.calculationBasisSource,
                 }}
                 strategicPeriodId={strategicPeriodId}
               />
@@ -360,7 +363,7 @@ export default function KpiDetailPage() {
               </p>
               <p className="font-semibold text-gray-900 dark:text-gray-100">
                 {kpi.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
-                  ? "Denominator-weighted average"
+                  ? "Sum numerator ÷ sum denominator"
                   : kpi.aggregationMethod === "SIMPLE_AVERAGE"
                     ? "Equal average"
                     : "Sum"}
@@ -398,13 +401,23 @@ export default function KpiDetailPage() {
               <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Basis formula
               </p>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-5">
                 <div>
-                  <p className="text-sm text-gray-500">Source</p>
+                  <p className="text-sm text-gray-500">Approved denominator</p>
                   <p className="font-medium">
                     {kpi.calculationBasisSource === "DIRECT_VALUE"
                       ? "Direct value"
                       : "Linked KPI"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Actual denominator</p>
+                  <p className="font-medium">
+                    {kpi.actualBasisSource === "ENTER_ACTUAL_BASIS"
+                      ? "Entered with each result"
+                      : kpi.actualBasisSource === "LINKED_KPI_ACTUAL"
+                        ? "Linked KPI approved actual"
+                        : "Approved denominator plan"}
                   </p>
                 </div>
                 <div>

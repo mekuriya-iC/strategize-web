@@ -94,14 +94,18 @@ export function TargetAssignmentCard() {
     return roundValue(total);
   };
 
-  // Helper: Get average assigned target for a KPI
-  const getAverageAssignedTarget = (kpiId: string) => {
+  const rateTargetsRepeat = (kpiId: string, expectedTarget: number) => {
     const assigned = assignments.filter((assignment) =>
       assignment.kpis.includes(kpiId),
     );
-    if (assigned.length === 0) return 0;
-    const total = getTotalAssignedTarget(kpiId);
-    return roundValue(total / assigned.length);
+    return (
+      assigned.length > 0 &&
+      assigned.every((assignment) =>
+        Math.abs(
+          Number(targets[kpiId]?.[assignment.assigneeId] || 0) - expectedTarget,
+        ) <= 0.01,
+      )
+    );
   };
 
   // Helper: Get current assignment value
@@ -179,6 +183,7 @@ export function TargetAssignmentCard() {
 
           const kpiType = detectKPIType(kpi);
           const isDirectBasis = kpi.calculationBasisSource === "DIRECT_VALUE";
+          const isLinkedBasis = kpi.calculationBasisSource === "LINKED_KPI";
           const kpiAssignments = assignments.filter((assignment) =>
             assignment.kpis.includes(kpiId),
           );
@@ -222,8 +227,10 @@ export function TargetAssignmentCard() {
                   <h4 className="font-medium text-blue-900">{cleanName}</h4>
                   <p className="text-sm text-blue-700">
                     {isDirectBasis
-                      ? `Keep ${kpi.unitType === "RATIO" ? `${parentTarget}:1` : `${parentTarget}%`} for every assignee and allocate the ${kpi.denominatorLabel || "basis"}.`
-                      : assignmentMethod}
+                      ? `Repeat ${kpi.unitType === "RATIO" ? `${parentTarget}:1` : `${parentTarget}%`} for every assignee and allocate the approved ${kpi.denominatorLabel || "denominator"}.`
+                      : isLinkedBasis
+                        ? `Repeat the rate target for every assignee and cascade its linked denominator KPI dependency.`
+                        : assignmentMethod}
                   </p>
                 </div>
                 <div className="text-right">
@@ -241,7 +248,7 @@ export function TargetAssignmentCard() {
                   {isDirectBasis && (
                     <div className="mt-1 flex flex-col items-end gap-1">
                       <p className={basisReconciles ? "text-sm text-green-600" : "text-sm text-red-600"}>
-                        Basis allocated: {formatBasisNumber(
+                        Approved denominator allocated: {formatBasisNumber(
                           assignedBasisValues.reduce((sum, value) => sum + (Number(value) || 0), 0),
                         )} / {formatBasisNumber(cascadeBasis)} {kpi.basisUnitType || ""}
                       </p>
@@ -252,7 +259,7 @@ export function TargetAssignmentCard() {
                         onClick={() => handleAutoSplitBasis(kpiId, cascadeBasisString, kpiAssignments)}
                         className="text-xs"
                       >
-                        Auto-split basis
+                        Auto-split approved denominator
                       </Button>
                     </div>
                   )}
@@ -281,12 +288,12 @@ export function TargetAssignmentCard() {
                     <div className="flex flex-col items-end gap-1">
                       <p
                         className={`text-sm ${
-                          getAverageAssignedTarget(kpiId) === parentTarget
+                          rateTargetsRepeat(kpiId, parentTarget)
                             ? "text-green-600"
                             : "text-red-600"
                         }`}
                       >
-                        Average Assigned: {getAverageAssignedTarget(kpiId)}{" "}
+                        Rate target must repeat for every assignee: {parentTarget}{" "}
                         {unitLabel}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
@@ -351,7 +358,7 @@ export function TargetAssignmentCard() {
                                   assignment.assigneeId
                                 ] || ""
                               }
-                              currency
+                              currency={kpi.basisUnitType === "CURRENCY"}
                               onValueChange={(value) =>
                                 setDirectBasisAllocation(
                                   kpiId,
@@ -360,7 +367,7 @@ export function TargetAssignmentCard() {
                                 )
                               }
                               className="w-40 h-9"
-                              placeholder="Basis allocation"
+                              placeholder="Approved denominator allocation"
                             />
                             <span className="text-sm text-gray-600">
                               {kpi.basisUnitType || "basis"}
@@ -439,8 +446,8 @@ export function TargetAssignmentCard() {
                   )}
                   <span className="text-sm">
                     {basisReconciles
-                      ? "Basis allocation matches the parent cascade basis exactly."
-                      : `Basis allocations must sum exactly to ${formatBasisNumber(cascadeBasis)} ${kpi.basisUnitType || ""}.`}
+                      ? "Approved denominator allocation matches the parent cascade denominator exactly."
+                      : `Approved denominator allocations must sum exactly to ${formatBasisNumber(cascadeBasis)} ${kpi.basisUnitType || ""}.`}
                   </span>
                 </div>
               )}
@@ -448,20 +455,20 @@ export function TargetAssignmentCard() {
               {!isDirectBasis && kpiType === "PERCENTAGE" && (
                 <div
                   className={`flex items-center gap-2 p-2 rounded ${
-                    getAverageAssignedTarget(kpiId) === parentTarget
+                    rateTargetsRepeat(kpiId, parentTarget)
                       ? "bg-green-100 text-green-800"
                       : "bg-red-100 text-red-800"
                   }`}
                 >
-                  {getAverageAssignedTarget(kpiId) === parentTarget ? (
+                  {rateTargetsRepeat(kpiId, parentTarget) ? (
                     <CheckCircle className="w-4 h-4" />
                   ) : (
                     <AlertCircle className="w-4 h-4" />
                   )}
                   <span className="text-sm">
-                    {getAverageAssignedTarget(kpiId) === parentTarget
-                      ? "Average target matches parent goal"
-                      : `Average assigned (${getAverageAssignedTarget(kpiId)}) must follow ${isHybrid ? "cascade target" : "parent goal"} ${parentTarget} ${unitLabel}`}
+                    {rateTargetsRepeat(kpiId, parentTarget)
+                      ? "The same rate target is assigned to every child."
+                      : `Every assignee must receive the ${isHybrid ? "cascade" : "parent"} rate target ${parentTarget} ${unitLabel}; rate targets are never split or averaged.`}
                   </span>
                 </div>
               )}

@@ -359,6 +359,7 @@ export interface Objective {
     type?: ObjectiveType;
     assigneeType?: string;
   } | null;
+  children?: Objective[];
   kpis?: Array<{
     kpiId: string;
     name: string;
@@ -450,6 +451,11 @@ export type KpiCalculationBasisSource =
   | "NONE"
   | "DIRECT_VALUE"
   | "LINKED_KPI";
+export type KpiActualBasisSource =
+  | "USE_APPROVED_BASIS"
+  | "ENTER_ACTUAL_BASIS"
+  | "LINKED_KPI_ACTUAL";
+export type KpiResultInputMode = "NUMERATOR" | "RATE_AND_BASIS";
 
 export interface DirectBasisTarget {
   timeline: string;
@@ -708,6 +714,7 @@ export interface Kpi {
   carryPolicy?: KpiCarryPolicy;
   calculationType?: KpiCalculationType;
   calculationBasisSource?: KpiCalculationBasisSource;
+  actualBasisSource?: KpiActualBasisSource;
   directBasisValue?: string | null;
   directBasisTargets?: DirectBasisTarget[];
   numeratorLabel?: string | null;
@@ -748,6 +755,7 @@ export interface CreateKpiInput {
   aggregationWeightSource?: KpiAggregationWeightSource;
   carryPolicy?: KpiCarryPolicy;
   calculationBasisSource?: KpiCalculationBasisSource;
+  actualBasisSource?: KpiActualBasisSource;
   directBasisValue?: string | null;
   directBasisTargets?: DirectBasisTargetInput[];
   numeratorLabel?: string | null;
@@ -791,6 +799,7 @@ export interface UpdateKpiInput {
   aggregationWeightSource?: KpiAggregationWeightSource;
   carryPolicy?: KpiCarryPolicy;
   calculationBasisSource?: KpiCalculationBasisSource;
+  actualBasisSource?: KpiActualBasisSource;
   directBasisValue?: string | null;
   directBasisTargets?: DirectBasisTargetInput[];
   numeratorLabel?: string | null;
@@ -900,7 +909,39 @@ export interface RejectObjectiveMutationVariables {
 }
 
 export interface CascadeObjectiveMutationVariables {
-  objectiveId: string;
+  input: {
+    objectiveId: string;
+    assigneeType: string;
+    assigneeIds: string[];
+    assignerId: string;
+    kpiIds?: string[];
+    kpiAllocations?: Array<{
+      assigneeId: string;
+      kpiId: string;
+      targetValue?: number;
+      targets?: KpiTargetInput[];
+      directBasisValue?: string;
+      directBasisTargets?: DirectBasisTargetInput[];
+    }>;
+  };
+}
+
+export interface CascadeObjectiveV2MutationVariables {
+  input: {
+    objectiveId: string;
+    assignerId: string;
+    recipients: Array<{
+      assigneeType: "DIVISION" | "DEPARTMENT" | "PERSONNEL";
+      assigneeId: string;
+      kpiAllocations: Array<{
+        kpiId: string;
+        targetValue?: number;
+        targets?: KpiTargetInput[];
+        directBasisValue?: string;
+        directBasisTargets?: DirectBasisTargetInput[];
+      }>;
+    }>;
+  };
 }
 
 export interface UpdateObjectiveStatusMutationVariables {

@@ -30,10 +30,16 @@ import {
   APPROVE_OBJECTIVE,
   REJECT_OBJECTIVE,
   CASCADE_OBJECTIVE,
+  CASCADE_OBJECTIVE_V2,
   ASSIGN_OBJECTIVE,
   REORDER_OBJECTIVES,
   UPDATE_OBJECTIVE_STATUS,
 } from '../mutations/objectives';
+import {
+  CREATE_LOGBOOK_ENTRY,
+  UPDATE_LOGBOOK_ENTRY,
+} from '../mutations/logbook';
+import { GET_KPI_RESULT_ENTRY_CONTEXT } from '../queries/logbook';
 
 // ─── Auth Mutations ──────────────────────────────────────────────────────────
 
@@ -108,6 +114,7 @@ describe('KPI Mutations', () => {
     expect(printed).toContain('frequency');
     expect(printed).toContain('isActive');
     expect(printed).toContain('createdAt');
+    expect(printed).toContain('actualBasisSource');
   });
 
   it('UPDATE_KPI mutation has correct structure', () => {
@@ -117,6 +124,7 @@ describe('KPI Mutations', () => {
     expect(printed).toContain('updateKpi(updateKpiInput: $input)');
     expect(printed).toContain('kpiId');
     expect(printed).toContain('updatedAt');
+    expect(printed).toContain('actualBasisSource');
   });
 
   it('DELETE_KPI mutation has correct structure', () => {
@@ -165,6 +173,31 @@ describe('KPI Mutations', () => {
     expect(printed).toContain('reorderKpis(reorderKpisInput: $input)');
     expect(printed).toContain('kpiId');
     expect(printed).toContain('order');
+  });
+});
+
+describe('Logbook basis result contract', () => {
+  it('selects exact result fields from create and update mutations', () => {
+    for (const document of [CREATE_LOGBOOK_ENTRY, UPDATE_LOGBOOK_ENTRY]) {
+      const printed = print(document);
+      expect(printed).toContain('kpiResultInputMode');
+      expect(printed).toContain('kpiActualNumeratorExact');
+      expect(printed).toContain('kpiActualRateExact');
+      expect(printed).toContain('kpiActualBasisExact');
+    }
+  });
+
+  it('queries the result-entry denominator context with fixed arguments', () => {
+    const printed = print(GET_KPI_RESULT_ENTRY_CONTEXT);
+    expect(printed).toContain('query GetKpiResultEntryContext');
+    expect(printed).toContain('$kpiId: ID!');
+    expect(printed).toContain('$entryDate: String!');
+    expect(printed).toContain(
+      'kpiResultEntryContext(kpiId: $kpiId, entryDate: $entryDate)',
+    );
+    expect(printed).toContain('actualBasisSource');
+    expect(printed).toContain('resolvedBasisExact');
+    expect(printed).toContain('basisAvailable');
   });
 });
 
@@ -230,6 +263,21 @@ describe('Objective Mutations', () => {
     expect(printed).toContain('objectiveId');
     expect(printed).toContain('cascadeStatus');
     expect(printed).toContain('children');
+    expect(printed).toContain('assigneeId');
+    expect(printed).toContain('directBasisValue');
+  });
+
+  it('CASCADE_OBJECTIVE_V2 mutation supports atomic mixed-level recipients', () => {
+    const printed = print(CASCADE_OBJECTIVE_V2);
+    expect(printed).toContain('mutation CascadeObjectiveV2');
+    expect(printed).toContain('$input: CascadeObjectiveV2Input!');
+    expect(printed).toContain('cascadeObjectiveV2(cascadeObjectiveV2Input: $input)');
+    expect(printed).toContain('parentObjective');
+    expect(printed).toContain('children');
+    expect(printed).toContain('assigneeType');
+    expect(printed).toContain('assigneeId');
+    expect(printed).toContain('createdCount');
+    expect(printed).toContain('updatedCount');
   });
 
   it('ASSIGN_OBJECTIVE mutation has correct structure', () => {

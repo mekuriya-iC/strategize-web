@@ -78,14 +78,21 @@ export default function SingleKpiAssignmentDialog({
   const [corporateTargetLevel, setCorporateTargetLevel] = useState<
     "DIVISION" | "DEPARTMENT"
   >("DIVISION");
+  const isRateKpi = kpi.unitType === "PERCENT" || kpi.unitType === "RATIO";
+  const isBasisDrivenRate =
+    isRateKpi &&
+    (kpi.calculationBasisSource === "DIRECT_VALUE" ||
+      kpi.calculationBasisSource === "LINKED_KPI");
   // Auto-populate assignees with the cascading portion of target
   const initializeAssignees = () => {
     const mode = (kpi as any).kpiMode || "AGGREGATED";
     const retention = (kpi as any).managerRetentionPercent || 0;
     const originalTarget = kpi.targetValue || 0;
-    const cascadingTarget = mode === "HYBRID" 
-      ? originalTarget - (originalTarget * retention / 100)
-      : originalTarget;
+    const cascadingTarget = isRateKpi
+      ? originalTarget
+      : mode === "HYBRID"
+        ? originalTarget - (originalTarget * retention) / 100
+        : originalTarget;
     
     return [{ id: "", targetValue: cascadingTarget.toString() }];
   };
@@ -281,9 +288,11 @@ export default function SingleKpiAssignmentDialog({
     const mode = (kpi as any).kpiMode || "AGGREGATED";
     const retention = (kpi as any).managerRetentionPercent || 0;
     const originalTarget = kpi.targetValue || 0;
-    const cascadingTarget = mode === "HYBRID" 
-      ? originalTarget - (originalTarget * retention / 100)
-      : originalTarget;
+    const cascadingTarget = isRateKpi
+      ? originalTarget
+      : mode === "HYBRID"
+        ? originalTarget - (originalTarget * retention) / 100
+        : originalTarget;
     
     setAssignees([...assignees, { id: "", targetValue: cascadingTarget.toString() }]);
   };
@@ -301,14 +310,19 @@ export default function SingleKpiAssignmentDialog({
   };
 
   const calculateTargetDistribution = () => {
-    // For HYBRID mode, only distribute the team's portion of the target
+    // Rate targets repeat for every assignee; only additive targets are split.
     const mode = (kpi as any).kpiMode || "AGGREGATED";
     const retention = (kpi as any).managerRetentionPercent || 0;
     const originalTarget = kpi.targetValue || 0;
-    const cascadingTarget = mode === "HYBRID" 
-      ? originalTarget - (originalTarget * retention / 100)
-      : originalTarget;
+    const cascadingTarget = isRateKpi
+      ? originalTarget
+      : mode === "HYBRID"
+        ? originalTarget - (originalTarget * retention) / 100
+        : originalTarget;
 
+    if (isRateKpi) {
+      return assignees.map(() => originalTarget.toString());
+    }
     if (distributionMethod === "equal") {
       const targetPerAssignee = cascadingTarget / assignees.length;
       return assignees.map(() => targetPerAssignee.toFixed(2));
@@ -359,6 +373,12 @@ export default function SingleKpiAssignmentDialog({
   const isValidWeightSum = Math.abs(parseFloat(totalWeight) - cascadingWeight) < 0.01;
 
   const handleSubmit = async () => {
+    if (isBasisDrivenRate) {
+      toast.error(
+        "Use Assign Objective so approved denominator allocations and linked KPI dependencies are preserved.",
+      );
+      return;
+    }
     if (!strategicPeriodId) {
       toast.error(
         "This KPI has no strategic period. Refresh the KPI list or assign a strategic period to its objective before cascading it.",
@@ -584,6 +604,17 @@ export default function SingleKpiAssignmentDialog({
             </div>
           ) : (
             <div className="space-y-6 py-4">
+              {isBasisDrivenRate && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">Objective cascade required</p>
+                  <p className="mt-1">
+                    This target-only dialog cannot preserve the KPI's approved
+                    denominator allocation or linked denominator dependency. Close it
+                    and use <strong>Assign Objective</strong> from the objective page.
+                  </p>
+                </div>
+              )}
+
               {/* Original KPI Info with Mode Badge */}
               <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg border-2 border-blue-200 dark:border-blue-800">
                 <div className="flex items-center justify-between mb-3">
@@ -642,8 +673,12 @@ export default function SingleKpiAssignmentDialog({
                   if (mode === "HYBRID") {
                     const managerWeight = (parentWeight * retention) / 100;
                     const teamWeight = parentWeight - managerWeight;
-                    const managerTarget = ((kpi.targetValue || 0) * retention) / 100;
-                    const teamTarget = (kpi.targetValue || 0) - managerTarget;
+                    const managerTarget = isRateKpi
+                      ? kpi.targetValue || 0
+                      : ((kpi.targetValue || 0) * retention) / 100;
+                    const teamTarget = isRateKpi
+                      ? kpi.targetValue || 0
+                      : (kpi.targetValue || 0) - managerTarget;
 
                     return (
                       <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border border-purple-200 dark:border-purple-800">
@@ -928,7 +963,12 @@ export default function SingleKpiAssignmentDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading || !isValidWeightSum || (!parentAssignmentId && objectiveType !== "CORPORATE")}
+              disabled={
+                loading ||
+                isBasisDrivenRate ||
+                !isValidWeightSum ||
+                (!parentAssignmentId && objectiveType !== "CORPORATE")
+              }
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading

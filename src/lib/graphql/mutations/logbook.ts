@@ -41,6 +41,11 @@ export const CREATE_LOGBOOK_ENTRY = gql`
       }
       kpiTargetValue
       kpiAchievedValue
+      kpiActualDenominator
+      kpiResultInputMode
+      kpiActualNumeratorExact
+      kpiActualRateExact
+      kpiActualBasisExact
       kpiCompletionPercent
       evidenceUrl
       evidenceDescription
@@ -93,6 +98,11 @@ export const UPDATE_LOGBOOK_ENTRY = gql`
       }
       kpiTargetValue
       kpiAchievedValue
+      kpiActualDenominator
+      kpiResultInputMode
+      kpiActualNumeratorExact
+      kpiActualRateExact
+      kpiActualBasisExact
       kpiCompletionPercent
       contributionUnit
       evidenceUrl

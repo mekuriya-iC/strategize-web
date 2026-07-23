@@ -316,6 +316,8 @@ export default function KpisTable({ kpis, loading, organizationId }: KpisTablePr
             name: assignKpi.name,
             targetValue: assignKpi.assignedTargetValue ?? assignKpi.targetValue,
             measurementUnit: assignKpi.measurementUnit,
+            unitType: assignKpi.unitType,
+            calculationBasisSource: assignKpi.calculationBasisSource,
           }}
           strategicPeriodId={selectedPeriod.strategicPeriodId}
           onSuccess={() => setAssignKpi(null)}

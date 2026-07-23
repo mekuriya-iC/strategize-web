@@ -48,8 +48,9 @@ export const GET_KPIS = gql`
         weightingBasisKpiId
         aggregationWeightSource
         carryPolicy
-      calculationType
-      calculationBasisSource
+        calculationType
+        calculationBasisSource
+        actualBasisSource
         directBasisValue
         directBasisTargets {
           timeline
@@ -161,7 +162,8 @@ export const GET_KPI = gql`
       carryPolicy
       calculationType
       calculationBasisSource
-        directBasisValue
+      actualBasisSource
+      directBasisValue
         directBasisTargets {
           timeline
           value
@@ -268,6 +270,7 @@ export const GET_KPIS_BY_OBJECTIVE = gql`
         order
         isActive
         calculationBasisSource
+        actualBasisSource
         directBasisValue
         directBasisTargets {
           timeline
@@ -346,8 +349,9 @@ export const GET_MY_KPIS = gql`
         weightingBasisKpiId
         aggregationWeightSource
         carryPolicy
-      calculationType
-      calculationBasisSource
+        calculationType
+        calculationBasisSource
+        actualBasisSource
         directBasisValue
         directBasisTargets {
           timeline

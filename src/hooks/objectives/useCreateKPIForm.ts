@@ -17,6 +17,7 @@ import type {
   KpiAggregationWeightSource,
   KpiCarryPolicy,
   KpiCalculationBasisSource,
+  KpiActualBasisSource,
 } from "@/types/graphql";
 import {
   basisQuartersEqualAnnual,
@@ -39,6 +40,7 @@ export interface CreateKPIFormData {
   aggregationWeightSource: KpiAggregationWeightSource;
   carryPolicy: KpiCarryPolicy;
   calculationBasisSource: KpiCalculationBasisSource;
+  actualBasisSource: KpiActualBasisSource;
   directBasisValue: string;
   numeratorLabel: string;
   denominatorLabel: string;
@@ -109,6 +111,7 @@ export function useCreateKPIForm({
     aggregationWeightSource: "PLANNED_TARGET",
     carryPolicy: "ADDITIVE",
     calculationBasisSource: "NONE",
+    actualBasisSource: "USE_APPROVED_BASIS",
     directBasisValue: "",
     numeratorLabel: "",
     denominatorLabel: "",
@@ -234,6 +237,24 @@ export function useCreateKPIForm({
         throw new Error("Select an additive linked basis KPI");
       }
       if (
+        formData.actualBasisSource === "LINKED_KPI_ACTUAL" &&
+        basisSource !== "LINKED_KPI"
+      ) {
+        throw new Error(
+          "Linked KPI actual requires a linked approved denominator KPI",
+        );
+      }
+      if (
+        !isSupport &&
+        isRateLike &&
+        formData.kpiMode !== "DIRECT" &&
+        formData.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE"
+      ) {
+        throw new Error(
+          "Aggregated percentage/ratio KPIs require denominator-weighted component rollup",
+        );
+      }
+      if (
         !isSupport &&
         formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
         basisSource === "NONE" &&
@@ -274,6 +295,8 @@ export function useCreateKPIForm({
             ? "NONE"
             : formData.carryPolicy,
         calculationBasisSource: basisSource,
+        actualBasisSource:
+          basisSource !== "NONE" ? formData.actualBasisSource : undefined,
         directBasisValue:
           basisSource === "DIRECT_VALUE" ? formData.directBasisValue : undefined,
         directBasisTargets:

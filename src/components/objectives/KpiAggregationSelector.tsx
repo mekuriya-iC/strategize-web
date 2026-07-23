@@ -66,8 +66,8 @@ export function KpiAggregationSelector({
   const needsStandaloneBasis = weighted && !directBasis && !linkedBasis;
   const weightedMethodLabel =
     unitType === "RATIO"
-      ? "Denominator-weighted ratio average"
-      : "Denominator-weighted percentage average";
+      ? "Ratio component rollup"
+      : "Percentage component rollup";
   const basisOptions = candidateKpis.filter(
     (candidate) =>
       candidate.kpiId !== currentKpiId &&
@@ -93,7 +93,7 @@ export function KpiAggregationSelector({
           <Label>Aggregation method</Label>
           <Select
             value={method}
-            disabled={disabled}
+            disabled={disabled || calculationBasisSource !== "NONE"}
             onValueChange={(value) => {
               const next = value as KpiAggregationMethod;
               onMethodChange(next);
@@ -106,15 +106,19 @@ export function KpiAggregationSelector({
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="SUM">Sum child values</SelectItem>
-              <SelectItem value="SIMPLE_AVERAGE">Equal average</SelectItem>
+              <SelectItem value="SUM" disabled={percentageCompatible}>
+                Sum child values
+              </SelectItem>
+              <SelectItem value="SIMPLE_AVERAGE" disabled={percentageCompatible}>
+                Equal average
+              </SelectItem>
               <SelectItem
                 value="DENOMINATOR_WEIGHTED_AVERAGE"
                 disabled={!percentageCompatible}
               >
                 {unitType === "RATIO"
-                  ? "Denominator-weighted ratio average"
-                  : "Denominator-weighted percentage average"}
+                  ? "Ratio components: sum numerator ÷ sum denominator"
+                  : "Percentage components: sum numerator ÷ sum denominator"}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -124,7 +128,19 @@ export function KpiAggregationSelector({
                 ? "Child numerators and direct denominator values roll up as exact formula components; no linked weighting KPI is required."
                 : linkedBasis
                   ? `${weightedMethodLabel} uses the additive KPI selected in Basis calculation above.`
-                  : `${weightedMethodLabel} weights each child result using an additive basis KPI. Choose Equal average when every child should contribute equally.`}
+                  : `${weightedMethodLabel} uses an additive denominator KPI and never averages child rates.`}
+            </p>
+          )}
+          {calculationBasisSource !== "NONE" && (
+            <p className="text-xs text-blue-700">
+              Basis-driven rates always aggregate as sum of numerators divided
+              by sum of denominators.
+            </p>
+          )}
+          {percentageCompatible && calculationBasisSource === "NONE" && (
+            <p className="text-xs font-medium text-amber-700">
+              Child rates cannot be summed or averaged. Aggregated and Hybrid rate
+              KPIs require a denominator-weighted component rollup.
             </p>
           )}
           {!percentageCompatible && (

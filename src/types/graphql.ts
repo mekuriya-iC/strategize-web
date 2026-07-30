@@ -451,6 +451,7 @@ export type KpiCalculationBasisSource =
   | "NONE"
   | "DIRECT_VALUE"
   | "LINKED_KPI";
+export type KpiZeroDenominatorPolicy = "NOT_CALCULABLE" | "ZERO" | "BLOCK";
 export type KpiActualBasisSource =
   | "USE_APPROVED_BASIS"
   | "ENTER_ACTUAL_BASIS"
@@ -509,6 +510,10 @@ export interface KpiTargetInput {
 }
 
 export type KpiQuarterResultStatus = "PROVISIONAL" | "FINAL";
+export type KpiFormulaCalculationStatus =
+  | "CALCULATED"
+  | "ZERO_RESULT"
+  | "NOT_CALCULABLE";
 export type ScorecardLevel =
   "INDIVIDUAL" | "DEPARTMENT" | "DIVISION" | "CORPORATE";
 
@@ -537,6 +542,7 @@ export interface KpiQuarterResult {
   managerCarryOut?: number | null;
   teamCarryOut?: number | null;
   status: KpiQuarterResultStatus;
+  calculationStatus?: KpiFormulaCalculationStatus | null;
   calculationVersion: number;
   calculatedAt: string;
   finalizedAt?: string | null;
@@ -562,7 +568,10 @@ export type KpiAggregationMethod =
   "SUM" | "SIMPLE_AVERAGE" | "DENOMINATOR_WEIGHTED_AVERAGE";
 export type KpiAggregationWeightSource = "PLANNED_TARGET" | "APPROVED_ACTUAL";
 export type KpiCalculationType =
-  "MANUAL_VALUE" | "RATIO_FORMULA" | "WEIGHTED_INDEX";
+  | "MANUAL_VALUE"
+  | "RATIO_FORMULA"
+  | "SCALAR_FORMULA"
+  | "WEIGHTED_INDEX";
 export type KpiCarryPolicy = "ADDITIVE" | "NONE";
 export type KpiQuarterReportScope =
   "SELF" | "DEPARTMENT" | "DIVISION" | "ORGANIZATION";
@@ -713,6 +722,7 @@ export interface Kpi {
   aggregationWeightSource?: KpiAggregationWeightSource;
   carryPolicy?: KpiCarryPolicy;
   calculationType?: KpiCalculationType;
+  zeroDenominatorPolicy?: KpiZeroDenominatorPolicy | null;
   calculationBasisSource?: KpiCalculationBasisSource;
   actualBasisSource?: KpiActualBasisSource;
   directBasisValue?: string | null;
@@ -755,6 +765,7 @@ export interface CreateKpiInput {
   aggregationWeightSource?: KpiAggregationWeightSource;
   carryPolicy?: KpiCarryPolicy;
   calculationBasisSource?: KpiCalculationBasisSource;
+  zeroDenominatorPolicy?: KpiZeroDenominatorPolicy;
   actualBasisSource?: KpiActualBasisSource;
   directBasisValue?: string | null;
   directBasisTargets?: DirectBasisTargetInput[];
@@ -799,6 +810,7 @@ export interface UpdateKpiInput {
   aggregationWeightSource?: KpiAggregationWeightSource;
   carryPolicy?: KpiCarryPolicy;
   calculationBasisSource?: KpiCalculationBasisSource;
+  zeroDenominatorPolicy?: KpiZeroDenominatorPolicy;
   actualBasisSource?: KpiActualBasisSource;
   directBasisValue?: string | null;
   directBasisTargets?: DirectBasisTargetInput[];

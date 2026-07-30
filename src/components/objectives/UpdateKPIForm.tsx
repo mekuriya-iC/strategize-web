@@ -225,6 +225,7 @@ export default function UpdateKPIForm({
   // Otherwise, fallback to editable mode so the user can set their own target (standalone behavior).
   const isFormulaKpi =
     kpi.calculationType === "RATIO_FORMULA" ||
+    kpi.calculationType === "SCALAR_FORMULA" ||
     kpi.calculationType === "WEIGHTED_INDEX";
   const isAnnualTargetLocked =
     !isCorporate &&
@@ -327,6 +328,10 @@ export default function UpdateKPIForm({
             onActualBasisSourceChange={(value) =>
               updateField("actualBasisSource", value)
             }
+            zeroDenominatorPolicy={formData.zeroDenominatorPolicy}
+            onZeroDenominatorPolicyChange={(value) =>
+              updateField("zeroDenominatorPolicy", value)
+            }
             numeratorLabel={formData.numeratorLabel}
             onNumeratorLabelChange={(value) => updateField("numeratorLabel", value)}
             denominatorLabel={formData.denominatorLabel}
@@ -358,6 +363,7 @@ export default function UpdateKPIForm({
             onCarryPolicyChange={(value) => updateField("carryPolicy", value)}
             unitType={formData.unitType}
             calculationBasisSource={formData.calculationBasisSource}
+            calculationType={kpi.calculationType}
             candidateKpis={existingKPIs}
             currentKpiId={kpiId}
             disabled={!canEditStructure}

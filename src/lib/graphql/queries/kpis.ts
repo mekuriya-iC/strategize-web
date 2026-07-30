@@ -49,6 +49,7 @@ export const GET_KPIS = gql`
         aggregationWeightSource
         carryPolicy
         calculationType
+        zeroDenominatorPolicy
         calculationBasisSource
         actualBasisSource
         directBasisValue
@@ -161,6 +162,7 @@ export const GET_KPI = gql`
       aggregationWeightSource
       carryPolicy
       calculationType
+      zeroDenominatorPolicy
       calculationBasisSource
       actualBasisSource
       directBasisValue
@@ -238,6 +240,7 @@ export const GET_KPI = gql`
         kpiQuarterResultId
         quarterPlanId
         calculationMode
+        calculationStatus
         finalActual
         finalAchievementRate
         rollupNumeratorExact
@@ -350,6 +353,7 @@ export const GET_MY_KPIS = gql`
         aggregationWeightSource
         carryPolicy
         calculationType
+        zeroDenominatorPolicy
         calculationBasisSource
         actualBasisSource
         directBasisValue

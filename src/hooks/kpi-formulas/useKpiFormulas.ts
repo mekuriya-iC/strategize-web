@@ -8,6 +8,11 @@ import {
   GET_METRIC_DEFINITIONS,
   GET_ORGANIZATION_KPI_FORMULA_TEMPLATES,
 } from "@/lib/graphql/queries/kpi-formulas";
+import type {
+  FormulaTermInput,
+  KpiFormulaExpressionSide,
+  KpiFormulaTermOperator,
+} from "@/components/kpi-formulas/formulaExpression";
 import {
   APPROVE_KPI_FORMULA_DEFINITION,
   CREATE_KPI_FORMULA_DEFINITION,
@@ -48,8 +53,10 @@ export type KpiTemporalRollupMethod =
 export type KpiCalculationType =
   | "MANUAL_VALUE"
   | "RATIO_FORMULA"
+  | "SCALAR_FORMULA"
   | "WEIGHTED_INDEX";
-export type KpiFormulaSourceType = "METRIC" | "KPI";
+export type KpiFormulaSourceType = "METRIC" | "KPI" | "CONSTANT";
+export type { KpiFormulaExpressionSide, KpiFormulaTermOperator };
 export type KpiZeroDenominatorPolicy = "NOT_CALCULABLE" | "ZERO" | "BLOCK";
 export type KpiResultDirection =
   | "HIGHER_IS_BETTER"
@@ -88,6 +95,7 @@ export interface KpiCandidate {
   description?: string | null;
   unitType?: string | null;
   measurementUnit?: string | null;
+  zeroDenominatorPolicy?: KpiZeroDenominatorPolicy | null;
   isActive: boolean;
 }
 
@@ -96,7 +104,7 @@ export interface KpiFormulaComponent {
   organizationId: string;
   formulaDefinitionId: string;
   position: number;
-  sourceType: KpiFormulaSourceType;
+  sourceType: Exclude<KpiFormulaSourceType, "CONSTANT">;
   metricDefinitionId?: string | null;
   metricDefinition?: MetricDefinition | null;
   sourceKpiId?: string | null;
@@ -104,6 +112,25 @@ export interface KpiFormulaComponent {
   weight: string;
   createdAt: string;
 }
+
+export interface KpiFormulaExpressionTerm {
+  id: string;
+  organizationId: string;
+  formulaDefinitionId: string;
+  position: number;
+  side: KpiFormulaExpressionSide;
+  operator: KpiFormulaTermOperator;
+  sourceType: KpiFormulaSourceType;
+  metricDefinitionId?: string | null;
+  metricDefinition?: MetricDefinition | null;
+  sourceKpiId?: string | null;
+  sourceKpi?: KpiCandidate | null;
+  constantValueExact?: string | null;
+  factorExact: string;
+  createdAt: string;
+}
+
+export type KpiFormulaExpressionTermInput = FormulaTermInput;
 
 export type KpiFormulaComponentInput =
   | {
@@ -128,6 +155,7 @@ export interface KpiFormulaDefinition {
   kpi: KpiCandidate;
   calculationType: KpiCalculationType;
   components: KpiFormulaComponent[];
+  expressionTerms?: KpiFormulaExpressionTerm[] | null;
   numeratorSourceType?: KpiFormulaSourceType | null;
   numeratorMetricDefinitionId?: string | null;
   numeratorMetricDefinition?: MetricDefinition | null;
@@ -233,6 +261,9 @@ export interface CreateKpiFormulaDefinitionInput {
   kpiId: string;
   calculationType: KpiCalculationType;
   components?: KpiFormulaComponentInput[];
+  numeratorTerms?: KpiFormulaExpressionTermInput[];
+  denominatorTerms?: KpiFormulaExpressionTermInput[];
+  scalarTerm?: KpiFormulaExpressionTermInput;
   numeratorSourceType?: KpiFormulaSourceType;
   numeratorMetricDefinitionId?: string;
   numeratorKpiId?: string;

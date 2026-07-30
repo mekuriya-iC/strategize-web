@@ -41,6 +41,7 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
             kpiQuarterResultId
             quarterPlanId
             calculationMode
+            calculationStatus
             directActual
             aggregateActual
             rollupNumeratorExact
@@ -155,6 +156,7 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
             kpiQuarterResultId
             quarterPlanId
             calculationMode
+            calculationStatus
             directActual
             aggregateActual
             rollupNumeratorExact
@@ -218,6 +220,7 @@ export const GET_KPI_SCORES_BY_ENTITY = gql`
           kpiQuarterResultId
           quarterPlanId
           calculationMode
+          calculationStatus
           directActual
           aggregateActual
           rollupNumeratorExact

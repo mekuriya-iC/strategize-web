@@ -244,6 +244,7 @@ export const GET_OBJECTIVE = gql`
           kpiQuarterResultId
           quarterPlanId
           calculationMode
+          calculationStatus
           finalActual
           finalAchievementRate
           rollupNumeratorExact

@@ -1,4 +1,8 @@
 import { Kpi } from "@/types/graphql";
+import {
+  getTargetAssignmentDescription,
+  getTargetAssignmentStrategy,
+} from "@/lib/objectives/targetAssignmentStrategy";
 
 // Extended unit types for frontend use (for display purposes only)
 export type ExtendedUnitType = "NUMBER_MILLION" | "NUMBER_COUNT" | "PERCENT";
@@ -93,15 +97,8 @@ export const detectKPIType = (kpi: Kpi): "SUMMABLE" | "PERCENTAGE" => {
 };
 
 // Get assignment method description
-export const getAssignmentMethodDescription = (kpi: Kpi): string => {
-  const kpiType = detectKPIType(kpi);
-
-  if (kpiType === "SUMMABLE") {
-    return "Split the parent target among assignees (sum must equal parent target)";
-  } else {
-    return "The average of all assignee targets must equal the parent target";
-  }
-};
+export const getAssignmentMethodDescription = (kpi: Kpi): string =>
+  getTargetAssignmentDescription(getTargetAssignmentStrategy(kpi));
 
 // Get the inferred unit type for a KPI (for internal use)
 export const getInferredUnitType = (kpi: Kpi): ExtendedUnitType => {

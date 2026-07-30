@@ -29,6 +29,7 @@ import {
   usesAnnualOnlyKpiTargets,
 } from "@/lib/objectives/kpiWeightScope";
 import { basisQuartersEqualAnnual } from "@/utils/basisCalculation";
+import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
 
 interface CreateKPIFormProps {
   objectiveId: string;
@@ -230,9 +231,12 @@ export default function CreateKPIForm({
     if (isSupport && selectedSupportSourceIds.length === 0) return false;
     if (
       !isSupport &&
-      (formData.unitType === "PERCENT" || formData.unitType === "RATIO") &&
       formData.kpiMode !== "DIRECT" &&
-      formData.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE"
+      !isAggregationMethodAllowed({
+        method: formData.aggregationMethod,
+        unitType: formData.unitType,
+        calculationBasisSource: formData.calculationBasisSource,
+      })
     ) return false;
     if (
       !isSupport &&
@@ -418,6 +422,10 @@ export default function CreateKPIForm({
               actualBasisSource={formData.actualBasisSource}
               onActualBasisSourceChange={(value) =>
                 updateField("actualBasisSource", value)
+              }
+              zeroDenominatorPolicy={formData.zeroDenominatorPolicy}
+              onZeroDenominatorPolicyChange={(value) =>
+                updateField("zeroDenominatorPolicy", value)
               }
               numeratorLabel={formData.numeratorLabel}
               onNumeratorLabelChange={(value) => updateField("numeratorLabel", value)}

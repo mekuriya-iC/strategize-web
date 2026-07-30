@@ -16,6 +16,7 @@ import type {
   KpiActualBasisSource,
   KpiCalculationBasisSource,
   KpiUnitType,
+  KpiZeroDenominatorPolicy,
 } from "@/types/graphql";
 import {
   basisQuartersEqualAnnual,
@@ -32,6 +33,8 @@ interface BasisCalculationCardProps {
   onSourceChange: (source: KpiCalculationBasisSource) => void;
   actualBasisSource: KpiActualBasisSource;
   onActualBasisSourceChange: (source: KpiActualBasisSource) => void;
+  zeroDenominatorPolicy: KpiZeroDenominatorPolicy;
+  onZeroDenominatorPolicyChange: (policy: KpiZeroDenominatorPolicy) => void;
   numeratorLabel: string;
   onNumeratorLabelChange: (value: string) => void;
   denominatorLabel: string;
@@ -75,6 +78,8 @@ export function BasisCalculationCard({
   onSourceChange,
   actualBasisSource,
   onActualBasisSourceChange,
+  zeroDenominatorPolicy,
+  onZeroDenominatorPolicyChange,
   numeratorLabel,
   onNumeratorLabelChange,
   denominatorLabel,
@@ -227,6 +232,35 @@ export function BasisCalculationCard({
         </div>
       )}
 
+      {source !== "NONE" && (
+        <div className="space-y-2 border-t border-blue-100 pt-4">
+          <Label>Zero denominator policy</Label>
+          <Select
+            value={zeroDenominatorPolicy}
+            disabled={disabled}
+            onValueChange={(value) =>
+              onZeroDenominatorPolicyChange(
+                value as KpiZeroDenominatorPolicy,
+              )
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BLOCK">Block calculation</SelectItem>
+              <SelectItem value="ZERO">Return zero</SelectItem>
+              <SelectItem value="NOT_CALCULABLE">Mark not calculable</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-slate-600">
+            {zeroDenominatorPolicy === "BLOCK"
+              ? "BLOCK rejects calculation when the resolved denominator is zero."
+              : zeroDenominatorPolicy === "ZERO"
+                ? "ZERO records a zero result when the resolved denominator is zero."
+                : "NOT_CALCULABLE records no numeric result and marks the quarter not calculable."}
+          </p>
+        </div>
+      )}
+
       {source === "DIRECT_VALUE" && (
         <div className="space-y-4 border-t border-blue-100 pt-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -273,11 +307,11 @@ export function BasisCalculationCard({
                 ? `${numeratorLabel || "Numerator"} ÷ ${denominatorLabel || "denominator"} × 100 must reach ${targetDisplay}.`
                 : `${numeratorLabel || "Numerator"} ÷ ${denominatorLabel || "denominator"} must reach ${targetDisplay}.`}
             </p>
-            {!isPercent && targetNumber >= 1 && (
-              <p className="mt-1 text-xs text-amber-700 bg-amber-50 p-2 rounded">
-                Tip: For a 1 out of {Math.round(1 / targetNumber)} ratio, enter{" "}
-                <strong>{(1 / Math.round(1 / targetNumber)).toFixed(4)}</strong>{" "}
-                as the target instead of {targetNumber}.
+            {!isPercent && Number.isFinite(targetNumber) && targetNumber > 0 && (
+              <p className="mt-1 rounded bg-blue-50 p-2 text-xs text-blue-800">
+                Ratio values always use {numeratorLabel || "numerator"} ÷{" "}
+                {denominatorLabel || "denominator"}. A target of {targetNumber}{" "}
+                means {targetDisplay} in that direction.
               </p>
             )}
             <p className="mt-2 font-medium text-slate-900">

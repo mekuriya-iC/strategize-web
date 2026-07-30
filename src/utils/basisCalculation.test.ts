@@ -6,6 +6,7 @@ import {
   calculateKpiResultPreview,
   calculateRequiredNumerator,
   decimalValuesEqualTotal,
+  exactValueToDecimal,
   multiplyBasisByPercent,
   splitBasisAmong,
   splitBasisEvenly,
@@ -53,6 +54,12 @@ describe("basis calculation", () => {
       basisExact: "3",
       rateExact: "33.333333333333",
     });
+  });
+
+  it("converts exact backend fractions into stable decimal input values", () => {
+    expect(exactValueToDecimal("4/1")).toBe("4");
+    expect(exactValueToDecimal("1/3")).toBe("0.333333333333333333");
+    expect(exactValueToDecimal("733425000/1")).toBe("733425000");
   });
 
   it("derives percentage and ratio numerators from rate plus basis", () => {

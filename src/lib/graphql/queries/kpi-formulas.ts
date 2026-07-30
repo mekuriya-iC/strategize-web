@@ -23,6 +23,7 @@ const KPI_FORMULA_KPI_FIELDS = gql`
     description
     unitType
     measurementUnit
+    zeroDenominatorPolicy
     isActive
   }
 `;
@@ -86,6 +87,23 @@ export const GET_KPI_FORMULA_DEFINITIONS = gql`
           ...KpiFormulaKpiFields
         }
         calculationType
+        expressionTerms {
+          id
+          position
+          side
+          operator
+          sourceType
+          metricDefinitionId
+          metricDefinition {
+            ...KpiFormulaMetricFields
+          }
+          sourceKpiId
+          sourceKpi {
+            ...KpiFormulaKpiFields
+          }
+          constantValueExact
+          factorExact
+        }
         components {
           id
           organizationId

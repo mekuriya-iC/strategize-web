@@ -57,7 +57,12 @@ export interface Kpi {
   weightingBasisKpiId?: string | null;
   aggregationWeightSource?: "PLANNED_TARGET" | "APPROVED_ACTUAL";
   carryPolicy?: "ADDITIVE" | "NONE";
-  calculationType?: "MANUAL_VALUE" | "RATIO_FORMULA" | "WEIGHTED_INDEX";
+  calculationType?:
+    | "MANUAL_VALUE"
+    | "RATIO_FORMULA"
+    | "SCALAR_FORMULA"
+    | "WEIGHTED_INDEX";
+  zeroDenominatorPolicy?: "NOT_CALCULABLE" | "ZERO" | "BLOCK" | null;
   calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI";
   actualBasisSource?:
     | "USE_APPROVED_BASIS"

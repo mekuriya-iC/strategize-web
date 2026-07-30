@@ -9,11 +9,24 @@ import {
   FileText,
   Gauge,
   Loader2,
+  MoreHorizontal,
+  Pencil,
   Plus,
   RefreshCw,
   Ruler,
+  Trash2,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +46,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   type KpiFormulaDefinition,
@@ -43,6 +62,10 @@ import { FormulaTemplateDialog } from "./FormulaTemplateDialog";
 import { KpiFormulaDialog } from "./KpiFormulaDialog";
 import { MetricDefinitionDialog } from "./MetricDefinitionDialog";
 import { enumLabel } from "./options";
+import {
+  getFormulaKpiDependencies,
+  renderCanonicalFormula,
+} from "./formulaExpression";
 
 interface KpiFormulaManagementProps {
   organizationId: string;
@@ -54,17 +77,31 @@ export function KpiFormulaManagement({
   const [metricDialogOpen, setMetricDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [formulaDialogOpen, setFormulaDialogOpen] = useState(false);
+  const [editingFormula, setEditingFormula] = useState<KpiFormulaDefinition | null>(null);
+  const [deletingFormula, setDeletingFormula] = useState<KpiFormulaDefinition | null>(null);
   const [approvingId, setApprovingId] = useState<string>();
+  const [pendingApproval, setPendingApproval] =
+    useState<KpiFormulaDefinition | null>(null);
   const management = useKpiFormulas(organizationId);
 
-  const approve = async (id: string) => {
-    setApprovingId(id);
+  const approve = async (formula: KpiFormulaDefinition) => {
+    setApprovingId(formula.id);
     try {
-      await management.approveFormula(id);
+      await management.approveFormula(formula.id);
+      setPendingApproval(null);
     } catch {
       // The hook displays the server error in a toast.
     } finally {
       setApprovingId(undefined);
+    }
+  };
+
+  const deleteFormula = async (formula: KpiFormulaDefinition) => {
+    try {
+      await management.removeFormula(formula.id);
+      setDeletingFormula(null);
+    } catch {
+      // The hook displays the server error in a toast.
     }
   };
 
@@ -85,8 +122,8 @@ export function KpiFormulaManagement({
               <Badge variant="secondary">Phase 1</Badge>
             </div>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground sm:text-base">
-              Govern source metrics, reusable ratio templates, and versioned ratio
-              or weighted-index KPI formulas.
+              Govern source metrics, legacy ratio templates, and versioned ratio,
+              scalar, or weighted-index KPI formulas.
             </p>
           </div>
         </div>
@@ -229,7 +266,9 @@ export function KpiFormulaManagement({
             <CardHeader>
               <CardTitle>Formula templates</CardTitle>
               <CardDescription>
-                Organization-level ratio patterns backed by governed metrics.
+                Organization-level ratio patterns backed by governed metrics. The
+                template API remains legacy simple-ratio only and does not expose term
+                lists; term expressions are configured on KPI formulas.
               </CardDescription>
               <CardAction>
                 <Button onClick={() => setTemplateDialogOpen(true)}>
@@ -331,7 +370,7 @@ export function KpiFormulaManagement({
                     <EmptyRow
                       columns={5}
                       title="No KPI formula definitions yet"
-                      detail="Create a ratio or weighted-index formula and approve it when validation is complete."
+                      detail="Create a ratio, scalar, or weighted-index formula and approve it when validation is complete."
                     />
                   ) : (
                     management.formulas.map((formula) => (
@@ -348,12 +387,9 @@ export function KpiFormulaManagement({
                           {formula.calculationType === "WEIGHTED_INDEX" ? (
                             <WeightedFormulaExpression formula={formula} />
                           ) : (
-                            <FormulaExpression
-                              numerator={formulaSource(formula, "numerator")}
-                              denominator={formulaSource(formula, "denominator")}
-                              multiplier={formula.multiplier}
-                            />
+                            <CanonicalFormulaExpression formula={formula} />
                           )}
+                          <FormulaDependencies formula={formula} />
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div>{enumLabel(formula.temporalRollupMethod)}</div>
@@ -367,18 +403,42 @@ export function KpiFormulaManagement({
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           {formula.status === "DRAFT" ? (
-                            <Button
-                              size="sm"
-                              onClick={() => void approve(formula.id)}
-                              disabled={Boolean(approvingId)}
-                            >
-                              {approvingId === formula.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Check className="h-4 w-4" />
-                              )}
-                              Approve
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setPendingApproval(formula)}
+                                disabled={Boolean(approvingId)}
+                              >
+                                {approvingId === formula.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Check className="h-4 w-4" />
+                                )}
+                                Approve
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setEditingFormula(formula)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => setDeletingFormula(formula)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">
                               {formula.approvedAt
@@ -397,6 +457,85 @@ export function KpiFormulaManagement({
         </TabsContent>
       </Tabs>
 
+      <AlertDialog
+        open={Boolean(pendingApproval)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !approvingId) setPendingApproval(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve this formula definition?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Approval activates this version and archives the previously approved
+              version. The server remains authoritative for cycle validation and
+              downstream cascade recalculation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingApproval && (
+            <div className="space-y-3">
+              <p className="wrap-break-word rounded-md bg-muted p-3 font-mono text-sm">
+                {pendingApproval.calculationType === "WEIGHTED_INDEX"
+                  ? "Weighted index (ordered components shown in the table)"
+                  : renderCanonicalFormula(pendingApproval)}
+              </p>
+              <FormulaDependencies formula={pendingApproval} expanded />
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(approvingId)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!pendingApproval || Boolean(approvingId)}
+              onClick={(event) => {
+                event.preventDefault();
+                if (pendingApproval) void approve(pendingApproval);
+              }}
+            >
+              {approvingId && <Loader2 className="h-4 w-4 animate-spin" />}
+              Approve definition
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(deletingFormula)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDeletingFormula(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this formula definition?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the formula definition. This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deletingFormula && (
+            <div className="rounded-md bg-muted p-3">
+              <p className="font-medium">{deletingFormula.kpi?.name ?? deletingFormula.kpiId}</p>
+              <p className="mt-1 font-mono text-sm text-muted-foreground">
+                Version {deletingFormula.version} · {enumLabel(deletingFormula.calculationType)}
+              </p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!deletingFormula}
+              onClick={(event) => {
+                event.preventDefault();
+                if (deletingFormula) void deleteFormula(deletingFormula);
+              }}
+            >
+              Delete formula
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <MetricDefinitionDialog
         open={metricDialogOpen}
         onOpenChange={setMetricDialogOpen}
@@ -413,13 +552,22 @@ export function KpiFormulaManagement({
         onCreate={management.createTemplate}
       />
       <KpiFormulaDialog
-        open={formulaDialogOpen}
-        onOpenChange={setFormulaDialogOpen}
+        open={formulaDialogOpen || Boolean(editingFormula)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setFormulaDialogOpen(false);
+            setEditingFormula(null);
+          } else {
+            setFormulaDialogOpen(nextOpen);
+          }
+        }}
         organizationId={organizationId}
         metrics={management.metrics}
         kpis={management.kpis}
-        pending={management.loading.createFormula}
+        pending={management.loading.createFormula || management.loading.updateFormula}
         onCreate={management.createFormula}
+        onUpdate={management.updateFormula}
+        editingFormula={editingFormula}
       />
     </div>
   );
@@ -511,6 +659,48 @@ function TargetRangeSummary({
   );
 }
 
+function CanonicalFormulaExpression({
+  formula,
+}: {
+  formula: KpiFormulaDefinition;
+}) {
+  return (
+    <div className="inline-flex max-w-full rounded-md bg-muted px-2 py-1 font-mono text-xs">
+      <span className="wrap-break-word" title={renderCanonicalFormula(formula)}>
+        {renderCanonicalFormula(formula)}
+      </span>
+    </div>
+  );
+}
+
+function FormulaDependencies({
+  formula,
+  expanded = false,
+}: {
+  formula: KpiFormulaDefinition;
+  expanded?: boolean;
+}) {
+  const dependencies = getFormulaKpiDependencies(formula);
+  return (
+    <div className={expanded ? "space-y-2" : "mt-2 space-y-1"}>
+      <p className="text-xs font-medium text-muted-foreground">
+        Cascade dependencies
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {dependencies.length > 0 ? (
+          dependencies.map((dependency) => (
+            <Badge key={dependency.kpiId} variant="outline">
+              KPI · {dependency.name}
+            </Badge>
+          ))
+        ) : (
+          <span className="text-xs text-muted-foreground">No KPI dependencies</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FormulaExpression({
   numerator,
   denominator,
@@ -566,19 +756,7 @@ function WeightedFormulaExpression({
   );
 }
 
-function formulaSource(
-  formula: KpiFormulaDefinition,
-  side: "numerator" | "denominator",
-): string {
-  if (side === "numerator") {
-    return formula.numeratorSourceType === "KPI"
-      ? (formula.numeratorKpi?.name ?? "Unknown KPI")
-      : (formula.numeratorMetricDefinition?.name ?? "Unknown metric");
-  }
-  return formula.denominatorSourceType === "KPI"
-    ? (formula.denominatorKpi?.name ?? "Unknown KPI")
-    : (formula.denominatorMetricDefinition?.name ?? "Unknown metric");
-}
+
 
 function LoadingRows({ columns }: { columns: number }) {
   return Array.from({ length: 3 }).map((_, index) => (

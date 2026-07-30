@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Button } from "@/components/ui/button";
 import { Target, CheckCircle, AlertCircle } from "lucide-react";
+import { getDetailedUnitLabel } from "@/utils/unitTypeDetection";
 import {
-  detectKPIType,
-  getDetailedUnitLabel,
-  getAssignmentMethodDescription,
-} from "@/utils/unitTypeDetection";
+  getTargetAssignmentDescription,
+  getTargetAssignmentStrategy,
+} from "@/lib/objectives/targetAssignmentStrategy";
 import type { Kpi } from "@/types/graphql";
 import {
   calculateRequiredNumerator,
@@ -108,9 +108,30 @@ export function TargetAssignmentCard() {
     );
   };
 
-  // Helper: Get current assignment value
-  const getTargetAssignment = (kpiId: string, assigneeId: string) => {
-    return targets[kpiId]?.[assigneeId] || 0;
+  const allTargetsEntered = (kpiId: string) => {
+    const assigned = assignments.filter((assignment) =>
+      assignment.kpis.includes(kpiId),
+    );
+    return (
+      assigned.length > 0 &&
+      assigned.every(
+        (assignment) => targets[kpiId]?.[assignment.assigneeId] != null,
+      )
+    );
+  };
+
+  const getAverageAssignedTarget = (kpiId: string) => {
+    const assigned = assignments.filter((assignment) =>
+      assignment.kpis.includes(kpiId),
+    );
+    if (assigned.length === 0) return 0;
+    return (
+      assigned.reduce(
+        (sum, assignment) =>
+          sum + Number(targets[kpiId]?.[assignment.assigneeId] || 0),
+        0,
+      ) / assigned.length
+    );
   };
 
   const handleBulkAssignment = (kpiId: string, value: number) => {
@@ -181,9 +202,17 @@ export function TargetAssignmentCard() {
           const kpi = kpis.find((k) => k.kpiId === kpiId);
           if (!kpi) return null;
 
-          const kpiType = detectKPIType(kpi);
-          const isDirectBasis = kpi.calculationBasisSource === "DIRECT_VALUE";
-          const isLinkedBasis = kpi.calculationBasisSource === "LINKED_KPI";
+          const assignmentStrategy = getTargetAssignmentStrategy(kpi);
+          const isDirectBasis = assignmentStrategy === "DIRECT_BASIS_RATE";
+          const requiresRepeatedRate =
+            assignmentStrategy === "REPEATED_RATE" ||
+            assignmentStrategy === "LINKED_BASIS_RATE";
+          const isAdditive = assignmentStrategy === "ADDITIVE_SUM";
+          const isScoreAverage = assignmentStrategy === "SCORE_AVERAGE";
+          const usesChildSpecificTargets =
+            assignmentStrategy === "FORMULA_RATIO" ||
+            assignmentStrategy === "FORMULA_RESULT" ||
+            assignmentStrategy === "WEIGHTED_COMPONENT_RATE";
           const kpiAssignments = assignments.filter((assignment) =>
             assignment.kpis.includes(kpiId),
           );
@@ -199,7 +228,13 @@ export function TargetAssignmentCard() {
           const parentTarget = getCascadeTarget(kpi, fullParentTarget);
           const totalAssigned = roundValue(getTotalAssignedTarget(kpiId));
           const unitLabel = getDetailedUnitLabel(kpi);
-          const assignmentMethod = getAssignmentMethodDescription(kpi);
+          const assignmentMethod =
+            getTargetAssignmentDescription(assignmentStrategy);
+          const assignedAverage = getAverageAssignedTarget(kpiId);
+          const everyTargetEntered = allTargetsEntered(kpiId);
+          const scoreAverageMatches =
+            everyTargetEntered &&
+            Math.abs(assignedAverage - parentTarget) <= 0.01;
           const mode = kpi.kpiMode || "AGGREGATED";
           const isHybrid = mode === "HYBRID";
           const managerRetentionPercent = Number(
@@ -226,11 +261,7 @@ export function TargetAssignmentCard() {
                 <div>
                   <h4 className="font-medium text-blue-900">{cleanName}</h4>
                   <p className="text-sm text-blue-700">
-                    {isDirectBasis
-                      ? `Repeat ${kpi.unitType === "RATIO" ? `${parentTarget}:1` : `${parentTarget}%`} for every assignee and allocate the approved ${kpi.denominatorLabel || "denominator"}.`
-                      : isLinkedBasis
-                        ? `Repeat the rate target for every assignee and cascade its linked denominator KPI dependency.`
-                        : assignmentMethod}
+                    {assignmentMethod}
                   </p>
                 </div>
                 <div className="text-right">
@@ -263,7 +294,7 @@ export function TargetAssignmentCard() {
                       </Button>
                     </div>
                   )}
-                  {!isDirectBasis && kpiType === "SUMMABLE" && (
+                  {isAdditive && (
                     <div className="flex flex-col items-end gap-1">
                       <p
                         className={`text-sm ${
@@ -284,7 +315,7 @@ export function TargetAssignmentCard() {
                       </Button>
                     </div>
                   )}
-                  {!isDirectBasis && kpiType === "PERCENTAGE" && (
+                  {requiresRepeatedRate && (
                     <div className="flex flex-col items-end gap-1">
                       <p
                         className={`text-sm ${
@@ -330,6 +361,27 @@ export function TargetAssignmentCard() {
                       </div>
                     </div>
                   )}
+                  {isScoreAverage && (
+                    <p
+                      className={`mt-1 text-sm ${
+                        scoreAverageMatches ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      Child score average: {roundValue(assignedAverage)} / {parentTarget}{" "}
+                      {unitLabel}
+                    </p>
+                  )}
+                  {usesChildSpecificTargets && (
+                    <p
+                      className={`mt-1 text-sm ${
+                        everyTargetEntered ? "text-green-600" : "text-amber-700"
+                      }`}
+                    >
+                      {everyTargetEntered
+                        ? "Every child has its own expected target."
+                        : "Enter an expected target for every child."}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -338,7 +390,7 @@ export function TargetAssignmentCard() {
                   const assigneeName = assignment.assigneeName;
 
                   const currentTarget =
-                    getTargetAssignment(kpiId, assignment.assigneeId) || 0;
+                    targets[kpiId]?.[assignment.assigneeId] ?? null;
 
                   return (
                     <div
@@ -390,12 +442,16 @@ export function TargetAssignmentCard() {
                           <FormattedNumberInput
                             step="any"
                             value={
-                              currentTarget === 0 ? "" : currentTarget.toString()
+                              currentTarget == null ? "" : currentTarget.toString()
                             }
                             currency={isCurrency}
                             onValueChange={(value) => {
-                              const newTarget = parseFloat(value) || 0;
-                              setTarget(kpiId, assignment.assigneeId, newTarget);
+                              const normalized = value.trim();
+                              setTarget(
+                                kpiId,
+                                assignment.assigneeId,
+                                normalized === "" ? null : Number(normalized),
+                              );
                             }}
                             className="w-32 h-9"
                             placeholder={isCurrency ? "283,654,789" : "0"}
@@ -410,7 +466,7 @@ export function TargetAssignmentCard() {
                 })}
               </div>
 
-              {!isDirectBasis && kpiType === "SUMMABLE" && (
+              {isAdditive && (
                 <div
                   className={`flex items-center gap-2 p-2 rounded ${
                     totalAssigned === parentTarget
@@ -452,7 +508,7 @@ export function TargetAssignmentCard() {
                 </div>
               )}
 
-              {!isDirectBasis && kpiType === "PERCENTAGE" && (
+              {requiresRepeatedRate && (
                 <div
                   className={`flex items-center gap-2 p-2 rounded ${
                     rateTargetsRepeat(kpiId, parentTarget)
@@ -468,7 +524,51 @@ export function TargetAssignmentCard() {
                   <span className="text-sm">
                     {rateTargetsRepeat(kpiId, parentTarget)
                       ? "The same rate target is assigned to every child."
-                      : `Every assignee must receive the ${isHybrid ? "cascade" : "parent"} rate target ${parentTarget} ${unitLabel}; rate targets are never split or averaged.`}
+                      : `Every assignee must receive the ${isHybrid ? "cascade" : "parent"} rate target ${parentTarget} ${unitLabel}; this manual rate is repeated, not split.`}
+                  </span>
+                </div>
+              )}
+
+              {isScoreAverage && (
+                <div
+                  className={`flex items-center gap-2 rounded p-2 ${
+                    scoreAverageMatches
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {scoreAverageMatches ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">
+                    {scoreAverageMatches
+                      ? "The simple average of all child score targets matches the parent target."
+                      : `The simple average of all child score targets (${roundValue(assignedAverage)} ${unitLabel}) must equal ${parentTarget} ${unitLabel}.`}
+                  </span>
+                </div>
+              )}
+
+              {usesChildSpecificTargets && (
+                <div
+                  className={`flex items-center gap-2 rounded p-2 ${
+                    everyTargetEntered
+                      ? "bg-green-100 text-green-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {everyTargetEntered ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">
+                    {assignmentStrategy === "FORMULA_RATIO"
+                      ? "Child targets may differ. Parent achievement is calculated as sum of child numerators divided by sum of child denominators; child rates are never averaged."
+                      : assignmentStrategy === "WEIGHTED_COMPONENT_RATE"
+                        ? "Child targets may differ. Parent achievement uses the configured weighting basis, not a simple average of child rates."
+                        : "Child targets may differ. Each child must reconcile its target from the inherited approved formula and source plans."}
                   </span>
                 </div>
               )}

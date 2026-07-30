@@ -44,6 +44,15 @@ export function KPISelectionCard() {
           {kpis.map((kpi) => {
             const mode = kpi.kpiMode || "AGGREGATED";
             const isDirect = mode === "DIRECT";
+            const isRequiredBasis = selectedKPIs.some((selectedId) => {
+              const selected = kpis.find(
+                (candidate) => candidate.kpiId === selectedId,
+              );
+              return (
+                selected?.calculationBasisSource === "LINKED_KPI" &&
+                selected.weightingBasisKpiId === kpi.kpiId
+              );
+            });
 
             return (
               <div
@@ -52,7 +61,7 @@ export function KPISelectionCard() {
               >
                 <Checkbox
                   checked={selectedKPIs.includes(kpi.kpiId)}
-                  disabled={isDirect}
+                  disabled={isDirect || isRequiredBasis}
                   onCheckedChange={(checked) =>
                     toggleKPI(kpi.kpiId, checked as boolean)
                   }
@@ -81,6 +90,11 @@ export function KPISelectionCard() {
                           (candidate) =>
                             candidate.kpiId === kpi.weightingBasisKpiId,
                         )?.name || "not available in this objective"}
+                      </span>
+                    )}
+                    {isRequiredBasis && (
+                      <span className="text-blue-700">
+                        Automatically included as a selected KPI denominator
                       </span>
                     )}
                     {isDirect && <span>Direct KPI: not cascaded</span>}

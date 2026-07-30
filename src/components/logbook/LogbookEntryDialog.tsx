@@ -36,6 +36,7 @@ import {
 import {
   getOrderedLogbookFormulaSources,
   isLogbookFormulaCalculationType,
+  logbookFormulaSourceName,
   type FrontendLogbookItem,
   type LogbookFormulaForContextQueryData,
   type LogbookFormulaForContextQueryVariables,
@@ -60,7 +61,10 @@ import {
   getResultEntryResolvedBasis,
   isKpiResultEntryValid,
 } from "@/components/kpis/KpiResultEntryFields";
-import { calculateKpiResultPreview } from "@/utils/basisCalculation";
+import {
+  calculateKpiResultPreview,
+  exactValueToDecimal,
+} from "@/utils/basisCalculation";
 
 interface LogbookEntryDialogProps {
   open: boolean;
@@ -292,14 +296,16 @@ export function LogbookEntryDialog({
       );
       setKpiResultInputMode(editingEntry.kpiResultInputMode || "NUMERATOR");
       setKpiActualNumeratorExact(
-        editingEntry.kpiActualNumeratorExact ||
+        exactValueToDecimal(editingEntry.kpiActualNumeratorExact) ||
           (editingEntry.kpiAchievedValue != null
             ? String(editingEntry.kpiAchievedValue)
             : ""),
       );
-      setKpiActualRateExact(editingEntry.kpiActualRateExact || "");
+      setKpiActualRateExact(
+        exactValueToDecimal(editingEntry.kpiActualRateExact) || "",
+      );
       setKpiActualBasisExact(
-        editingEntry.kpiActualBasisExact ||
+        exactValueToDecimal(editingEntry.kpiActualBasisExact) ||
           (editingEntry.kpiActualDenominator != null
             ? String(editingEntry.kpiActualDenominator)
             : ""),
@@ -710,17 +716,21 @@ export function LogbookEntryDialog({
                                 {source.label}
                               </p>
                               <p className="text-sm font-medium text-gray-900">
-                                {source.sourceType === "METRIC"
-                                  ? source.metricDefinition?.name ||
-                                    source.metricDefinitionId
-                                  : source.sourceKpi?.name || source.sourceKpiId}
+                                {logbookFormulaSourceName(source)}
                               </p>
                             </div>
-                            {source.weight !== undefined && (
-                              <span className="rounded bg-indigo-100 px-2 py-1 font-mono text-xs text-indigo-900">
-                                Weight: {source.weight}%
-                              </span>
-                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {source.factorExact !== undefined && (
+                                <span className="rounded bg-indigo-100 px-2 py-1 font-mono text-xs text-indigo-900">
+                                  Factor: {source.factorExact}
+                                </span>
+                              )}
+                              {source.weight !== undefined && (
+                                <span className="rounded bg-indigo-100 px-2 py-1 font-mono text-xs text-indigo-900">
+                                  Weight: {source.weight}%
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {source.sourceType === "METRIC" ? (
@@ -754,10 +764,15 @@ export function LogbookEntryDialog({
                                   : ""}
                               </p>
                             </div>
-                          ) : (
+                          ) : source.sourceType === "KPI" ? (
                             <div className="rounded border border-dashed bg-gray-50 px-3 py-2 text-xs text-gray-600">
                               Automatically resolved from the approved source KPI
                               result. Read-only; no observation is required.
+                            </div>
+                          ) : (
+                            <div className="rounded border border-dashed bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                              Exact constant {source.constantValueExact} is preview-only;
+                              no observation is submitted.
                             </div>
                           )}
                         </div>

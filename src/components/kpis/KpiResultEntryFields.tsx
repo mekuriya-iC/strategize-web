@@ -13,6 +13,7 @@ import type {
 import type { KpiResultEntryContext } from "@/types/logbook";
 import {
   calculateKpiResultPreview,
+  exactValueToDecimal,
   isExactDecimal,
   isPositiveExactDecimal,
 } from "@/utils/basisCalculation";
@@ -74,7 +75,7 @@ export function getResultEntryResolvedBasis({
 }): string {
   return actualBasisSource === "ENTER_ACTUAL_BASIS"
     ? actualBasisExact
-    : context?.resolvedBasisExact || "";
+    : exactValueToDecimal(context?.resolvedBasisExact) || "";
 }
 
 export function isKpiResultEntryValid({

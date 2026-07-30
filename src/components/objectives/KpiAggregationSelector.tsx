@@ -9,11 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  allowsScoreAverage,
+  isAggregationMethodAllowed,
+  isComponentRatioKpi,
+} from "@/lib/objectives/kpiAggregationOptions";
 import type {
   KpiAggregationMethod,
   KpiAggregationWeightSource,
   KpiCarryPolicy,
   KpiCalculationBasisSource,
+  KpiCalculationType,
   KpiUnitType,
 } from "@/types/graphql";
 
@@ -28,6 +34,7 @@ interface KpiAggregationSelectorProps {
   onCarryPolicyChange: (value: KpiCarryPolicy) => void;
   unitType?: KpiUnitType;
   calculationBasisSource?: KpiCalculationBasisSource;
+  calculationType?: KpiCalculationType;
   candidateKpis: Array<{
     kpiId: string;
     name: string;
@@ -55,15 +62,22 @@ export function KpiAggregationSelector({
   onCarryPolicyChange,
   unitType,
   calculationBasisSource = "NONE",
+  calculationType,
   candidateKpis,
   currentKpiId,
   disabled = false,
 }: KpiAggregationSelectorProps) {
   const percentageCompatible = unitType === "PERCENT" || unitType === "RATIO";
+  const formulaRatio = calculationType === "RATIO_FORMULA";
+  const scoreAverageAllowed =
+    !formulaRatio && allowsScoreAverage(unitType, calculationBasisSource);
+  const componentRatio =
+    formulaRatio || isComponentRatioKpi(unitType, calculationBasisSource);
   const weighted = method === "DENOMINATOR_WEIGHTED_AVERAGE";
   const directBasis = calculationBasisSource === "DIRECT_VALUE";
   const linkedBasis = calculationBasisSource === "LINKED_KPI";
-  const needsStandaloneBasis = weighted && !directBasis && !linkedBasis;
+  const needsStandaloneBasis =
+    weighted && !directBasis && !linkedBasis && !formulaRatio;
   const weightedMethodLabel =
     unitType === "RATIO"
       ? "Ratio component rollup"
@@ -106,11 +120,23 @@ export function KpiAggregationSelector({
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="SUM" disabled={percentageCompatible}>
+              <SelectItem
+                value="SUM"
+                disabled={
+                  !isAggregationMethodAllowed({
+                    method: "SUM",
+                    unitType,
+                    calculationBasisSource,
+                  })
+                }
+              >
                 Sum child values
               </SelectItem>
-              <SelectItem value="SIMPLE_AVERAGE" disabled={percentageCompatible}>
-                Equal average
+              <SelectItem
+                value="SIMPLE_AVERAGE"
+                disabled={!scoreAverageAllowed}
+              >
+                Score average
               </SelectItem>
               <SelectItem
                 value="DENOMINATOR_WEIGHTED_AVERAGE"
@@ -124,11 +150,13 @@ export function KpiAggregationSelector({
           </Select>
           {weighted && (
             <p className="text-xs text-slate-500">
-              {directBasis
-                ? "Child numerators and direct denominator values roll up as exact formula components; no linked weighting KPI is required."
-                : linkedBasis
-                  ? `${weightedMethodLabel} uses the additive KPI selected in Basis calculation above.`
-                  : `${weightedMethodLabel} uses an additive denominator KPI and never averages child rates.`}
+              {formulaRatio
+                ? "The approved formula supplies exact numerator and denominator components; no separate weighting-basis KPI is required."
+                : directBasis
+                  ? "Child numerators and direct denominator values roll up as exact formula components; no linked weighting KPI is required."
+                  : linkedBasis
+                    ? `${weightedMethodLabel} uses the additive KPI selected in Basis calculation above.`
+                    : `${weightedMethodLabel} uses an additive denominator KPI and never averages child rates.`}
             </p>
           )}
           {calculationBasisSource !== "NONE" && (
@@ -137,10 +165,16 @@ export function KpiAggregationSelector({
               by sum of denominators.
             </p>
           )}
-          {percentageCompatible && calculationBasisSource === "NONE" && (
+          {scoreAverageAllowed && (
+            <p className="text-xs text-slate-500">
+              Score average gives each child score equal influence. It is explicit
+              score aggregation, not arithmetic over numerator/denominator components.
+            </p>
+          )}
+          {componentRatio && (
             <p className="text-xs font-medium text-amber-700">
-              Child rates cannot be summed or averaged. Aggregated and Hybrid rate
-              KPIs require a denominator-weighted component rollup.
+              Component ratios cannot be summed or score-averaged. Aggregated and
+              Hybrid component-rate KPIs require a denominator-weighted rollup.
             </p>
           )}
           {!percentageCompatible && (

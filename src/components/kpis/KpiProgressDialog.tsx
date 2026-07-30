@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
@@ -15,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { TrendingUp, Upload } from "lucide-react";
+import { AlertCircle, TrendingUp, Upload } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { CREATE_KPI_UPDATE } from "@/lib/graphql/mutations/kpis";
 import { GET_KPI_UPDATES } from "@/lib/graphql/queries/kpis";
@@ -238,6 +239,49 @@ export default function KpiProgressDialog({
 
   const progressPercentage = calculateProgress();
   const progressStatus = getProgressStatus(progressPercentage);
+
+  if (isBasisDriven) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button size="sm" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Record Result
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Record percentage / ratio components</DialogTitle>
+            <DialogDescription>
+              {kpi.name} requires an exact numerator and denominator for correct
+              hierarchy aggregation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">Use the Logbook result workflow</p>
+              <p>
+                Scalar progress updates cannot preserve the absolute weighting
+                basis. Logbook entries store the exact numerator, denominator,
+                source, quarter, and approval history used by corporate rollups.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button asChild>
+              <Link href="/dashboard/logbook">Open Logbook</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

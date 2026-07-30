@@ -22,6 +22,39 @@ const KPI_FORMULA_DEFINITION_MUTATION_FIELDS = gql`
     organizationId
     kpiId
     calculationType
+    expressionTerms {
+      id
+      position
+      side
+      operator
+      sourceType
+      metricDefinitionId
+      metricDefinition {
+        id
+        organizationId
+        code
+        name
+        description
+        unitType
+        measurementUnit
+        temporalRollupMethod
+        isActive
+        createdAt
+        updatedAt
+      }
+      sourceKpiId
+      sourceKpi {
+        kpiId
+        name
+        description
+        unitType
+        measurementUnit
+        zeroDenominatorPolicy
+        isActive
+      }
+      constantValueExact
+      factorExact
+    }
     components {
       id
       organizationId

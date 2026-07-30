@@ -6,6 +6,7 @@ import type {
 export type LogbookKpiCalculationType =
   | "MANUAL_VALUE"
   | "RATIO_FORMULA"
+  | "SCALAR_FORMULA"
   | "WEIGHTED_INDEX";
 
 export type LogbookFormulaCalculationType = Exclude<
@@ -13,7 +14,12 @@ export type LogbookFormulaCalculationType = Exclude<
   "MANUAL_VALUE"
 >;
 
-export type LogbookFormulaSourceType = "METRIC" | "KPI";
+export type LogbookFormulaSourceType = "METRIC" | "KPI" | "CONSTANT";
+export type LogbookFormulaExpressionSide =
+  | "NUMERATOR"
+  | "DENOMINATOR"
+  | "SCALAR";
+export type LogbookFormulaTermOperator = "ADD" | "SUBTRACT";
 
 export interface LogbookFormulaMetricDefinition {
   id: string;
@@ -43,7 +49,7 @@ export interface LogbookFormulaComponent {
   organizationId: string;
   formulaDefinitionId: string;
   position: number;
-  sourceType: LogbookFormulaSourceType;
+  sourceType: Exclude<LogbookFormulaSourceType, "CONSTANT">;
   metricDefinitionId?: string | null;
   metricDefinition?: LogbookFormulaMetricDefinition | null;
   sourceKpiId?: string | null;
@@ -53,6 +59,20 @@ export interface LogbookFormulaComponent {
   createdAt: string;
 }
 
+export interface LogbookFormulaExpressionTerm {
+  id: string;
+  position: number;
+  side: LogbookFormulaExpressionSide;
+  operator: LogbookFormulaTermOperator;
+  sourceType: LogbookFormulaSourceType;
+  metricDefinitionId?: string | null;
+  metricDefinition?: LogbookFormulaMetricDefinition | null;
+  sourceKpiId?: string | null;
+  sourceKpi?: LogbookFormulaKpiSource | null;
+  constantValueExact?: string | null;
+  factorExact: string;
+}
+
 export interface LogbookFormulaDefinition {
   id: string;
   organizationId: string;
@@ -60,6 +80,7 @@ export interface LogbookFormulaDefinition {
   kpi?: LogbookFormulaKpiSource;
   calculationType: LogbookFormulaCalculationType;
   components: LogbookFormulaComponent[];
+  expressionTerms?: LogbookFormulaExpressionTerm[] | null;
   numeratorSourceType?: LogbookFormulaSourceType | null;
   numeratorMetricDefinitionId?: string | null;
   numeratorMetricDefinition?: LogbookFormulaMetricDefinition | null;
@@ -105,6 +126,7 @@ export interface LogbookKpiOption {
   assigneeType?: string | null;
   managerRetentionPercent?: number | null;
   calculationType?: LogbookKpiCalculationType | null;
+  zeroDenominatorPolicy?: "NOT_CALCULABLE" | "ZERO" | "BLOCK" | null;
   calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
   actualBasisSource?: KpiActualBasisSource | null;
   directBasisValue?: string | null;
@@ -161,6 +183,9 @@ interface LogbookFormulaSourceBase {
   key: string;
   position: number;
   label: string;
+  side?: LogbookFormulaExpressionSide;
+  operator?: LogbookFormulaTermOperator;
+  factorExact?: string;
   /** Present only for weighted-index components and kept as an exact string. */
   weight?: string;
 }
@@ -178,19 +203,93 @@ export interface LogbookKpiFormulaSource extends LogbookFormulaSourceBase {
   sourceKpi?: LogbookFormulaKpiSource | null;
 }
 
+export interface LogbookConstantFormulaSource extends LogbookFormulaSourceBase {
+  sourceType: "CONSTANT";
+  constantValueExact: string;
+}
+
 export type LogbookFormulaSource =
   | LogbookMetricFormulaSource
-  | LogbookKpiFormulaSource;
+  | LogbookKpiFormulaSource
+  | LogbookConstantFormulaSource;
+
+export function logbookFormulaSourceName(source: LogbookFormulaSource): string {
+  if (source.sourceType === "METRIC") {
+    return source.metricDefinition?.name || source.metricDefinitionId;
+  }
+  if (source.sourceType === "KPI") {
+    return source.sourceKpi?.name || source.sourceKpiId;
+  }
+  return `Constant ${source.constantValueExact}`;
+}
 
 export const isLogbookFormulaCalculationType = (
   calculationType?: string | null,
 ): calculationType is LogbookFormulaCalculationType =>
-  calculationType === "RATIO_FORMULA" || calculationType === "WEIGHTED_INDEX";
+  calculationType === "RATIO_FORMULA" ||
+  calculationType === "SCALAR_FORMULA" ||
+  calculationType === "WEIGHTED_INDEX";
 
 export const getOrderedLogbookFormulaSources = (
   formula?: LogbookFormulaDefinition | null,
 ): LogbookFormulaSource[] => {
   if (!formula) return [];
+
+  if (formula.expressionTerms?.length) {
+    const seenSources = new Set<string>();
+    return [...formula.expressionTerms]
+      .sort((left, right) => {
+        const sideOrder = { NUMERATOR: 0, DENOMINATOR: 1, SCALAR: 2 };
+        return sideOrder[left.side] - sideOrder[right.side] || left.position - right.position;
+      })
+      .flatMap((term): LogbookFormulaSource[] => {
+        const sideLabel =
+          term.side === "SCALAR"
+            ? "Scalar"
+            : term.side === "NUMERATOR"
+              ? "Numerator"
+              : "Denominator";
+        const base = {
+          key: term.id || `${term.side}-${term.position}`,
+          position: term.position,
+          label: `${sideLabel} term ${term.position}`,
+          side: term.side,
+          operator: term.operator,
+          factorExact: term.factorExact,
+        };
+
+        if (term.sourceType === "METRIC" && term.metricDefinitionId) {
+          const sourceKey = `METRIC:${term.metricDefinitionId}`;
+          if (seenSources.has(sourceKey)) return [];
+          seenSources.add(sourceKey);
+          return [{
+            ...base,
+            sourceType: "METRIC",
+            metricDefinitionId: term.metricDefinitionId,
+            metricDefinition: term.metricDefinition,
+          }];
+        }
+        if (term.sourceType === "KPI" && term.sourceKpiId) {
+          const sourceKey = `KPI:${term.sourceKpiId}`;
+          if (seenSources.has(sourceKey)) return [];
+          seenSources.add(sourceKey);
+          return [{
+            ...base,
+            sourceType: "KPI",
+            sourceKpiId: term.sourceKpiId,
+            sourceKpi: term.sourceKpi,
+          }];
+        }
+        if (term.sourceType === "CONSTANT" && term.constantValueExact) {
+          return [{
+            ...base,
+            sourceType: "CONSTANT",
+            constantValueExact: term.constantValueExact,
+          }];
+        }
+        return [];
+      });
+  }
 
   if (formula.calculationType === "WEIGHTED_INDEX") {
     return [...(formula.components || [])]
@@ -282,7 +381,18 @@ export const getOrderedLogbookFormulaSources = (
     });
   }
 
-  return sources;
+  const seenSources = new Set<string>();
+  return sources.filter((source) => {
+    if (source.sourceType === "CONSTANT") return true;
+    const sourceId =
+      source.sourceType === "METRIC"
+        ? source.metricDefinitionId
+        : source.sourceKpiId;
+    const key = `${source.sourceType}:${sourceId}`;
+    if (seenSources.has(key)) return false;
+    seenSources.add(key);
+    return true;
+  });
 };
 
 export interface LogbookMetricObservation {
@@ -325,6 +435,7 @@ export interface FrontendLogbookItem {
     unitType?: string | null;
     measurementUnit?: string | null;
     calculationType?: LogbookKpiCalculationType | null;
+    zeroDenominatorPolicy?: "NOT_CALCULABLE" | "ZERO" | "BLOCK" | null;
     calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
     actualBasisSource?: KpiActualBasisSource | null;
     directBasisValue?: string | null;

@@ -11,6 +11,38 @@ const LOGBOOK_FORMULA_CONTEXT_FIELDS = gql`
     organizationId
     kpiId
     calculationType
+    expressionTerms {
+      id
+      position
+      side
+      operator
+      sourceType
+      metricDefinitionId
+      metricDefinition {
+        id
+        organizationId
+        code
+        name
+        description
+        unitType
+        measurementUnit
+        temporalRollupMethod
+        isActive
+        createdAt
+        updatedAt
+      }
+      sourceKpiId
+      sourceKpi {
+        kpiId
+        name
+        description
+        unitType
+        measurementUnit
+        isActive
+      }
+      constantValueExact
+      factorExact
+    }
     components {
       id
       organizationId
@@ -175,6 +207,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
           unitType
           measurementUnit
           calculationType
+          zeroDenominatorPolicy
           calculationBasisSource
           actualBasisSource
           directBasisValue

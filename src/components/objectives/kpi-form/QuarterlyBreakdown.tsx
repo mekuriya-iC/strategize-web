@@ -85,6 +85,7 @@ export function QuarterlyBreakdown({
         const isCurrency = kpi?.unitType === "CURRENCY";
         const isFormulaKpi =
           kpi?.calculationType === "RATIO_FORMULA" ||
+          kpi?.calculationType === "SCALAR_FORMULA" ||
           kpi?.calculationType === "WEIGHTED_INDEX";
 
         const validation = validateQuarterlyBreakdown(

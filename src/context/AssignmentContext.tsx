@@ -143,7 +143,17 @@ export function AssignmentProvider({
       if (checked && !selectedKpi) return;
 
       setSelectedKPIs((prev) => {
-        if (!checked) return prev.filter((pid) => pid !== id);
+        if (!checked) {
+          const requiredBySelectedRate = assignableKPIs.some(
+            (kpi) =>
+              prev.includes(kpi.kpiId) &&
+              kpi.calculationBasisSource === "LINKED_KPI" &&
+              kpi.weightingBasisKpiId === id,
+          );
+          return requiredBySelectedRate
+            ? prev
+            : prev.filter((selectedId) => selectedId !== id);
+        }
         const linkedBasisId =
           selectedKpi?.calculationBasisSource === "LINKED_KPI"
             ? selectedKpi.weightingBasisKpiId

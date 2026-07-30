@@ -59,6 +59,33 @@ export const KPI_FORMULA_QUARTER_PLAN_FIELDS = gql`
         weight
       }
     }
+    expressionTermPlans {
+      id
+      organizationId
+      formulaQuarterPlanId
+      formulaExpressionTermId
+      plannedValue
+      formulaExpressionTerm {
+        id
+        position
+        side
+        operator
+        sourceType
+        metricDefinitionId
+        metricDefinition {
+          id
+          code
+          name
+        }
+        sourceKpiId
+        sourceKpi {
+          kpiId
+          name
+        }
+        constantValueExact
+        factorExact
+      }
+    }
     numeratorPlannedValue
     denominatorPlannedValue
     calculatedTargetDecimal

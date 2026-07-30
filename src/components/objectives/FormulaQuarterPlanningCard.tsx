@@ -23,6 +23,16 @@ import {
   useKpiFormulaQuarterPlanning,
 } from "@/hooks/kpi-formulas/useKpiFormulaQuarterPlanning";
 import type { KpiFormulaComponent } from "@/hooks/kpi-formulas/useKpiFormulas";
+import {
+  normalizedExpressionTerms,
+  renderCanonicalFormula,
+  termSourceLabel,
+  type FormulaExpressionTermLike,
+} from "@/components/kpi-formulas/formulaExpression";
+import {
+  buildExpressionTermMetricInputs,
+  type ExpressionTermInputsByQuarter,
+} from "@/components/kpi-formulas/formulaQuarterPlanning";
 import { useAuthStore } from "@/stores";
 
 interface QuarterInputState {
@@ -64,6 +74,10 @@ function emptyInputs(): InputsByQuarter {
 }
 
 function emptyComponentInputs(): ComponentInputsByQuarter {
+  return { 1: {}, 2: {}, 3: {}, 4: {} };
+}
+
+function emptyExpressionTermInputs(): ExpressionTermInputsByQuarter {
   return { 1: {}, 2: {}, 3: {}, 4: {} };
 }
 
@@ -111,6 +125,17 @@ function parseExactDecimal(value?: string | null): ExactFraction | null {
   const denominator = powerOfTen(decimalDigits.length);
   const numerator = BigInt(`${integerDigits}${decimalDigits}`) * sign;
   return normalizeFraction({ numerator, denominator });
+}
+
+function parseExactValue(value?: string | null): ExactFraction | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const fractionParts = trimmed.split("/");
+  if (fractionParts.length === 1) return parseExactDecimal(trimmed);
+  if (fractionParts.length !== 2) return null;
+  const numerator = parseExactDecimal(fractionParts[0]);
+  const denominator = parseExactDecimal(fractionParts[1]);
+  return numerator && denominator ? divideFractions(numerator, denominator) : null;
 }
 
 function addFractions(left: ExactFraction, right: ExactFraction): ExactFraction {
@@ -163,8 +188,8 @@ function weightedProduct(
   plannedValue?: string | null,
   weight?: string | null,
 ): ExactFraction | null {
-  const parsedValue = parseExactDecimal(plannedValue);
-  const parsedWeight = parseExactDecimal(weight);
+  const parsedValue = parseExactValue(plannedValue);
+  const parsedWeight = parseExactValue(weight);
   if (!parsedValue || !parsedWeight) return null;
   return multiplyFractions(parsedValue, parsedWeight);
 }
@@ -180,6 +205,19 @@ function weightedNumerator(
     total = addFractions(total, product);
   }
   return total;
+}
+
+function expressionTermContribution(
+  term: FormulaExpressionTermLike,
+  plannedValue?: string | null,
+): ExactFraction | null {
+  const sourceValue = parseExactValue(plannedValue);
+  const factor = parseExactValue(term.factorExact);
+  if (!sourceValue || !factor) return null;
+  const contribution = multiplyFractions(sourceValue, factor);
+  return term.operator === "SUBTRACT"
+    ? { ...contribution, numerator: -contribution.numerator }
+    : contribution;
 }
 
 function statusStyle(status?: string): string {
@@ -199,6 +237,7 @@ export const FormulaQuarterPlanningCard = forwardRef<
 >(function FormulaQuarterPlanningCard({ kpi, annualPeriodId, canEdit }, ref) {
   const isFormulaKpi =
     kpi.calculationType === "RATIO_FORMULA" ||
+    kpi.calculationType === "SCALAR_FORMULA" ||
     kpi.calculationType === "WEIGHTED_INDEX";
   const organizationId = useAuthStore((state) => state.user?.organizationId);
   const {
@@ -218,6 +257,8 @@ export const FormulaQuarterPlanningCard = forwardRef<
   const [inputs, setInputs] = useState<InputsByQuarter>(emptyInputs);
   const [componentInputs, setComponentInputs] =
     useState<ComponentInputsByQuarter>(emptyComponentInputs);
+  const [expressionTermInputs, setExpressionTermInputs] =
+    useState<ExpressionTermInputsByQuarter>(emptyExpressionTermInputs);
   const plansByQuarter = useMemo(() => planByQuarter(plans), [plans]);
   const orderedComponents = useMemo(
     () =>
@@ -229,6 +270,27 @@ export const FormulaQuarterPlanningCard = forwardRef<
   const totalWeight = useMemo(
     () => sumExactDecimals(orderedComponents.map((component) => component.weight)),
     [orderedComponents],
+  );
+  const expressionTerms = useMemo(
+    () => normalizedExpressionTerms(approvedFormula),
+    [approvedFormula],
+  );
+  const hasExpressionTermPlanning = Boolean(
+    approvedFormula?.expressionTerms?.length,
+  );
+  const numeratorTerms = expressionTerms.filter((term) =>
+    approvedFormula?.calculationType === "SCALAR_FORMULA"
+      ? term.side === "SCALAR"
+      : term.side === "NUMERATOR",
+  );
+  const denominatorTerms = expressionTerms.filter(
+    (term) => term.side === "DENOMINATOR",
+  );
+  const numeratorHasMetric = numeratorTerms.some(
+    (term) => term.sourceType === "METRIC",
+  );
+  const denominatorHasMetric = denominatorTerms.some(
+    (term) => term.sourceType === "METRIC",
   );
 
   useEffect(() => {
@@ -259,6 +321,24 @@ export const FormulaQuarterPlanningCard = forwardRef<
           if (componentPlan.plannedValue != null) {
             next[quarter][componentPlan.formulaComponentId] = String(
               componentPlan.plannedValue,
+            );
+          }
+        }
+      }
+      return next;
+    });
+    setExpressionTermInputs((current) => {
+      const next = { ...current };
+      for (const plan of plans) {
+        const quarter = plan.quarterPlan.quarterNumber;
+        next[quarter] = { ...(current[quarter] ?? {}) };
+        for (const termPlan of plan.expressionTermPlans ?? []) {
+          if (
+            termPlan.formulaExpressionTerm.sourceType === "METRIC" &&
+            termPlan.plannedValue != null
+          ) {
+            next[quarter][termPlan.formulaExpressionTermId] = String(
+              termPlan.plannedValue,
             );
           }
         }
@@ -322,19 +402,33 @@ export const FormulaQuarterPlanningCard = forwardRef<
       return;
     }
 
-    if (approvedFormula.calculationType !== "RATIO_FORMULA") {
+    if (
+      approvedFormula.calculationType !== "RATIO_FORMULA" &&
+      approvedFormula.calculationType !== "SCALAR_FORMULA"
+    ) {
       throw new Error("The approved formula type is not supported for planning.");
     }
-    const metricInputs: FormulaQuarterMetricInput[] = QUARTERS.map(
+    if (hasExpressionTermPlanning) {
+      await saveMetricInputs(
+        buildExpressionTermMetricInputs(
+          QUARTERS,
+          expressionTerms,
+          expressionTermInputs,
+        ),
+      );
+      return;
+    }
+
+    const legacyMetricInputs: FormulaQuarterMetricInput[] = QUARTERS.map(
       (quarterNumber) => ({
         quarterNumber,
-        ...(approvedFormula.numeratorSourceType === "METRIC"
+        ...(numeratorHasMetric
           ? {
               numeratorPlannedValue:
                 inputs[quarterNumber].numerator.trim() || null,
             }
           : {}),
-        ...(approvedFormula.denominatorSourceType === "METRIC"
+        ...(denominatorHasMetric
           ? {
               denominatorPlannedValue:
                 inputs[quarterNumber].denominator.trim() || null,
@@ -342,15 +436,20 @@ export const FormulaQuarterPlanningCard = forwardRef<
           : {}),
       }),
     );
-    await saveMetricInputs(metricInputs);
+    await saveMetricInputs(legacyMetricInputs);
   }, [
     approvedFormula,
     canEdit,
     componentInputs,
+    expressionTermInputs,
+    expressionTerms,
+    hasExpressionTermPlanning,
     inputs,
     isFormulaKpi,
     loading,
     orderedComponents,
+    numeratorHasMetric,
+    denominatorHasMetric,
     planningLocked,
     saveComponentInputs,
     saveMetricInputs,
@@ -402,9 +501,9 @@ export const FormulaQuarterPlanningCard = forwardRef<
               </>
             ) : (
               <>
-                {numeratorSource?.label} ÷ {denominatorSource?.label} ×{" "}
-                {String(approvedFormula.multiplier)}. Values are sent as exact
-                decimal strings and are not rounded by this form.
+                {renderCanonicalFormula(approvedFormula)}. {hasExpressionTermPlanning
+                  ? "Each metric term is planned and reconciled independently; KPI terms and constants are resolved by the server."
+                  : "This legacy formula uses exact numerator/denominator side-total planning fields."}
               </>
             )}
           </p>
@@ -413,6 +512,31 @@ export const FormulaQuarterPlanningCard = forwardRef<
           {approvedFormula.temporalRollupMethod.replaceAll("_", " ")}
         </Badge>
       </div>
+
+      {!isWeighted && (
+        <div className="rounded-md border border-indigo-200 bg-white p-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-indigo-700">
+            Ordered term sources
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {expressionTerms.map((term) => (
+              <Badge key={term.id ?? `${term.side}-${term.position}`} variant="outline">
+                {term.side} {term.operator === "SUBTRACT" ? "−" : "+"} {termSourceLabel(term)} × {term.factorExact}
+                {term.sourceType === "KPI"
+                  ? " · read only"
+                  : term.sourceType === "CONSTANT"
+                    ? " · preview only"
+                    : " · metric input"}
+              </Badge>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {hasExpressionTermPlanning
+              ? "Each metric term is planned and reconciled independently. KPI terms are resolved from linked quarter targets; constants and exact factors are immutable formula inputs."
+              : "This legacy flat formula is planned using exact numerator and denominator side totals."}
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700">
@@ -610,14 +734,209 @@ export const FormulaQuarterPlanningCard = forwardRef<
             );
           })}
         </div>
+      ) : hasExpressionTermPlanning ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {QUARTERS.map((quarterNumber) => {
+            const plan = plansByQuarter.get(quarterNumber);
+            const quarterPlan = quarterPlanFor(quarterNumber);
+            const configuredTarget =
+              quarterPlan?.originalTarget ??
+              kpi.targets?.find((target) =>
+                target.timeline.toUpperCase().endsWith(`-Q${quarterNumber}`),
+              )?.target;
+            const termPlans = new Map(
+              (plan?.expressionTermPlans ?? []).map((termPlan) => [
+                termPlan.formulaExpressionTermId,
+                termPlan,
+              ]),
+            );
+            const individuallyLocked =
+              plan?.reconciliationStatus === "LOCKED" ||
+              isLockedStatus(quarterPlan?.status);
+
+            return (
+              <section
+                key={quarterNumber}
+                className="overflow-hidden rounded-lg border bg-white shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+                  <h5 className="font-semibold text-indigo-950">Q{quarterNumber}</h5>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={statusStyle(plan?.reconciliationStatus)}
+                    >
+                      {plan?.reconciliationStatus ?? "PENDING INPUT"}
+                    </Badge>
+                    {(planningLocked || individuallyLocked) && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <LockKeyhole className="h-3 w-3" /> Locked
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-180 text-sm">
+                    <thead className="border-b bg-slate-50 text-left text-xs text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2">Expression term</th>
+                        <th className="px-3 py-2">Source value</th>
+                        <th className="px-3 py-2">Exact factor</th>
+                        <th className="px-3 py-2">Signed contribution</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {expressionTerms.map((term) => {
+                        const termId = term.id ?? `${term.side}-${term.position}`;
+                        const resolvedPlanValue = term.id
+                          ? termPlans.get(term.id)?.plannedValue
+                          : null;
+                        const sourceValue =
+                          term.sourceType === "METRIC"
+                            ? expressionTermInputs[quarterNumber]?.[termId] ?? ""
+                            : term.sourceType === "CONSTANT"
+                              ? term.constantValueExact
+                              : resolvedPlanValue;
+                        const contribution = expressionTermContribution(
+                          term,
+                          sourceValue,
+                        );
+
+                        return (
+                          <tr key={termId} className="align-top">
+                            <td className="px-3 py-3">
+                              <div className="font-medium">
+                                {term.side} {term.position}. {termSourceLabel(term)}
+                              </div>
+                              <div className="mt-1 text-[11px] text-muted-foreground">
+                                {term.operator === "SUBTRACT" ? "Subtract" : "Add"} · {term.sourceType === "METRIC"
+                                  ? "metric input"
+                                  : term.sourceType === "KPI"
+                                    ? "linked KPI · read only"
+                                    : "immutable constant"}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              {term.sourceType === "METRIC" ? (
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={
+                                    expressionTermInputs[quarterNumber]?.[termId] ??
+                                    ""
+                                  }
+                                  onChange={(event) =>
+                                    setExpressionTermInputs((current) => ({
+                                      ...current,
+                                      [quarterNumber]: {
+                                        ...(current[quarterNumber] ?? {}),
+                                        [termId]: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  disabled={planningLocked || saving}
+                                  aria-label={`Q${quarterNumber} ${term.side.toLowerCase()} term ${term.position} ${termSourceLabel(term)}`}
+                                />
+                              ) : (
+                                <div className="rounded-md border bg-slate-50 px-3 py-2 font-mono text-xs text-slate-700">
+                                  {sourceValue ??
+                                    (term.sourceType === "KPI"
+                                      ? "Resolved after linked target save"
+                                      : "—")}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 font-mono text-xs">
+                              {term.factorExact}
+                            </td>
+                            <td className="px-3 py-3 font-mono text-xs">
+                              {formatFraction(contribution)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="grid gap-2 border-t bg-slate-50/70 p-3 sm:grid-cols-2">
+                  <div className="rounded-md border bg-white p-2">
+                    <div className="text-[11px] text-muted-foreground">
+                      {approvedFormula.calculationType === "SCALAR_FORMULA"
+                        ? "Calculated scalar expression"
+                        : "Calculated numerator"}
+                    </div>
+                    <div className="mt-1 break-all font-mono text-xs">
+                      {plan?.numeratorPlannedValue ?? "—"}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-white p-2">
+                    <div className="text-[11px] text-muted-foreground">
+                      {approvedFormula.calculationType === "SCALAR_FORMULA"
+                        ? "Denominator"
+                        : "Calculated denominator"}
+                    </div>
+                    <div className="mt-1 break-all font-mono text-xs">
+                      {approvedFormula.calculationType === "SCALAR_FORMULA"
+                        ? "Not applicable"
+                        : plan?.denominatorPlannedValue ?? "—"}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-white p-2">
+                    <div className="text-[11px] text-muted-foreground">
+                      Calculated target
+                    </div>
+                    <div className="mt-1 font-mono text-xs">
+                      {plan?.calculatedTargetDecimal ?? "—"}
+                    </div>
+                    {plan?.calculatedTargetExact && (
+                      <div className="mt-1 break-all font-mono text-[10px] text-muted-foreground">
+                        {plan.calculatedTargetExact}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded-md border bg-white p-2">
+                    <div className="text-[11px] text-muted-foreground">
+                      Configured target
+                    </div>
+                    <div className="mt-1 font-mono text-xs">
+                      {configuredTarget == null ? "—" : String(configuredTarget)}
+                    </div>
+                  </div>
+                </div>
+
+                {plan?.validationMessage && (
+                  <p
+                    className={`border-t px-3 py-2 text-xs ${
+                      plan.reconciliationStatus === "INVALID"
+                        ? "text-red-600"
+                        : "text-amber-700"
+                    }`}
+                  >
+                    {plan.validationMessage}
+                  </p>
+                )}
+              </section>
+            );
+          })}
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-200 border-separate border-spacing-y-2 text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr>
                 <th className="px-2">Quarter</th>
-                <th className="px-2">{numeratorSource?.label}</th>
-                <th className="px-2">{denominatorSource?.label}</th>
+                <th className="px-2">
+                  {approvedFormula.calculationType === "SCALAR_FORMULA"
+                    ? "Scalar metric side total"
+                    : numeratorSource?.label}
+                </th>
+                <th className="px-2">
+                  {approvedFormula.calculationType === "SCALAR_FORMULA"
+                    ? "No denominator"
+                    : denominatorSource?.label}
+                </th>
                 <th className="px-2">Calculated target</th>
                 <th className="px-2">Configured target</th>
                 <th className="px-2">Reconciliation</th>
@@ -642,7 +961,7 @@ export const FormulaQuarterPlanningCard = forwardRef<
                       Q{quarterNumber}
                     </td>
                     <td className="px-2 py-2">
-                      {approvedFormula.numeratorSourceType === "METRIC" ? (
+                      {numeratorHasMetric ? (
                         <Input
                           type="text"
                           inputMode="decimal"
@@ -661,12 +980,15 @@ export const FormulaQuarterPlanningCard = forwardRef<
                         />
                       ) : (
                         <div className="rounded-md border bg-slate-50 px-3 py-2 text-slate-700">
-                          {plan?.numeratorPlannedValue ?? "Resolved after target save"}
+                          {approvedFormula.calculationType === "SCALAR_FORMULA" &&
+                          numeratorTerms[0]?.sourceType === "CONSTANT"
+                            ? `Constant ${numeratorTerms[0].constantValueExact}`
+                            : plan?.numeratorPlannedValue ?? "Resolved after target save"}
                         </div>
                       )}
                     </td>
                     <td className="px-2 py-2">
-                      {approvedFormula.denominatorSourceType === "METRIC" ? (
+                      {denominatorHasMetric ? (
                         <Input
                           type="text"
                           inputMode="decimal"
@@ -685,8 +1007,10 @@ export const FormulaQuarterPlanningCard = forwardRef<
                         />
                       ) : (
                         <div className="rounded-md border bg-slate-50 px-3 py-2 text-slate-700">
-                          {plan?.denominatorPlannedValue ??
-                            "Resolved after target save"}
+                          {approvedFormula.calculationType === "SCALAR_FORMULA"
+                            ? "Not applicable"
+                            : plan?.denominatorPlannedValue ??
+                              "Resolved after target save"}
                         </div>
                       )}
                     </td>

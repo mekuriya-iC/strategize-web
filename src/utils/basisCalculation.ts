@@ -219,6 +219,24 @@ export const isPositiveExactDecimal = (value?: string | null): boolean => {
   return parts !== null && parts.digits > BigInt(0);
 };
 
+export function exactValueToDecimal(
+  value?: string | null,
+  precision = 18,
+): string | null {
+  if (!value) return null;
+  const normalized = value.replace(/,/g, "").trim();
+  if (decimalParts(normalized)) return normalized;
+
+  const fraction = /^(\d+)\/(\d+)$/.exec(normalized);
+  if (!fraction) return null;
+  const numerator = BigInt(fraction[1]);
+  const denominator = BigInt(fraction[2]);
+  if (denominator <= BigInt(0)) return null;
+  const scale = BigInt(10) ** BigInt(precision);
+  const rounded = (numerator * scale + denominator / BigInt(2)) / denominator;
+  return formatScaled(rounded, precision);
+}
+
 function divideExactDecimal(
   numerator: string,
   denominator: string,

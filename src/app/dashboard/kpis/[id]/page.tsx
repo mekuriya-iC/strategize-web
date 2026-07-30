@@ -478,6 +478,7 @@ export default function KpiDetailPage() {
       </Card>
 
       {(kpi.calculationType === "RATIO_FORMULA" ||
+        kpi.calculationType === "SCALAR_FORMULA" ||
         kpi.calculationType === "WEIGHTED_INDEX") &&
         annualFormulaActual && (
         <Card>
@@ -523,9 +524,9 @@ export default function KpiDetailPage() {
             </div>
             {annualFormulaActual.resultExact && (
               <p className="break-all rounded-md bg-muted/40 p-3 font-mono text-xs">
-                {annualFormulaActual.numeratorExact ?? "—"} ÷{" "}
-                {annualFormulaActual.denominatorExact ?? "—"} ={" "}
-                {annualFormulaActual.resultExact}
+                {kpi.calculationType === "SCALAR_FORMULA"
+                  ? annualFormulaActual.resultExact
+                  : `${annualFormulaActual.numeratorExact ?? "—"} ÷ ${annualFormulaActual.denominatorExact ?? "—"} = ${annualFormulaActual.resultExact}`}
               </p>
             )}
             <p className="text-xs text-muted-foreground">

@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,6 +43,17 @@ import type {
   KpiZeroDenominatorPolicy,
   MetricDefinition,
 } from "@/hooks/kpi-formulas/useKpiFormulas";
+import { useSystemConfigurationByOrg } from "@/hooks/systemConfiguration/useSystemConfiguration";
+import { FormulaTermEditor } from "./FormulaTermEditor";
+import {
+  createFormulaTerm,
+  formulaTermToInput,
+  getFormulaKpiDependencies,
+  normalizeTermPositions,
+  renderCanonicalFormula,
+  validateFormulaTerm,
+  type FormulaTermDraft,
+} from "./formulaExpression";
 import {
   RESULT_DIRECTION_OPTIONS,
   TARGET_RANGE_POLICY_OPTIONS,
@@ -60,7 +72,7 @@ interface KpiFormulaDialogProps {
 }
 
 interface SourceState {
-  type: KpiFormulaSourceType;
+  type: Exclude<KpiFormulaSourceType, "CONSTANT">;
   id: string;
 }
 
@@ -72,14 +84,15 @@ interface WeightedComponentState {
 
 type EditableCalculationType = Extract<
   KpiCalculationType,
-  "RATIO_FORMULA" | "WEIGHTED_INDEX"
+  "RATIO_FORMULA" | "SCALAR_FORMULA" | "WEIGHTED_INDEX"
 >;
 
 interface FormulaState {
   calculationType: EditableCalculationType;
   kpiId: string;
-  numerator: SourceState;
-  denominator: SourceState;
+  numeratorTerms: FormulaTermDraft[];
+  denominatorTerms: FormulaTermDraft[];
+  scalarTerms: FormulaTermDraft[];
   components: WeightedComponentState[];
   multiplier: string;
   temporalRollupMethod: KpiTemporalRollupMethod;
@@ -96,8 +109,9 @@ function createInitialForm(): FormulaState {
   return {
     calculationType: "RATIO_FORMULA",
     kpiId: "",
-    numerator: { type: "METRIC", id: "" },
-    denominator: { type: "METRIC", id: "" },
+    numeratorTerms: [createFormulaTerm("NUMERATOR", "numerator-term-1")],
+    denominatorTerms: [createFormulaTerm("DENOMINATOR", "denominator-term-1")],
+    scalarTerms: [createFormulaTerm("SCALAR", "scalar-term-1")],
     components: [
       {
         key: "weighted-component-1",
@@ -209,6 +223,14 @@ export function KpiFormulaDialog({
 }: KpiFormulaDialogProps) {
   const [form, setForm] = useState<FormulaState>(createInitialForm);
   const [formError, setFormError] = useState<string>();
+  const [zeroPolicyCustomized, setZeroPolicyCustomized] = useState(false);
+  const { configuration } = useSystemConfigurationByOrg(organizationId);
+  const organizationZeroPolicy =
+    configuration?.defaultKpiZeroDenominatorPolicy ?? "NOT_CALCULABLE";
+
+  const effectiveZeroPolicy = zeroPolicyCustomized
+    ? form.zeroDenominatorPolicy
+    : organizationZeroPolicy;
 
   const activeMetrics = useMemo(
     () => metrics.filter((metric) => metric.isActive),
@@ -224,6 +246,47 @@ export function KpiFormulaDialog({
     () => summarizeExactWeights(form.components.map((component) => component.weight)),
     [form.components],
   );
+  const selectedExpressionTerms = useMemo(
+    () =>
+      form.calculationType === "SCALAR_FORMULA"
+        ? normalizeTermPositions(form.scalarTerms, "SCALAR")
+        : [
+            ...normalizeTermPositions(form.numeratorTerms, "NUMERATOR"),
+            ...normalizeTermPositions(form.denominatorTerms, "DENOMINATOR"),
+          ],
+    [
+      form.calculationType,
+      form.denominatorTerms,
+      form.numeratorTerms,
+      form.scalarTerms,
+    ],
+  );
+  const expressionPreview = useMemo(
+    () =>
+      renderCanonicalFormula({
+        calculationType: form.calculationType,
+        expressionTerms: selectedExpressionTerms,
+        multiplier: form.multiplier,
+      }),
+    [form.calculationType, form.multiplier, selectedExpressionTerms],
+  );
+  const dependencies = useMemo(
+    () =>
+      getFormulaKpiDependencies({
+        calculationType: form.calculationType,
+        expressionTerms: selectedExpressionTerms,
+      }),
+    [form.calculationType, selectedExpressionTerms],
+  );
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setForm(createInitialForm());
+      setFormError(undefined);
+      setZeroPolicyCustomized(false);
+    }
+    onOpenChange(nextOpen);
+  };
 
   const setCalculationType = (calculationType: EditableCalculationType) => {
     setFormError(undefined);
@@ -375,22 +438,56 @@ export function KpiFormulaDialog({
         calculationType: "WEIGHTED_INDEX",
         components,
         temporalRollupMethod: "WEIGHTED_INDEX",
-        zeroDenominatorPolicy: form.zeroDenominatorPolicy,
+        zeroDenominatorPolicy: effectiveZeroPolicy,
+        resultDirection: form.resultDirection,
+        ...rangeInput,
+      };
+    } else if (form.calculationType === "SCALAR_FORMULA") {
+      const scalarTerms = normalizeTermPositions(form.scalarTerms, "SCALAR");
+      if (scalarTerms.length !== 1) {
+        setFormError("Scalar formulas require exactly one term.");
+        return;
+      }
+      const validationError = validateFormulaTerm(scalarTerms[0], form.kpiId);
+      if (validationError) {
+        setFormError(`Scalar term: ${validationError}`);
+        return;
+      }
+      input = {
+        organizationId,
+        kpiId: form.kpiId,
+        calculationType: "SCALAR_FORMULA",
+        scalarTerm: formulaTermToInput(scalarTerms[0]),
+        temporalRollupMethod: form.temporalRollupMethod,
+        zeroDenominatorPolicy: effectiveZeroPolicy,
         resultDirection: form.resultDirection,
         ...rangeInput,
       };
     } else {
       const multiplier = Number(form.multiplier);
-      if (!form.numerator.id || !form.denominator.id) {
-        setFormError("Choose both numerator and denominator sources.");
+      const numeratorTerms = normalizeTermPositions(
+        form.numeratorTerms,
+        "NUMERATOR",
+      );
+      const denominatorTerms = normalizeTermPositions(
+        form.denominatorTerms,
+        "DENOMINATOR",
+      );
+      if (numeratorTerms.length === 0 || denominatorTerms.length === 0) {
+        setFormError("Ratio formulas require at least one term on each side.");
         return;
       }
-      if (
-        (form.numerator.type === "KPI" && form.numerator.id === form.kpiId) ||
-        (form.denominator.type === "KPI" && form.denominator.id === form.kpiId)
-      ) {
-        setFormError("A formula cannot use its target KPI as a source.");
-        return;
+      for (const [side, terms] of [
+        ["Numerator", numeratorTerms],
+        ["Denominator", denominatorTerms],
+      ] as const) {
+        for (const [index, term] of terms.entries()) {
+          const validationError = validateFormulaTerm(term, form.kpiId);
+          if (validationError) {
+            setFormError(`${side} term ${index + 1}: ${validationError}`);
+            return;
+          }
+        }
       }
       if (!Number.isFinite(multiplier) || multiplier <= 0) {
         setFormError("Multiplier must be greater than zero.");
@@ -401,19 +498,13 @@ export function KpiFormulaDialog({
         organizationId,
         kpiId: form.kpiId,
         calculationType: "RATIO_FORMULA",
-        numeratorSourceType: form.numerator.type,
-        denominatorSourceType: form.denominator.type,
+        numeratorTerms: numeratorTerms.map(formulaTermToInput),
+        denominatorTerms: denominatorTerms.map(formulaTermToInput),
         multiplier,
         temporalRollupMethod: form.temporalRollupMethod,
-        zeroDenominatorPolicy: form.zeroDenominatorPolicy,
+        zeroDenominatorPolicy: effectiveZeroPolicy,
         resultDirection: form.resultDirection,
         ...rangeInput,
-        ...(form.numerator.type === "METRIC"
-          ? { numeratorMetricDefinitionId: form.numerator.id }
-          : { numeratorKpiId: form.numerator.id }),
-        ...(form.denominator.type === "METRIC"
-          ? { denominatorMetricDefinitionId: form.denominator.id }
-          : { denominatorKpiId: form.denominator.id }),
       };
     }
 
@@ -421,28 +512,26 @@ export function KpiFormulaDialog({
     try {
       await onCreate(input);
       setForm(createInitialForm());
+      setZeroPolicyCustomized(false);
       onOpenChange(false);
     } catch {
       // The mutation hook displays the server error in a toast.
     }
   };
 
-  const ratioHasNoSources = activeMetrics.length === 0 && activeKpis.length < 2;
   const weightedHasTooFewSources =
     activeMetrics.length + Math.max(activeKpis.length - 1, 0) < 2;
   const hasInsufficientSources =
-    form.calculationType === "WEIGHTED_INDEX"
-      ? weightedHasTooFewSources
-      : ratioHasNoSources;
+    form.calculationType === "WEIGHTED_INDEX" && weightedHasTooFewSources;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Create KPI formula</DialogTitle>
           <DialogDescription>
-            Configure a versioned ratio or weighted-index formula. New definitions
-            begin in draft.
+            Configure a versioned ratio, scalar, or weighted-index formula. New
+            definitions begin in draft.
           </DialogDescription>
         </DialogHeader>
 
@@ -460,6 +549,7 @@ export function KpiFormulaDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="RATIO_FORMULA">Ratio formula</SelectItem>
+                <SelectItem value="SCALAR_FORMULA">Scalar formula</SelectItem>
                 <SelectItem value="WEIGHTED_INDEX">Weighted index</SelectItem>
               </SelectContent>
             </Select>
@@ -470,7 +560,9 @@ export function KpiFormulaDialog({
             <AlertTitle>
               {form.calculationType === "WEIGHTED_INDEX"
                 ? "Weighted index"
-                : "Ratio formula"}
+                : form.calculationType === "SCALAR_FORMULA"
+                  ? "Scalar formula"
+                  : "Ratio formula"}
             </AlertTitle>
             <AlertDescription>
               {form.calculationType === "WEIGHTED_INDEX" ? (
@@ -480,10 +572,15 @@ export function KpiFormulaDialog({
                   weights are submitted exactly as entered and are never rounded by
                   this editor.
                 </>
+              ) : form.calculationType === "SCALAR_FORMULA" ? (
+                <>
+                  A scalar formula evaluates one metric, KPI, or exact constant
+                  multiplied by an exact factor. Fractions such as 1/3 are preserved.
+                </>
               ) : (
                 <>
-                  Each side can reference either an active metric or another active
-                  KPI. Circular KPI dependencies are rejected by the server.
+                  Build ordered numerator and denominator terms from metrics, KPIs, or
+                  exact constants. Circular KPI dependencies remain server-authoritative.
                 </>
               )}
             </AlertDescription>
@@ -632,31 +729,74 @@ export function KpiFormulaDialog({
                 Exact weight total: {weightSummary?.total ?? "—"} / 100
               </div>
             </div>
+          ) : form.calculationType === "SCALAR_FORMULA" ? (
+            <FormulaTermEditor
+              label="Scalar expression"
+              side="SCALAR"
+              terms={form.scalarTerms}
+              onChange={(scalarTerms) =>
+                setForm((current) => ({ ...current, scalarTerms }))
+              }
+              metrics={activeMetrics}
+              kpis={activeKpis}
+              targetKpiId={form.kpiId}
+              single
+            />
           ) : (
-            <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 md:grid-cols-[1fr_auto_1fr] md:items-start">
-              <SourceEditor
+            <div className="space-y-4">
+              <FormulaTermEditor
                 label="Numerator"
-                source={form.numerator}
+                side="NUMERATOR"
+                terms={form.numeratorTerms}
+                onChange={(numeratorTerms) =>
+                  setForm((current) => ({ ...current, numeratorTerms }))
+                }
                 metrics={activeMetrics}
                 kpis={activeKpis}
                 targetKpiId={form.kpiId}
-                onChange={(numerator) =>
-                  setForm((current) => ({ ...current, numerator }))
-                }
               />
-              <div className="hidden pt-10 text-xl font-medium text-muted-foreground md:block">
-                ÷
-              </div>
-              <SourceEditor
+              <FormulaTermEditor
                 label="Denominator"
-                source={form.denominator}
+                side="DENOMINATOR"
+                terms={form.denominatorTerms}
+                onChange={(denominatorTerms) =>
+                  setForm((current) => ({ ...current, denominatorTerms }))
+                }
                 metrics={activeMetrics}
                 kpis={activeKpis}
                 targetKpiId={form.kpiId}
-                onChange={(denominator) =>
-                  setForm((current) => ({ ...current, denominator }))
-                }
               />
+            </div>
+          )}
+
+          {form.calculationType !== "WEIGHTED_INDEX" && (
+            <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/50 p-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-indigo-700">
+                  Canonical formula preview
+                </p>
+                <p className="mt-1 wrap-break-word font-mono text-sm text-indigo-950">
+                  {expressionPreview}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-indigo-900">
+                  Cascade dependencies
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {dependencies.length > 0 ? (
+                    dependencies.map((dependency) => (
+                      <Badge key={dependency.kpiId} variant="outline" className="bg-white">
+                        KPI · {dependency.name}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-indigo-700">
+                      No KPI dependencies; metric and constant terms do not create KPI cascades.
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -664,15 +804,15 @@ export function KpiFormulaDialog({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {form.calculationType === "WEIGHTED_INDEX"
-                  ? "Add at least two eligible active metrics or source KPIs before creating a weighted index."
-                  : "Add active metrics or additional KPIs before creating a formula."}
+                Add at least two eligible active metrics or source KPIs before
+                creating a weighted index.
               </AlertDescription>
             </Alert>
           )}
 
-          {form.calculationType === "RATIO_FORMULA" ? (
+          {form.calculationType !== "WEIGHTED_INDEX" ? (
             <div className="grid gap-4 sm:grid-cols-2">
+              {form.calculationType === "RATIO_FORMULA" && (
               <div className="space-y-2">
                 <Label htmlFor="formula-multiplier">Multiplier</Label>
                 <Input
@@ -693,6 +833,7 @@ export function KpiFormulaDialog({
                   Use 100 to express the ratio as a percentage.
                 </p>
               </div>
+              )}
               <div className="space-y-2">
                 <Label>Temporal rollup</Label>
                 <Select
@@ -718,16 +859,18 @@ export function KpiFormulaDialog({
                   </SelectContent>
                 </Select>
               </div>
+              {form.calculationType === "RATIO_FORMULA" && (
               <div className="space-y-2">
                 <Label>Zero denominator policy</Label>
                 <Select
-                  value={form.zeroDenominatorPolicy}
-                  onValueChange={(value: KpiZeroDenominatorPolicy) =>
+                  value={effectiveZeroPolicy}
+                  onValueChange={(value: KpiZeroDenominatorPolicy) => {
+                    setZeroPolicyCustomized(true);
                     setForm((current) => ({
                       ...current,
                       zeroDenominatorPolicy: value,
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -740,7 +883,11 @@ export function KpiFormulaDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Organization default: {ZERO_POLICY_OPTIONS.find((option) => option.value === organizationZeroPolicy)?.label ?? organizationZeroPolicy}.
+                </p>
               </div>
+              )}
               <ResultDirectionSelect
                 value={form.resultDirection}
                 onChange={(resultDirection) =>
@@ -803,7 +950,7 @@ export function KpiFormulaDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={pending}
             >
               Cancel
@@ -950,7 +1097,7 @@ function SourceEditor({
         <Label>{label} source type</Label>
         <Select
           value={source.type}
-          onValueChange={(type: KpiFormulaSourceType) =>
+          onValueChange={(type: SourceState["type"]) =>
             onChange({ type, id: "" })
           }
         >

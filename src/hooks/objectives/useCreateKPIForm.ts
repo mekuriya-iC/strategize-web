@@ -18,7 +18,9 @@ import type {
   KpiCarryPolicy,
   KpiCalculationBasisSource,
   KpiActualBasisSource,
+  KpiZeroDenominatorPolicy,
 } from "@/types/graphql";
+import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
 import {
   basisQuartersEqualAnnual,
   buildDirectBasisTargets,
@@ -40,6 +42,7 @@ export interface CreateKPIFormData {
   aggregationWeightSource: KpiAggregationWeightSource;
   carryPolicy: KpiCarryPolicy;
   calculationBasisSource: KpiCalculationBasisSource;
+  zeroDenominatorPolicy: KpiZeroDenominatorPolicy;
   actualBasisSource: KpiActualBasisSource;
   directBasisValue: string;
   numeratorLabel: string;
@@ -111,6 +114,7 @@ export function useCreateKPIForm({
     aggregationWeightSource: "PLANNED_TARGET",
     carryPolicy: "ADDITIVE",
     calculationBasisSource: "NONE",
+    zeroDenominatorPolicy: "NOT_CALCULABLE",
     actualBasisSource: "USE_APPROVED_BASIS",
     directBasisValue: "",
     numeratorLabel: "",
@@ -246,12 +250,15 @@ export function useCreateKPIForm({
       }
       if (
         !isSupport &&
-        isRateLike &&
         formData.kpiMode !== "DIRECT" &&
-        formData.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE"
+        !isAggregationMethodAllowed({
+          method: formData.aggregationMethod,
+          unitType: formData.unitType,
+          calculationBasisSource: basisSource,
+        })
       ) {
         throw new Error(
-          "Aggregated percentage/ratio KPIs require denominator-weighted component rollup",
+          "Choose an aggregation method compatible with this KPI unit and calculation basis",
         );
       }
       if (
@@ -295,6 +302,8 @@ export function useCreateKPIForm({
             ? "NONE"
             : formData.carryPolicy,
         calculationBasisSource: basisSource,
+        zeroDenominatorPolicy:
+          basisSource !== "NONE" ? formData.zeroDenominatorPolicy : undefined,
         actualBasisSource:
           basisSource !== "NONE" ? formData.actualBasisSource : undefined,
         directBasisValue:

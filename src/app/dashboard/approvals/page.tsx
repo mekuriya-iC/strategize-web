@@ -48,6 +48,7 @@ import { Label } from "@/components/ui/label";
 import {
   getOrderedLogbookFormulaSources,
   isLogbookFormulaCalculationType,
+  logbookFormulaSourceName,
   type LogbookFormulaForContextQueryData,
   type LogbookFormulaForContextQueryVariables,
   type LogbookKpiCalculationType,
@@ -778,11 +779,7 @@ export default function ApprovalsPage() {
                                   {source.label}
                                 </p>
                                 <p className="text-sm font-medium text-gray-900">
-                                  {source.sourceType === "METRIC"
-                                    ? source.metricDefinition?.name ||
-                                      source.metricDefinitionId
-                                    : source.sourceKpi?.name ||
-                                      source.sourceKpiId}
+                                  {logbookFormulaSourceName(source)}
                                 </p>
                                 {source.sourceType === "METRIC" ? (
                                   <p className="text-xs text-gray-500">
@@ -795,14 +792,23 @@ export default function ApprovalsPage() {
                                       ? ` · ${source.metricDefinition.temporalRollupMethod.replaceAll("_", " ")}`
                                       : ""}
                                   </p>
-                                ) : (
+                                ) : source.sourceType === "KPI" ? (
                                   <p className="mt-1 text-xs text-gray-500">
                                     Automatically resolved from the approved
                                     source KPI result · Read-only
                                   </p>
+                                ) : (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    Preview-only exact constant · No observation required
+                                  </p>
                                 )}
                               </div>
                               <div className="text-right">
+                                {source.factorExact !== undefined && (
+                                  <p className="font-mono text-xs text-indigo-900">
+                                    Factor: {source.factorExact}
+                                  </p>
+                                )}
                                 {source.weight !== undefined && (
                                   <p className="font-mono text-xs text-indigo-900">
                                     Weight: {source.weight}%

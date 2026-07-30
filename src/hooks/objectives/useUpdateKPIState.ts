@@ -16,7 +16,9 @@ import type {
   KpiCarryPolicy,
   KpiCalculationBasisSource,
   KpiActualBasisSource,
+  KpiZeroDenominatorPolicy,
 } from "@/types/graphql";
+import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
 import {
   basisQuartersEqualAnnual,
   buildDirectBasisTargets,
@@ -45,6 +47,7 @@ export interface UpdateKPIFormData {
   aggregationWeightSource: KpiAggregationWeightSource;
   carryPolicy: KpiCarryPolicy;
   calculationBasisSource: KpiCalculationBasisSource;
+  zeroDenominatorPolicy: KpiZeroDenominatorPolicy;
   actualBasisSource: KpiActualBasisSource;
   directBasisValue: string;
   numeratorLabel: string;
@@ -103,6 +106,7 @@ export function useUpdateKPIState({
     aggregationWeightSource: "PLANNED_TARGET",
     carryPolicy: "ADDITIVE",
     calculationBasisSource: "NONE",
+    zeroDenominatorPolicy: "NOT_CALCULABLE",
     actualBasisSource: "USE_APPROVED_BASIS",
     directBasisValue: "",
     numeratorLabel: "",
@@ -174,11 +178,10 @@ export function useUpdateKPIState({
           kpi.aggregationWeightSource || "PLANNED_TARGET",
         carryPolicy: kpi.carryPolicy || "ADDITIVE",
         calculationBasisSource: kpi.calculationBasisSource || "NONE",
+        zeroDenominatorPolicy:
+          kpi.zeroDenominatorPolicy || "NOT_CALCULABLE",
         actualBasisSource:
-          kpi.actualBasisSource ||
-          (kpi.calculationBasisSource === "LINKED_KPI"
-            ? "LINKED_KPI_ACTUAL"
-            : "USE_APPROVED_BASIS"),
+          kpi.actualBasisSource || "USE_APPROVED_BASIS",
         directBasisValue: kpi.directBasisValue || "",
         numeratorLabel: kpi.numeratorLabel || "",
         denominatorLabel: kpi.denominatorLabel || "",
@@ -677,6 +680,7 @@ export function useUpdateKPIState({
         : true;
       const isFormulaKpi =
         kpi.calculationType === "RATIO_FORMULA" ||
+        kpi.calculationType === "SCALAR_FORMULA" ||
         kpi.calculationType === "WEIGHTED_INDEX";
       if (
         !Number.isFinite(annualValue) ||
@@ -742,6 +746,7 @@ export function useUpdateKPIState({
         calculatedTargetValue = parseFloat(annualTarget) || 0;
       } else if (
         kpi.calculationType === "RATIO_FORMULA" ||
+        kpi.calculationType === "SCALAR_FORMULA" ||
         kpi.calculationType === "WEIGHTED_INDEX"
       ) {
         // Formula results are not additive allocations; each child unit plans
@@ -769,6 +774,8 @@ export function useUpdateKPIState({
         formData.unitType === "PERCENT" || formData.unitType === "RATIO"
           ? formData.calculationBasisSource
           : "NONE";
+      const formulaSuppliesDenominator =
+        kpi.calculationType === "RATIO_FORMULA";
       if (basisSource !== "NONE" && (!formData.numeratorLabel.trim() || !formData.denominatorLabel.trim())) {
         throw new Error("Numerator and denominator labels are required");
       }
@@ -782,12 +789,15 @@ export function useUpdateKPIState({
         }
       }
       if (
-        (formData.unitType === "PERCENT" || formData.unitType === "RATIO") &&
         formData.kpiMode !== "DIRECT" &&
-        formData.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE"
+        !isAggregationMethodAllowed({
+          method: formData.aggregationMethod,
+          unitType: formData.unitType,
+          calculationBasisSource: basisSource,
+        })
       ) {
         throw new Error(
-          "Aggregated percentage/ratio KPIs require denominator-weighted component rollup",
+          "Choose an aggregation method compatible with this KPI unit and calculation basis",
         );
       }
       if (
@@ -801,7 +811,8 @@ export function useUpdateKPIState({
       if (
         formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
         basisSource !== "DIRECT_VALUE" &&
-        !formData.weightingBasisKpiId
+        !formData.weightingBasisKpiId &&
+        !formulaSuppliesDenominator
       ) {
         throw new Error(
           "Select a weighting-basis KPI for denominator-weighted aggregation",
@@ -824,7 +835,8 @@ export function useUpdateKPIState({
         aggregationMethod: formData.aggregationMethod || "SUM",
         weightingBasisKpiId:
           formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
-          basisSource !== "DIRECT_VALUE"
+          basisSource !== "DIRECT_VALUE" &&
+          !formulaSuppliesDenominator
             ? formData.weightingBasisKpiId || null
             : null,
         aggregationWeightSource: formData.aggregationWeightSource || "PLANNED_TARGET",
@@ -833,6 +845,8 @@ export function useUpdateKPIState({
             ? "NONE"
             : (formData.carryPolicy || "ADDITIVE"),
         calculationBasisSource: basisSource,
+        zeroDenominatorPolicy:
+          basisSource !== "NONE" ? formData.zeroDenominatorPolicy : undefined,
         actualBasisSource:
           basisSource !== "NONE" ? formData.actualBasisSource : undefined,
         directBasisValue:

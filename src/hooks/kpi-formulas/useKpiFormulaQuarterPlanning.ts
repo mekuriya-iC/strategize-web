@@ -11,9 +11,14 @@ import {
 import type {
   KpiFormulaComponent,
   KpiFormulaDefinition,
+  KpiFormulaExpressionTerm,
   KpiFormulaSourceType,
 } from "./useKpiFormulas";
 import type { KpiQuarterPlanStatus } from "@/types/graphql";
+import {
+  normalizedExpressionTerms,
+  renderCanonicalTerms,
+} from "@/components/kpi-formulas/formulaExpression";
 
 export type KpiFormulaQuarterReconciliationStatus =
   | "PENDING_INPUT"
@@ -30,6 +35,15 @@ export interface KpiFormulaQuarterComponentPlanView {
   formulaComponent: KpiFormulaComponent;
 }
 
+export interface KpiFormulaQuarterExpressionTermPlanView {
+  id: string;
+  organizationId: string;
+  formulaQuarterPlanId: string;
+  formulaExpressionTermId: string;
+  plannedValue?: string | null;
+  formulaExpressionTerm: KpiFormulaExpressionTerm;
+}
+
 export interface KpiFormulaQuarterPlanView {
   id: string;
   organizationId: string;
@@ -37,6 +51,7 @@ export interface KpiFormulaQuarterPlanView {
   quarterPlanId: string;
   formulaDefinitionId: string;
   components: KpiFormulaQuarterComponentPlanView[];
+  expressionTermPlans: KpiFormulaQuarterExpressionTermPlanView[];
   numeratorPlannedValue?: string | null;
   denominatorPlannedValue?: string | null;
   calculatedTargetDecimal?: string | null;
@@ -59,6 +74,10 @@ export interface FormulaQuarterMetricInput {
   quarterNumber: number;
   numeratorPlannedValue?: string | null;
   denominatorPlannedValue?: string | null;
+  expressionTerms?: Array<{
+    formulaExpressionTermId: string;
+    plannedValue?: string | null;
+  }>;
 }
 
 export interface FormulaQuarterComponentInput {
@@ -243,6 +262,16 @@ export function formulaSourceLabel(
   formula: KpiFormulaDefinition,
   side: "numerator" | "denominator",
 ): { type?: KpiFormulaSourceType | null; label: string } {
+  const sideTerms = normalizedExpressionTerms(formula).filter(
+    (term) => term.side === side.toUpperCase(),
+  );
+  if (sideTerms.length > 0) {
+    return {
+      type: sideTerms.length === 1 ? sideTerms[0].sourceType : null,
+      label: `${renderCanonicalTerms(sideTerms)}${sideTerms.length > 1 ? " side total" : ""}`,
+    };
+  }
+
   const type = formula[`${side}SourceType`];
   if (type === "METRIC") {
     return {

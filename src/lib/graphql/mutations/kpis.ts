@@ -32,6 +32,7 @@ export const CREATE_KPI = gql`
       aggregationWeightSource
       carryPolicy
       calculationType
+      zeroDenominatorPolicy
       calculationBasisSource
       actualBasisSource
       directBasisValue
@@ -92,6 +93,7 @@ export const UPDATE_KPI = gql`
       aggregationWeightSource
       carryPolicy
       calculationType
+      zeroDenominatorPolicy
       calculationBasisSource
       actualBasisSource
       directBasisValue

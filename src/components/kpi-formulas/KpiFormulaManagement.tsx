@@ -77,7 +77,6 @@ export function KpiFormulaManagement({
   const [metricDialogOpen, setMetricDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [formulaDialogOpen, setFormulaDialogOpen] = useState(false);
-  const [editingFormula, setEditingFormula] = useState<KpiFormulaDefinition | null>(null);
   const [deletingFormula, setDeletingFormula] = useState<KpiFormulaDefinition | null>(null);
   const [approvingId, setApprovingId] = useState<string>();
   const [pendingApproval, setPendingApproval] =
@@ -425,7 +424,11 @@ export function KpiFormulaManagement({
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setEditingFormula(formula)}>
+                                  <DropdownMenuItem onClick={() => {
+                                    // TODO: Implement formula editing in a future update
+                                    // The dialog would need significant changes to support editing
+                                    alert("Formula editing is not yet implemented. For now, you can delete this draft and create a new one.");
+                                  }}>
                                     <Pencil className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>
@@ -552,22 +555,13 @@ export function KpiFormulaManagement({
         onCreate={management.createTemplate}
       />
       <KpiFormulaDialog
-        open={formulaDialogOpen || Boolean(editingFormula)}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setFormulaDialogOpen(false);
-            setEditingFormula(null);
-          } else {
-            setFormulaDialogOpen(nextOpen);
-          }
-        }}
+        open={formulaDialogOpen}
+        onOpenChange={setFormulaDialogOpen}
         organizationId={organizationId}
         metrics={management.metrics}
         kpis={management.kpis}
-        pending={management.loading.createFormula || management.loading.updateFormula}
+        pending={management.loading.createFormula}
         onCreate={management.createFormula}
-        onUpdate={management.updateFormula}
-        editingFormula={editingFormula}
       />
     </div>
   );

@@ -96,6 +96,13 @@ export interface KpiCandidate {
   unitType?: string | null;
   measurementUnit?: string | null;
   zeroDenominatorPolicy?: KpiZeroDenominatorPolicy | null;
+  assigneeType?: string | null;
+  assigneeId?: string | null;
+  objective?: {
+    type?: string | null;
+    assigneeType?: string | null;
+    assigneeId?: string | null;
+  } | null;
   isActive: boolean;
 }
 

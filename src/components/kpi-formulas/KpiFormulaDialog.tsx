@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useMemo, useState } from "react";
+import { useQuery } from "@apollo/client";
 import {
   AlertCircle,
   ArrowDown,
@@ -44,6 +45,8 @@ import type {
   MetricDefinition,
 } from "@/hooks/kpi-formulas/useKpiFormulas";
 import { useSystemConfigurationByOrg } from "@/hooks/systemConfiguration/useSystemConfiguration";
+import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { FormulaTermEditor } from "./FormulaTermEditor";
 import {
   createFormulaTerm,
@@ -55,10 +58,12 @@ import {
   type FormulaTermDraft,
 } from "./formulaExpression";
 import {
+  formatKpiCandidateLabel,
   RESULT_DIRECTION_OPTIONS,
   TARGET_RANGE_POLICY_OPTIONS,
   TEMPORAL_ROLLUP_OPTIONS,
   ZERO_POLICY_OPTIONS,
+  type KpiOrgUnitNameMaps,
 } from "./options";
 
 interface KpiFormulaDialogProps {
@@ -232,6 +237,35 @@ export function KpiFormulaDialog({
     ? form.zeroDenominatorPolicy
     : organizationZeroPolicy;
 
+  const { data: divisionsData } = useQuery(GET_DIVISIONS, {
+    variables: { organizationId, page: 1, limit: 500 },
+    skip: !organizationId || !open,
+    fetchPolicy: "cache-first",
+  });
+  const { data: departmentsData } = useQuery(GET_DEPARTMENTS, {
+    variables: { organizationId, page: 1, limit: 500 },
+    skip: !organizationId || !open,
+    fetchPolicy: "cache-first",
+  });
+
+  const orgUnitNames = useMemo<KpiOrgUnitNameMaps>(() => {
+    const divisionNamesById: Record<string, string> = {};
+    const departmentNamesById: Record<string, string> = {};
+
+    for (const division of divisionsData?.divisions?.items ?? []) {
+      if (division?.divisionId && division?.name) {
+        divisionNamesById[division.divisionId] = division.name;
+      }
+    }
+    for (const department of departmentsData?.departments?.items ?? []) {
+      if (department?.departmentId && department?.name) {
+        departmentNamesById[department.departmentId] = department.name;
+      }
+    }
+
+    return { divisionNamesById, departmentNamesById };
+  }, [departmentsData, divisionsData]);
+
   const activeMetrics = useMemo(
     () => metrics.filter((metric) => metric.isActive),
     [metrics],
@@ -239,7 +273,7 @@ export function KpiFormulaDialog({
   const activeKpis = useMemo(() => kpis.filter((kpi) => kpi.isActive), [kpis]);
   const kpiOptions = activeKpis.map((kpi) => ({
     value: kpi.kpiId,
-    label: kpi.name,
+    label: formatKpiCandidateLabel(kpi, orgUnitNames),
     description: kpi.measurementUnit ?? kpi.unitType ?? "KPI",
   }));
   const weightSummary = useMemo(
@@ -690,6 +724,7 @@ export function KpiFormulaDialog({
                         source={component.source}
                         metrics={activeMetrics}
                         kpis={activeKpis}
+                        orgUnitNames={orgUnitNames}
                         targetKpiId={form.kpiId}
                         onChange={(source) => updateComponent(index, { source })}
                       />
@@ -739,6 +774,7 @@ export function KpiFormulaDialog({
               }
               metrics={activeMetrics}
               kpis={activeKpis}
+              orgUnitNames={orgUnitNames}
               targetKpiId={form.kpiId}
               single
             />
@@ -753,6 +789,7 @@ export function KpiFormulaDialog({
                 }
                 metrics={activeMetrics}
                 kpis={activeKpis}
+                orgUnitNames={orgUnitNames}
                 targetKpiId={form.kpiId}
               />
               <FormulaTermEditor
@@ -764,6 +801,7 @@ export function KpiFormulaDialog({
                 }
                 metrics={activeMetrics}
                 kpis={activeKpis}
+                orgUnitNames={orgUnitNames}
                 targetKpiId={form.kpiId}
               />
             </div>
@@ -1064,6 +1102,7 @@ interface SourceEditorProps {
   source: SourceState;
   metrics: MetricDefinition[];
   kpis: KpiCandidate[];
+  orgUnitNames?: KpiOrgUnitNameMaps;
   targetKpiId: string;
   onChange: (source: SourceState) => void;
 }
@@ -1073,6 +1112,7 @@ function SourceEditor({
   source,
   metrics,
   kpis,
+  orgUnitNames,
   targetKpiId,
   onChange,
 }: SourceEditorProps) {
@@ -1087,7 +1127,7 @@ function SourceEditor({
           .filter((kpi) => kpi.kpiId !== targetKpiId)
           .map((kpi) => ({
             value: kpi.kpiId,
-            label: kpi.name,
+            label: formatKpiCandidateLabel(kpi, orgUnitNames),
             description: kpi.measurementUnit ?? kpi.unitType ?? "KPI",
           }));
 

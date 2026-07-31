@@ -111,3 +111,41 @@ export function enumLabel(value: string): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
+
+export interface KpiOrgUnitNameMaps {
+  divisionNamesById?: Record<string, string>;
+  departmentNamesById?: Record<string, string>;
+}
+
+/**
+ * Target KPI dropdown label:
+ * - Group/corporate KPIs: just the KPI name
+ * - Division/department KPIs: "KPI Name (Org Unit Name)"
+ */
+export function formatKpiCandidateLabel(
+  kpi: {
+    name: string;
+    assigneeType?: string | null;
+    assigneeId?: string | null;
+    objective?: {
+      assigneeType?: string | null;
+      assigneeId?: string | null;
+    } | null;
+  },
+  orgUnits?: KpiOrgUnitNameMaps,
+): string {
+  const assigneeType = kpi.assigneeType ?? kpi.objective?.assigneeType ?? null;
+  const assigneeId = kpi.assigneeId ?? kpi.objective?.assigneeId ?? null;
+
+  if (assigneeType === "DIVISION" && assigneeId) {
+    const unitName = orgUnits?.divisionNamesById?.[assigneeId] ?? "Division";
+    return `${kpi.name} (${unitName})`;
+  }
+
+  if (assigneeType === "DEPARTMENT" && assigneeId) {
+    const unitName = orgUnits?.departmentNamesById?.[assigneeId] ?? "Department";
+    return `${kpi.name} (${unitName})`;
+  }
+
+  return kpi.name;
+}

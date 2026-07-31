@@ -47,6 +47,8 @@ interface BulkKpiAssignmentDialogProps {
   parentAssignmentLevel: "DEPARTMENT" | "DIVISION" | "CORPORATE";
   parentWeight: number;
   kpiName: string;
+  unitType?: string;
+  calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
   strategicPeriodId: string;
   onSuccess?: () => void;
   trigger?: React.ReactNode;
@@ -63,6 +65,8 @@ export default function BulkKpiAssignmentDialog({
   parentAssignmentLevel,
   parentWeight,
   kpiName,
+  unitType,
+  calculationBasisSource,
   strategicPeriodId,
   onSuccess,
   trigger,
@@ -75,6 +79,10 @@ export default function BulkKpiAssignmentDialog({
     { id: "", targetValue: "" },
   ]);
   const [cap, setCap] = useState("1.5");
+  const isBasisDrivenRate =
+    (unitType === "PERCENT" || unitType === "RATIO") &&
+    (calculationBasisSource === "DIRECT_VALUE" ||
+      calculationBasisSource === "LINKED_KPI");
 
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
@@ -215,6 +223,12 @@ export default function BulkKpiAssignmentDialog({
   const isValidWeightSum = Math.abs(parseFloat(totalWeight) - parentWeight) < 0.01;
 
   const handleSubmit = async () => {
+    if (isBasisDrivenRate) {
+      toast.error(
+        "Use Assign Objective so approved denominator data is preserved for every assignee.",
+      );
+      return;
+    }
     // Validation
     const hasEmptyAssignees = assignees.some((a) => !a.id);
     if (hasEmptyAssignees) {
@@ -357,6 +371,14 @@ export default function BulkKpiAssignmentDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {isBasisDrivenRate && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              This target-only bulk assignment cannot preserve approved denominator
+              allocations or linked KPI dependencies. Use <strong>Assign Objective</strong>{" "}
+              from the objective page.
+            </div>
+          )}
+
           {/* Parent Weight Info */}
           <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2">
@@ -565,7 +587,7 @@ export default function BulkKpiAssignmentDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !isValidWeightSum}
+            disabled={loading || !isValidWeightSum || isBasisDrivenRate}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Assigning..." : `Assign to ${assignees.length} ${childLevel}s`}

@@ -58,7 +58,6 @@ export function LogbookApprovalActions({
           input: {
             logbookEntryId,
             entryStatus: "APPROVED",
-            approvedAt: new Date().toISOString(),
           },
         },
       });

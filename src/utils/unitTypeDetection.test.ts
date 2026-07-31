@@ -7,7 +7,10 @@ import {
 import { Kpi } from "@/types/graphql";
 
 // Mock KPI data for testing
-const createMockKPI = (name: string, unitType: "NUMBER" | "PERCENT"): Kpi => ({
+const createMockKPI = (
+  name: string,
+  unitType: "NUMBER" | "PERCENT" | "RATIO",
+): Kpi => ({
   kpiId: "test-kpi",
   name,
   baseline: 100,
@@ -63,6 +66,11 @@ describe("Unit Type Detection", () => {
   describe("detectKPIType", () => {
     it("should return PERCENTAGE for PERCENT unit type", () => {
       const kpi = createMockKPI("Customer Satisfaction", "PERCENT");
+      expect(detectKPIType(kpi)).toBe("PERCENTAGE");
+    });
+
+    it("should return PERCENTAGE for RATIO unit type", () => {
+      const kpi = createMockKPI("Sales per representative", "RATIO");
       expect(detectKPIType(kpi)).toBe("PERCENTAGE");
     });
 

@@ -9,9 +9,10 @@ import { LogbookEntryDialog } from "@/components/logbook/LogbookEntryDialog";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import type { FrontendLogbookItem } from "@/types/logbook";
 
 // Helper function to map backend entry to frontend format
-const mapEntryToFrontend = (entry: any) => ({
+const mapEntryToFrontend = (entry: any): FrontendLogbookItem => ({
   id: entry.logbookEntryId,
   activity: entry.activityDescription,
   description: entry.evidenceDescription || "",
@@ -20,8 +21,16 @@ const mapEntryToFrontend = (entry: any) => ({
   attachmentUrl: entry.evidenceUrl || null,
   status: entry.entryStatus,
   linkedKpiId: entry.linkedKpiId || "",
+  linkedKpi: entry.linkedKpi || null,
+  quarterPlan: entry.quarterPlan || null,
+  metricObservations: entry.metricObservations || [],
   kpiTargetValue: entry.kpiTargetValue ?? null,
   kpiAchievedValue: entry.kpiAchievedValue ?? null,
+  kpiActualDenominator: entry.kpiActualDenominator ?? null,
+  kpiResultInputMode: entry.kpiResultInputMode ?? null,
+  kpiActualNumeratorExact: entry.kpiActualNumeratorExact ?? null,
+  kpiActualRateExact: entry.kpiActualRateExact ?? null,
+  kpiActualBasisExact: entry.kpiActualBasisExact ?? null,
   kpiCompletionPercent: entry.kpiCompletionPercent ?? null,
   contributionUnit: entry.contributionUnit || "",
   strategicPeriodId: entry.strategicPeriod?.strategicPeriodId || "",
@@ -35,7 +44,9 @@ export default function LogbookPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isAddEntryOpen, setIsAddEntryOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [editingEntry, setEditingEntry] = useState<FrontendLogbookItem | null>(
+    null,
+  );
 
   // Get current user
   const { data: userData } = useQuery(GET_ME);
@@ -97,7 +108,8 @@ export default function LogbookPage() {
     }
   };
 
-  const handleEditEntry = (entry: any) => {
+  const handleEditEntry = (entry: FrontendLogbookItem) => {
+    if (entry.status === "SUBMITTED" || entry.status === "APPROVED") return;
     setEditingEntry(entry);
     setIsAddEntryOpen(true);
   };
@@ -116,6 +128,17 @@ export default function LogbookPage() {
             Track your fulfilled tasks and achievements
           </p>
         </div>
+        <Button
+          type="button"
+          onClick={() => {
+            setEditingEntry(null);
+            setIsAddEntryOpen(true);
+          }}
+          className="gap-2"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Add entry
+        </Button>
       </div>
 
       {loading ? (

@@ -3,11 +3,12 @@
 import { useQuery } from "@apollo/client";
 import { useMemo } from "react";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
-import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
-import { GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
+import { GET_DEPARTMENTS, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
+import { GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
 import { GET_EMPLOYEES, GET_DIRECT_REPORTS } from "@/lib/graphql/queries/employees";
 import { useAssignmentContext, type AssigneeType } from "@/context/AssignmentContext";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { useUser } from "@/stores";
 import type { Division, Department, Employee } from "@/types/graphql";
 
 export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
@@ -16,14 +17,21 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
     const sourceObjective = context.sourceObjective;
     const assigneeType = assigneeTypeOverride || context.assigneeType;
     const { guards } = usePermissions();
+    const currentUser = useUser();
+    const organizationId = currentUser?.organizationId;
     const isAdmin = guards.isAdmin || guards.isSuperAdmin;
 
     // 1. Fetching Divisions (Corporate -> Division)
     // Logic: Always fetch all/search divisions as Corporate can assign to any.
     const shouldFetchDivisions = assigneeType === "DIVISION";
     const { data: divisionsData, loading: loadingDivisions } = useQuery(GET_DIVISIONS, {
-        variables: { page: 1, limit: 50, search: searchTerm },
-        skip: !shouldFetchDivisions,
+        variables: {
+            page: 1,
+            limit: 50,
+            search: searchTerm,
+            organizationId,
+        },
+        skip: !shouldFetchDivisions || !organizationId,
         fetchPolicy: "cache-and-network",
     });
 
@@ -39,8 +47,15 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
 
     // Use full GET_DEPARTMENTS to get employees and division info safely for local filtering
     const { data: allDepartmentsData, loading: loadingAllDepartments } = useQuery(GET_DEPARTMENTS, {
-        variables: { page: 1, limit: 1000 },
-        skip: !shouldFetchDepartments && !shouldFetchPersonnel,
+        variables: {
+            page: 1,
+            limit: 1000,
+            organizationId,
+            divisionId: isDivisionSource ? sourceObjective?.assigneeId : undefined,
+        },
+        skip:
+            (!shouldFetchDepartments && !shouldFetchPersonnel) ||
+            !organizationId,
         fetchPolicy: "cache-and-network",
     });
 
@@ -84,23 +99,24 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
     // Compute final lists
     const availableAssignees = useMemo(() => {
         if (assigneeType === "DIVISION") {
-            return divisionsData?.divisions?.items || [];
+            return (divisionsData?.divisions?.items || []) as Division[];
         }
 
         if (assigneeType === "DEPARTMENT") {
-            const allItems = allDepartmentsData?.departments?.items || [];
+            const allItems = (allDepartmentsData?.departments?.items || []) as Department[];
 
             if (isDivisionSource) {
                 // Scenario: Division -> Department (Assign kpi to its child departments)
                 const activeDivisionId = sourceObjective.assigneeId?.toString();
                 // Filter departments where division matches or parent division is this one
-                const filtered = allItems.filter((d: any) =>
-                    d.division?.divisionId?.toString() === activeDivisionId
+                const filtered = allItems.filter(
+                    (department) =>
+                        department.division?.divisionId?.toString() === activeDivisionId,
                 );
 
                 if (!searchTerm) return filtered;
-                return filtered.filter((d: any) =>
-                    d.name.toLowerCase().includes(searchTerm.toLowerCase())
+                return filtered.filter((department) =>
+                    department.name.toLowerCase().includes(searchTerm.toLowerCase())
                 );
             } else {
                 // Corporate Level: Show ALL departments for skip-level assignment
@@ -108,15 +124,15 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
                 const filtered = allItems;
 
                 if (!searchTerm) return filtered;
-                return filtered.filter((d: any) =>
-                    d.name.toLowerCase().includes(searchTerm.toLowerCase())
+                return filtered.filter((department) =>
+                    department.name.toLowerCase().includes(searchTerm.toLowerCase())
                 );
             }
         }
 
         if (assigneeType === "PERSONNEL") {
-            let allEmployees: any[] = [];
-            const allDepts = allDepartmentsData?.departments?.items || [];
+            let allEmployees: Employee[] = [];
+            const allDepts = (allDepartmentsData?.departments?.items || []) as Department[];
 
             if (isDepartmentSource) {
                 // Scenario: Department -> Personnel
@@ -127,24 +143,29 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
                 } else if (!loadingScopedDepartment) {
                     // Fallback to finding it in the allDepts list if scoped fetch is done and empty
                     const sourceId = sourceObjective.assigneeId?.toString();
-                    const deptMatch = allDepts.find((d: any) => d.departmentId?.toString() === sourceId);
+                    const deptMatch = allDepts.find(
+                        (department) => department.departmentId?.toString() === sourceId,
+                    );
                     allEmployees = deptMatch?.employees || [];
                 }
             } else if (isDivisionSource) {
                 // Scenario: Division -> Personnel (Aggregate from its departments)
                 // Try scoped division data first for more accuracy
-                const divisionDepts = scopedDivisionData?.division?.departments || [];
-                const seenIds = new Set();
+                const divisionDepts = (scopedDivisionData?.division?.departments || []) as Department[];
+                const seenIds = new Set<string>();
 
                 if (divisionDepts.length > 0) {
-                    divisionDepts.forEach((dept: any) => {
-                        const employees = dept.employees || [];
-                        employees.forEach((emp: any) => {
-                            if (!seenIds.has(emp.employeeId)) {
-                                seenIds.add(emp.employeeId);
+                    divisionDepts.forEach((department) => {
+                        const employees = department.employees || [];
+                        employees.forEach((employee) => {
+                            if (!seenIds.has(employee.employeeId)) {
+                                seenIds.add(employee.employeeId);
                                 allEmployees.push({
-                                    ...emp,
-                                    departments: emp.departments || [{ name: dept.name, departmentId: dept.departmentId }]
+                                    ...employee,
+                                    departments: employee.departments || [{
+                                        name: department.name,
+                                        departmentId: department.departmentId,
+                                    }],
                                 });
                             }
                         });
@@ -152,18 +173,22 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
                 } else if (!loadingScopedDivision) {
                     // Fallback to allDepartmentsData filtering if scoped is empty
                     const activeDivisionId = sourceObjective.assigneeId?.toString();
-                    const divisionDeptsFallback = allDepts.filter((d: any) =>
-                        d.division?.divisionId?.toString() === activeDivisionId
+                    const divisionDeptsFallback = allDepts.filter(
+                        (department) =>
+                            department.division?.divisionId?.toString() === activeDivisionId,
                     );
 
-                    divisionDeptsFallback.forEach((dept: any) => {
-                        const employees = dept.employees || [];
-                        employees.forEach((emp: any) => {
-                            if (!seenIds.has(emp.employeeId)) {
-                                seenIds.add(emp.employeeId);
+                    divisionDeptsFallback.forEach((department) => {
+                        const employees = department.employees || [];
+                        employees.forEach((employee) => {
+                            if (!seenIds.has(employee.employeeId)) {
+                                seenIds.add(employee.employeeId);
                                 allEmployees.push({
-                                    ...emp,
-                                    departments: emp.departments || [{ name: dept.name, departmentId: dept.departmentId }]
+                                    ...employee,
+                                    departments: employee.departments || [{
+                                        name: department.name,
+                                        departmentId: department.departmentId,
+                                    }],
                                 });
                             }
                         });
@@ -175,12 +200,14 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
             }
 
             // Merge in direct reports (to cover employees who report directly to the division head without a department)
-            const directReports = directReportsData?.directReports || [];
+            const directReports = (directReportsData?.directReports || []) as Employee[];
             if (directReports.length > 0) {
-                const existingIds = new Set(allEmployees.map(e => e.employeeId));
-                directReports.forEach((emp: any) => {
-                    if (!existingIds.has(emp.employeeId)) {
-                        allEmployees.push(emp);
+                const existingIds = new Set(
+                    allEmployees.map((employee) => employee.employeeId),
+                );
+                directReports.forEach((employee) => {
+                    if (!existingIds.has(employee.employeeId)) {
+                        allEmployees.push(employee);
                     }
                 });
             }
@@ -188,9 +215,10 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
             // CLIENT-SIDE SEARCH
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
-                allEmployees = allEmployees.filter((emp: any) =>
-                    emp.fullName?.toLowerCase().includes(term) ||
-                    emp.email?.toLowerCase().includes(term)
+                allEmployees = allEmployees.filter(
+                    (employee) =>
+                        employee.fullName?.toLowerCase().includes(term) ||
+                        employee.email?.toLowerCase().includes(term),
                 );
             }
 
@@ -210,11 +238,12 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
         isAdmin,
         isDivisionSource,
         isDepartmentSource,
-        sourceObjective
+        sourceObjective,
+        loadingScopedDepartment,
+        loadingScopedDivision,
     ]);
 
     const loading = loadingDivisions || loadingAllDepartments || loadingScopedDivision || loadingScopedDepartment || loadingGlobalEmployees || loadingDirectReports;
-    // TODO: Consolidate errors properly. For now return generic error if any failed.
     const error = null;
 
     return {

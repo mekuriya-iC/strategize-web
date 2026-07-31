@@ -8,7 +8,10 @@ import { useAuthStore } from "@/stores";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { GET_LOGBOOK_ENTRIES } from "@/lib/graphql/queries/logbook";
+import {
+  GET_LOGBOOK_ENTRIES,
+  GET_LOGBOOK_FORMULA_FOR_CONTEXT,
+} from "@/lib/graphql/queries/logbook";
 import { LogbookApprovalActions } from "@/components/logbook";
 import {
   Table,
@@ -42,6 +45,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  getOrderedLogbookFormulaSources,
+  isLogbookFormulaCalculationType,
+  logbookFormulaSourceName,
+  type LogbookFormulaForContextQueryData,
+  type LogbookFormulaForContextQueryVariables,
+  type LogbookKpiCalculationType,
+  type LogbookMetricObservation,
+} from "@/types/logbook";
 
 const GET_LOGBOOK_REVIEW_DEPARTMENTS = gql`
   query GetApprovalsLogbookReviewDepartments($page: Int!, $limit: Int!) {
@@ -84,6 +96,10 @@ type LogbookReviewEntry = {
   entryStatus?: string | null;
   contributionUnit?: string | null;
   kpiCompletionPercent?: number | null;
+  kpiResultInputMode?: string | null;
+  kpiActualNumeratorExact?: string | null;
+  kpiActualRateExact?: string | null;
+  kpiActualBasisExact?: string | null;
   evidenceDescription?: string | null;
   evidenceUrl?: string | null;
   decisionsMade?: string | null;
@@ -92,6 +108,20 @@ type LogbookReviewEntry = {
   rejectionReason?: string | null;
   submittedAt?: string | null;
   approvedAt?: string | null;
+  linkedKpi?: {
+    kpiId: string;
+    name?: string | null;
+    calculationType?: LogbookKpiCalculationType | null;
+    actualBasisSource?: string | null;
+    numeratorLabel?: string | null;
+    denominatorLabel?: string | null;
+  } | null;
+  quarterPlan?: {
+    quarterNumber: number;
+    timeline: string;
+    status: string;
+  } | null;
+  metricObservations?: LogbookMetricObservation[];
   owner?:
     (ReviewUser & { fullName?: string | null; title?: string | null }) | null;
   approvedBy?: { employeeId?: string; fullName?: string | null } | null;
@@ -188,6 +218,35 @@ export default function ApprovalsPage() {
     },
     skip: !user?.employeeId,
   });
+
+  const selectedEntryIsFormula = isLogbookFormulaCalculationType(
+    selectedLogbookEntry?.linkedKpi?.calculationType,
+  );
+  const {
+    data: selectedFormulaData,
+    loading: selectedFormulaLoading,
+  } = useQuery<
+    LogbookFormulaForContextQueryData,
+    LogbookFormulaForContextQueryVariables
+  >(GET_LOGBOOK_FORMULA_FOR_CONTEXT, {
+    variables: {
+      organizationId: user?.organizationId ?? "",
+      kpiId: selectedLogbookEntry?.linkedKpi?.kpiId ?? "",
+      entryDate: selectedLogbookEntry?.entryDate?.slice(0, 10) ?? "",
+    },
+    skip:
+      !showDetailDialog ||
+      !selectedEntryIsFormula ||
+      !selectedLogbookEntry?.linkedKpi?.kpiId ||
+      !selectedLogbookEntry?.entryDate ||
+      !user?.organizationId,
+  });
+  const selectedFormulaSources = getOrderedLogbookFormulaSources(
+    selectedFormulaData?.logbookFormulaForContext,
+  );
+  const selectedFormulaHasMetricSources = selectedFormulaSources.some(
+    (source) => source.sourceType === "METRIC",
+  );
 
   const rawLogbookEntries = useMemo<LogbookReviewEntry[]>(
     () => logbookData?.logbookEntries?.items || [],
@@ -670,6 +729,191 @@ export default function ApprovalsPage() {
                   </p>
                 </div>
               </div>
+
+              {selectedEntryIsFormula && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {selectedLogbookEntry.linkedKpi?.calculationType ===
+                    "WEIGHTED_INDEX"
+                      ? "Weighted-index sources"
+                      : "Formula sources"}
+                  </Label>
+                  <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="font-medium text-indigo-950">
+                        {selectedLogbookEntry.linkedKpi?.name}
+                      </span>
+                      {selectedLogbookEntry.quarterPlan && (
+                        <span className="text-xs text-indigo-700">
+                          Q{selectedLogbookEntry.quarterPlan.quarterNumber} ·{" "}
+                          {selectedLogbookEntry.quarterPlan.timeline}
+                        </span>
+                      )}
+                    </div>
+
+                    {selectedFormulaLoading ? (
+                      <p className="text-sm text-gray-500">
+                        Loading formula sources…
+                      </p>
+                    ) : selectedFormulaSources.length > 0 ? (
+                      selectedFormulaSources.map((source) => {
+                        const observation =
+                          source.sourceType === "METRIC"
+                            ? (
+                                selectedLogbookEntry.metricObservations || []
+                              ).find(
+                                (candidate) =>
+                                  candidate.metricDefinitionId ===
+                                  source.metricDefinitionId,
+                              )
+                            : undefined;
+
+                        return (
+                          <div
+                            key={source.key}
+                            className="rounded-md border bg-white px-3 py-3"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div>
+                                <p className="text-xs font-medium text-indigo-700">
+                                  {source.label}
+                                </p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {logbookFormulaSourceName(source)}
+                                </p>
+                                {source.sourceType === "METRIC" ? (
+                                  <p className="text-xs text-gray-500">
+                                    {source.metricDefinition?.code}
+                                    {source.metricDefinition?.unitType
+                                      ? ` · ${source.metricDefinition.unitType}`
+                                      : ""}
+                                    {source.metricDefinition
+                                      ?.temporalRollupMethod
+                                      ? ` · ${source.metricDefinition.temporalRollupMethod.replaceAll("_", " ")}`
+                                      : ""}
+                                  </p>
+                                ) : source.sourceType === "KPI" ? (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    Automatically resolved from the approved
+                                    source KPI result · Read-only
+                                  </p>
+                                ) : (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    Preview-only exact constant · No observation required
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                {source.factorExact !== undefined && (
+                                  <p className="font-mono text-xs text-indigo-900">
+                                    Factor: {source.factorExact}
+                                  </p>
+                                )}
+                                {source.weight !== undefined && (
+                                  <p className="font-mono text-xs text-indigo-900">
+                                    Weight: {source.weight}%
+                                  </p>
+                                )}
+                                {source.sourceType === "METRIC" && (
+                                  <p
+                                    className={`mt-1 font-mono text-sm ${
+                                      observation
+                                        ? "text-gray-900"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {observation?.value ??
+                                      "Missing observation"}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="space-y-2">
+                        {(selectedLogbookEntry.metricObservations || []).map(
+                          (observation) => (
+                            <div
+                              key={observation.id}
+                              className="flex items-center justify-between gap-4 rounded-md border bg-white px-3 py-2"
+                            >
+                              <span className="text-sm font-medium text-gray-900">
+                                {observation.metricDefinition.name}
+                              </span>
+                              <span className="font-mono text-sm text-gray-900">
+                                {observation.value}
+                              </span>
+                            </div>
+                          ),
+                        )}
+                        <p className="text-sm text-gray-600">
+                          Approved formula metadata is unavailable.
+                        </p>
+                      </div>
+                    )}
+
+                    {!selectedFormulaLoading &&
+                      selectedFormulaSources.length > 0 &&
+                      !selectedFormulaHasMetricSources && (
+                        <p className="text-sm text-indigo-800">
+                          All sources are KPI-backed and read-only; no metric
+                          observation is required for this entry.
+                        </p>
+                      )}
+                  </div>
+                </div>
+              )}
+
+              {(selectedLogbookEntry.kpiActualNumeratorExact ||
+                selectedLogbookEntry.kpiActualBasisExact ||
+                selectedLogbookEntry.kpiActualRateExact) && (
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <Label className="text-sm font-semibold text-blue-950">
+                    Exact KPI result components
+                  </Label>
+                  <div className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-blue-700">
+                        {selectedLogbookEntry.linkedKpi?.numeratorLabel ||
+                          "Numerator"}
+                      </p>
+                      <p className="font-mono font-medium">
+                        {selectedLogbookEntry.kpiActualNumeratorExact ||
+                          "Derived by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-700">
+                        {selectedLogbookEntry.linkedKpi?.denominatorLabel ||
+                          "Denominator"}
+                      </p>
+                      <p className="font-mono font-medium">
+                        {selectedLogbookEntry.kpiActualBasisExact ||
+                          "Resolved by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-700">Result</p>
+                      <p className="font-mono font-medium">
+                        {selectedLogbookEntry.kpiActualRateExact ||
+                          "Derived by server"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-800">
+                    Denominator source:{" "}
+                    {selectedLogbookEntry.linkedKpi?.actualBasisSource ===
+                    "ENTER_ACTUAL_BASIS"
+                      ? "Entered actual denominator"
+                      : selectedLogbookEntry.linkedKpi?.actualBasisSource ===
+                          "LINKED_KPI_ACTUAL"
+                        ? "Linked KPI approved actual"
+                        : "Approved denominator plan"}
+                  </p>
+                </div>
+              )}
 
               {/* Evidence Description */}
               {selectedLogbookEntry.evidenceDescription && (

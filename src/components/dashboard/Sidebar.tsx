@@ -580,6 +580,23 @@ const navCategories: NavCategory[] = [
         ),
       },
       {
+        label: "KPI Formulas",
+        href: "/dashboard/admin/kpi-formulas",
+        permission: "nav:admin",
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-current"
+          >
+            <rect x="3" y="2.5" width="14" height="15" rx="2" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M6 6H14M6 10H8M10 10H12M14 10H14.01M6 14H8M10 14H12M14 14H14.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        ),
+      },
+      {
         label: "Semi-Annual Config",
         href: "/dashboard/semi-annual-config",
         permission: "nav:admin",

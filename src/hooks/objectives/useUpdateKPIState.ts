@@ -11,7 +11,21 @@ import type {
   KpiUnitType,
   UpdateKpiInput,
   KpiTargetInput,
+  KpiAggregationMethod,
+  KpiAggregationWeightSource,
+  KpiCarryPolicy,
+  KpiCalculationBasisSource,
+  KpiActualBasisSource,
+  KpiZeroDenominatorPolicy,
 } from "@/types/graphql";
+import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
+import {
+  basisQuartersEqualAnnual,
+  buildDirectBasisTargets,
+  directBasisTargetsToQuarters,
+  EMPTY_BASIS_QUARTERS,
+  type BasisQuarterValues,
+} from "@/utils/basisCalculation";
 
 import { useStrategicPeriodStore } from "@/stores";
 import {
@@ -28,6 +42,17 @@ export interface UpdateKPIFormData {
   unitType?: KpiUnitType;
   kpiMode?: string;
   managerRetentionPercent?: string;
+  aggregationMethod: KpiAggregationMethod;
+  weightingBasisKpiId: string;
+  aggregationWeightSource: KpiAggregationWeightSource;
+  carryPolicy: KpiCarryPolicy;
+  calculationBasisSource: KpiCalculationBasisSource;
+  zeroDenominatorPolicy: KpiZeroDenominatorPolicy;
+  actualBasisSource: KpiActualBasisSource;
+  directBasisValue: string;
+  numeratorLabel: string;
+  denominatorLabel: string;
+  basisUnitType: KpiUnitType;
 }
 
 interface UseUpdateKPIStateProps {
@@ -76,6 +101,17 @@ export function useUpdateKPIState({
     unitType: "NUMBER" as KpiUnitType,
     kpiMode: "AGGREGATED",
     managerRetentionPercent: "30",
+    aggregationMethod: "SUM",
+    weightingBasisKpiId: "",
+    aggregationWeightSource: "PLANNED_TARGET",
+    carryPolicy: "ADDITIVE",
+    calculationBasisSource: "NONE",
+    zeroDenominatorPolicy: "NOT_CALCULABLE",
+    actualBasisSource: "USE_APPROVED_BASIS",
+    directBasisValue: "",
+    numeratorLabel: "",
+    denominatorLabel: "",
+    basisUnitType: "NUMBER",
   });
 
   // Annual target state (single value for strategic period)
@@ -106,6 +142,9 @@ export function useUpdateKPIState({
   const [yearlyQuarters, setYearlyQuarters] = useState<
     Record<string, { q1: string; q2: string; q3: string; q4: string }>
   >({});
+  const [basisQuarters, setBasisQuarters] = useState<BasisQuarterValues>({
+    ...EMPTY_BASIS_QUARTERS,
+  });
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,7 +172,22 @@ export function useUpdateKPIState({
         kpiMode: (kpi as any).kpiMode || "AGGREGATED",
         managerRetentionPercent:
           (kpi as any).managerRetentionPercent?.toString() || "30",
+        aggregationMethod: kpi.aggregationMethod || "SUM",
+        weightingBasisKpiId: kpi.weightingBasisKpiId || "",
+        aggregationWeightSource:
+          kpi.aggregationWeightSource || "PLANNED_TARGET",
+        carryPolicy: kpi.carryPolicy || "ADDITIVE",
+        calculationBasisSource: kpi.calculationBasisSource || "NONE",
+        zeroDenominatorPolicy:
+          kpi.zeroDenominatorPolicy || "NOT_CALCULABLE",
+        actualBasisSource:
+          kpi.actualBasisSource || "USE_APPROVED_BASIS",
+        directBasisValue: kpi.directBasisValue || "",
+        numeratorLabel: kpi.numeratorLabel || "",
+        denominatorLabel: kpi.denominatorLabel || "",
+        basisUnitType: kpi.basisUnitType || "NUMBER",
       }));
+      setBasisQuarters(directBasisTargetsToQuarters(kpi.directBasisTargets));
 
       // Initialize annual target from existing targets
       if (targets && targets.length > 0 && strategicTimeline) {
@@ -483,7 +537,7 @@ export function useUpdateKPIState({
   const updateField = useCallback(
     (
       field: keyof UpdateKPIFormData,
-      value: string | KpiWeightType | KpiStatus | KpiUnitType,
+      value: UpdateKPIFormData[keyof UpdateKPIFormData],
     ) => {
       if (kpi?.status === "APPROVED" && !isCorporate) return;
 
@@ -589,7 +643,7 @@ export function useUpdateKPIState({
   }, [kpi, parentKpi, strategicTimeline, annualTarget]);
 
   // Handle form submission
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (afterKpiUpdate?: () => Promise<void>) => {
     if (kpi?.status === "APPROVED" && !isCorporate) return;
 
     if (!kpi) {
@@ -621,13 +675,25 @@ export function useUpdateKPIState({
       const averageBased =
         formData.unitType === "PERCENT" || formData.unitType === "RATIO";
       const plannedAnnual = averageBased ? total / 4 : total;
+      const rateTargetsRepeat = averageBased
+        ? values.every((value) => Math.abs(value - annualValue) <= 0.01)
+        : true;
+      const isFormulaKpi =
+        kpi.calculationType === "RATIO_FORMULA" ||
+        kpi.calculationType === "SCALAR_FORMULA" ||
+        kpi.calculationType === "WEIGHTED_INDEX";
       if (
         !Number.isFinite(annualValue) ||
         annualValue <= 0 ||
-        Math.abs(plannedAnnual - annualValue) > 0.01
+        (!isFormulaKpi &&
+          (averageBased
+            ? !rateTargetsRepeat
+            : Math.abs(plannedAnnual - annualValue) > 0.01))
       ) {
         throw new Error(
-          `Quarterly ${averageBased ? "average" : "sum"} must match the annual target`,
+          averageBased
+            ? "Every quarterly ratio/percentage target must equal the annual target"
+            : "Quarterly sum must match the annual target",
         );
       }
     }
@@ -678,6 +744,14 @@ export function useUpdateKPIState({
       let calculatedTargetValue: number;
       if (isCorporate) {
         calculatedTargetValue = parseFloat(annualTarget) || 0;
+      } else if (
+        kpi.calculationType === "RATIO_FORMULA" ||
+        kpi.calculationType === "SCALAR_FORMULA" ||
+        kpi.calculationType === "WEIGHTED_INDEX"
+      ) {
+        // Formula results are not additive allocations; each child unit plans
+        // its own result and reconciles it from exact source components.
+        calculatedTargetValue = Number(annualTarget);
       } else if (kpi.assignedTargetValue && kpi.assignedTargetValue > 0) {
         // Preserve the original assigned target value — quarterly breakdown is in the targets array
         calculatedTargetValue = kpi.assignedTargetValue;
@@ -696,6 +770,55 @@ export function useUpdateKPIState({
             : 0;
       }
 
+      const basisSource =
+        formData.unitType === "PERCENT" || formData.unitType === "RATIO"
+          ? formData.calculationBasisSource
+          : "NONE";
+      const formulaSuppliesDenominator =
+        kpi.calculationType === "RATIO_FORMULA";
+      if (basisSource !== "NONE" && (!formData.numeratorLabel.trim() || !formData.denominatorLabel.trim())) {
+        throw new Error("Numerator and denominator labels are required");
+      }
+      if (basisSource === "DIRECT_VALUE") {
+        const annualBasis = Number(formData.directBasisValue);
+        if (!Number.isFinite(annualBasis) || annualBasis <= 0) {
+          throw new Error("Annual direct basis must be greater than zero");
+        }
+        if (!isCorporate && !basisQuartersEqualAnnual(formData.directBasisValue, basisQuarters)) {
+          throw new Error("Q1–Q4 basis values must sum exactly to the annual basis");
+        }
+      }
+      if (
+        formData.kpiMode !== "DIRECT" &&
+        !isAggregationMethodAllowed({
+          method: formData.aggregationMethod,
+          unitType: formData.unitType,
+          calculationBasisSource: basisSource,
+        })
+      ) {
+        throw new Error(
+          "Choose an aggregation method compatible with this KPI unit and calculation basis",
+        );
+      }
+      if (
+        formData.actualBasisSource === "LINKED_KPI_ACTUAL" &&
+        basisSource !== "LINKED_KPI"
+      ) {
+        throw new Error(
+          "Linked KPI actual requires a linked approved denominator KPI",
+        );
+      }
+      if (
+        formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
+        basisSource !== "DIRECT_VALUE" &&
+        !formData.weightingBasisKpiId &&
+        !formulaSuppliesDenominator
+      ) {
+        throw new Error(
+          "Select a weighting-basis KPI for denominator-weighted aggregation",
+        );
+      }
+
       // Create the update input with only the fields that are allowed by UpdateKpiInput
       const updateInput: UpdateKpiInput = {
         kpiId: kpi.kpiId,
@@ -709,6 +832,35 @@ export function useUpdateKPIState({
           formData.kpiMode === "HYBRID" && formData.managerRetentionPercent
             ? parseFloat(formData.managerRetentionPercent)
             : undefined,
+        aggregationMethod: formData.aggregationMethod || "SUM",
+        weightingBasisKpiId:
+          formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
+          basisSource !== "DIRECT_VALUE" &&
+          !formulaSuppliesDenominator
+            ? formData.weightingBasisKpiId || null
+            : null,
+        aggregationWeightSource: formData.aggregationWeightSource || "PLANNED_TARGET",
+        carryPolicy:
+          formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
+            ? "NONE"
+            : (formData.carryPolicy || "ADDITIVE"),
+        calculationBasisSource: basisSource,
+        zeroDenominatorPolicy:
+          basisSource !== "NONE" ? formData.zeroDenominatorPolicy : undefined,
+        actualBasisSource:
+          basisSource !== "NONE" ? formData.actualBasisSource : undefined,
+        directBasisValue:
+          basisSource === "DIRECT_VALUE" ? formData.directBasisValue : null,
+        directBasisTargets:
+          basisSource === "DIRECT_VALUE" && !isCorporate
+            ? buildDirectBasisTargets(strategicTimeline, basisQuarters)
+            : [],
+        numeratorLabel:
+          basisSource !== "NONE" ? formData.numeratorLabel.trim() : null,
+        denominatorLabel:
+          basisSource !== "NONE" ? formData.denominatorLabel.trim() : null,
+        basisUnitType:
+          basisSource === "DIRECT_VALUE" ? formData.basisUnitType : null,
         // Workflow status is controlled by submission approval.
         ...(formData.unitType && { unitType: formData.unitType }),
         // Only include targets if we have any
@@ -724,8 +876,9 @@ export function useUpdateKPIState({
         targetsCount: targets.length,
       });
 
-      // Call the updateKpi mutation with the correct input structure
+      // The KPI update transaction creates/synchronizes quarter plans first.
       await updateKpi({ input: updateInput });
+      await afterKpiUpdate?.();
 
       // Refresh any relevant queries
       await client.refetchQueries({
@@ -750,12 +903,23 @@ export function useUpdateKPIState({
     assignedAnnualTarget,
     yearlyQuarters,
     isCorporate,
+    basisQuarters,
   ]);
 
   // Handle annual target change
   const handleAnnualTargetChange = useCallback((value: string) => {
     setAnnualTarget(value);
-  }, []);
+    if (
+      strategicTimeline &&
+      !isCorporate &&
+      (formData.unitType === "PERCENT" || formData.unitType === "RATIO")
+    ) {
+      setYearlyQuarters((prev) => ({
+        ...prev,
+        [strategicTimeline]: { q1: value, q2: value, q3: value, q4: value },
+      }));
+    }
+  }, [strategicTimeline, isCorporate, formData.unitType]);
 
   return {
     // State
@@ -769,8 +933,10 @@ export function useUpdateKPIState({
     assignedAnnualTarget,
     strategicTimeline,
     yearlyQuarters,
+    basisQuarters,
     weightAllocation,
-    setYearlyQuarters, // Export setter for QuarterlyBreakdown
+    setYearlyQuarters,
+    setBasisQuarters, // Export setter for QuarterlyBreakdown
 
     // Actions
     updateField,

@@ -15,6 +15,8 @@ import {
   SharedKpiParticipants,
 } from "@/components/kpis";
 import { getUnitLabel, getUnitName } from "@/utils/kpi-format";
+import { GET_KPI_FORMULA_ANNUAL_ACTUAL } from "@/lib/graphql/queries/kpi-formula-planning";
+import { useAuthStore } from "@/stores";
 
 const KPI_TYPE_LABELS: Record<string, string> = {
   individual: "Individual",
@@ -60,7 +62,7 @@ const getMeasurementUnitDisplay = (kpi: KpiDetail) => {
     case "percentage":
       return { valueLabel: "%", fullName: "Percentage" };
     case "currency":
-      return { valueLabel: "Million ETB", fullName: "Currency (Million ETB)" };
+      return { valueLabel: "ETB", fullName: "Currency (ETB)" };
     case "hour":
       return { valueLabel: "hrs", fullName: "Hours" };
     case "rating":
@@ -86,12 +88,17 @@ const formatValueWithUnit = (value: number, unitLabel: string) => {
     return `${value}%`;
   }
 
+  if (unitLabel === "ETB") {
+    return `${value.toLocaleString()} ETB`;
+  }
+
   return `${value} ${unitLabel}`;
 };
 
 export default function KpiDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const currentUser = useAuthStore((state) => state.user);
   const kpiId = params.id as string;
 
   // Fetch KPI details
@@ -111,6 +118,19 @@ export default function KpiDetailPage() {
   const kpi = kpiData?.kpi;
   const updates = updatesData?.kpiUpdates?.items || [];
   const strategicPeriodId = kpi?.objective?.strategicPeriod?.strategicPeriodId;
+  const { data: annualFormulaData } = useQuery(GET_KPI_FORMULA_ANNUAL_ACTUAL, {
+    variables: {
+      organizationId: currentUser?.organizationId ?? "",
+      kpiId,
+      annualPeriodId: strategicPeriodId ?? "",
+    },
+    skip:
+      (kpi?.calculationType !== "RATIO_FORMULA" &&
+        kpi?.calculationType !== "WEIGHTED_INDEX") ||
+      !currentUser?.organizationId ||
+      !strategicPeriodId,
+  });
+  const annualFormulaActual = annualFormulaData?.kpiFormulaAnnualActual;
 
   // Debug: Log KPI data to see what's being returned
   if (kpi) {
@@ -202,10 +222,16 @@ export default function KpiDetailPage() {
               <Badge variant="outline" className={getStatusColor(kpi.status)}>
                 {kpi.status?.replace(/_/g, " ")}
               </Badge>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-700 border-blue-200"
+              >
                 {kpiTypeLabel}
               </Badge>
-              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+              <Badge
+                variant="outline"
+                className="bg-purple-50 text-purple-700 border-purple-200"
+              >
                 {frequencyLabel}
               </Badge>
             </div>
@@ -222,6 +248,13 @@ export default function KpiDetailPage() {
                   targetValue: kpi.targetValue,
                   measurementUnit: kpi.measurementUnit,
                   baselineValue: kpi.baselineValue,
+                  unitType: kpi.unitType,
+                  calculationBasisSource: kpi.calculationBasisSource,
+                  actualBasisSource: kpi.actualBasisSource,
+                  directBasisValue: kpi.directBasisValue,
+                  numeratorLabel: kpi.numeratorLabel,
+                  denominatorLabel: kpi.denominatorLabel,
+                  basisUnitType: kpi.basisUnitType,
                 }}
                 strategicPeriodId={strategicPeriodId}
               />
@@ -231,6 +264,8 @@ export default function KpiDetailPage() {
                   name: kpi.name,
                   targetValue: kpi.targetValue,
                   measurementUnit: kpi.measurementUnit,
+                  unitType: kpi.unitType,
+                  calculationBasisSource: kpi.calculationBasisSource,
                 }}
                 strategicPeriodId={strategicPeriodId}
               />
@@ -250,45 +285,177 @@ export default function KpiDetailPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Target Value</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Target Value
+              </p>
               <p className="text-2xl font-bold text-blue-600">
-                {kpi.targetValue !== null && kpi.targetValue !== undefined 
-                  ? formatValueWithUnit(kpi.targetValue, measurementUnitDisplay.valueLabel)
-                  : <span className="text-gray-400 text-base">Not set</span>
-                }
+                {kpi.targetValue !== null && kpi.targetValue !== undefined ? (
+                  formatValueWithUnit(
+                    kpi.targetValue,
+                    measurementUnitDisplay.valueLabel,
+                  )
+                ) : (
+                  <span className="text-gray-400 text-base">Not set</span>
+                )}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Baseline</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Baseline
+              </p>
               <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
-                {kpi.baselineValue !== null && kpi.baselineValue !== undefined
-                  ? formatValueWithUnit(kpi.baselineValue, measurementUnitDisplay.valueLabel)
-                  : kpi.baseline !== null && kpi.baseline !== undefined
-                  ? formatValueWithUnit(kpi.baseline, measurementUnitDisplay.valueLabel)
-                  : <span className="text-gray-400 text-base">Not set</span>
-                }
+                {kpi.baselineValue !== null &&
+                kpi.baselineValue !== undefined ? (
+                  formatValueWithUnit(
+                    kpi.baselineValue,
+                    measurementUnitDisplay.valueLabel,
+                  )
+                ) : kpi.baseline !== null && kpi.baseline !== undefined ? (
+                  formatValueWithUnit(
+                    kpi.baseline,
+                    measurementUnitDisplay.valueLabel,
+                  )
+                ) : (
+                  <span className="text-gray-400 text-base">Not set</span>
+                )}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Weight</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Weight
+              </p>
               <p className="text-2xl font-bold text-purple-600">
-                {kpi.weight !== null && kpi.weight !== undefined 
-                  ? `${kpi.weight}%` 
-                  : <span className="text-gray-400 text-base">Not set</span>
-                }
+                {kpi.weight !== null && kpi.weight !== undefined ? (
+                  `${kpi.weight}%`
+                ) : (
+                  <span className="text-gray-400 text-base">Not set</span>
+                )}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Measurement Unit</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Measurement Unit
+              </p>
               <p className="text-2xl font-bold text-green-600">
-                {measurementUnitDisplay.fullName || <span className="text-gray-400 text-base">Not set</span>}
+                {measurementUnitDisplay.fullName || (
+                  <span className="text-gray-400 text-base">Not set</span>
+                )}
               </p>
             </div>
           </div>
 
+          <div className="mt-6 grid gap-4 border-t border-gray-200 pt-6 md:grid-cols-4 dark:border-gray-700">
+            <div>
+              <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
+                Local calculation
+              </p>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                {kpi.calculationType === "RATIO_FORMULA"
+                  ? "Ratio formula"
+                  : kpi.calculationType === "WEIGHTED_INDEX"
+                    ? "Weighted index"
+                    : "Manual value"}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
+                Child aggregation
+              </p>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                {kpi.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
+                  ? "Sum numerator ÷ sum denominator"
+                  : kpi.aggregationMethod === "SIMPLE_AVERAGE"
+                    ? "Equal average"
+                    : "Sum"}
+              </p>
+            </div>
+            {kpi.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" && (
+              <>
+                <div>
+                  <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
+                    Weighting basis
+                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                    {kpi.calculationBasisSource === "DIRECT_VALUE"
+                      ? "Direct basis values"
+                      : kpi.weightingBasisKpi?.name || "Not configured"}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
+                    Weight source
+                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                    {kpi.aggregationWeightSource === "APPROVED_ACTUAL"
+                      ? "Approved basis actual"
+                      : "Approved basis target"}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {(kpi.calculationBasisSource === "DIRECT_VALUE" ||
+            kpi.calculationBasisSource === "LINKED_KPI") && (
+            <div className="mt-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+              <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Basis formula
+              </p>
+              <div className="grid gap-4 md:grid-cols-5">
+                <div>
+                  <p className="text-sm text-gray-500">Approved denominator</p>
+                  <p className="font-medium">
+                    {kpi.calculationBasisSource === "DIRECT_VALUE"
+                      ? "Direct value"
+                      : "Linked KPI"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Actual denominator</p>
+                  <p className="font-medium">
+                    {kpi.actualBasisSource === "ENTER_ACTUAL_BASIS"
+                      ? "Entered with each result"
+                      : kpi.actualBasisSource === "LINKED_KPI_ACTUAL"
+                        ? "Linked KPI approved actual"
+                        : "Approved denominator plan"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Formula</p>
+                  <p className="font-medium">
+                    {kpi.numeratorLabel || "Numerator"} ÷ {kpi.denominatorLabel || "Denominator"}
+                    {kpi.unitType === "PERCENT" ? " × 100" : ""}
+                  </p>
+                </div>
+                {kpi.calculationBasisSource === "DIRECT_VALUE" && (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-500">Annual basis</p>
+                      <p className="font-medium">
+                        {Number(kpi.directBasisValue || 0).toLocaleString()} {kpi.basisUnitType || ""}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Quarter basis</p>
+                      <p className="font-medium">
+                        {(kpi.quarterPlans || [])
+                          .map((plan: { quarterNumber: number; directBasisTarget?: string | null }) =>
+                            `Q${plan.quarterNumber}: ${Number(plan.directBasisTarget || 0).toLocaleString()}`,
+                          )
+                          .join(" · ") || "Generated by the backend"}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {kpi.objective && (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Linked Objective</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                Linked Objective
+              </p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{kpi.objective.level}</Badge>
                 <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -309,6 +476,68 @@ export default function KpiDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {(kpi.calculationType === "RATIO_FORMULA" ||
+        kpi.calculationType === "SCALAR_FORMULA" ||
+        kpi.calculationType === "WEIGHTED_INDEX") &&
+        annualFormulaActual && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              Exact annual formula actual
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Status</p>
+                <p className="font-medium">
+                  {annualFormulaActual.status.replaceAll("_", " ")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {kpi.calculationType === "WEIGHTED_INDEX"
+                    ? "Weighted numerator"
+                    : "Numerator"}
+                </p>
+                <p className="font-mono font-medium">
+                  {annualFormulaActual.numeratorDecimal ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {kpi.calculationType === "WEIGHTED_INDEX"
+                    ? "Total weight"
+                    : "Denominator"}
+                </p>
+                <p className="font-mono font-medium">
+                  {annualFormulaActual.denominatorDecimal ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Annual result</p>
+                <p className="font-mono font-medium">
+                  {annualFormulaActual.resultDecimal ?? "—"}
+                </p>
+              </div>
+            </div>
+            {annualFormulaActual.resultExact && (
+              <p className="break-all rounded-md bg-muted/40 p-3 font-mono text-xs">
+                {kpi.calculationType === "SCALAR_FORMULA"
+                  ? annualFormulaActual.resultExact
+                  : `${annualFormulaActual.numeratorExact ?? "—"} ÷ ${annualFormulaActual.denominatorExact ?? "—"} = ${annualFormulaActual.resultExact}`}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {annualFormulaActual.completedQuarterCount}/4 quarter snapshots
+              are calculable.{" "}
+              {annualFormulaActual.message ??
+                "No intermediate values were rounded."}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Performance Visualization */}
       {updates.length > 0 && (

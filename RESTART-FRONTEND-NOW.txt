@@ -1,0 +1,29 @@
+✅ CONFIGURATION UPDATED!
+
+Your IP: 192.168.137.238
+Backend: http://192.168.137.238:3000/graphql
+Frontend: http://192.168.137.238:3001
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔴 ACTION REQUIRED:
+
+1. Stop your frontend (Ctrl+C in the terminal)
+2. Restart it: pnpm dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT WAS FIXED:
+
+The proxy route (src/app/api/graphql/route.ts) was using 127.0.0.1:3000
+which doesn't work when in network mode.
+
+Added API_GRAPHQL_URL to your .env files so the proxy knows to use
+your network IP (192.168.137.238) instead of localhost.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SHARE THIS URL:
+http://192.168.137.238:3001
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

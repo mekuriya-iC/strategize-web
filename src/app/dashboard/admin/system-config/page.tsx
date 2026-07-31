@@ -16,8 +16,9 @@ import {
 import {
   useSystemConfigurationByOrg,
   useSystemConfigurationMutations,
+  type KpiTargetRangeOutsidePolicy,
 } from "@/hooks/systemConfiguration/useSystemConfiguration";
-import { Settings, Clock, Calendar, Star, Mail, FileText, Users, Loader2, Save, Database, TrendingUp } from "lucide-react";
+import { Settings, Clock, Calendar, Star, Mail, FileText, Users, Loader2, Save, Database, TrendingUp, Calculator } from "lucide-react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import FixAssigneeType from "@/components/admin/FixAssigneeType";
 import WeightConfigManager from "@/components/performance/WeightConfigManager";
@@ -87,6 +88,17 @@ export default function SystemConfigPage() {
   const [enableEmailNotifications, setEnableEmailNotifications] = useState(true);
   const [enableSharedKpis, setEnableSharedKpis] = useState(true);
   const [enableLogbookAttachments, setEnableLogbookAttachments] = useState(true);
+  const [enableFormulaKpis, setEnableFormulaKpis] = useState(false);
+  const [defaultKpiZeroDenominatorPolicy, setDefaultKpiZeroDenominatorPolicy] =
+    useState<"NOT_CALCULABLE" | "ZERO" | "BLOCK">("NOT_CALCULABLE");
+  const [defaultKpiResultDirection, setDefaultKpiResultDirection] =
+    useState<"HIGHER_IS_BETTER" | "LOWER_IS_BETTER" | "TARGET_RANGE">(
+      "HIGHER_IS_BETTER",
+    );
+  const [
+    defaultKpiTargetRangeOutsidePolicy,
+    setDefaultKpiTargetRangeOutsidePolicy,
+  ] = useState<KpiTargetRangeOutsidePolicy>("ZERO_OUTSIDE");
   const [hasChanges, setHasChanges] = useState(false);
 
   // Load configuration when available
@@ -101,6 +113,16 @@ export default function SystemConfigPage() {
       setEnableEmailNotifications(configuration.enableEmailNotifications);
       setEnableSharedKpis(configuration.enableSharedKpis);
       setEnableLogbookAttachments(configuration.enableLogbookAttachments);
+      setEnableFormulaKpis(configuration.enableFormulaKpis ?? false);
+      setDefaultKpiZeroDenominatorPolicy(
+        configuration.defaultKpiZeroDenominatorPolicy ?? "NOT_CALCULABLE",
+      );
+      setDefaultKpiResultDirection(
+        configuration.defaultKpiResultDirection ?? "HIGHER_IS_BETTER",
+      );
+      setDefaultKpiTargetRangeOutsidePolicy(
+        configuration.defaultKpiTargetRangeOutsidePolicy ?? "ZERO_OUTSIDE",
+      );
     }
   }, [configuration]);
 
@@ -120,7 +142,14 @@ export default function SystemConfigPage() {
       checkoutDayOfWeek !== configuration.checkoutDayOfWeek ||
       enableEmailNotifications !== configuration.enableEmailNotifications ||
       enableSharedKpis !== configuration.enableSharedKpis ||
-      enableLogbookAttachments !== configuration.enableLogbookAttachments;
+      enableLogbookAttachments !== configuration.enableLogbookAttachments ||
+      enableFormulaKpis !== (configuration.enableFormulaKpis ?? false) ||
+      defaultKpiZeroDenominatorPolicy !==
+        (configuration.defaultKpiZeroDenominatorPolicy ?? "NOT_CALCULABLE") ||
+      defaultKpiResultDirection !==
+        (configuration.defaultKpiResultDirection ?? "HIGHER_IS_BETTER") ||
+      defaultKpiTargetRangeOutsidePolicy !==
+        (configuration.defaultKpiTargetRangeOutsidePolicy ?? "ZERO_OUTSIDE");
 
     setHasChanges(changed);
   }, [
@@ -134,6 +163,10 @@ export default function SystemConfigPage() {
     enableEmailNotifications,
     enableSharedKpis,
     enableLogbookAttachments,
+    enableFormulaKpis,
+    defaultKpiZeroDenominatorPolicy,
+    defaultKpiResultDirection,
+    defaultKpiTargetRangeOutsidePolicy,
   ]);
 
   const handleSave = async () => {
@@ -153,6 +186,10 @@ export default function SystemConfigPage() {
       enableEmailNotifications,
       enableSharedKpis,
       enableLogbookAttachments,
+      enableFormulaKpis,
+      defaultKpiZeroDenominatorPolicy,
+      defaultKpiResultDirection,
+      defaultKpiTargetRangeOutsidePolicy,
     };
 
     if (configuration) {
@@ -441,6 +478,96 @@ export default function SystemConfigPage() {
               checked={enableLogbookAttachments}
               onCheckedChange={setEnableLogbookAttachments}
             />
+          </div>
+
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Calculator className="h-5 w-5 text-indigo-600" />
+                <div>
+                  <Label htmlFor="formulaKpis" className="text-base font-medium">
+                    Formula KPIs
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Enable versioned numerator/denominator formulas and reusable metric drivers.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="formulaKpis"
+                checked={enableFormulaKpis}
+                onCheckedChange={setEnableFormulaKpis}
+              />
+            </div>
+
+            {enableFormulaKpis && (
+              <div className="grid gap-4 border-t pt-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Default zero-denominator behavior</Label>
+                  <Select
+                    value={defaultKpiZeroDenominatorPolicy}
+                    onValueChange={(value) =>
+                      setDefaultKpiZeroDenominatorPolicy(
+                        value as "NOT_CALCULABLE" | "ZERO" | "BLOCK",
+                      )
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NOT_CALCULABLE">Show not calculable</SelectItem>
+                      <SelectItem value="BLOCK">Block calculation/finalization</SelectItem>
+                      <SelectItem value="ZERO">Return zero</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Default result direction</Label>
+                  <Select
+                    value={defaultKpiResultDirection}
+                    onValueChange={(value) =>
+                      setDefaultKpiResultDirection(
+                        value as
+                          | "HIGHER_IS_BETTER"
+                          | "LOWER_IS_BETTER"
+                          | "TARGET_RANGE",
+                      )
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="HIGHER_IS_BETTER">Higher is better</SelectItem>
+                      <SelectItem value="LOWER_IS_BETTER">Lower is better</SelectItem>
+                      <SelectItem value="TARGET_RANGE">Target range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Default outside-range scoring</Label>
+                  <Select
+                    value={defaultKpiTargetRangeOutsidePolicy}
+                    onValueChange={(value) =>
+                      setDefaultKpiTargetRangeOutsidePolicy(
+                        value as KpiTargetRangeOutsidePolicy,
+                      )
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ZERO_OUTSIDE">
+                        Zero outside range
+                      </SelectItem>
+                      <SelectItem value="NEAREST_BOUND_RATIO">
+                        Nearest-bound ratio
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Inside the inclusive range always scores 100%. Nearest-bound
+                    ratio uses actual ÷ minimum below and maximum ÷ actual above.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

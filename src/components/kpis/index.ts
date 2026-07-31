@@ -9,6 +9,7 @@ export { CreateKpiDialog } from "./CreateKpiDialog";
 
 // Progress Tracking
 export { default as KpiProgressDialog } from "./KpiProgressDialog";
+export { KpiResultEntryFields } from "./KpiResultEntryFields";
 export { default as KpiProgressHistory } from "./KpiProgressHistory";
 export { default as KpiPerformanceChart } from "./KpiPerformanceChart";
 

@@ -33,6 +33,18 @@ export function parseGraphQLError(
 ): ParsedError {
   const msg = extractMessage(error).toLowerCase();
 
+  // ── Protected approval workflow fields ─────────────────────────────────────
+  if (
+    msg.includes("workflow fields") ||
+    msg.includes("submission approval workflow")
+  ) {
+    return {
+      title: "Approval Status Cannot Be Edited Here",
+      description:
+        "Use the Submit, Approve, or Reject action to change this objective's workflow status.",
+    };
+  }
+
   // ── Duplicate / unique constraint ──────────────────────────────────────────
   if (msg.includes("duplicate key") || msg.includes("unique constraint")) {
     if (msg.includes("email") || msg.includes("uq_")) {

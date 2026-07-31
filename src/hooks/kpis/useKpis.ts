@@ -53,6 +53,31 @@ export interface Kpi {
   assignerId?: string;
   kpiMode?: string;
   managerRetentionPercent?: number;
+  aggregationMethod?: "SUM" | "SIMPLE_AVERAGE" | "DENOMINATOR_WEIGHTED_AVERAGE";
+  weightingBasisKpiId?: string | null;
+  aggregationWeightSource?: "PLANNED_TARGET" | "APPROVED_ACTUAL";
+  carryPolicy?: "ADDITIVE" | "NONE";
+  calculationType?:
+    | "MANUAL_VALUE"
+    | "RATIO_FORMULA"
+    | "SCALAR_FORMULA"
+    | "WEIGHTED_INDEX";
+  zeroDenominatorPolicy?: "NOT_CALCULABLE" | "ZERO" | "BLOCK" | null;
+  calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI";
+  actualBasisSource?:
+    | "USE_APPROVED_BASIS"
+    | "ENTER_ACTUAL_BASIS"
+    | "LINKED_KPI_ACTUAL";
+  directBasisValue?: string | null;
+  directBasisTargets?: Array<{ timeline: string; value: string }>;
+  numeratorLabel?: string | null;
+  denominatorLabel?: string | null;
+  basisUnitType?: string | null;
+  quarterPlans?: Array<{
+    quarterNumber: number;
+    directBasisTarget?: string | null;
+  }>;
+  weightingBasisKpi?: { kpiId: string; name: string; unitType?: string } | null;
   objective?: KpiObjective;
   createdBy?: KpiCreatedBy;
   parent?: { kpiId: string; name: string };
@@ -181,6 +206,10 @@ export const useKpiMutations = () => {
       unitType?: string;
       kpiMode?: string;
       managerRetentionPercent?: number;
+      aggregationMethod?: "SUM" | "SIMPLE_AVERAGE" | "DENOMINATOR_WEIGHTED_AVERAGE";
+      weightingBasisKpiId?: string | null;
+      aggregationWeightSource?: "PLANNED_TARGET" | "APPROVED_ACTUAL";
+      carryPolicy?: "ADDITIVE" | "NONE";
     }) => {
       const result = await createKpiMutation({
         variables: { input },
@@ -204,6 +233,10 @@ export const useKpiMutations = () => {
       unitType?: string;
       kpiMode?: string;
       managerRetentionPercent?: number;
+      aggregationMethod?: "SUM" | "SIMPLE_AVERAGE" | "DENOMINATOR_WEIGHTED_AVERAGE";
+      weightingBasisKpiId?: string | null;
+      aggregationWeightSource?: "PLANNED_TARGET" | "APPROVED_ACTUAL";
+      carryPolicy?: "ADDITIVE" | "NONE";
     }) => {
       const result = await updateKpiMutation({
         variables: { input },

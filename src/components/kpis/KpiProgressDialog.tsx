@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -14,12 +16,28 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { TrendingUp, Upload } from "lucide-react";
-import { useMutation } from "@apollo/client";
+import { AlertCircle, TrendingUp, Upload } from "lucide-react";
+import { useMutation, useQuery } from "@apollo/client";
 import { CREATE_KPI_UPDATE } from "@/lib/graphql/mutations/kpis";
 import { GET_KPI_UPDATES } from "@/lib/graphql/queries/kpis";
+import { GET_KPI_RESULT_ENTRY_CONTEXT } from "@/lib/graphql/queries/logbook";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores";
+import type {
+  KpiActualBasisSource,
+  KpiResultInputMode,
+  KpiUnitType,
+} from "@/types/graphql";
+import type {
+  KpiResultEntryContextQueryData,
+  KpiResultEntryContextQueryVariables,
+} from "@/types/logbook";
+import {
+  KpiResultEntryFields,
+  getResultEntryResolvedBasis,
+  isKpiResultEntryValid,
+} from "@/components/kpis/KpiResultEntryFields";
+import { calculateKpiResultPreview } from "@/utils/basisCalculation";
 
 interface KpiProgressDialogProps {
   kpi: {
@@ -28,6 +46,13 @@ interface KpiProgressDialogProps {
     targetValue: number;
     measurementUnit: string;
     baselineValue?: number;
+    unitType?: string | null;
+    calculationBasisSource?: "NONE" | "DIRECT_VALUE" | "LINKED_KPI" | null;
+    actualBasisSource?: KpiActualBasisSource | null;
+    directBasisValue?: string | null;
+    numeratorLabel?: string | null;
+    denominatorLabel?: string | null;
+    basisUnitType?: string | null;
   };
   strategicPeriodId: string;
   onSuccess?: () => void;
@@ -42,11 +67,57 @@ export default function KpiProgressDialog({
 }: KpiProgressDialogProps) {
   const [open, setOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const isBasisDriven =
+    kpi.calculationBasisSource === "DIRECT_VALUE" ||
+    kpi.calculationBasisSource === "LINKED_KPI";
+  const isCurrency = isBasisDriven
+    ? kpi.basisUnitType === "CURRENCY"
+    : kpi.measurementUnit?.toUpperCase() === "CURRENCY";
+  const unitLabel = isCurrency
+    ? "ETB"
+    : isBasisDriven
+      ? kpi.basisUnitType || "value"
+      : kpi.measurementUnit;
+  const formatValue = (value: number) =>
+    isCurrency ? value.toLocaleString() : value;
   const [formData, setFormData] = useState({
     achievedValue: "",
     reportingDate: new Date().toISOString().split("T")[0],
     notes: "",
     evidenceUrl: "",
+  });
+  const [resultInputMode, setResultInputMode] =
+    useState<KpiResultInputMode>("NUMERATOR");
+  const [actualNumeratorExact, setActualNumeratorExact] = useState("");
+  const [actualRateExact, setActualRateExact] = useState("");
+  const [actualBasisExact, setActualBasisExact] = useState("");
+  const { data: resultContextData, loading: resultContextLoading } = useQuery<
+    KpiResultEntryContextQueryData,
+    KpiResultEntryContextQueryVariables
+  >(GET_KPI_RESULT_ENTRY_CONTEXT, {
+    variables: {
+      kpiId: kpi.kpiId,
+      entryDate: formData.reportingDate,
+    },
+    skip: !open || !isBasisDriven || !formData.reportingDate,
+    fetchPolicy: "cache-and-network",
+  });
+  const resultEntryContext = resultContextData?.kpiResultEntryContext;
+  const actualBasisSource =
+    resultEntryContext?.actualBasisSource ||
+    kpi.actualBasisSource ||
+    "USE_APPROVED_BASIS";
+  const resolvedBasisExact = getResultEntryResolvedBasis({
+    actualBasisSource,
+    actualBasisExact,
+    context: resultEntryContext,
+  });
+  const resultPreview = calculateKpiResultPreview({
+    inputMode: resultInputMode,
+    numeratorExact: actualNumeratorExact,
+    rateExact: actualRateExact,
+    basisExact: resolvedBasisExact,
+    unitType: (kpi.unitType || "PERCENT") as KpiUnitType,
   });
 
   const [createKpiUpdate, { loading }] = useMutation(CREATE_KPI_UPDATE, {
@@ -79,19 +150,27 @@ export default function KpiProgressDialog({
       notes: "",
       evidenceUrl: "",
     });
+    setResultInputMode("NUMERATOR");
+    setActualNumeratorExact("");
+    setActualRateExact("");
+    setActualBasisExact("");
+  };
+
+  const calculateResult = () => {
+    if (isBasisDriven) return Number(resultPreview.rateExact || 0);
+    const achieved = parseFloat(formData.achievedValue);
+    return Number.isFinite(achieved) ? achieved : 0;
   };
 
   const calculateProgress = () => {
-    const achieved = parseFloat(formData.achievedValue);
-    if (isNaN(achieved)) return 0;
-
-    const baseline = kpi.baselineValue || 0;
+    const result = calculateResult();
+    const baseline = isBasisDriven ? 0 : kpi.baselineValue || 0;
     const target = kpi.targetValue;
     const range = target - baseline;
 
-    if (range === 0) return achieved >= target ? 100 : 0;
+    if (range === 0) return result >= target ? 100 : 0;
 
-    const progress = ((achieved - baseline) / range) * 100;
+    const progress = ((result - baseline) / range) * 100;
     return Math.max(0, Math.min(100, progress));
   };
 
@@ -103,10 +182,35 @@ export default function KpiProgressDialog({
   };
 
   const handleSubmit = async () => {
-    const achieved = parseFloat(formData.achievedValue);
-    if (isNaN(achieved)) {
+    const achieved = isBasisDriven
+      ? calculateResult()
+      : parseFloat(formData.achievedValue);
+    if (!isBasisDriven && isNaN(achieved)) {
       toast.error("Please enter a valid achieved value");
       return;
+    }
+    if (isBasisDriven) {
+      const basisAvailable =
+        actualBasisSource === "ENTER_ACTUAL_BASIS"
+          ? Number(actualBasisExact) > 0
+          : Boolean(resultEntryContext?.basisAvailable);
+      if (
+        !isKpiResultEntryValid({
+          inputMode: resultInputMode,
+          numeratorExact: actualNumeratorExact,
+          rateExact: actualRateExact,
+          resolvedBasisExact,
+          basisAvailable,
+        })
+      ) {
+        toast.error(
+          resultEntryContext?.message ||
+            (actualBasisSource === "LINKED_KPI_ACTUAL"
+              ? "The linked KPI actual is not approved or available yet"
+              : "Enter a valid result and denominator"),
+        );
+        return;
+      }
     }
 
     const progressPercentage = calculateProgress();
@@ -136,6 +240,49 @@ export default function KpiProgressDialog({
   const progressPercentage = calculateProgress();
   const progressStatus = getProgressStatus(progressPercentage);
 
+  if (isBasisDriven) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button size="sm" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Record Result
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Record percentage / ratio components</DialogTitle>
+            <DialogDescription>
+              {kpi.name} requires an exact numerator and denominator for correct
+              hierarchy aggregation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">Use the Logbook result workflow</p>
+              <p>
+                Scalar progress updates cannot preserve the absolute weighting
+                basis. Logbook entries store the exact numerator, denominator,
+                source, quarter, and approval history used by corporate rollups.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button asChild>
+              <Link href="/dashboard/logbook">Open Logbook</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -163,48 +310,78 @@ export default function KpiProgressDialog({
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Baseline</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {kpi.baselineValue || 0} {kpi.measurementUnit}
+                {isBasisDriven
+                  ? "Calculated"
+                  : `${formatValue(kpi.baselineValue || 0)} ${unitLabel}`}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Target</p>
               <p className="text-lg font-semibold text-blue-600">
-                {kpi.targetValue} {kpi.measurementUnit}
+                {formatValue(kpi.targetValue)}{kpi.unitType === "PERCENT" ? "%" : kpi.unitType === "RATIO" ? ":1" : ` ${unitLabel}`}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Required</p>
               <p className="text-lg font-semibold text-green-600">
-                {(kpi.targetValue - (kpi.baselineValue || 0)).toFixed(2)} {kpi.measurementUnit}
+                {isBasisDriven
+                  ? resolvedBasisExact
+                    ? `${formatValue(
+                        (Number(resolvedBasisExact) * kpi.targetValue) /
+                          (kpi.unitType === "PERCENT" ? 100 : 1),
+                      )} ${unitLabel}`
+                    : "Waiting for denominator"
+                  : `${formatValue(kpi.targetValue - (kpi.baselineValue || 0))} ${unitLabel}`}
               </p>
             </div>
           </div>
 
-          {/* Achieved Value */}
-          <div className="space-y-2">
-            <Label htmlFor="achievedValue">
-              Achieved Value <span className="text-red-500">*</span>
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="achievedValue"
-                type="number"
-                step="0.01"
-                placeholder="Enter achieved value"
-                value={formData.achievedValue}
-                onChange={(e) =>
-                  setFormData({ ...formData, achievedValue: e.target.value })
-                }
-                className="flex-1"
-              />
-              <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
-                {kpi.measurementUnit}
+          {isBasisDriven ? (
+            <KpiResultEntryFields
+              unitType={(kpi.unitType || "PERCENT") as KpiUnitType}
+              inputMode={resultInputMode}
+              onInputModeChange={setResultInputMode}
+              numeratorExact={actualNumeratorExact}
+              onNumeratorExactChange={setActualNumeratorExact}
+              rateExact={actualRateExact}
+              onRateExactChange={setActualRateExact}
+              actualBasisExact={actualBasisExact}
+              onActualBasisExactChange={setActualBasisExact}
+              context={resultEntryContext}
+              contextLoading={resultContextLoading}
+              fallbackActualBasisSource={kpi.actualBasisSource}
+              fallbackNumeratorLabel={kpi.numeratorLabel}
+              fallbackDenominatorLabel={kpi.denominatorLabel}
+              fallbackBasisUnitType={kpi.basisUnitType}
+            />
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="achievedValue">
+                Achieved Value <span className="text-red-500">*</span>
+              </Label>
+              <div className="flex gap-2">
+                <FormattedNumberInput
+                  id="achievedValue"
+                  step="0.01"
+                  placeholder={
+                    isCurrency ? "Enter achieved value in ETB" : "Enter achieved value"
+                  }
+                  value={formData.achievedValue}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, achievedValue: value })
+                  }
+                  currency={isCurrency}
+                  className="flex-1"
+                />
+                <div className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-400">
+                  {unitLabel}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Progress Preview */}
-          {formData.achievedValue && (
+          {(isBasisDriven ? resultPreview.rateExact : formData.achievedValue) && (
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -225,7 +402,9 @@ export default function KpiProgressDialog({
                   Status: <strong>{progressStatus.replace(/_/g, " ")}</strong>
                 </span>
                 <span className="text-xs text-blue-600 dark:text-blue-400">
-                  {parseFloat(formData.achievedValue).toFixed(2)} / {kpi.targetValue}
+                  {isBasisDriven
+                    ? `${calculateResult().toFixed(3)}${kpi.unitType === "PERCENT" ? "%" : kpi.unitType === "RATIO" ? ":1" : ""} / ${kpi.targetValue}${kpi.unitType === "PERCENT" ? "%" : kpi.unitType === "RATIO" ? ":1" : ""}`
+                    : `${parseFloat(formData.achievedValue).toFixed(2)} / ${kpi.targetValue}`}
                 </span>
               </div>
             </div>
@@ -293,7 +472,15 @@ export default function KpiProgressDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !formData.achievedValue || !formData.reportingDate}
+            disabled={
+              loading ||
+              !formData.reportingDate ||
+              (isBasisDriven
+                ? !(resultInputMode === "NUMERATOR"
+                    ? actualNumeratorExact
+                    : actualRateExact)
+                : !formData.achievedValue)
+            }
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Submitting..." : "Submit Progress"}

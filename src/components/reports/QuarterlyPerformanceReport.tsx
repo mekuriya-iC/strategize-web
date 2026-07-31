@@ -900,6 +900,111 @@ function QuarterDetailDialog({
             value={row.resultStatus ?? "Not calculated"}
           />
         </div>
+        {row.achievementRateExact && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Exact achievement scoring</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="break-all rounded-md bg-muted/40 p-2 font-mono text-xs">
+                Achievement rate: {row.achievementRateExact}
+              </p>
+              {row.annualContributionExact && (
+                <p className="break-all rounded-md bg-muted/40 p-2 font-mono text-xs">
+                  Weighted contribution: {row.annualContributionExact}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Exact fractions are calculated before the decimal display boundary.
+                Target ranges include both minimum and maximum values.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {row.formulaCalculationStatus && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                Exact local formula calculation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <span className="text-muted-foreground">Numerator: </span>
+                  <span className="font-mono font-medium">
+                    {row.formulaNumeratorDecimal ?? "Not calculable"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Denominator: </span>
+                  <span className="font-mono font-medium">
+                    {row.formulaDenominatorDecimal ?? "Not calculable"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Result: </span>
+                  <span className="font-mono font-medium">
+                    {row.formulaResultDecimal ?? "Not calculable"}
+                  </span>
+                </div>
+              </div>
+              <p className="break-all rounded-md bg-muted/40 p-2 font-mono text-xs">
+                {row.formulaNumeratorExact ?? "—"} ÷{" "}
+                {row.formulaDenominatorExact ?? "—"} ={" "}
+                {row.formulaResultExact ?? "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Status: {row.formulaCalculationStatus.replaceAll("_", " ")} ·
+                Snapshot version {row.formulaCalculationVersion ?? "—"}. Formula
+                components and hierarchy weights are not rounded before
+                persistence.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {row.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                Numerator / denominator component rollup
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground">Basis KPI: </span>
+                  <span className="font-medium">
+                    {row.weightingBasisKpiName || "Not configured"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Stored result: </span>
+                  <span className="font-mono font-medium">
+                    {row.finalActualDecimal ??
+                      row.aggregateActualExact ??
+                      "Not calculated"}
+                  </span>
+                </div>
+              </div>
+              {row.aggregationNumeratorExact &&
+                row.aggregationDenominatorExact && (
+                  <p className="break-all rounded-md bg-muted/40 p-2 font-mono text-xs">
+                    Weighted components: {row.aggregationNumeratorExact} ÷{" "}
+                    {row.aggregationDenominatorExact}
+                    {row.finalActualExact
+                      ? ` · Final exact value: ${row.finalActualExact}`
+                      : ""}
+                  </p>
+                )}
+              <p className="text-xs text-muted-foreground">
+                Child numerators and denominators are summed before the rate is
+                calculated. Child rates are never averaged, and no component is
+                rounded before aggregation.
+              </p>
+            </CardContent>
+          </Card>
+        )}
         {row.kpiMode === "HYBRID" && (
           <Card>
             <CardHeader className="pb-2">

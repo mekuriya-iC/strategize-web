@@ -34,15 +34,19 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
             originalTarget
             carryIn
             effectiveTarget
+          directBasisTarget
             status
           }
           quarterResults {
             kpiQuarterResultId
             quarterPlanId
             calculationMode
+            calculationStatus
             directActual
             aggregateActual
-            finalActual
+            rollupNumeratorExact
+          rollupDenominatorExact
+          finalActual
             finalAchievementRate
             weightedScore
             carryOut
@@ -79,6 +83,8 @@ export const FINALIZE_KPI_QUARTER = gql`
       kpiQuarterResultId
       quarterPlanId
       status
+      rollupNumeratorExact
+      rollupDenominatorExact
       finalActual
       finalAchievementRate
       weightedScore
@@ -143,15 +149,19 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
             originalTarget
             carryIn
             effectiveTarget
+          directBasisTarget
             status
           }
           quarterResults {
             kpiQuarterResultId
             quarterPlanId
             calculationMode
+            calculationStatus
             directActual
             aggregateActual
-            finalActual
+            rollupNumeratorExact
+          rollupDenominatorExact
+          finalActual
             finalAchievementRate
             weightedScore
             carryOut
@@ -203,14 +213,18 @@ export const GET_KPI_SCORES_BY_ENTITY = gql`
           originalTarget
           carryIn
           effectiveTarget
+          directBasisTarget
           status
         }
         quarterResults {
           kpiQuarterResultId
           quarterPlanId
           calculationMode
+          calculationStatus
           directActual
           aggregateActual
+          rollupNumeratorExact
+          rollupDenominatorExact
           finalActual
           finalAchievementRate
           weightedScore

@@ -113,10 +113,44 @@ export const CASCADE_OBJECTIVE = gql`
       children {
         objectiveId
         title
+        type
         level
         assigneeType
         assigneeId
+        parent {
+          objectiveId
+        }
+        kpis {
+          kpiId
+          name
+          parent {
+            kpiId
+          }
+          targetValue
+          calculationBasisSource
+          actualBasisSource
+          directBasisValue
+        }
       }
+    }
+  }
+`;
+
+// Atomically cascade to recipients that may belong to different hierarchy levels.
+export const CASCADE_OBJECTIVE_V2 = gql`
+  mutation CascadeObjectiveV2($input: CascadeObjectiveV2Input!) {
+    cascadeObjectiveV2(cascadeObjectiveV2Input: $input) {
+      parentObjective {
+        objectiveId
+        cascadeStatus
+      }
+      children {
+        objectiveId
+        assigneeType
+        assigneeId
+      }
+      createdCount
+      updatedCount
     }
   }
 `;
@@ -138,6 +172,20 @@ export const ASSIGN_OBJECTIVE = gql`
         managerRetentionPercent
         targetValue
         assignedTargetValue
+        unitType
+        measurementUnit
+        calculationBasisSource
+        actualBasisSource
+        directBasisValue
+        directBasisTargets {
+          timeline
+          value
+        }
+        numeratorLabel
+        denominatorLabel
+        basisUnitType
+        aggregationMethod
+        weightingBasisKpiId
         parent {
           kpiId
           name

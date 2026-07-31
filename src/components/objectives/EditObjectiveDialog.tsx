@@ -78,18 +78,10 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
 
     try {
       // Only send fields supported by UpdateObjectiveInput on the API
-      const updateInput: {
-        objectiveId: string;
-        title: string;
-        status?: ObjectiveStatus;
-      } = {
+      const updateInput = {
         objectiveId: objective.objectiveId,
         title: objectiveName.trim(),
       };
-
-      if (isCorporateUser) {
-        updateInput.status = objectiveStatus;
-      }
 
       await updateObjective({
         input: updateInput,
@@ -182,7 +174,7 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                   onValueChange={(value: ObjectiveStatus) =>
                     setObjectiveStatus(value)
                   }
-                  disabled={loading || isNonCorporateUser}
+                  disabled
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Status" />
@@ -194,11 +186,9 @@ const EditObjectiveDialog: React.FC<EditObjectiveDialogProps> = ({
                     <SelectItem value="REJECTED">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
-                {isNonCorporateUser && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Status is managed by the approval process
-                  </p>
-                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Status is managed through submission and approval
+                </p>
               </div>
             </div>
 

@@ -16,27 +16,16 @@ import { REMOVE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
 import { toast } from "sonner";
 import { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 import { format } from "date-fns";
-
-interface LogbookItem {
-  id: string;
-  activity: string;
-  description: string;
-  outcome: string;
-  entryDate: string;
-  attachmentUrl?: string | null;
-  status?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  employee?: any;
-}
+import type { FrontendLogbookItem } from "@/types/logbook";
+import type { KpiUnitType } from "@/types/graphql";
+import { calculateKpiResultPreview } from "@/utils/basisCalculation";
 
 interface LogbookTableRowProps {
-  item: LogbookItem;
+  item: FrontendLogbookItem;
   isSelected: boolean;
   onSelect: (checked: boolean) => void;
   onRefetch: () => void;
-  onEditEntry?: (entry: LogbookItem) => void;
+  onEditEntry?: (entry: FrontendLogbookItem) => void;
 }
 
 export function LogbookTableRow({
@@ -78,6 +67,24 @@ export function LogbookTableRow({
   const normalizedStatus = String(item.status || "DRAFT").toUpperCase();
   const canSubmit =
     ["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status;
+  const isBasisDriven =
+    item.linkedKpi?.calculationBasisSource === "DIRECT_VALUE" ||
+    item.linkedKpi?.calculationBasisSource === "LINKED_KPI";
+  const resultPreview = isBasisDriven
+    ? calculateKpiResultPreview({
+        inputMode: item.kpiResultInputMode || "NUMERATOR",
+        numeratorExact:
+          item.kpiActualNumeratorExact ||
+          (item.kpiAchievedValue != null ? String(item.kpiAchievedValue) : ""),
+        rateExact: item.kpiActualRateExact || "",
+        basisExact:
+          item.kpiActualBasisExact ||
+          (item.kpiActualDenominator != null
+            ? String(item.kpiActualDenominator)
+            : ""),
+        unitType: (item.linkedKpi?.unitType || "PERCENT") as KpiUnitType,
+      })
+    : null;
 
   const getStatusBadge = () => {
     const status = normalizedStatus;
@@ -204,6 +211,41 @@ export function LogbookTableRow({
                   <p className="mt-1 text-red-600 dark:text-red-300">
                     {item.rejectionReason}
                   </p>
+                </div>
+              )}
+              {isBasisDriven && resultPreview && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+                  <span className="font-medium text-blue-950">KPI result:</span>
+                  <div className="mt-2 grid gap-2 text-xs sm:grid-cols-4">
+                    <span>
+                      Numerator: <strong>{resultPreview.numeratorExact || "—"}</strong>
+                    </span>
+                    <span>
+                      Denominator: <strong>{resultPreview.basisExact || "—"}</strong>
+                    </span>
+                    <span>
+                      Result:{" "}
+                      <strong>
+                        {resultPreview.rateExact || "—"}
+                        {resultPreview.rateExact
+                          ? item.linkedKpi?.unitType === "PERCENT"
+                            ? "%"
+                            : ":1"
+                          : ""}
+                      </strong>
+                    </span>
+                    <span>
+                      Source:{" "}
+                      <strong>
+                        {item.linkedKpi?.actualBasisSource === "ENTER_ACTUAL_BASIS"
+                          ? "Entered actual denominator"
+                          : item.linkedKpi?.actualBasisSource ===
+                              "LINKED_KPI_ACTUAL"
+                            ? "Linked KPI actual"
+                            : "Approved denominator"}
+                      </strong>
+                    </span>
+                  </div>
                 </div>
               )}
               {item.outcome && (

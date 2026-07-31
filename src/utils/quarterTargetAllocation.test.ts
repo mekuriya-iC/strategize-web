@@ -18,14 +18,22 @@ describe("buildAssignedQuarterTargets", () => {
     expect(result.reduce((sum, target) => sum + target.target, 0)).toBe(50);
   });
 
-  it("preserves the assigned annual average for percentage KPIs", () => {
+  it("repeats the annual target in every quarter for percentage KPIs", () => {
     const result = buildAssignedQuarterTargets(
       { unitType: "PERCENT", targets },
       50,
     );
 
-    expect(result.map((target) => target.target)).toEqual([20, 40, 60, 80]);
-    expect(result.reduce((sum, target) => sum + target.target, 0) / 4).toBe(50);
+    expect(result.map((target) => target.target)).toEqual([50, 50, 50, 50]);
+  });
+
+  it("repeats the annual target in every quarter for ratio KPIs", () => {
+    const result = buildAssignedQuarterTargets(
+      { unitType: "RATIO", targets },
+      3,
+    );
+
+    expect(result.map((target) => target.target)).toEqual([3, 3, 3, 3]);
   });
 
   it("generates four valid quarters from an annual-only corporate KPI", () => {

@@ -7,6 +7,7 @@ import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -29,6 +30,13 @@ import { Loader2, Target, Users, User, GitMerge } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { KpiAggregationSelector } from "@/components/objectives/KpiAggregationSelector";
+import type {
+  KpiAggregationMethod,
+  KpiAggregationWeightSource,
+  KpiCarryPolicy,
+  KpiUnitType,
+} from "@/types/graphql";
 
 interface CreateKpiDialogProps {
   open: boolean;
@@ -39,13 +47,22 @@ interface CreateKpiDialogProps {
 }
 
 const MEASUREMENT_UNITS = [
-  { value: "percentage", label: "Percentage (%)" },
-  { value: "number", label: "Number (#)" },
-  { value: "currency", label: "Currency ($)" },
-  { value: "hour", label: "Hours (hrs)" },
-  { value: "boolean", label: "Boolean (Yes/No)" },
-  { value: "rating", label: "Rating (★)" },
-  { value: "custom", label: "Custom" },
+  { value: "PERCENTAGE", label: "Percentage (%)" },
+  { value: "NUMBER", label: "Number (#)" },
+  { value: "CURRENCY", label: "Currency (ETB)" },
+  { value: "HOUR", label: "Hours (hrs)" },
+  { value: "BOOLEAN", label: "Boolean (Yes/No)" },
+  { value: "RATING", label: "Rating (★)" },
+  { value: "CUSTOM", label: "Custom" },
+];
+
+const UNIT_TYPES = [
+  { value: "NUMBER", label: "Number (absolute values)" },
+  { value: "PERCENT", label: "Percentage (%)" },
+  { value: "RATIO", label: "Ratio (e.g., 1:3 coverage)" },
+  { value: "CURRENCY", label: "Currency (ETB)" },
+  { value: "HOUR", label: "Hours" },
+  { value: "COUNT", label: "Count" },
 ];
 
 const FREQUENCIES = [
@@ -76,20 +93,24 @@ const defaultForm = {
   unitType: "", // Keep track of unitType mapping
   kpiMode: "AGGREGATED", // Default mode
   managerRetentionPercent: "", // For HYBRID mode
+  aggregationMethod: "SUM" as KpiAggregationMethod,
+  weightingBasisKpiId: "",
+  aggregationWeightSource: "PLANNED_TARGET" as KpiAggregationWeightSource,
+  carryPolicy: "ADDITIVE" as KpiCarryPolicy,
 };
 
 const mapMeasurementUnitToUnitType = (unit: string): string => {
   switch (unit) {
-    case "percentage":
+    case "PERCENTAGE":
       return "PERCENT";
-    case "currency":
+    case "CURRENCY":
       return "CURRENCY";
-    case "hour":
+    case "HOUR":
       return "HOUR";
-    case "number":
-    case "boolean":
-    case "rating":
-    case "custom":
+    case "NUMBER":
+    case "BOOLEAN":
+    case "RATING":
+    case "CUSTOM":
     default:
       return "NUMBER";
   }
@@ -128,6 +149,11 @@ export function CreateKpiDialog({
         kpiMode: (editKpi as any).kpiMode || "AGGREGATED",
         managerRetentionPercent:
           (editKpi as any).managerRetentionPercent?.toString() || "",
+        aggregationMethod: editKpi.aggregationMethod || "SUM",
+        weightingBasisKpiId: editKpi.weightingBasisKpiId || "",
+        aggregationWeightSource:
+          editKpi.aggregationWeightSource || "PLANNED_TARGET",
+        carryPolicy: editKpi.carryPolicy || "ADDITIVE",
       });
     } else {
       setForm(defaultForm);
@@ -150,7 +176,8 @@ export function CreateKpiDialog({
     variables: { page: 1, limit: 500 },
     fetchPolicy: "cache-and-network",
   });
-  const availableParentKpis = (kpiData?.kpis?.items || [])
+  const allKpis = (kpiData?.kpis?.items || []) as Kpi[];
+  const availableParentKpis = allKpis
     .filter((k: any) => !isEdit || k.kpiId !== editKpi?.kpiId) // Don't show self as parent
     .map((k: any) => ({
       value: k.kpiId,
@@ -180,7 +207,9 @@ export function CreateKpiDialog({
       form.kpiMode !== "HYBRID" ||
       (form.managerRetentionPercent &&
         parseFloat(form.managerRetentionPercent) > 0 &&
-        parseFloat(form.managerRetentionPercent) < 100));
+        parseFloat(form.managerRetentionPercent) < 100)) &&
+    (form.aggregationMethod !== "DENOMINATOR_WEIGHTED_AVERAGE" ||
+      !!form.weightingBasisKpiId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,7 +220,7 @@ export function CreateKpiDialog({
         name: form.name,
         description: form.description || undefined,
         kpiType: form.kpiType || undefined,
-        measurementUnit: form.measurementUnit,
+        measurementUnit: form.measurementUnit || "NUMBER", // Ensure it's never empty
         frequency: form.frequency,
         targetValue: parseFloat(form.targetValue),
         baselineValue:
@@ -204,7 +233,7 @@ export function CreateKpiDialog({
             : undefined,
         strategicObjectiveId: form.strategicObjectiveId || undefined,
         customUnitLabel:
-          form.measurementUnit === "custom"
+          form.measurementUnit === "CUSTOM"
             ? form.customUnitLabel || undefined
             : undefined,
         parentId: form.parentId || undefined, // Include parent KPI for cascade aggregation
@@ -215,6 +244,16 @@ export function CreateKpiDialog({
           form.kpiMode === "HYBRID" && form.managerRetentionPercent
             ? parseFloat(form.managerRetentionPercent)
             : undefined,
+        aggregationMethod: form.aggregationMethod,
+        weightingBasisKpiId:
+          form.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
+            ? form.weightingBasisKpiId
+            : null,
+        aggregationWeightSource: form.aggregationWeightSource,
+        carryPolicy:
+          form.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
+            ? "NONE"
+            : form.carryPolicy,
       };
 
       if (isEdit && editKpi) {
@@ -237,6 +276,16 @@ export function CreateKpiDialog({
       measurementUnit: val,
       unitType: mapMeasurementUnitToUnitType(val),
     }));
+  };
+
+  const handleUnitTypeChange = (val: string) => {
+    setForm((f) => {
+      // If changing to RATIO and measurementUnit is not set or incompatible, suggest "NUMBER"
+      if (val === "RATIO" && (!f.measurementUnit || f.measurementUnit === "PERCENTAGE")) {
+        return { ...f, unitType: val, measurementUnit: "NUMBER" };
+      }
+      return { ...f, unitType: val };
+    });
   };
 
   return (
@@ -468,26 +517,50 @@ export function CreateKpiDialog({
             </div>
           </div>
 
-          {/* Measurement Unit */}
-          <div className="space-y-2">
-            <Label>
-              Measurement Unit <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={form.measurementUnit}
-              onValueChange={handleMeasurementUnitChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select unit" />
-              </SelectTrigger>
-              <SelectContent>
-                {MEASUREMENT_UNITS.map((u) => (
-                  <SelectItem key={u.value} value={u.value}>
-                    {u.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Measurement Unit + Unit Type row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>
+                Measurement Unit <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={form.measurementUnit}
+                onValueChange={handleMeasurementUnitChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MEASUREMENT_UNITS.map((u) => (
+                    <SelectItem key={u.value} value={u.value}>
+                      {u.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Unit Type</Label>
+              <Select
+                value={form.unitType}
+                onValueChange={handleUnitTypeChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Auto-detected" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNIT_TYPES.map((u) => (
+                    <SelectItem key={u.value} value={u.value}>
+                      {u.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Usually auto-detected. Select RATIO for coverage KPIs (1:3 ratio).
+              </p>
+            </div>
           </div>
 
           {/* Custom unit label */}
@@ -501,6 +574,29 @@ export function CreateKpiDialog({
               />
             </div>
           )}
+
+          <KpiAggregationSelector
+            method={form.aggregationMethod}
+            onMethodChange={(value) => set("aggregationMethod")(value)}
+            basisKpiId={form.weightingBasisKpiId}
+            onBasisChange={set("weightingBasisKpiId")}
+            weightSource={form.aggregationWeightSource}
+            onWeightSourceChange={(value) =>
+              set("aggregationWeightSource")(value)
+            }
+            carryPolicy={form.carryPolicy}
+            onCarryPolicyChange={(value) => set("carryPolicy")(value)}
+            unitType={
+              (form.unitType ||
+                mapMeasurementUnitToUnitType(form.measurementUnit)) as KpiUnitType
+            }
+            candidateKpis={allKpis.map((candidate) => ({
+              kpiId: candidate.kpiId,
+              name: candidate.name,
+              unitType: candidate.unitType as KpiUnitType | undefined,
+            }))}
+            currentKpiId={editKpi?.kpiId}
+          />
 
           {/* Target + Baseline row */}
           <div className="grid grid-cols-2 gap-4">
@@ -518,12 +614,16 @@ export function CreateKpiDialog({
                   "Target Value"}{" "}
                 <span className="text-red-500">*</span>
               </Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="e.g. 100"
+              <FormattedNumberInput
+                step="any"
+                placeholder={
+                  form.measurementUnit === "currency"
+                    ? "e.g. 283,654,789"
+                    : "e.g. 100"
+                }
                 value={form.targetValue}
-                onChange={(e) => set("targetValue")(e.target.value)}
+                onValueChange={set("targetValue")}
+                currency={form.measurementUnit === "currency"}
                 required
               />
             </div>
@@ -541,12 +641,12 @@ export function CreateKpiDialog({
                     form.measurementUnit !== "rating")) &&
                   "Baseline Value"}
               </Label>
-              <Input
-                type="number"
+              <FormattedNumberInput
                 step="0.01"
                 placeholder="e.g. 0"
                 value={form.baselineValue}
-                onChange={(e) => set("baselineValue")(e.target.value)}
+                onValueChange={set("baselineValue")}
+                currency={form.measurementUnit === "currency"}
               />
             </div>
           </div>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,6 +29,23 @@ import {
 import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/lib/utils";
 import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
+import {
+  GET_KPI_RESULT_ENTRY_CONTEXT,
+  GET_LOGBOOK_FORMULA_FOR_CONTEXT,
+} from "@/lib/graphql/queries/logbook";
+import {
+  getOrderedLogbookFormulaSources,
+  isLogbookFormulaCalculationType,
+  logbookFormulaSourceName,
+  type FrontendLogbookItem,
+  type LogbookFormulaForContextQueryData,
+  type LogbookFormulaForContextQueryVariables,
+  type KpiResultEntryContextQueryData,
+  type KpiResultEntryContextQueryVariables,
+  type LogbookKpisQueryData,
+  type LogbookKpisQueryVariables,
+  type LogbookMetricFormulaSource,
+} from "@/types/logbook";
 import { useStrategicPeriodStore, useUser } from "@/stores";
 import { getAccessToken } from "@/lib/auth-utils";
 import {
@@ -37,12 +55,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { KpiResultInputMode, KpiUnitType } from "@/types/graphql";
+import {
+  KpiResultEntryFields,
+  getResultEntryResolvedBasis,
+  isKpiResultEntryValid,
+} from "@/components/kpis/KpiResultEntryFields";
+import {
+  calculateKpiResultPreview,
+  exactValueToDecimal,
+} from "@/utils/basisCalculation";
 
 interface LogbookEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  editingEntry?: any;
+  editingEntry?: FrontendLogbookItem | null;
 }
 
 type TimeValue = { hour: string; minute: string; period: "AM" | "PM" };
@@ -83,7 +111,10 @@ export function LogbookEntryDialog({
     (state) => state.selectedPeriod,
   );
 
-  const { data: kpisData } = useQuery(GET_MY_KPIS, {
+  const { data: kpisData } = useQuery<
+    LogbookKpisQueryData,
+    LogbookKpisQueryVariables
+  >(GET_MY_KPIS, {
     variables: {
       page: 1,
       limit: 200,
@@ -92,7 +123,7 @@ export function LogbookEntryDialog({
     skip: !open || !selectedPeriod?.strategicPeriodId,
   });
 
-  const availableKpis = (kpisData?.myKpis?.items || []).filter((kpi: any) => {
+  const availableKpis = (kpisData?.myKpis?.items || []).filter((kpi) => {
     const mode = kpi.kpiMode || "AGGREGATED";
     const assigneeType = kpi.assigneeType || kpi.objective?.type;
 
@@ -137,16 +168,112 @@ export function LogbookEntryDialog({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [linkedKpiId, setLinkedKpiId] = useState("");
   const [kpiAchievedValue, setKpiAchievedValue] = useState("");
+  const [kpiResultInputMode, setKpiResultInputMode] =
+    useState<KpiResultInputMode>("NUMERATOR");
+  const [kpiActualNumeratorExact, setKpiActualNumeratorExact] = useState("");
+  const [kpiActualRateExact, setKpiActualRateExact] = useState("");
+  const [kpiActualBasisExact, setKpiActualBasisExact] = useState("");
   const [kpiTargetValue, setKpiTargetValue] = useState("");
   const [contributionUnit, setContributionUnit] = useState("");
+  const [metricObservationValues, setMetricObservationValues] = useState<
+    Record<string, string>
+  >({});
+
+  const selectedKpi =
+    availableKpis.find((kpi) => kpi.kpiId === linkedKpiId) ??
+    (editingEntry?.linkedKpi?.kpiId === linkedKpiId
+      ? editingEntry.linkedKpi
+      : null);
+  const isFormulaKpi = isLogbookFormulaCalculationType(
+    selectedKpi?.calculationType,
+  );
+  const isBasisDrivenKpi =
+    !isFormulaKpi &&
+    (selectedKpi?.calculationBasisSource === "DIRECT_VALUE" ||
+      selectedKpi?.calculationBasisSource === "LINKED_KPI");
+  const { data: resultContextData, loading: resultContextLoading } = useQuery<
+    KpiResultEntryContextQueryData,
+    KpiResultEntryContextQueryVariables
+  >(GET_KPI_RESULT_ENTRY_CONTEXT, {
+    variables: {
+      kpiId: linkedKpiId,
+      entryDate: format(entryDate, "yyyy-MM-dd"),
+    },
+    skip: !open || !linkedKpiId || !isBasisDrivenKpi,
+    fetchPolicy: "cache-and-network",
+  });
+  const resultEntryContext = resultContextData?.kpiResultEntryContext;
+  const actualBasisSource =
+    resultEntryContext?.actualBasisSource ||
+    selectedKpi?.actualBasisSource ||
+    "USE_APPROVED_BASIS";
+  const resolvedBasisExact = getResultEntryResolvedBasis({
+    actualBasisSource,
+    actualBasisExact: kpiActualBasisExact,
+    context: resultEntryContext,
+  });
+  const resultPreview = calculateKpiResultPreview({
+    inputMode: kpiResultInputMode,
+    numeratorExact: kpiActualNumeratorExact,
+    rateExact: kpiActualRateExact,
+    basisExact: resolvedBasisExact,
+    unitType: (selectedKpi?.unitType || "PERCENT") as KpiUnitType,
+  });
+  const { data: formulaData, loading: formulaLoading } = useQuery<
+    LogbookFormulaForContextQueryData,
+    LogbookFormulaForContextQueryVariables
+  >(GET_LOGBOOK_FORMULA_FOR_CONTEXT, {
+    variables: {
+      organizationId: currentUser?.organizationId ?? "",
+      kpiId: linkedKpiId,
+      entryDate: format(entryDate, "yyyy-MM-dd"),
+    },
+    skip:
+      !open || !isFormulaKpi || !linkedKpiId || !currentUser?.organizationId,
+  });
+  const boundFormula = formulaData?.logbookFormulaForContext;
+  const formulaSources = getOrderedLogbookFormulaSources(boundFormula);
+  const metricSources = formulaSources
+    .filter(
+      (source): source is LogbookMetricFormulaSource =>
+        source.sourceType === "METRIC",
+    )
+    .filter(
+      (source, index, sources) =>
+        sources.findIndex(
+          (candidate) =>
+            candidate.metricDefinitionId === source.metricDefinitionId,
+        ) === index,
+    );
 
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
+
+  function resetForm() {
+    const newToday = new Date();
+    setEntryDate(newToday);
+    setEntryTime({ hour: "09", minute: "00", period: "AM" });
+    setActivity("");
+    setDescription("");
+    setOutcome("");
+    setAttachment(null);
+    setLinkedKpiId("");
+    setKpiAchievedValue("");
+    setKpiResultInputMode("NUMERATOR");
+    setKpiActualNumeratorExact("");
+    setKpiActualRateExact("");
+    setKpiActualBasisExact("");
+    setKpiTargetValue("");
+    setContributionUnit("");
+    setMetricObservationValues({});
+  }
 
   // Populate form when editing
   useEffect(() => {
     if (editingEntry && open) {
       const entryDateTime = new Date(editingEntry.entryDate);
+      // Dialog form state intentionally mirrors the entry selected for editing.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEntryDate(entryDateTime);
       setEntryTime({
         hour:
@@ -161,9 +288,27 @@ export function LogbookEntryDialog({
       setOutcome(editingEntry.outcome || "");
       setLinkedKpiId(editingEntry.linkedKpiId || "");
       setKpiAchievedValue(
-        editingEntry.kpiAchievedValue != null
+        !isLogbookFormulaCalculationType(
+          editingEntry.linkedKpi?.calculationType,
+        ) && editingEntry.kpiAchievedValue != null
           ? String(editingEntry.kpiAchievedValue)
           : "",
+      );
+      setKpiResultInputMode(editingEntry.kpiResultInputMode || "NUMERATOR");
+      setKpiActualNumeratorExact(
+        exactValueToDecimal(editingEntry.kpiActualNumeratorExact) ||
+          (editingEntry.kpiAchievedValue != null
+            ? String(editingEntry.kpiAchievedValue)
+            : ""),
+      );
+      setKpiActualRateExact(
+        exactValueToDecimal(editingEntry.kpiActualRateExact) || "",
+      );
+      setKpiActualBasisExact(
+        exactValueToDecimal(editingEntry.kpiActualBasisExact) ||
+          (editingEntry.kpiActualDenominator != null
+            ? String(editingEntry.kpiActualDenominator)
+            : ""),
       );
       setKpiTargetValue(
         editingEntry.kpiTargetValue != null
@@ -171,6 +316,14 @@ export function LogbookEntryDialog({
           : "",
       );
       setContributionUnit(editingEntry.contributionUnit || "");
+      setMetricObservationValues(
+        Object.fromEntries(
+          (editingEntry.metricObservations || []).map((observation) => [
+            observation.metricDefinitionId,
+            String(observation.value),
+          ]),
+        ),
+      );
     } else if (!open) {
       resetForm();
     }
@@ -188,10 +341,18 @@ export function LogbookEntryDialog({
   const handleKpiChange = (value: string) => {
     const nextKpiId = value === "none" ? "" : value;
     setLinkedKpiId(nextKpiId);
+    setMetricObservationValues({});
+    setKpiResultInputMode("NUMERATOR");
+    setKpiActualNumeratorExact("");
+    setKpiActualRateExact("");
+    setKpiActualBasisExact("");
 
     const selectedKpi = availableKpis.find(
-      (kpi: any) => kpi.kpiId === nextKpiId,
+      (kpi) => kpi.kpiId === nextKpiId,
     );
+    if (isLogbookFormulaCalculationType(selectedKpi?.calculationType)) {
+      setKpiAchievedValue("");
+    }
     if (selectedKpi?.targetValue != null) {
       setKpiTargetValue(String(selectedKpi.targetValue));
     } else if (!nextKpiId) {
@@ -214,12 +375,59 @@ export function LogbookEntryDialog({
       return;
     }
 
-    const achieved = kpiAchievedValue ? Number(kpiAchievedValue) : null;
+    const achieved =
+      !isFormulaKpi && !isBasisDrivenKpi && kpiAchievedValue
+        ? Number(kpiAchievedValue)
+        : null;
     const target = kpiTargetValue ? Number(kpiTargetValue) : null;
+    const basisAvailable =
+      actualBasisSource === "ENTER_ACTUAL_BASIS"
+        ? Number(kpiActualBasisExact) > 0
+        : Boolean(resultEntryContext?.basisAvailable);
 
-    if (linkedKpiId && (achieved == null || Number.isNaN(achieved))) {
+    if (
+      linkedKpiId &&
+      !isFormulaKpi &&
+      !isBasisDrivenKpi &&
+      (achieved == null || Number.isNaN(achieved))
+    ) {
       toast.error("Please enter the KPI achieved value");
       return;
+    }
+    if (
+      isBasisDrivenKpi &&
+      !isKpiResultEntryValid({
+        inputMode: kpiResultInputMode,
+        numeratorExact: kpiActualNumeratorExact,
+        rateExact: kpiActualRateExact,
+        resolvedBasisExact,
+        basisAvailable,
+      })
+    ) {
+      toast.error(
+        resultEntryContext?.message ||
+          (actualBasisSource === "LINKED_KPI_ACTUAL"
+            ? "The linked KPI actual is not approved or available yet"
+            : `Enter a valid ${selectedKpi?.denominatorLabel || "denominator"}`),
+      );
+      return;
+    }
+    if (isFormulaKpi) {
+      if (formulaLoading || !boundFormula) {
+        toast.error("The quarter-bound KPI formula is still loading or unavailable");
+        return;
+      }
+      const invalidSource = metricSources.find((source) => {
+        const value =
+          metricObservationValues[source.metricDefinitionId] ?? "";
+        return !/^-?\d+(?:\.\d+)?$/.test(value);
+      });
+      if (invalidSource) {
+        toast.error(
+          `Enter an exact decimal value for ${invalidSource.metricDefinition?.name || invalidSource.label}`,
+        );
+        return;
+      }
     }
 
     try {
@@ -228,7 +436,7 @@ export function LogbookEntryDialog({
         evidenceUrl = await uploadLogbookFile(attachment);
       }
 
-      const entryData = {
+      const entryData: Record<string, unknown> = {
         organizationId: currentUser.organizationId,
         strategicPeriodId: selectedPeriod.strategicPeriodId,
         activityDescription: activity.trim(),
@@ -237,14 +445,52 @@ export function LogbookEntryDialog({
         entryDate: buildDateTime(entryDate, entryTime).toISOString(),
         evidenceUrl,
         linkedKpiId: linkedKpiId || null,
-        kpiAchievedValue: achieved,
         kpiTargetValue: target,
-        kpiCompletionPercent:
-          achieved != null && target && target > 0
-            ? Number(((achieved / target) * 100).toFixed(2))
-            : null,
         contributionUnit: contributionUnit.trim() || null,
+        metricObservations: isFormulaKpi
+          ? metricSources.map((source) => ({
+              metricDefinitionId: source.metricDefinitionId,
+              value: metricObservationValues[source.metricDefinitionId],
+              observedAt: format(entryDate, "yyyy-MM-dd"),
+            }))
+          : [],
       };
+
+      if (!isFormulaKpi) {
+        const resultForProgress = isBasisDrivenKpi
+          ? Number(resultPreview.rateExact)
+          : achieved;
+        entryData.kpiAchievedValue = isBasisDrivenKpi
+          ? Number(resultPreview.numeratorExact)
+          : achieved;
+        entryData.kpiActualDenominator = isBasisDrivenKpi
+          ? Number(resolvedBasisExact)
+          : null;
+        entryData.kpiResultInputMode = isBasisDrivenKpi
+          ? kpiResultInputMode
+          : null;
+        entryData.kpiActualNumeratorExact = isBasisDrivenKpi
+          ? kpiResultInputMode === "NUMERATOR"
+            ? kpiActualNumeratorExact
+            : null
+          : null;
+        entryData.kpiActualRateExact = isBasisDrivenKpi
+          ? kpiResultInputMode === "RATE_AND_BASIS"
+            ? kpiActualRateExact
+            : null
+          : null;
+        entryData.kpiActualBasisExact =
+          isBasisDrivenKpi && actualBasisSource === "ENTER_ACTUAL_BASIS"
+            ? kpiActualBasisExact
+            : null;
+        entryData.kpiCompletionPercent =
+          resultForProgress != null &&
+          Number.isFinite(resultForProgress) &&
+          target &&
+          target > 0
+            ? Number(((resultForProgress / target) * 100).toFixed(2))
+            : null;
+      }
 
       if (editingEntry) {
         // Update existing entry
@@ -269,28 +515,17 @@ export function LogbookEntryDialog({
 
       onSuccess();
       resetForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Logbook entry operation error:", error);
       toast.error(
-        error.message ||
-          `Failed to ${editingEntry ? "update" : "create"} entry`,
+        error instanceof Error
+          ? error.message
+          : `Failed to ${editingEntry ? "update" : "create"} entry`,
       );
     }
   };
 
-  const resetForm = () => {
-    const newToday = new Date();
-    setEntryDate(newToday);
-    setEntryTime({ hour: "09", minute: "00", period: "AM" });
-    setActivity("");
-    setDescription("");
-    setOutcome("");
-    setAttachment(null);
-    setLinkedKpiId("");
-    setKpiAchievedValue("");
-    setKpiTargetValue("");
-    setContributionUnit("");
-  };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -433,7 +668,7 @@ export function LogbookEntryDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No KPI linked</SelectItem>
-                  {availableKpis.map((kpi: any) => {
+                  {availableKpis.map((kpi) => {
                     const mode = kpi.kpiMode || "AGGREGATED";
                     const suffix =
                       mode === "HYBRID"
@@ -452,49 +687,168 @@ export function LogbookEntryDialog({
                 </SelectContent>
               </Select>
 
-              {linkedKpiId && (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">
-                      Achieved Value
-                    </Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={kpiAchievedValue}
-                      onChange={(e) => setKpiAchievedValue(e.target.value)}
-                      placeholder="0"
-                      className="h-10 text-sm"
-                    />
+              {linkedKpiId && isFormulaKpi ? (
+                <div className="space-y-4 rounded-md border border-indigo-200 bg-indigo-50/50 p-4">
+                  <div>
+                    <p className="text-sm font-medium text-indigo-950">
+                      {selectedKpi?.calculationType === "WEIGHTED_INDEX"
+                        ? "Weighted-index components"
+                        : "Exact formula observations"}
+                    </p>
+                    <p className="mt-1 text-xs text-indigo-700">
+                      Metric sources accept exact decimal observations. KPI
+                      sources are resolved automatically after approval, and no
+                      scalar achieved value is submitted for this formula KPI.
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">
-                      Target Value
-                    </Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={kpiTargetValue}
-                      onChange={(e) => setKpiTargetValue(e.target.value)}
-                      placeholder="Target"
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">
-                      Unit
-                    </Label>
-                    <Input
-                      value={contributionUnit}
-                      onChange={(e) => setContributionUnit(e.target.value)}
-                      placeholder="%, USD, tasks..."
-                      className="h-10 text-sm"
-                    />
-                  </div>
+                  {formulaLoading ? (
+                    <p className="text-sm text-gray-500">Loading formula…</p>
+                  ) : boundFormula ? (
+                    <div className="space-y-3">
+                      {formulaSources.map((source) => (
+                        <div
+                          key={source.key}
+                          className="space-y-3 rounded border bg-white px-3 py-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-medium text-indigo-800">
+                                {source.label}
+                              </p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {logbookFormulaSourceName(source)}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {source.factorExact !== undefined && (
+                                <span className="rounded bg-indigo-100 px-2 py-1 font-mono text-xs text-indigo-900">
+                                  Factor: {source.factorExact}
+                                </span>
+                              )}
+                              {source.weight !== undefined && (
+                                <span className="rounded bg-indigo-100 px-2 py-1 font-mono text-xs text-indigo-900">
+                                  Weight: {source.weight}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {source.sourceType === "METRIC" ? (
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-700">
+                                Observed metric value
+                              </Label>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                autoComplete="off"
+                                value={
+                                  metricObservationValues[
+                                    source.metricDefinitionId
+                                  ] || ""
+                                }
+                                onChange={(event) =>
+                                  setMetricObservationValues((current) => ({
+                                    ...current,
+                                    [source.metricDefinitionId]:
+                                      event.target.value,
+                                  }))
+                                }
+                                placeholder="Exact decimal value"
+                                className="h-10 bg-white font-mono text-sm"
+                              />
+                              <p className="text-[11px] text-gray-500">
+                                {source.metricDefinition?.code}
+                                {source.metricDefinition?.unitType
+                                  ? ` · ${source.metricDefinition.unitType}`
+                                  : ""}
+                              </p>
+                            </div>
+                          ) : source.sourceType === "KPI" ? (
+                            <div className="rounded border border-dashed bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                              Automatically resolved from the approved source KPI
+                              result. Read-only; no observation is required.
+                            </div>
+                          ) : (
+                            <div className="rounded border border-dashed bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                              Exact constant {source.constantValueExact} is preview-only;
+                              no observation is submitted.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-red-600">
+                      No formula definition is bound to this KPI quarter.
+                    </p>
+                  )}
                 </div>
-              )}
+              ) : linkedKpiId ? (
+                <div className="space-y-3">
+                  {isBasisDrivenKpi ? (
+                    <KpiResultEntryFields
+                      unitType={(selectedKpi?.unitType || "PERCENT") as KpiUnitType}
+                      inputMode={kpiResultInputMode}
+                      onInputModeChange={setKpiResultInputMode}
+                      numeratorExact={kpiActualNumeratorExact}
+                      onNumeratorExactChange={setKpiActualNumeratorExact}
+                      rateExact={kpiActualRateExact}
+                      onRateExactChange={setKpiActualRateExact}
+                      actualBasisExact={kpiActualBasisExact}
+                      onActualBasisExactChange={setKpiActualBasisExact}
+                      context={resultEntryContext}
+                      contextLoading={resultContextLoading}
+                      fallbackActualBasisSource={selectedKpi?.actualBasisSource}
+                      fallbackNumeratorLabel={selectedKpi?.numeratorLabel}
+                      fallbackDenominatorLabel={selectedKpi?.denominatorLabel}
+                      fallbackBasisUnitType={selectedKpi?.basisUnitType}
+                    />
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Achieved Value
+                        </Label>
+                        <FormattedNumberInput
+                          step="any"
+                          min="0"
+                          value={kpiAchievedValue}
+                          onValueChange={setKpiAchievedValue}
+                          currency={selectedKpi?.unitType === "CURRENCY"}
+                          placeholder="0"
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Target Value
+                        </Label>
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={kpiTargetValue}
+                          onChange={(e) => setKpiTargetValue(e.target.value)}
+                          placeholder="Target"
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Unit
+                        </Label>
+                        <Input
+                          value={contributionUnit}
+                          onChange={(e) => setContributionUnit(e.target.value)}
+                          placeholder="%, ETB, tasks..."
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             {/* Attachment */}

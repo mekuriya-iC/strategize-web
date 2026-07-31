@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import {
+  allowsScoreAverage,
+  isAggregationMethodAllowed,
+  isComponentRatioKpi,
+} from "./kpiAggregationOptions";
+
+describe("KPI aggregation options", () => {
+  it("allows explicit score average only for PERCENT/NUMBER score KPIs with basis NONE", () => {
+    expect(allowsScoreAverage("PERCENT", "NONE")).toBe(true);
+    expect(allowsScoreAverage("NUMBER", "NONE")).toBe(true);
+    expect(allowsScoreAverage("RATIO", "NONE")).toBe(false);
+    expect(allowsScoreAverage("PERCENT", "DIRECT_VALUE")).toBe(false);
+  });
+
+  it("keeps sum and score average disabled for component ratio KPIs", () => {
+    expect(isComponentRatioKpi("RATIO", "NONE")).toBe(true);
+    expect(isComponentRatioKpi("PERCENT", "LINKED_KPI")).toBe(true);
+    expect(
+      isAggregationMethodAllowed({
+        method: "SIMPLE_AVERAGE",
+        unitType: "PERCENT",
+        calculationBasisSource: "LINKED_KPI",
+      }),
+    ).toBe(false);
+    expect(
+      isAggregationMethodAllowed({
+        method: "SUM",
+        unitType: "RATIO",
+        calculationBasisSource: "NONE",
+      }),
+    ).toBe(false);
+    expect(
+      isAggregationMethodAllowed({
+        method: "DENOMINATOR_WEIGHTED_AVERAGE",
+        unitType: "RATIO",
+        calculationBasisSource: "NONE",
+      }),
+    ).toBe(true);
+  });
+});

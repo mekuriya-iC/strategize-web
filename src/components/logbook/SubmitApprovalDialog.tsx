@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { UPDATE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
+import { GET_LOGBOOK_FORMULA_FOR_CONTEXT } from "@/lib/graphql/queries/logbook";
 import { getAccessToken } from "@/lib/auth-utils";
 import { toast } from "sonner";
 import {
@@ -16,6 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { XIcon, PlusIcon, TrashIcon, UploadIcon } from "lucide-react";
+import {
+  getOrderedLogbookFormulaSources,
+  isLogbookFormulaCalculationType,
+  logbookFormulaSourceName,
+  type FrontendLogbookItem,
+  type LogbookFormulaForContextQueryData,
+  type LogbookFormulaForContextQueryVariables,
+} from "@/types/logbook";
+import { useUser } from "@/stores";
 
 const getApiBaseUrl = () => {
   const graphqlUrl =
@@ -49,14 +59,6 @@ const uploadEvidenceFile = async (file: File): Promise<string> => {
   return `${getApiBaseUrl()}/storage/${result.filename}`;
 };
 
-interface LogbookItem {
-  id: string;
-  activity?: string;
-  description?: string;
-  outcome?: string;
-  attachmentUrl?: string | null;
-}
-
 interface EvidenceItem {
   id: string;
   type: "file" | "email" | "drive_link" | "certificate";
@@ -67,7 +69,7 @@ interface EvidenceItem {
 interface SubmitApprovalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  item: LogbookItem;
+  item: FrontendLogbookItem;
   onSuccess: () => void;
 }
 
@@ -77,12 +79,35 @@ export function SubmitApprovalDialog({
   item,
   onSuccess,
 }: SubmitApprovalDialogProps) {
+  const currentUser = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState(
     item.description || item.activity || "",
   );
   const [remark, setRemark] = useState(item.outcome || "");
-  const [quantity, setQuantity] = useState("");
+  const isFormulaKpi = isLogbookFormulaCalculationType(
+    item.linkedKpi?.calculationType,
+  );
+  const contextKpiId = item.linkedKpiId ?? item.linkedKpi?.kpiId ?? "";
+  const { data: formulaData, loading: formulaLoading } = useQuery<
+    LogbookFormulaForContextQueryData,
+    LogbookFormulaForContextQueryVariables
+  >(GET_LOGBOOK_FORMULA_FOR_CONTEXT, {
+    variables: {
+      organizationId: currentUser?.organizationId ?? "",
+      kpiId: contextKpiId,
+      entryDate: item.entryDate.slice(0, 10),
+    },
+    skip:
+      !open || !isFormulaKpi || !contextKpiId || !currentUser?.organizationId,
+  });
+  const formulaSources = getOrderedLogbookFormulaSources(
+    formulaData?.logbookFormulaForContext,
+  );
+  const hasMetricSources = formulaSources.some(
+    (source) => source.sourceType === "METRIC",
+  );
+
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([
     { id: "1", type: "email", value: "Enter email date and subject" },
   ]);
@@ -100,10 +125,10 @@ export function SubmitApprovalDialog({
     setEvidenceItems(evidenceItems.filter((item) => item.id !== id));
   };
 
-  const updateEvidenceItem = (
+  const updateEvidenceItem = <Field extends keyof EvidenceItem>(
     id: string,
-    field: keyof EvidenceItem,
-    value: any,
+    field: Field,
+    value: EvidenceItem[Field],
   ) => {
     setEvidenceItems((items) =>
       items.map((item) =>
@@ -138,11 +163,9 @@ export function SubmitApprovalDialog({
         .map((evidence) => `${evidence.type}: ${evidence.value}`)
         .join("\n");
 
-      const parsedQuantity = quantity ? Number(quantity) : null;
       const input: Record<string, unknown> = {
         logbookEntryId: item.id,
         entryStatus: "SUBMITTED",
-        submittedAt: new Date().toISOString(),
         evidenceDescription:
           [description.trim(), evidenceDescription]
             .filter(Boolean)
@@ -150,9 +173,7 @@ export function SubmitApprovalDialog({
         decisionsMade: remark || null,
       };
 
-      if (parsedQuantity !== null && Number.isFinite(parsedQuantity)) {
-        input.kpiAchievedValue = parsedQuantity;
-      }
+
 
       const firstEvidenceUrl = uploadedEvidence.find(
         (evidence) =>
@@ -171,8 +192,12 @@ export function SubmitApprovalDialog({
       toast.success("Logbook entry submitted for approval");
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit for approval");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit for approval",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -336,7 +361,7 @@ export function SubmitApprovalDialog({
 
               {/* Evidence Items */}
               <div className="space-y-4">
-                {evidenceItems.map((evidence, index) => (
+                {evidenceItems.map((evidence) => (
                   <div
                     key={evidence.id}
                     className="space-y-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
@@ -370,7 +395,7 @@ export function SubmitApprovalDialog({
                             updateEvidenceItem(
                               evidence.id,
                               "type",
-                              e.target.value as any,
+                              e.target.value as EvidenceItem["type"],
                             )
                           }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
@@ -390,7 +415,7 @@ export function SubmitApprovalDialog({
                             updateEvidenceItem(
                               evidence.id,
                               "type",
-                              e.target.value as any,
+                              e.target.value as EvidenceItem["type"],
                             )
                           }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
@@ -410,7 +435,7 @@ export function SubmitApprovalDialog({
                             updateEvidenceItem(
                               evidence.id,
                               "type",
-                              e.target.value as any,
+                              e.target.value as EvidenceItem["type"],
                             )
                           }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
@@ -430,7 +455,7 @@ export function SubmitApprovalDialog({
                             updateEvidenceItem(
                               evidence.id,
                               "type",
-                              e.target.value as any,
+                              e.target.value as EvidenceItem["type"],
                             )
                           }
                           className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
@@ -449,22 +474,163 @@ export function SubmitApprovalDialog({
             </div>
 
             {/* KPI Achievement Value */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                KPI Achievement Value
-              </Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Enter achievement value (e.g., 50, 75.5, 100)"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Enter the actual value you achieved for this KPI (not a
-                percentage)
-              </p>
-            </div>
+            {isFormulaKpi ? (
+              <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                <div>
+                  <Label className="text-sm font-medium text-indigo-950">
+                    {item.linkedKpi?.calculationType === "WEIGHTED_INDEX"
+                      ? "Weighted-index sources"
+                      : "Formula sources"}
+                  </Label>
+                  <p className="mt-1 text-xs text-indigo-700">
+                    Metric observations remain exact decimal strings. KPI-backed
+                    values are automatically resolved after approval and are
+                    read-only.
+                  </p>
+                </div>
+
+                {formulaLoading ? (
+                  <p className="text-sm text-gray-500">
+                    Loading formula sources…
+                  </p>
+                ) : formulaSources.length > 0 ? (
+                  <div className="space-y-2">
+                    {formulaSources.map((source) => {
+                      const observation =
+                        source.sourceType === "METRIC"
+                          ? (item.metricObservations || []).find(
+                              (candidate) =>
+                                candidate.metricDefinitionId ===
+                                source.metricDefinitionId,
+                            )
+                          : undefined;
+
+                      return (
+                        <div
+                          key={source.key}
+                          className="rounded border bg-white px-3 py-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-medium text-indigo-700">
+                                {source.label}
+                              </p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {logbookFormulaSourceName(source)}
+                              </p>
+                              {source.sourceType === "METRIC" ? (
+                                <p className="text-xs text-gray-500">
+                                  {source.metricDefinition?.code}
+                                  {source.metricDefinition?.unitType
+                                    ? ` · ${source.metricDefinition.unitType}`
+                                    : ""}
+                                </p>
+                              ) : source.sourceType === "KPI" ? (
+                                <p className="mt-1 text-xs text-gray-500">
+                                  Automatically resolved from the approved
+                                  source KPI result · Read-only
+                                </p>
+                              ) : (
+                                <p className="mt-1 text-xs text-gray-500">
+                                  Preview-only exact constant · No observation required
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              {source.factorExact !== undefined && (
+                                <p className="font-mono text-xs text-indigo-900">
+                                  Factor: {source.factorExact}
+                                </p>
+                              )}
+                              {source.weight !== undefined && (
+                                <p className="font-mono text-xs text-indigo-900">
+                                  Weight: {source.weight}%
+                                </p>
+                              )}
+                              {source.sourceType === "METRIC" && (
+                                <p
+                                  className={`mt-1 font-mono text-sm ${
+                                    observation
+                                      ? "text-gray-900"
+                                      : "text-red-600"
+                                  }`}
+                                >
+                                  {observation?.value ?? "Missing observation"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(item.metricObservations || []).map((observation) => (
+                      <div
+                        key={observation.id}
+                        className="flex items-center justify-between gap-4 rounded border bg-white px-3 py-2"
+                      >
+                        <span className="text-sm font-medium">
+                          {observation.metricDefinition.name}
+                        </span>
+                        <span className="font-mono text-sm">
+                          {observation.value}
+                        </span>
+                      </div>
+                    ))}
+                    <p className="text-sm text-gray-600">
+                      Approved formula metadata is unavailable.
+                    </p>
+                  </div>
+                )}
+
+                {!formulaLoading &&
+                  formulaSources.length > 0 &&
+                  !hasMetricSources && (
+                    <p className="text-sm text-indigo-800">
+                      All sources are KPI-backed; no metric observation is
+                      required for submission.
+                    </p>
+                  )}
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  KPI result submitted with this entry
+                </Label>
+                {item.kpiActualNumeratorExact || item.kpiActualBasisExact ? (
+                  <div className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-gray-500">Numerator</p>
+                      <p className="font-mono font-medium">
+                        {item.kpiActualNumeratorExact ?? "Derived by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Denominator</p>
+                      <p className="font-mono font-medium">
+                        {item.kpiActualBasisExact ?? "Resolved by server"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Result</p>
+                      <p className="font-mono font-medium">
+                        {item.kpiActualRateExact ?? "Derived by server"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="font-medium text-gray-900">
+                    {item.kpiAchievedValue ?? "No KPI value recorded"}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500">
+                  To change the KPI result or denominator, close this dialog and edit
+                  the logbook entry. Submission does not overwrite result components.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

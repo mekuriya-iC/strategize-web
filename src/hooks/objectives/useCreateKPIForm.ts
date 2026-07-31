@@ -13,7 +13,20 @@ import type {
   CreateKpiInput,
   CreateSupportKpiInput,
   KpiTargetInput,
+  KpiAggregationMethod,
+  KpiAggregationWeightSource,
+  KpiCarryPolicy,
+  KpiCalculationBasisSource,
+  KpiActualBasisSource,
+  KpiZeroDenominatorPolicy,
 } from "@/types/graphql";
+import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
+import {
+  basisQuartersEqualAnnual,
+  buildDirectBasisTargets,
+  EMPTY_BASIS_QUARTERS,
+  type BasisQuarterValues,
+} from "@/utils/basisCalculation";
 
 export interface CreateKPIFormData {
   name: string;
@@ -24,6 +37,17 @@ export interface CreateKPIFormData {
   unitType: KpiUnitType;
   kpiMode?: string;
   managerRetentionPercent?: string;
+  aggregationMethod: KpiAggregationMethod;
+  weightingBasisKpiId: string;
+  aggregationWeightSource: KpiAggregationWeightSource;
+  carryPolicy: KpiCarryPolicy;
+  calculationBasisSource: KpiCalculationBasisSource;
+  zeroDenominatorPolicy: KpiZeroDenominatorPolicy;
+  actualBasisSource: KpiActualBasisSource;
+  directBasisValue: string;
+  numeratorLabel: string;
+  denominatorLabel: string;
+  basisUnitType: KpiUnitType;
 }
 
 export interface YearlyQuarters {
@@ -41,8 +65,14 @@ interface UseCreateKPIFormProps {
   supportSourceIds?: string[];
 }
 
-const measurementUnitFor = (unitType: KpiUnitType): string =>
-  unitType === "PERCENT" ? "PERCENTAGE" : unitType;
+const measurementUnitFor = (unitType: KpiUnitType): string => {
+  if (unitType === "PERCENT") return "PERCENTAGE";
+  if (unitType === "RATIO") return "NUMBER"; // RATIO KPIs use "NUMBER" as measurementUnit
+  if (unitType === "CURRENCY") return "CURRENCY";
+  if (unitType === "HOUR") return "HOUR";
+  if (unitType === "COUNT") return "NUMBER"; // COUNT KPIs use "NUMBER"
+  return "NUMBER"; // Default to "NUMBER" for NUMBER unit type
+};
 
 export function useCreateKPIForm({
   objectiveId,
@@ -79,6 +109,17 @@ export function useCreateKPIForm({
     unitType: "NUMBER",
     kpiMode: isSupport ? "DIRECT" : "AGGREGATED",
     managerRetentionPercent: "30",
+    aggregationMethod: "SUM",
+    weightingBasisKpiId: "",
+    aggregationWeightSource: "PLANNED_TARGET",
+    carryPolicy: "ADDITIVE",
+    calculationBasisSource: "NONE",
+    zeroDenominatorPolicy: "NOT_CALCULABLE",
+    actualBasisSource: "USE_APPROVED_BASIS",
+    directBasisValue: "",
+    numeratorLabel: "",
+    denominatorLabel: "",
+    basisUnitType: "NUMBER",
   });
 
   // Annual Goals - Only for strategic period (single year)
@@ -90,6 +131,9 @@ export function useCreateKPIForm({
   const [yearlyQuarters, setYearlyQuarters] = useState<
     Record<string, YearlyQuarters>
   >({});
+  const [basisQuarters, setBasisQuarters] = useState<BasisQuarterValues>({
+    ...EMPTY_BASIS_QUARTERS,
+  });
 
   // Loading/Submitting states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -151,10 +195,14 @@ export function useCreateKPIForm({
         const isPercent =
           formData.unitType === "PERCENT" || formData.unitType === "RATIO";
         const plannedVal = isPercent ? sum / 4 : sum;
-        if (Math.abs(plannedVal - annualValue) > TOLERANCE) {
+        if (
+          isPercent
+            ? values.some((value) => Math.abs(value - annualValue) > TOLERANCE)
+            : Math.abs(plannedVal - annualValue) > TOLERANCE
+        ) {
           throw new Error(
             isPercent
-              ? "Quarterly breakdown average must equal the annual target"
+              ? "Every quarterly ratio/percentage target must equal the annual target"
               : "Quarterly breakdown sum must equal the annual target",
           );
         }
@@ -170,6 +218,58 @@ export function useCreateKPIForm({
             target: val,
           });
         });
+      }
+
+      const isRateLike =
+        formData.unitType === "PERCENT" || formData.unitType === "RATIO";
+      const basisSource = isRateLike
+        ? formData.calculationBasisSource
+        : "NONE";
+      if (basisSource !== "NONE" && (!formData.numeratorLabel.trim() || !formData.denominatorLabel.trim())) {
+        throw new Error("Numerator and denominator labels are required");
+      }
+      if (basisSource === "DIRECT_VALUE") {
+        const annualBasis = Number(formData.directBasisValue);
+        if (!Number.isFinite(annualBasis) || annualBasis <= 0) {
+          throw new Error("Annual direct basis must be greater than zero");
+        }
+        if (!isCorporate && !basisQuartersEqualAnnual(formData.directBasisValue, basisQuarters)) {
+          throw new Error("Q1–Q4 basis values must sum exactly to the annual basis");
+        }
+      }
+      if (basisSource === "LINKED_KPI" && !formData.weightingBasisKpiId) {
+        throw new Error("Select an additive linked basis KPI");
+      }
+      if (
+        formData.actualBasisSource === "LINKED_KPI_ACTUAL" &&
+        basisSource !== "LINKED_KPI"
+      ) {
+        throw new Error(
+          "Linked KPI actual requires a linked approved denominator KPI",
+        );
+      }
+      if (
+        !isSupport &&
+        formData.kpiMode !== "DIRECT" &&
+        !isAggregationMethodAllowed({
+          method: formData.aggregationMethod,
+          unitType: formData.unitType,
+          calculationBasisSource: basisSource,
+        })
+      ) {
+        throw new Error(
+          "Choose an aggregation method compatible with this KPI unit and calculation basis",
+        );
+      }
+      if (
+        !isSupport &&
+        formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
+        basisSource === "NONE" &&
+        !formData.weightingBasisKpiId
+      ) {
+        throw new Error(
+          "Select a weighting-basis KPI for denominator-weighted aggregation",
+        );
       }
 
       const input: CreateKpiInput = {
@@ -189,6 +289,35 @@ export function useCreateKPIForm({
           formData.kpiMode === "HYBRID" && formData.managerRetentionPercent
             ? parseFloat(formData.managerRetentionPercent)
             : undefined,
+        aggregationMethod: isSupport ? "SUM" : formData.aggregationMethod,
+        weightingBasisKpiId:
+          !isSupport &&
+          formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE" &&
+          basisSource !== "DIRECT_VALUE"
+            ? formData.weightingBasisKpiId || undefined
+            : undefined,
+        aggregationWeightSource: formData.aggregationWeightSource,
+        carryPolicy:
+          formData.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
+            ? "NONE"
+            : formData.carryPolicy,
+        calculationBasisSource: basisSource,
+        zeroDenominatorPolicy:
+          basisSource !== "NONE" ? formData.zeroDenominatorPolicy : undefined,
+        actualBasisSource:
+          basisSource !== "NONE" ? formData.actualBasisSource : undefined,
+        directBasisValue:
+          basisSource === "DIRECT_VALUE" ? formData.directBasisValue : undefined,
+        directBasisTargets:
+          basisSource === "DIRECT_VALUE" && !isCorporate
+            ? buildDirectBasisTargets(strategicYear, basisQuarters)
+            : undefined,
+        numeratorLabel:
+          basisSource !== "NONE" ? formData.numeratorLabel.trim() : undefined,
+        denominatorLabel:
+          basisSource !== "NONE" ? formData.denominatorLabel.trim() : undefined,
+        basisUnitType:
+          basisSource === "DIRECT_VALUE" ? formData.basisUnitType : undefined,
       };
 
       if (isSupport) {
@@ -248,6 +377,7 @@ export function useCreateKPIForm({
     onSuccess,
     isCorporate,
     organizationId,
+    basisQuarters,
   ]);
 
   return {
@@ -256,6 +386,8 @@ export function useCreateKPIForm({
     setAnnualTargets,
     yearlyQuarters,
     setYearlyQuarters,
+    basisQuarters,
+    setBasisQuarters,
     isSubmitting,
     updateField,
     selectedSupportSourceIds,

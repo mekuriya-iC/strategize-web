@@ -56,6 +56,12 @@ interface AssignmentContextType {
   // We will bring that here.
   targets: Record<string, Record<string, number | null>>; // kpiId -> { assigneeId: targetValue }
   setTarget: (kpiId: string, assigneeId: string, value: number | null) => void;
+  directBasisAllocations: Record<string, Record<string, string>>;
+  setDirectBasisAllocation: (
+    kpiId: string,
+    assigneeId: string,
+    value: string,
+  ) => void;
 
   // Bulk Assignment Helper
   bulkAssignmentValues: Record<string, number>;
@@ -105,6 +111,9 @@ export function AssignmentProvider({
   const [targets, setTargets] = useState<
     Record<string, Record<string, number | null>>
   >({});
+  const [directBasisAllocations, setDirectBasisAllocations] = useState<
+    Record<string, Record<string, string>>
+  >({});
   const [bulkAssignmentValues, setBulkAssignmentValues] = useState<
     Record<string, number>
   >({});
@@ -130,14 +139,36 @@ export function AssignmentProvider({
 
   const toggleKPI = useCallback(
     (id: string, checked: boolean) => {
-      const isAssignable = assignableKPIs.some((k) => k.kpiId === id);
-      if (checked && !isAssignable) return;
+      const selectedKpi = assignableKPIs.find((k) => k.kpiId === id);
+      if (checked && !selectedKpi) return;
 
-      setSelectedKPIs((prev) =>
-        checked
-          ? [...new Set([...prev, id])]
-          : prev.filter((pid) => pid !== id),
-      );
+      setSelectedKPIs((prev) => {
+        if (!checked) {
+          const requiredBySelectedRate = assignableKPIs.some(
+            (kpi) =>
+              prev.includes(kpi.kpiId) &&
+              kpi.calculationBasisSource === "LINKED_KPI" &&
+              kpi.weightingBasisKpiId === id,
+          );
+          return requiredBySelectedRate
+            ? prev
+            : prev.filter((selectedId) => selectedId !== id);
+        }
+        const linkedBasisId =
+          selectedKpi?.calculationBasisSource === "LINKED_KPI"
+            ? selectedKpi.weightingBasisKpiId
+            : null;
+        const linkedBasisIsAssignable = assignableKPIs.some(
+          (kpi) => kpi.kpiId === linkedBasisId,
+        );
+        return [
+          ...new Set([
+            ...prev,
+            id,
+            ...(linkedBasisId && linkedBasisIsAssignable ? [linkedBasisId] : []),
+          ]),
+        ];
+      });
     },
     [assignableKPIs],
   );
@@ -150,11 +181,23 @@ export function AssignmentProvider({
   );
 
   const addAssignment = useCallback((newAssignment: Assignment) => {
-    // Assignment added to context
-    setAssignments((prev) => {
-      const updated = [...prev, newAssignment];
-      // Assignments updated in context
-      return updated;
+    setAssignments((previous) => {
+      const existingIndex = previous.findIndex(
+        (assignment) =>
+          assignment.assigneeType === newAssignment.assigneeType &&
+          assignment.assigneeId === newAssignment.assigneeId,
+      );
+      if (existingIndex < 0) return [...previous, newAssignment];
+
+      return previous.map((assignment, index) =>
+        index === existingIndex
+          ? {
+              ...assignment,
+              assigneeName: newAssignment.assigneeName,
+              kpis: [...new Set([...assignment.kpis, ...newAssignment.kpis])],
+            }
+          : assignment,
+      );
     });
   }, []);
 
@@ -167,11 +210,25 @@ export function AssignmentProvider({
   const clearAssignments = useCallback(() => {
     setAssignments([]);
     setTargets({});
+    setDirectBasisAllocations({});
   }, []);
 
   const setTarget = useCallback(
     (kpiId: string, assigneeId: string, value: number | null) => {
       setTargets((prev) => ({
+        ...prev,
+        [kpiId]: {
+          ...(prev[kpiId] || {}),
+          [assigneeId]: value,
+        },
+      }));
+    },
+    [],
+  );
+
+  const setDirectBasisAllocation = useCallback(
+    (kpiId: string, assigneeId: string, value: string) => {
+      setDirectBasisAllocations((prev) => ({
         ...prev,
         [kpiId]: {
           ...(prev[kpiId] || {}),
@@ -209,6 +266,8 @@ export function AssignmentProvider({
       clearAssignments,
       targets,
       setTarget,
+      directBasisAllocations,
+      setDirectBasisAllocation,
       bulkAssignmentValues,
       setBulkAssignmentValue,
     }),
@@ -221,6 +280,7 @@ export function AssignmentProvider({
       selectedKPIs,
       assignments,
       targets,
+      directBasisAllocations,
       bulkAssignmentValues,
       toggleAssignee,
       clearSelectedAssignees,
@@ -230,6 +290,7 @@ export function AssignmentProvider({
       removeAssignment,
       clearAssignments,
       setTarget,
+      setDirectBasisAllocation,
       setBulkAssignmentValue,
     ],
   );

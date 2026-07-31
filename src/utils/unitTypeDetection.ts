@@ -1,4 +1,8 @@
 import { Kpi } from "@/types/graphql";
+import {
+  getTargetAssignmentDescription,
+  getTargetAssignmentStrategy,
+} from "@/lib/objectives/targetAssignmentStrategy";
 
 // Extended unit types for frontend use (for display purposes only)
 export type ExtendedUnitType = "NUMBER_MILLION" | "NUMBER_COUNT" | "PERCENT";
@@ -11,7 +15,15 @@ export const getDetailedUnitLabel = (kpi: Kpi): string => {
     return "%";
   }
 
-  // For NUMBER type, analyze the name to determine if it's million ETB or count
+  if (unitType === "RATIO") {
+    return "ratio";
+  }
+
+  if (unitType === "CURRENCY") {
+    return "ETB";
+  }
+
+  // For legacy NUMBER values, analyze the name to determine the display unit
   const nameLower = name.toLowerCase();
 
   // Check for revenue, profit, cost, financial indicators (million ETB)
@@ -70,8 +82,8 @@ export const getUnitTypeDisplayName = (unitType: ExtendedUnitType): string => {
 export const detectKPIType = (kpi: Kpi): "SUMMABLE" | "PERCENTAGE" => {
   const unitType = kpi.unitType; // "NUMBER" | "PERCENT"
 
-  // PERCENT unit type = Percentage KPIs (satisfaction, rates, etc.)
-  if (unitType === "PERCENT") {
+  // Percentage and ratio KPIs are rate-like: each child keeps the target rate.
+  if (unitType === "PERCENT" || unitType === "RATIO") {
     return "PERCENTAGE";
   }
 
@@ -85,15 +97,8 @@ export const detectKPIType = (kpi: Kpi): "SUMMABLE" | "PERCENTAGE" => {
 };
 
 // Get assignment method description
-export const getAssignmentMethodDescription = (kpi: Kpi): string => {
-  const kpiType = detectKPIType(kpi);
-
-  if (kpiType === "SUMMABLE") {
-    return "Split the parent target among assignees (sum must equal parent target)";
-  } else {
-    return "The average of all assignee targets must equal the parent target";
-  }
-};
+export const getAssignmentMethodDescription = (kpi: Kpi): string =>
+  getTargetAssignmentDescription(getTargetAssignmentStrategy(kpi));
 
 // Get the inferred unit type for a KPI (for internal use)
 export const getInferredUnitType = (kpi: Kpi): ExtendedUnitType => {

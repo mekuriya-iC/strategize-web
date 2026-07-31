@@ -16,27 +16,14 @@ import { REMOVE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
 import { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
-
-interface LogbookItem {
-  id: string;
-  activity: string;
-  description: string;
-  outcome: string;
-  entryDate: string;
-  attachmentUrl?: string | null;
-  status?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  employee?: any;
-}
+import type { FrontendLogbookItem } from "@/types/logbook";
 
 interface LogbookTableCardProps {
-  item: LogbookItem;
+  item: FrontendLogbookItem;
   isSelected: boolean;
   onSelect: (checked: boolean) => void;
   onRefetch: () => void;
-  onEditEntry?: (entry: LogbookItem) => void;
+  onEditEntry?: (entry: FrontendLogbookItem) => void;
 }
 
 export function LogbookTableCard({
@@ -160,6 +147,21 @@ export function LogbookTableCard({
               <p className="text-sm text-red-600 dark:text-red-300 mt-1">
                 {item.rejectionReason}
               </p>
+            </div>
+          )}
+
+          {(item.kpiActualNumeratorExact ||
+            item.kpiActualBasisExact ||
+            item.kpiActualRateExact) && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+              <label className="text-xs font-medium uppercase text-blue-800">
+                KPI result components
+              </label>
+              <div className="mt-2 grid gap-2 text-xs">
+                <span>Numerator: {item.kpiActualNumeratorExact || "Derived"}</span>
+                <span>Denominator: {item.kpiActualBasisExact || "Resolved"}</span>
+                <span>Result: {item.kpiActualRateExact || "Derived"}</span>
+              </div>
             </div>
           )}
 

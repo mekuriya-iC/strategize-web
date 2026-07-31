@@ -1,7 +1,7 @@
 // In UpdateKPIForm.tsx
 "use client";
 
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,10 +10,21 @@ import {
   KPIInformationCard,
   QuarterlyBreakdown,
 } from "./kpi-form";
-import type { Kpi, KpiWeightType, Objective } from "@/types/graphql";
+import type {
+  Kpi,
+  KpiCalculationBasisSource,
+  Objective,
+} from "@/types/graphql";
 import { useUpdateKPIState } from "@/hooks/objectives/useUpdateKPIState";
 import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 import { KpiModeSelector } from "@/components/objectives/KpiModeSelector";
+import { KpiAggregationSelector } from "@/components/objectives/KpiAggregationSelector";
+import { BasisCalculationCard } from "@/components/objectives/BasisCalculationCard";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
+import {
+  FormulaQuarterPlanningCard,
+  type FormulaQuarterPlanningCardHandle,
+} from "@/components/objectives/FormulaQuarterPlanningCard";
 
 interface KPIFormSectionProps {
   title: string;
@@ -50,20 +61,20 @@ const YearlyTargetInput: React.FC<YearlyTargetInputProps> = ({
   <div className="flex items-center space-x-2">
     <span className="font-medium w-24">{year}</span>
     <div className="relative flex-1">
-      <input
-        type="number"
+      <FormattedNumberInput
         value={target}
-        onChange={(e) => onTargetChange(e.target.value)}
+        onValueChange={onTargetChange}
+        currency={unitType === "CURRENCY"}
         disabled={disabled}
         className="w-full px-3 py-2 border rounded-md"
-        step="0.01"
+        step="any"
         min="0"
       />
       <span className="absolute right-3 top-2.5 text-gray-500">
         {unitType === "PERCENT"
           ? "%"
           : unitType === "CURRENCY"
-            ? "Million/ETB"
+            ? "ETB"
             : unitType === "HOUR"
               ? "hrs"
               : unitType === "RATIO"
@@ -91,6 +102,7 @@ export default function UpdateKPIForm({
   existingKPIs = [],
   objective: objectiveProp,
 }: UpdateKPIFormProps) {
+  const formulaPlanningRef = useRef<FormulaQuarterPlanningCardHandle>(null);
   const {
     formData,
     loading,
@@ -103,8 +115,10 @@ export default function UpdateKPIForm({
 
     strategicTimeline,
     yearlyQuarters,
+    basisQuarters,
     weightAllocation,
     setYearlyQuarters,
+    setBasisQuarters,
     updateField,
     handleSubmit,
     handleAnnualTargetChange,
@@ -122,7 +136,9 @@ export default function UpdateKPIForm({
     async (e: React.FormEvent) => {
       e.preventDefault();
       try {
-        await handleSubmit();
+        await handleSubmit(async () => {
+          await formulaPlanningRef.current?.save();
+        });
       } catch (error) {
         console.error("Error updating KPI:", error);
         toast.error("Failed to update KPI");
@@ -137,8 +153,23 @@ export default function UpdateKPIForm({
     (field: string, value: string) => {
       updateField(field as keyof typeof formData, value);
     },
-    [updateField, formData],
+    [updateField],
   );
+
+  const handleBasisSourceChange = (source: KpiCalculationBasisSource) => {
+    updateField("calculationBasisSource", source);
+    if (
+      source !== "LINKED_KPI" &&
+      formData.actualBasisSource === "LINKED_KPI_ACTUAL"
+    ) {
+      updateField("actualBasisSource", "USE_APPROVED_BASIS");
+    }
+    if (source === "DIRECT_VALUE" || source === "LINKED_KPI") {
+      updateField("aggregationMethod", "DENOMINATOR_WEIGHTED_AVERAGE");
+      updateField("carryPolicy", "NONE");
+    }
+    if (source === "DIRECT_VALUE") updateField("weightingBasisKpiId", "");
+  };
 
   // Early return checks - MUST come after all hooks
   if (loading) {
@@ -192,9 +223,14 @@ export default function UpdateKPIForm({
   // Lock annual target for all non-corporate KPIs that are cascaded from a parent
   // Only lock if we actually found a valid assigned target (> 0) from the parent.
   // Otherwise, fallback to editable mode so the user can set their own target (standalone behavior).
+  const isFormulaKpi =
+    kpi.calculationType === "RATIO_FORMULA" ||
+    kpi.calculationType === "SCALAR_FORMULA" ||
+    kpi.calculationType === "WEIGHTED_INDEX";
   const isAnnualTargetLocked =
     !isCorporate &&
     hasParent &&
+    !isFormulaKpi &&
     assignedAnnualTarget !== null &&
     assignedAnnualTarget > 0;
   const targetLabel = isAnnualTargetLocked
@@ -283,6 +319,56 @@ export default function UpdateKPIForm({
             />
           )}
 
+          <BasisCalculationCard
+            unitType={formData.unitType || "NUMBER"}
+            targetValue={annualTarget}
+            source={formData.calculationBasisSource}
+            onSourceChange={handleBasisSourceChange}
+            actualBasisSource={formData.actualBasisSource}
+            onActualBasisSourceChange={(value) =>
+              updateField("actualBasisSource", value)
+            }
+            zeroDenominatorPolicy={formData.zeroDenominatorPolicy}
+            onZeroDenominatorPolicyChange={(value) =>
+              updateField("zeroDenominatorPolicy", value)
+            }
+            numeratorLabel={formData.numeratorLabel}
+            onNumeratorLabelChange={(value) => updateField("numeratorLabel", value)}
+            denominatorLabel={formData.denominatorLabel}
+            onDenominatorLabelChange={(value) => updateField("denominatorLabel", value)}
+            basisUnitType={formData.basisUnitType}
+            onBasisUnitTypeChange={(value) => updateField("basisUnitType", value)}
+            directBasisValue={formData.directBasisValue}
+            onDirectBasisValueChange={(value) => updateField("directBasisValue", value)}
+            basisQuarters={basisQuarters}
+            onBasisQuartersChange={setBasisQuarters}
+            basisKpiId={formData.weightingBasisKpiId}
+            onBasisKpiChange={(value) => updateField("weightingBasisKpiId", value)}
+            candidateKpis={existingKPIs}
+            currentKpiId={kpiId}
+            isCorporate={isCorporate}
+            disabled={!canEditStructure}
+          />
+
+          <KpiAggregationSelector
+            method={formData.aggregationMethod}
+            onMethodChange={(value) => updateField("aggregationMethod", value)}
+            basisKpiId={formData.weightingBasisKpiId}
+            onBasisChange={(value) => updateField("weightingBasisKpiId", value)}
+            weightSource={formData.aggregationWeightSource}
+            onWeightSourceChange={(value) =>
+              updateField("aggregationWeightSource", value)
+            }
+            carryPolicy={formData.carryPolicy}
+            onCarryPolicyChange={(value) => updateField("carryPolicy", value)}
+            unitType={formData.unitType}
+            calculationBasisSource={formData.calculationBasisSource}
+            calculationType={kpi.calculationType}
+            candidateKpis={existingKPIs}
+            currentKpiId={kpiId}
+            disabled={!canEditStructure}
+          />
+
           {isCorporate ? (
             // CORPORATE VIEW: Annual Target Input Only
             <KPIFormSection title="Target Settings" className="mb-8">
@@ -345,7 +431,7 @@ export default function UpdateKPIForm({
                         {formData.unitType === "PERCENT"
                           ? "%"
                           : formData.unitType === "CURRENCY"
-                            ? "Million/ETB"
+                            ? "ETB"
                             : formData.unitType === "RATIO"
                               ? "ratio"
                               : formData.unitType === "COUNT"
@@ -375,7 +461,7 @@ export default function UpdateKPIForm({
                       {formData.unitType === "PERCENT"
                         ? "%"
                         : formData.unitType === "CURRENCY"
-                          ? "Million/ETB"
+                          ? "ETB"
                           : formData.unitType === "RATIO"
                             ? "ratio"
                             : formData.unitType === "COUNT"
@@ -397,7 +483,9 @@ export default function UpdateKPIForm({
                 <p className="text-xs text-gray-500">
                   {isAnnualTargetLocked
                     ? "This target is assigned from the parent KPI and cannot be changed here."
-                    : "Set your annual target first, then plan your quarterly targets below."}
+                    : isFormulaKpi
+                      ? "Set this unit's expected annual formula result, then reconcile it from the quarterly source targets below."
+                      : "Set your annual target first, then plan your quarterly targets below."}
                 </p>
               </div>
 
@@ -426,10 +514,24 @@ export default function UpdateKPIForm({
                   mode="edit"
                 />
                 <p className="text-xs text-gray-500 mt-4">
-                  Break down the Target Value into 4 quarters. The sum (or
-                  average for percentages) must match the Target Value above.
+                  Break down the Target Value into 4 quarters. Manual percentage
+                  KPIs use an average; formula KPIs are reconciled using their
+                  configured temporal rollup below.
                 </p>
               </div>
+
+              {isFormulaKpi && (
+                <div className="mt-8 border-t pt-8">
+                  <FormulaQuarterPlanningCard
+                    ref={formulaPlanningRef}
+                    kpi={kpi}
+                    annualPeriodId={
+                      planningObjective?.strategicPeriod?.strategicPeriodId
+                    }
+                    canEdit={canEditTargets}
+                  />
+                </div>
+              )}
             </KPIFormSection>
           )}
 
@@ -445,7 +547,7 @@ export default function UpdateKPIForm({
             <Button
               type="submit"
               disabled={isSubmitting || (!canEditWeight && !canEditTargets)}
-              className="min-w-[120px]"
+              className="min-w-30"
             >
               {isSubmitting ? (
                 <>

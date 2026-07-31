@@ -1,28 +1,37 @@
 import { gql } from '@apollo/client';
 
-/**
- * System Configuration Queries
- */
+const SYSTEM_CONFIGURATION_FIELDS = gql`
+  fragment SystemConfigurationFields on SystemConfiguration {
+    systemConfigurationId
+    timezone
+    fiscalYearStartMonth
+    defaultRatingScaleMin
+    defaultRatingScaleMax
+    checkinDayOfWeek
+    checkoutDayOfWeek
+    enableEmailNotifications
+    enableSharedKpis
+    enableLogbookAttachments
+    enableFormulaKpis
+    defaultKpiZeroDenominatorPolicy
+    defaultKpiResultDirection
+    defaultKpiTargetRangeOutsidePolicy
+    createdAt
+    updatedAt
+    updatedBy {
+      employeeId
+      fullName
+      email
+    }
+  }
+`;
+
 export const GET_SYSTEM_CONFIGURATIONS = gql`
+  ${SYSTEM_CONFIGURATION_FIELDS}
   query GetSystemConfigurations($page: Int!, $limit: Int!) {
     systemConfigurations(page: $page, limit: $limit) {
       items {
-        systemConfigurationId
-        timezone
-        fiscalYearStartMonth
-        defaultRatingScaleMin
-        defaultRatingScaleMax
-        checkinDayOfWeek
-        checkoutDayOfWeek
-        enableEmailNotifications
-        enableSharedKpis
-        enableLogbookAttachments
-        createdAt
-        updatedAt
-        updatedBy {
-          employeeId
-          fullName
-        }
+        ...SystemConfigurationFields
       }
       meta {
         totalItems
@@ -36,48 +45,19 @@ export const GET_SYSTEM_CONFIGURATIONS = gql`
 `;
 
 export const GET_SYSTEM_CONFIGURATION = gql`
+  ${SYSTEM_CONFIGURATION_FIELDS}
   query GetSystemConfiguration($systemConfigurationId: ID!) {
     systemConfiguration(systemConfigurationId: $systemConfigurationId) {
-      systemConfigurationId
-      timezone
-      fiscalYearStartMonth
-      defaultRatingScaleMin
-      defaultRatingScaleMax
-      checkinDayOfWeek
-      checkoutDayOfWeek
-      enableEmailNotifications
-      enableSharedKpis
-      enableLogbookAttachments
-      createdAt
-      updatedAt
-      updatedBy {
-        employeeId
-        fullName
-        email
-      }
+      ...SystemConfigurationFields
     }
   }
 `;
 
 export const GET_SYSTEM_CONFIGURATION_BY_ORG = gql`
+  ${SYSTEM_CONFIGURATION_FIELDS}
   query GetSystemConfigurationByOrg($organizationId: ID!) {
     systemConfigurationByOrg(organizationId: $organizationId) {
-      systemConfigurationId
-      timezone
-      fiscalYearStartMonth
-      defaultRatingScaleMin
-      defaultRatingScaleMax
-      checkinDayOfWeek
-      checkoutDayOfWeek
-      enableEmailNotifications
-      enableSharedKpis
-      enableLogbookAttachments
-      createdAt
-      updatedAt
-      updatedBy {
-        employeeId
-        fullName
-      }
+      ...SystemConfigurationFields
     }
   }
 `;

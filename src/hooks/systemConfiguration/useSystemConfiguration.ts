@@ -13,6 +13,10 @@ import {
 
 // ===================== TYPES =====================
 
+export type KpiTargetRangeOutsidePolicy =
+  | "ZERO_OUTSIDE"
+  | "NEAREST_BOUND_RATIO";
+
 export interface SystemConfiguration {
   systemConfigurationId: string;
   timezone: string;
@@ -24,6 +28,10 @@ export interface SystemConfiguration {
   enableEmailNotifications: boolean;
   enableSharedKpis: boolean;
   enableLogbookAttachments: boolean;
+  enableFormulaKpis: boolean;
+  defaultKpiZeroDenominatorPolicy: "NOT_CALCULABLE" | "ZERO" | "BLOCK";
+  defaultKpiResultDirection: "HIGHER_IS_BETTER" | "LOWER_IS_BETTER" | "TARGET_RANGE";
+  defaultKpiTargetRangeOutsidePolicy: KpiTargetRangeOutsidePolicy;
   createdAt: string;
   updatedAt: string;
   updatedBy?: {
@@ -147,6 +155,10 @@ export const useSystemConfigurationMutations = () => {
       enableEmailNotifications?: boolean;
       enableSharedKpis?: boolean;
       enableLogbookAttachments?: boolean;
+      enableFormulaKpis?: boolean;
+      defaultKpiZeroDenominatorPolicy?: "NOT_CALCULABLE" | "ZERO" | "BLOCK";
+      defaultKpiResultDirection?: "HIGHER_IS_BETTER" | "LOWER_IS_BETTER" | "TARGET_RANGE";
+      defaultKpiTargetRangeOutsidePolicy?: KpiTargetRangeOutsidePolicy;
     }) => {
       const result = await createMutation({
         variables: { createSystemConfigurationInput: input },
@@ -165,6 +177,10 @@ export const useSystemConfigurationMutations = () => {
       enableEmailNotifications?: boolean;
       enableSharedKpis?: boolean;
       enableLogbookAttachments?: boolean;
+      enableFormulaKpis?: boolean;
+      defaultKpiZeroDenominatorPolicy?: "NOT_CALCULABLE" | "ZERO" | "BLOCK";
+      defaultKpiResultDirection?: "HIGHER_IS_BETTER" | "LOWER_IS_BETTER" | "TARGET_RANGE";
+      defaultKpiTargetRangeOutsidePolicy?: KpiTargetRangeOutsidePolicy;
     }) => {
       const result = await updateMutation({
         variables: { updateSystemConfigurationInput: input },

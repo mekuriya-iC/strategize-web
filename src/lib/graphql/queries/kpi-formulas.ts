@@ -24,7 +24,14 @@ const KPI_FORMULA_KPI_FIELDS = gql`
     unitType
     measurementUnit
     zeroDenominatorPolicy
+    assigneeType
+    assigneeId
     isActive
+    objective {
+      type
+      assigneeType
+      assigneeId
+    }
   }
 `;
 

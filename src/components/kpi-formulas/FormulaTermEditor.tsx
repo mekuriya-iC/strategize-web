@@ -25,6 +25,10 @@ import {
   type KpiFormulaExpressionSide,
   type KpiFormulaTermOperator,
 } from "./formulaExpression";
+import {
+  formatKpiCandidateLabel,
+  type KpiOrgUnitNameMaps,
+} from "./options";
 
 interface FormulaTermEditorProps {
   label: string;
@@ -33,6 +37,7 @@ interface FormulaTermEditorProps {
   onChange: (terms: FormulaTermDraft[]) => void;
   metrics: MetricDefinition[];
   kpis: KpiCandidate[];
+  orgUnitNames?: KpiOrgUnitNameMaps;
   targetKpiId?: string;
   single?: boolean;
 }
@@ -44,6 +49,7 @@ export function FormulaTermEditor({
   onChange,
   metrics,
   kpis,
+  orgUnitNames,
   targetKpiId,
   single = false,
 }: FormulaTermEditorProps) {
@@ -86,7 +92,7 @@ export function FormulaTermEditor({
     .filter((kpi) => kpi.kpiId !== targetKpiId)
     .map((kpi) => ({
       value: kpi.kpiId,
-      label: kpi.name,
+      label: formatKpiCandidateLabel(kpi, orgUnitNames),
       description: kpi.measurementUnit ?? kpi.unitType ?? "KPI",
     }));
 

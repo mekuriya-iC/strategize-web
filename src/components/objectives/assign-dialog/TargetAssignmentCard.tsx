@@ -12,6 +12,7 @@ import {
   getTargetAssignmentStrategy,
 } from "@/lib/objectives/targetAssignmentStrategy";
 import type { Kpi } from "@/types/graphql";
+import { resolveAnnualKpiTarget } from "@/utils/quarterTargetAllocation";
 import {
   calculateRequiredNumerator,
   decimalValuesEqualTotal,
@@ -37,50 +38,7 @@ export function TargetAssignmentCard() {
     setDirectBasisAllocation,
   } = useAssignmentContext();
 
-  // Helper: Get yearly total from targets
-  const getYearlyTotalFromTargets = (
-    targets: Array<{ timeline: string; target: number }>,
-    unitType?: string,
-  ): number => {
-    if (!targets || targets.length === 0) return 0;
 
-    const yearlyTargets = new Map<string, number[]>();
-
-    targets.forEach((target) => {
-      const timeline = target.timeline;
-      // Check if it's a quarterly target (contains "-Q")
-      if (timeline.includes("-Q")) {
-        const year = timeline.split("-")[0];
-        if (!yearlyTargets.has(year)) {
-          yearlyTargets.set(year, []);
-        }
-        yearlyTargets.get(year)!.push(target.target);
-      } else {
-        // It's an annual target, use it directly
-        const year = timeline;
-        if (!yearlyTargets.has(year)) {
-          yearlyTargets.set(year, [target.target]);
-        }
-      }
-    });
-
-    // Calculate total: for PERCENT/RATIO use average of quarters, for others use sum
-    let total = 0;
-    const isAverageable = unitType === "PERCENT" || unitType === "RATIO";
-
-    yearlyTargets.forEach((values) => {
-      if (values.length === 1) {
-        // Single annual value
-        total += values[0];
-      } else {
-        // Multiple quarterly values
-        const sum = values.reduce((acc, val) => acc + val, 0);
-        total += isAverageable ? sum / values.length : sum;
-      }
-    });
-
-    return Math.round(total * 100) / 100;
-  };
 
   // Helper: Get total assigned target for a KPI
   const getTotalAssignedTarget = (kpiId: string) => {
@@ -221,10 +179,11 @@ export function TargetAssignmentCard() {
           const formatTarget = (value: number) =>
             isCurrency ? value.toLocaleString() : value;
           const cleanName = kpi.name;
-          const fullParentTarget = roundValue(
-            getYearlyTotalFromTargets(kpi.targets || [], kpi.unitType) ||
-              Number(kpi.targetValue || 0),
-          );
+          const resolvedParentTarget = resolveAnnualKpiTarget(kpi);
+          const fullParentTarget =
+            kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"
+              ? resolvedParentTarget
+              : roundValue(resolvedParentTarget);
           const parentTarget = getCascadeTarget(kpi, fullParentTarget);
           const totalAssigned = roundValue(getTotalAssignedTarget(kpiId));
           const unitLabel = getDetailedUnitLabel(kpi);

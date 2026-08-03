@@ -5,7 +5,40 @@ interface QuarterTarget {
 
 interface QuarterTargetSource {
   unitType?: string | null;
+  targetValue?: number | null;
   targets?: QuarterTarget[] | null;
+}
+
+export function resolveAnnualKpiTarget(sourceKpi: QuarterTargetSource): number {
+  if (
+    sourceKpi.targetValue !== null &&
+    sourceKpi.targetValue !== undefined &&
+    Number.isFinite(Number(sourceKpi.targetValue))
+  ) {
+    return Number(sourceKpi.targetValue);
+  }
+
+  const annualTarget = sourceKpi.targets?.find(
+    (target) => !/-Q[1-4]$/i.test(target.timeline),
+  );
+  if (annualTarget && Number.isFinite(Number(annualTarget.target))) {
+    return Number(annualTarget.target);
+  }
+
+  const quarterTargets = (sourceKpi.targets || []).filter((target) =>
+    /-Q[1-4]$/i.test(target.timeline),
+  );
+  if (quarterTargets.length === 0) return 0;
+
+  const total = quarterTargets.reduce(
+    (sum, target) => sum + Number(target.target || 0),
+    0,
+  );
+  return ["PERCENT", "RATIO"].includes(
+    String(sourceKpi.unitType || "").toUpperCase(),
+  )
+    ? total / quarterTargets.length
+    : total;
 }
 
 export function buildAssignedQuarterTargets(

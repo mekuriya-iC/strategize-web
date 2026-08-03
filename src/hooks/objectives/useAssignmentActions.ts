@@ -12,7 +12,10 @@ import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { appLogger } from "@/lib/logger";
-import { buildAssignedQuarterTargets } from "@/utils/quarterTargetAllocation";
+import {
+  buildAssignedQuarterTargets,
+  resolveAnnualKpiTarget,
+} from "@/utils/quarterTargetAllocation";
 import {
   allocateBasisQuarters,
   buildDirectBasisTargets,
@@ -20,10 +23,7 @@ import {
   multiplyBasisByPercent,
   splitBasisEvenly,
 } from "@/utils/basisCalculation";
-import type {
-  CascadeObjectiveV2MutationVariables,
-  Kpi,
-} from "@/types/graphql";
+import type { CascadeObjectiveV2MutationVariables } from "@/types/graphql";
 
 interface CascadeObjectiveV2Data {
   cascadeObjectiveV2: {
@@ -45,17 +45,6 @@ interface StagedRecipient {
   assigneeType: AssigneeType;
   assigneeId: string;
   kpiIds: Set<string>;
-}
-
-function annualRateTarget(kpi: Kpi): number {
-  if (Number.isFinite(Number(kpi.targetValue))) return Number(kpi.targetValue);
-  const annual = kpi.targets?.find((target) => !target.timeline.includes("-Q"));
-  if (annual) return Number(annual.target);
-  const quarters = kpi.targets?.filter((target) => target.timeline.includes("-Q")) || [];
-  return quarters.length
-    ? quarters.reduce((sum, target) => sum + Number(target.target), 0) /
-        quarters.length
-    : 0;
 }
 
 function recipientKey(assigneeType: AssigneeType, assigneeId: string): string {
@@ -213,7 +202,7 @@ export function useAssignmentActions({
           const isDirectBasis =
             sourceKpi.calculationBasisSource === "DIRECT_VALUE";
           const targetValue = isDirectBasis
-            ? annualRateTarget(sourceKpi)
+            ? resolveAnnualKpiTarget(sourceKpi)
             : targets[kpiId]?.[recipient.assigneeId];
           if (targetValue == null) {
             throw new Error(`Enter a target for "${sourceKpi.name}"`);

@@ -41,6 +41,16 @@ describe("basis calculation", () => {
     expect(calculateRequiredNumerator("3", "800", "RATIO")).toBe(2400);
   });
 
+  it("uses the full ratio precision when calculating a required numerator", () => {
+    expect(
+      calculateRequiredNumerator(
+        "0.3333333333333333",
+        "50025000",
+        "RATIO",
+      ),
+    ).toBeCloseTo(16675000, 6);
+  });
+
   it("derives an exact-ish percentage from numerator and denominator strings", () => {
     expect(
       calculateKpiResultPreview({

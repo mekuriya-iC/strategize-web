@@ -1,4 +1,32 @@
-import { buildAssignedQuarterTargets } from "./quarterTargetAllocation";
+import { describe, expect, it } from "vitest";
+import {
+  buildAssignedQuarterTargets,
+  resolveAnnualKpiTarget,
+} from "./quarterTargetAllocation";
+
+describe("resolveAnnualKpiTarget", () => {
+  it("preserves the full precision of a ratio target", () => {
+    expect(
+      resolveAnnualKpiTarget({
+        unitType: "RATIO",
+        targetValue: 0.3333333333333333,
+        targets: [{ timeline: "2026", target: 0.3333333333333333 }],
+      }),
+    ).toBe(0.3333333333333333);
+  });
+
+  it("averages quarterly ratio targets without rounding to two decimals", () => {
+    expect(
+      resolveAnnualKpiTarget({
+        unitType: "RATIO",
+        targets: [1, 2, 3, 4].map((quarter) => ({
+          timeline: `2026-Q${quarter}`,
+          target: 0.3333333333333333,
+        })),
+      }),
+    ).toBe(0.3333333333333333);
+  });
+});
 
 describe("buildAssignedQuarterTargets", () => {
   const targets = [

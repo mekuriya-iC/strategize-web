@@ -7,7 +7,10 @@ import {
   GetStrategicPeriodResponse 
 } from '@/types/graphql';
 
-export const useStrategicPeriods = (variables: StrategicPeriodsQueryVariables = {}) => {
+export const useStrategicPeriods = (
+  variables: StrategicPeriodsQueryVariables = {},
+  options: { skip?: boolean } = {},
+) => {
   const { data, loading, error, refetch } = useQuery<GetStrategicPeriodsResponse, StrategicPeriodsQueryVariables>(
     GET_STRATEGIC_PERIODS,
     {
@@ -16,6 +19,7 @@ export const useStrategicPeriods = (variables: StrategicPeriodsQueryVariables = 
         limit: 10,
         ...variables,
       },
+      skip: options.skip,
       fetchPolicy: 'cache-and-network',
     }
   );

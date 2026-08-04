@@ -6,14 +6,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
 import { StrategicPeriod } from "@/types/graphql";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useStrategicPeriodStore, useAuthStore } from "@/stores";
 import { Calendar, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
+  findActiveOrCurrentQuarter,
   findCurrentPeriod,
   formatAnnualTimeline,
   getAnnualPeriods,
@@ -36,17 +37,11 @@ export default function StrategicPeriodSelector({
   className = "",
 }: StrategicPeriodSelectorProps) {
   const user = useAuthStore((state) => state.user);
-  const { strategicPeriods, loading } = useStrategicPeriods({
-    limit: 1000,
-    organizationId: user?.organizationId,
-  });
+  const { strategicPeriods, loading } = useActiveStrategicPlanPeriods();
   const { selectedPeriod, selectPeriodWithTimeline } =
     useStrategicPeriodStore();
   const router = useRouter();
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedQuarter, setSelectedQuarter] = useState<string>("");
-
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const canManagePeriods = user?.role === "SUPER_ADMIN";
 
   const availableYears = useMemo(() => {
     const annualPeriods = getAnnualPeriods(strategicPeriods);
@@ -67,6 +62,42 @@ export default function StrategicPeriodSelector({
     return Array.from(options, ([label, period]) => ({ label, period }));
   }, [strategicPeriods]);
 
+  const activePlanSelectedPeriod = useMemo(
+    () =>
+      selectedPeriod &&
+      strategicPeriods.some(
+        (period) =>
+          period.strategicPeriodId === selectedPeriod.strategicPeriodId,
+      )
+        ? selectedPeriod
+        : null,
+    [selectedPeriod, strategicPeriods],
+  );
+
+  const selectedYear = useMemo(
+    () =>
+      activePlanSelectedPeriod
+        ? getAnnualTimelineForPeriod(
+            activePlanSelectedPeriod,
+            strategicPeriods,
+          )
+        : "",
+    [activePlanSelectedPeriod, strategicPeriods],
+  );
+
+  const selectedQuarter = useMemo(() => {
+    if (!activePlanSelectedPeriod || !selectedYear) return "";
+    if (isQuarterlyPeriod(activePlanSelectedPeriod)) {
+      return activePlanSelectedPeriod.strategicPeriodId;
+    }
+
+    return (
+      findActiveOrCurrentQuarter(
+        getPeriodsForAnnualTimeline(selectedYear, strategicPeriods),
+      )?.strategicPeriodId ?? ANNUAL_PERIOD_VALUE
+    );
+  }, [activePlanSelectedPeriod, selectedYear, strategicPeriods]);
+
   const availableQuarters = useMemo(() => {
     if (!selectedYear) return [];
 
@@ -79,33 +110,11 @@ export default function StrategicPeriodSelector({
       }));
   }, [selectedYear, strategicPeriods]);
 
-  useEffect(() => {
-    if (!selectedPeriod || strategicPeriods.length === 0) return;
-
-    const yearLabel = getAnnualTimelineForPeriod(
-      selectedPeriod,
-      strategicPeriods,
-    );
-    setSelectedYear(yearLabel);
-
-    if (isQuarterlyPeriod(selectedPeriod)) {
-      setSelectedQuarter(selectedPeriod.strategicPeriodId);
-      return;
-    }
-
-    // Keep the dropdown honest: if the globally selected period is annual,
-    // don't display an active quarter as selected. Exact quarter filtering only
-    // happens after a real quarter is selected.
-    setSelectedQuarter(ANNUAL_PERIOD_VALUE);
-  }, [selectedPeriod, strategicPeriods]);
-
   const handleYearChange = (yearLabel: string) => {
     if (yearLabel === "manage-periods") {
       router.push("/strategy-period");
       return;
     }
-
-    setSelectedYear(yearLabel);
 
     const periodsForYear = getPeriodsForAnnualTimeline(
       yearLabel,
@@ -121,20 +130,14 @@ export default function StrategicPeriodSelector({
         isAnnualPeriod(period) && getPeriodTimeStatus(period) === "current",
     );
     const periodToSelect =
-      activeAnnualPeriod ??
       currentAnnualPeriod ??
+      activeAnnualPeriod ??
       annualPeriod ??
       findCurrentPeriod(periodsForYear) ??
       periodsForYear[0];
 
     if (periodToSelect) {
       selectPeriodWithTimeline(periodToSelect, yearLabel);
-      setSelectedQuarter(
-        isQuarterlyPeriod(periodToSelect)
-          ? periodToSelect.strategicPeriodId
-          : ANNUAL_PERIOD_VALUE,
-      );
-
       toast.success(`Switched to ${yearLabel}`);
     }
   };
@@ -148,18 +151,17 @@ export default function StrategicPeriodSelector({
       const annualPeriod =
         periodsForYear.find(
           (period) =>
-            isAnnualPeriod(period) && period.status?.toLowerCase() === "active",
+            isAnnualPeriod(period) && getPeriodTimeStatus(period) === "current",
         ) ??
         periodsForYear.find(
           (period) =>
-            isAnnualPeriod(period) && getPeriodTimeStatus(period) === "current",
+            isAnnualPeriod(period) && period.status?.toLowerCase() === "active",
         ) ??
         periodsForYear.find(isAnnualPeriod);
 
       if (!annualPeriod) return;
 
       selectPeriodWithTimeline(annualPeriod, selectedYear);
-      setSelectedQuarter(ANNUAL_PERIOD_VALUE);
       toast.success(`Switched to annual period ${selectedYear}`);
       return;
     }
@@ -171,8 +173,6 @@ export default function StrategicPeriodSelector({
 
     const yearLabel = getAnnualTimelineForPeriod(period, strategicPeriods);
     selectPeriodWithTimeline(period, yearLabel);
-    setSelectedYear(yearLabel);
-    setSelectedQuarter(periodId);
 
     const quarter = getQuarterLabelForPeriod(period, strategicPeriods);
     toast.success(`Switched to ${quarter} ${yearLabel}`);
@@ -223,8 +223,8 @@ export default function StrategicPeriodSelector({
             className="text-primary font-medium"
           >
             <div className="flex items-center gap-2">
-              <Plus size={16} />
-              {isAdmin ? "Manage Periods" : "View All Periods"}
+              {canManagePeriods ? <Plus size={16} /> : <Calendar size={16} />}
+              {canManagePeriods ? "Manage Periods" : "View All Periods"}
             </div>
           </SelectItem>
         </SelectContent>

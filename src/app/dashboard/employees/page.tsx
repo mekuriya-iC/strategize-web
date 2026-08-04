@@ -11,15 +11,14 @@ import EmployeePagination from "@/components/employees/EmployeePagination";
 import AddDepartmentDialog from "@/components/departments/AddDepartmentDialog";
 import { Plus } from "lucide-react";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import { GET_DIVISIONS, GET_DIVISION, GET_DIVISION_SAFE } from "@/lib/graphql/queries/divisions";
-import { GET_DEPARTMENTS, GET_DEPARTMENT, GET_DEPARTMENT_SAFE } from "@/lib/graphql/queries/departments";
+import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { AccessDenied } from "@/components/auth/RequirePermission";
 import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores";
 import {
   PaginatedDivisions,
+  PaginatedEmployees,
   Division as GraphQLDivision,
   EmployeeRole,
 } from "@/types/graphql";
@@ -42,39 +41,28 @@ const EmployeesPage = () => {
   const [selectedDivision, setSelectedDivision] = useState("");
   const [departmentMembers, setDepartmentMembers] = useState<string[]>([]);
 
-  // Use new RBAC system
-  const { employees: employeePermissions, isLoading: permissionsLoading, guards, scope } = usePermissions();
+  const {
+    employees: employeePermissions,
+    isLoading: permissionsLoading,
+    guards,
+    role,
+  } = usePermissions();
 
-  const isManagement = guards.isDirector || guards.isManager;
+  const canAccessEmployees = guards.isManagement;
   const isAdmin = guards.isAdmin || guards.isSuperAdmin;
+  const hasOrganizationWideAccess = isAdmin || role === EmployeeRole.HR;
 
-  // Get organizationId from auth store for filtering
-  const user = useAuthStore((state) => state.user);
-  const organizationId = user?.organizationId;
-
-  // Global query - Skip for non-admins as the backend restricts it to ADMIN/SUPER_ADMIN
-  const { data, loading, error } = useQuery(GET_EMPLOYEES, {
+  // The backend scopes this query to the caller's role and managed organization unit.
+  const { data, loading, error } = useQuery<{
+    employees: PaginatedEmployees;
+  }>(GET_EMPLOYEES, {
     variables: {
       page: currentPage,
       limit: itemsPerPage,
       search: searchTerm || undefined,
-      organizationId: organizationId || undefined,
     },
     errorPolicy: "all",
-    skip: !isAdmin || !employeePermissions.canView(),
-  });
-
-  // Scoped queries for Directors/Managers
-  const { data: scopedDivisionData, loading: divisionLoading } = useQuery(GET_DIVISION_SAFE, {
-    variables: { divisionId: scope?.managedDivisionIds[0] },
-    skip: !guards.isDirector || !scope?.managedDivisionIds?.[0],
-    fetchPolicy: "cache-and-network",
-  });
-
-  const { data: scopedDepartmentData, loading: departmentLoading } = useQuery(GET_DEPARTMENT_SAFE, {
-    variables: { departmentId: scope?.managedDepartmentIds[0] },
-    skip: !guards.isManager || !scope?.managedDepartmentIds?.[0],
-    fetchPolicy: "cache-and-network",
+    skip: !canAccessEmployees,
   });
 
   // Fetch divisions for department creation
@@ -90,72 +78,37 @@ const EmployeesPage = () => {
   const { createDepartment, loading: departmentMutationLoading } =
     useDepartmentMutations();
 
-  // Determine source of employees
-  const rawEmployees = React.useMemo(() => {
-    // Admin/SuperAdmin - Global list from direct query
-    if (isAdmin) {
-      return data?.employees?.items || [];
-    }
-
-    // Directors - Aggregate from all departments in their managed division
-    if (guards.isDirector) {
-      const departments = scopedDivisionData?.division?.departments || [];
-      const allDivisionEmployees: any[] = [];
-      const seenIds = new Set();
-
-      departments.forEach((dept: any) => {
-        dept.employees?.forEach((emp: any) => {
-          if (!seenIds.has(emp.employeeId)) {
-            seenIds.add(emp.employeeId);
-            allDivisionEmployees.push(emp);
-          }
-        });
-      });
-      return allDivisionEmployees;
-    }
-
-    // Managers - Use employees from their managed department
-    if (guards.isManager) {
-      return scopedDepartmentData?.department?.employees || [];
-    }
-
-    return [];
-  }, [isAdmin, guards, data, scopedDivisionData, scopedDepartmentData]);
+  const rawEmployees = React.useMemo(
+    () => data?.employees?.items || [],
+    [data],
+  );
 
   const meta = data?.employees?.meta;
-  const totalPages = isAdmin ? (meta?.totalPages || 1) : 1;
-  const totalItems = isAdmin ? (meta?.totalItems || 0) : rawEmployees.length;
+  const totalPages = meta?.totalPages || 1;
+  const totalItems = meta?.totalItems || 0;
 
-  // Apply client-side filtering for status, search (for scoped data), and sorting
+  // Search is server-side; status and sorting remain local to the current page.
   const filteredEmployees = React.useMemo(() => {
-    let items = [...rawEmployees];
-
-    // Local search for non-admins (since scoped query doesn't support search natively in this shape)
-    if (!isAdmin && searchTerm) {
-      items = items.filter((emp: any) =>
-        emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    const items = [...rawEmployees];
 
     return items
-      .filter((employee: any) => {
+      .filter((employee) => {
         // Status filter
         const matchesStatus =
           filterStatus === "all" ||
           (filterStatus === "active" && employee.status === "ACTIVE") ||
           (filterStatus === "inactive" &&
-            (employee.status === "INACTIVE" || employee.status === "DISABLED"));
+            (employee.status === "DISABLED" || employee.status === "DELETED"));
 
         return matchesStatus;
       })
-      .sort((a: any, b: any) => {
+      .sort((a, b) => {
         if (sortOrder === "none") return 0;
         const nameA = a.fullName?.toLowerCase() || "";
         const nameB = b.fullName?.toLowerCase() || "";
         return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
       });
-  }, [rawEmployees, isAdmin, searchTerm, filterStatus, sortOrder]);
+  }, [rawEmployees, filterStatus, sortOrder]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -217,10 +170,8 @@ const EmployeesPage = () => {
       (emp: { role?: string }) => emp.role === EmployeeRole.MANAGER
     ) || [];
 
-  const isLoading = isAdmin ? loading : (divisionLoading || departmentLoading);
-
-  // Show loading while checking permissions or fetching scoped data
-  if (permissionsLoading || (isManagement && isLoading)) {
+  // Show loading while checking permissions or fetching the scoped employee page.
+  if (permissionsLoading || (canAccessEmployees && loading)) {
     return (
       <div className="flex flex-col gap-6 px-2 md:px-6 py-8">
         <div className="animate-pulse">
@@ -236,8 +187,8 @@ const EmployeesPage = () => {
     );
   }
 
-  // Check if user has permission to view employees
-  if (!employeePermissions.canView()) {
+  // Route policy and page UI both require manager level or above.
+  if (!canAccessEmployees) {
     return (
       <AccessDenied
         title="Access Denied"
@@ -265,7 +216,7 @@ const EmployeesPage = () => {
             Employees
           </h1>
           <p className="mobile-text text-gray-500 dark:text-gray-400 mt-1">
-            {isAdmin ? "Manage organization-wide employees" : guards.isDirector ? "Manage employees in your division" : "Manage employees in your department"}
+            {hasOrganizationWideAccess ? "Manage organization-wide employees" : guards.isDirector ? "Manage employees in your division" : "Manage employees in your department"}
           </p>
         </div>
       </div>
@@ -359,7 +310,7 @@ const EmployeesPage = () => {
             className="mb-8 sm:mb-12 w-48 sm:w-80 h-auto"
             priority
           />
-          {rawEmployees.length === 0 && !loading && !isAdmin && (
+          {rawEmployees.length === 0 && !loading && !hasOrganizationWideAccess && (
             <div className="space-y-3 sm:space-y-4">
               <h2 className="text-xl sm:text-2xl font-semibold text-amber-600 dark:text-amber-400 mb-3 sm:mb-4 max-w-xl px-4">
                 No Employees Found
@@ -369,12 +320,12 @@ const EmployeesPage = () => {
               </p>
             </div>
           )}
-          {isAdmin && (
+          {hasOrganizationWideAccess && (
             <>
               <h2 className="text-xl sm:text-2xl font-semibold text-[#3F3F46] dark:text-gray-100 mb-3 sm:mb-4 max-w-xl px-4">
                 It seems you don&apos;t have added any employees yet
               </h2>
-              <p className="mobile-text text-[#BABABA] dark:text-gray-400 mb-6 sm:mb-8 sm:mb-12 max-w-sm px-4">
+              <p className="mobile-text text-[#BABABA] dark:text-gray-400 mb-6 sm:mb-12 max-w-sm px-4">
                 Start building your team by adding employees.
               </p>
               {canAddEmployee && (
@@ -425,18 +376,16 @@ const EmployeesPage = () => {
         setSelectedDivision={setSelectedDivision}
         departmentMembers={departmentMembers}
         setDepartmentMembers={setDepartmentMembers}
-        managers={managers.map(
-          (m: { employeeId?: string; fullName?: string }) => ({
-            employeeId: m.employeeId,
-            fullName: m.fullName,
-          })
-        )}
+        managers={managers.map((manager) => ({
+          employeeId: manager.employeeId,
+          fullName: manager.fullName,
+        }))}
         divisions={divisions.map((d: GraphQLDivision) => ({
           divisionId: d.divisionId,
           name: d.name,
         }))}
         allMembers={rawEmployees.filter(
-          (emp: { role?: string }) => emp.role === EmployeeRole.NORMAL
+          (employee) => employee.role === EmployeeRole.NORMAL
         )}
         onSubmit={handleSubmitDepartment}
         loading={departmentMutationLoading.create}

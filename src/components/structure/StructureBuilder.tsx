@@ -24,6 +24,7 @@ interface StructureBuilderProps {
   templateId: string;
   liveData?: OrgChartNode | null;
   liveLoading?: boolean;
+  canManage: boolean;
 }
 
 const LEVEL_COLORS = ["#5B5BF7", "#8B5CF6", "#EC4899", "#F43F5E", "#EF4444"];
@@ -80,7 +81,7 @@ const SAMPLE_STRUCTURE: NodeData = {
   ],
 };
 
-export default function StructureBuilder({ templateId, liveData, liveLoading }: StructureBuilderProps) {
+export default function StructureBuilder({ templateId, liveData, liveLoading, canManage }: StructureBuilderProps) {
   const [zoom, setZoom] = useState(100);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
@@ -99,13 +100,14 @@ export default function StructureBuilder({ templateId, liveData, liveLoading }: 
   }, [liveData]);
 
   const handleAddChild = useCallback((parentId: string) => {
+    if (!canManage) return;
     setSelectedParentId(parentId);
     setShowAddDialog(true);
-  }, []);
+  }, [canManage]);
 
   const handleAddNode = useCallback(
     (name: string, subtitle: string) => {
-      if (!selectedParentId) return;
+      if (!canManage || !selectedParentId) return;
 
       const findLevel = (node: NodeData): number => {
         if (node.id === selectedParentId) return node.level;
@@ -133,11 +135,12 @@ export default function StructureBuilder({ templateId, liveData, liveLoading }: 
       setSelectedParentId(null);
       toast.success("Node added — click Save to persist");
     },
-    [selectedParentId, structure]
+    [canManage, selectedParentId, structure]
   );
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
+      if (!canManage) return;
       const deleteFromTree = (node: NodeData): NodeData => ({
         ...node,
         children: node.children.filter((c) => c.id !== nodeId).map(deleteFromTree),
@@ -146,10 +149,12 @@ export default function StructureBuilder({ templateId, liveData, liveLoading }: 
       setIsDirty(true);
       toast.success("Node removed — click Save to persist");
     },
-    [structure]
+    [canManage, structure]
   );
 
   const handleSave = async () => {
+    if (!canManage) return;
+
     try {
       await saveOrgChart([toInput(structure)]);
       setIsDirty(false);
@@ -167,11 +172,11 @@ export default function StructureBuilder({ templateId, liveData, liveLoading }: 
         subtitle={node.subtitle}
         color={node.color}
         level={node.level}
-        isSelected={selectedNodeId === node.id}
-        onAddChild={() => handleAddChild(node.id)}
-        onEdit={() => setSelectedNodeId(node.id)}
-        onDelete={node.level > 0 ? () => handleDeleteNode(node.id) : undefined}
-        onDuplicate={() => toast.info("Duplicate coming soon")}
+        isSelected={canManage && selectedNodeId === node.id}
+        onAddChild={canManage ? () => handleAddChild(node.id) : undefined}
+        onEdit={canManage ? () => setSelectedNodeId(node.id) : undefined}
+        onDelete={canManage && node.level > 0 ? () => handleDeleteNode(node.id) : undefined}
+        onDuplicate={canManage ? () => toast.info("Duplicate coming soon") : undefined}
       />
       {node.children.length > 0 && (
         <div className="flex flex-col items-center mt-6">
@@ -200,37 +205,43 @@ export default function StructureBuilder({ templateId, liveData, liveLoading }: 
         {/* Toolbar */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8"><Undo2 size={16} /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8"><Redo2 size={16} /></Button>
-            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2" />
+            {canManage && (
+              <>
+                <Button variant="ghost" size="icon" className="h-8 w-8"><Undo2 size={16} /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8"><Redo2 size={16} /></Button>
+                <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2" />
+              </>
+            )}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(zoom + 10, 150))}><ZoomIn size={16} /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(zoom - 10, 50))}><ZoomOut size={16} /></Button>
             <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{zoom}%</span>
             <Button variant="ghost" size="icon" className="h-8 w-8 ml-2" onClick={() => setZoom(100)}><Maximize2 size={16} /></Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isDirty && (
-              <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved changes</span>
-            )}
-            <Button
-              onClick={handleSave}
-              disabled={saving || !isDirty}
-              className="bg-primary hover:bg-primary/90 text-white px-6 h-8 text-sm gap-2"
-            >
-              {saving ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={14} />
-                  Save
-                </>
+          {canManage && (
+            <div className="flex items-center gap-2">
+              {isDirty && (
+                <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved changes</span>
               )}
-            </Button>
-          </div>
+              <Button
+                onClick={handleSave}
+                disabled={saving || !isDirty}
+                className="bg-primary hover:bg-primary/90 text-white px-6 h-8 text-sm gap-2"
+              >
+                {saving ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Canvas */}
@@ -253,11 +264,13 @@ export default function StructureBuilder({ templateId, liveData, liveLoading }: 
         </div>
       </div>
 
-      <AddNodeDialog
-        isOpen={showAddDialog}
-        onClose={() => { setShowAddDialog(false); setSelectedParentId(null); }}
-        onAdd={handleAddNode}
-      />
+      {canManage && (
+        <AddNodeDialog
+          isOpen={showAddDialog}
+          onClose={() => { setShowAddDialog(false); setSelectedParentId(null); }}
+          onAdd={handleAddNode}
+        />
+      )}
     </>
   );
 }

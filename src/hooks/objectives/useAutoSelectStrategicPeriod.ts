@@ -3,13 +3,12 @@
  * Used for non-admin users who should be redirected directly to dashboard
  */
 import { useEffect } from "react";
-import { useStrategicPeriods } from "./useStrategicPeriods";
-import { useAuthStore, useStrategicPeriodStore } from "@/stores";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
+import { useStrategicPeriodStore } from "@/stores";
 import {
   findCurrentPeriod,
   getAnnualPeriods,
   getAnnualTimelineForPeriod,
-  getPeriodTimeStatus,
 } from "@/lib/strategic-periods/periodDates";
 
 /**
@@ -18,17 +17,20 @@ import {
  * exist, while the quarter selector separately displays the active quarter.
  */
 export const useAutoSelectStrategicPeriod = () => {
-  const user = useAuthStore((state) => state.user);
-  const { strategicPeriods, loading } = useStrategicPeriods({
-    limit: 1000,
-    organizationId: user?.organizationId,
-  });
-  const { selectedPeriod, annualTimeline, selectPeriodWithTimeline } =
-    useStrategicPeriodStore();
+  const { strategicPeriods, loading, error, contextReady } =
+    useActiveStrategicPlanPeriods();
+  const {
+    selectedPeriod,
+    annualTimeline,
+    selectPeriodWithTimeline,
+    clearSelection,
+  } = useStrategicPeriodStore();
 
   useEffect(() => {
-    // Don't auto-select if still loading or no periods available
-    if (loading || strategicPeriods.length === 0) {
+    if (!contextReady || loading || error) return;
+
+    if (strategicPeriods.length === 0) {
+      if (selectedPeriod) clearSelection();
       return;
     }
 
@@ -71,11 +73,11 @@ export const useAutoSelectStrategicPeriod = () => {
     const currentPeriod = findCurrentPeriod(strategicPeriods);
 
     const periodToSelect =
-      activeAnnualPeriod ??
       currentAnnualPeriod ??
+      activeAnnualPeriod ??
       firstAnnualPeriod ??
-      activePeriod ??
       currentPeriod ??
+      activePeriod ??
       strategicPeriods[0];
 
     if (periodToSelect) {
@@ -84,33 +86,17 @@ export const useAutoSelectStrategicPeriod = () => {
         strategicPeriods,
       );
 
-      console.log("🎯 Auto-selecting strategic period:", {
-        name: periodToSelect.name,
-        id: periodToSelect.strategicPeriodId,
-        status: periodToSelect.status,
-        timeStatus: getPeriodTimeStatus(periodToSelect),
-        annualTimeline,
-        reason: activeAnnualPeriod
-          ? "active annual status"
-          : currentAnnualPeriod
-            ? "current annual by date"
-            : firstAnnualPeriod
-              ? "first annual"
-              : activePeriod
-                ? "active status"
-                : currentPeriod
-                  ? "current by date"
-                  : "first available",
-      });
-
       selectPeriodWithTimeline(periodToSelect, annualTimeline);
     }
   }, [
     strategicPeriods,
     loading,
+    contextReady,
+    error,
     selectedPeriod,
     annualTimeline,
     selectPeriodWithTimeline,
+    clearSelection,
   ]);
 
   return {

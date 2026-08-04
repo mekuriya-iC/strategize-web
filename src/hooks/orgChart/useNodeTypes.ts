@@ -2,6 +2,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import { GET_NODE_TYPES } from '@/lib/graphql/queries/nodeTypes';
 import { CREATE_NODE_TYPE, REMOVE_NODE_TYPE } from '@/lib/graphql/mutations/nodeTypes';
 import { useOrganizationId } from '@/hooks/useOrganizationId';
+import { useAuthStore } from '@/stores';
 import { toast } from 'sonner';
 
 export interface NodeType {
@@ -15,6 +16,9 @@ export interface NodeType {
 
 export function useNodeTypes() {
   const organizationId = useOrganizationId();
+  const canManageStructure = useAuthStore(
+    (state) => state.user?.role === 'SUPER_ADMIN',
+  );
 
   const { data, loading, refetch } = useQuery(GET_NODE_TYPES, {
     variables: { organizationId },
@@ -39,6 +43,11 @@ export function useNodeTypes() {
   const custom = nodeTypes.filter((n) => !n.isBuiltIn);
 
   const createNodeType = async (name: string, color: string, icon?: string) => {
+    if (!canManageStructure) {
+      const error = new Error('Only super administrators can modify structure types');
+      toast.error('Access denied', { description: error.message });
+      throw error;
+    }
     if (!organizationId) return;
     const result = await createMutation({
       variables: { createNodeTypeInput: { organizationId, name, color, icon } },
@@ -47,6 +56,11 @@ export function useNodeTypes() {
   };
 
   const removeNodeType = async (nodeTypeId: string) => {
+    if (!canManageStructure) {
+      const error = new Error('Only super administrators can modify structure types');
+      toast.error('Access denied', { description: error.message });
+      throw error;
+    }
     await removeMutation({ variables: { nodeTypeId } });
   };
 

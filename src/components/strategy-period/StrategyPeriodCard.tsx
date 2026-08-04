@@ -1,28 +1,28 @@
 "use client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ReactNode, useState } from "react";
-import { StrategicPeriod } from "@/types/graphql";
+import { useState } from "react";
+import type { ReactNode } from "react";
 import DeleteStrategyPeriodDialog from "./DeleteStrategyPeriodDialog";
 import { X } from "lucide-react";
 
 interface StrategyPeriodCardProps {
   icon: ReactNode;
   title: string;
+  context: string;
   date: string;
   onClick?: () => void;
   selected?: boolean;
-  period?: StrategicPeriod;
   onDelete?: () => Promise<void>;
 }
 
 export default function StrategyPeriodCard({
   icon,
   title,
+  context,
   date,
   onClick,
   selected = false,
-  period,
   onDelete,
 }: StrategyPeriodCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -54,12 +54,13 @@ export default function StrategyPeriodCard({
           {icon}
         </div>
         
-        {/* Title */}
-        <h3 className="font-semibold text-base md:text-lg text-primary mb-2">
+        {/* Period name and date context */}
+        <h3 className="font-semibold text-base md:text-lg text-primary mb-2 text-center">
           {title}
         </h3>
-        
-        {/* Date Range */}
+        <span className="text-xs font-medium uppercase tracking-wide text-[#64748B] dark:text-gray-300 mb-2">
+          {context}
+        </span>
         <p className="text-xs md:text-sm text-[#64748B] dark:text-gray-400 mb-6 text-center">
           {date}
         </p>
@@ -76,12 +77,14 @@ export default function StrategyPeriodCard({
         </Button>
       </Card>
 
-      <DeleteStrategyPeriodDialog
-        isOpen={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        onConfirm={onDelete!}
-        periodTitle={title}
-      />
+      {onDelete && (
+        <DeleteStrategyPeriodDialog
+          isOpen={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onConfirm={onDelete}
+          periodTitle={title}
+        />
+      )}
     </>
   );
 }

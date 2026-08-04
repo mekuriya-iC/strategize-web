@@ -12,10 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrgChart } from "@/hooks/orgChart/useOrgChart";
+import { useAuthStore } from "@/stores";
 import { toast } from "sonner";
 
 export default function StructurePage() {
   const { root, loading, error, refetch } = useOrgChart();
+  const canManageStructure = useAuthStore(
+    (state) => state.user?.role === "SUPER_ADMIN",
+  );
 
   const handleRefetch = async () => {
     try {
@@ -31,8 +35,8 @@ export default function StructurePage() {
       {/* Left Sidebar */}
       <div className="w-72 flex-shrink-0 bg-white dark:bg-[#18181b] rounded-lg border border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
         <div className="space-y-6">
-          <TemplateEntities />
-          <TemplateRoles />
+          <TemplateEntities canManage={canManageStructure} />
+          <TemplateRoles canManage={canManageStructure} />
         </div>
       </div>
 
@@ -88,6 +92,7 @@ export default function StructurePage() {
           templateId="live"
           liveData={root}
           liveLoading={loading}
+          canManage={canManageStructure}
         />
       </div>
     </div>

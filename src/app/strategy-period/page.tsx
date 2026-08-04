@@ -20,7 +20,7 @@ export default function StrategyPeriodPage() {
   }, [data, loading, setUser, setLoading]);
 
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const canManagePeriods = user?.role === "SUPER_ADMIN";
 
   return (
     <>
@@ -39,7 +39,7 @@ export default function StrategyPeriodPage() {
           
           <StrategyPeriodGrid />
           
-          {isAdmin && (
+          {canManagePeriods && (
             <div className="flex justify-center mt-12 md:mt-16">
               <NewStrategyButton />
             </div>

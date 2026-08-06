@@ -5,6 +5,7 @@ import { BarChart2, Building2, Flag, Target, Users } from "lucide-react";
 import AnalyticsCard from "./AnalyticsCard";
 import { useAnalytics } from "@/hooks/objectives/useAnalytics";
 import { useAuthStore, useOrgUnitStore, useStrategicPeriodStore } from "@/stores";
+import { isDashboardAnalyticsContextReady } from "@/lib/dashboard/dashboardAnalytics";
 
 interface PortfolioMetric {
   title: string;
@@ -14,15 +15,55 @@ interface PortfolioMetric {
   loading?: boolean;
 }
 
+interface DashboardDepartment {
+  departmentId: string;
+  division?: {
+    divisionId: string;
+  } | null;
+}
+
 export default function AnalyticsSummary() {
   const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
   const user = useAuthStore((state) => state.user);
+  const authLoading = useAuthStore((state) => state.isLoading);
   const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
 
+  const primaryDepartment = user?.departments?.[0] as
+    | DashboardDepartment
+    | undefined;
+  const fallbackUnit =
+    user?.role === "DIRECTOR" && primaryDepartment?.division?.divisionId
+      ? {
+          id: primaryDepartment.division.divisionId,
+          type: "division" as const,
+        }
+      : (user?.role === "MANAGER" || user?.role === "COORDINATOR") &&
+          primaryDepartment?.departmentId
+        ? {
+            id: primaryDepartment.departmentId,
+            type: "department" as const,
+          }
+        : null;
+  const effectiveUnit = selectedUnit || fallbackUnit;
   const roleSelectedUnit =
-    (user?.role === "MANAGER" || user?.role === "DIRECTOR") && selectedUnit
-      ? { id: selectedUnit.id, type: selectedUnit.type }
+    (user?.role === "MANAGER" ||
+      user?.role === "COORDINATOR" ||
+      user?.role === "DIRECTOR") &&
+    effectiveUnit
+      ? { id: effectiveUnit.id, type: effectiveUnit.type }
       : null;
+  const requiresOrgUnit =
+    user?.role === "MANAGER" ||
+    user?.role === "COORDINATOR" ||
+    user?.role === "DIRECTOR";
+  const contextReady = isDashboardAnalyticsContextReady({
+    authLoading,
+    hasUser: !!user,
+    hasSelectedPeriod: !!selectedPeriod?.strategicPeriodId,
+    hasAnnualTimeline: !!annualTimeline,
+    requiresOrgUnit,
+    hasOrgUnit: !!roleSelectedUnit,
+  });
 
   const analytics = useAnalytics({
     selectedUnit: roleSelectedUnit,
@@ -30,6 +71,7 @@ export default function AnalyticsSummary() {
     userId: user?.employeeId,
     annualTimeline,
     selectedPeriodId: selectedPeriod?.strategicPeriodId,
+    contextReady,
   });
 
   const metrics: PortfolioMetric[] = [

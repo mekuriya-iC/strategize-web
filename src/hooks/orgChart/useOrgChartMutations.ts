@@ -18,6 +18,7 @@ export interface OrgChartNodeInput {
 export function useOrgChartMutations() {
   const user = useAuthStore((s) => s.user);
   const organizationId = user?.organizationId;
+  const canManageStructure = user?.role === 'SUPER_ADMIN';
 
   const [saveOrgChartMutation, { loading }] = useMutation(SAVE_ORG_CHART, {
     onError: (error) => {
@@ -30,6 +31,11 @@ export function useOrgChartMutations() {
   });
 
   const saveOrgChart = async (nodes: OrgChartNodeInput[]) => {
+    if (!canManageStructure) {
+      const error = new Error('Only super administrators can modify the organization structure');
+      toast.error('Access denied', { description: error.message });
+      throw error;
+    }
     if (!organizationId) {
       toast.error('No organization found');
       return null;

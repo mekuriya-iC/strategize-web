@@ -209,6 +209,7 @@ const navCategories: NavCategory[] = [
         label: "Positions",
         href: "/dashboard/positions",
         permission: "nav:dashboard",
+        rolesOnly: ["HR", "SUPER_ADMIN"],
         icon: (
           <svg
             width="16"
@@ -274,6 +275,7 @@ const navCategories: NavCategory[] = [
         label: "Teams",
         href: "/dashboard/teams",
         permission: "nav:employees",
+        rolesOnly: ["HR", "SUPER_ADMIN"],
         icon: (
           <svg
             width="16"

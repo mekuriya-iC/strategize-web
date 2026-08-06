@@ -24,6 +24,8 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Plus, Trash2, Edit2, Clock, CheckCircle2, XCircle, Archive } from "lucide-react";
 import { useStrategicPeriods, useStrategicPeriodMutations } from "@/hooks/strategic-periods/useStrategicPeriods";
 import { toast } from "sonner";
+import { useAuthStore } from "@/stores";
+import type { StrategicPeriod } from "@/types/graphql";
 
 interface StrategicPeriodsManagerProps {
   strategicPlanId: string;
@@ -36,16 +38,20 @@ export default function StrategicPeriodsManager({
 }: StrategicPeriodsManagerProps) {
   const { strategicPeriods, loading, refetch } = useStrategicPeriods(1, 100, strategicPlanId, organizationId);
   const { createStrategicPeriod, updateStrategicPeriod, removeStrategicPeriod } = useStrategicPeriodMutations();
+  const canManagePeriods = useAuthStore(
+    (state) => state.user?.role === "SUPER_ADMIN",
+  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
+  const [selectedPeriod, setSelectedPeriod] =
+    useState<StrategicPeriod | null>(null);
 
   const [form, setForm] = useState({
     name: "",
     startDate: "",
     endDate: "",
-    periodType: "ANNUAL" as "ANNUAL" | "CUSTOM",
+    periodType: "ANNUAL" as string,
   });
 
   const resetForm = () => {
@@ -58,6 +64,8 @@ export default function StrategicPeriodsManager({
   };
 
   const handleCreate = async () => {
+    if (!canManagePeriods) return;
+
     if (!form.name || !form.startDate || !form.endDate) {
       toast.error("Please fill in all required fields");
       return;
@@ -81,7 +89,7 @@ export default function StrategicPeriodsManager({
   };
 
   const handleEdit = async () => {
-    if (!selectedPeriod) return;
+    if (!canManagePeriods || !selectedPeriod) return;
 
     try {
       await updateStrategicPeriod({
@@ -101,6 +109,8 @@ export default function StrategicPeriodsManager({
   };
 
   const handleDelete = async (periodId: string, periodName: string) => {
+    if (!canManagePeriods) return;
+
     const toastId = toast(`Delete "${periodName}"?`, {
       description: "This action cannot be undone.",
       position: "top-center",
@@ -121,6 +131,8 @@ export default function StrategicPeriodsManager({
   };
 
   const handleUpdateStatus = async (periodId: string, newStatus: string) => {
+    if (!canManagePeriods) return;
+
     try {
       await updateStrategicPeriod({
         strategicPeriodId: periodId,
@@ -134,18 +146,20 @@ export default function StrategicPeriodsManager({
     }
   };
 
-  const openEditDialog = (period: any) => {
+  const openEditDialog = (period: StrategicPeriod) => {
+    if (!canManagePeriods) return;
+
     setSelectedPeriod(period);
     setForm({
       name: period.name,
       startDate: period.startDate,
       endDate: period.endDate,
-      periodType: period.periodType,
+      periodType: period.periodType ?? "ANNUAL",
     });
     setEditOpen(true);
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status?: string) => {
     switch (status) {
       case "ACTIVE":
         return <CheckCircle2 className="w-4 h-4 text-green-600" />;
@@ -158,7 +172,7 @@ export default function StrategicPeriodsManager({
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case "ACTIVE":
         return "bg-green-100 text-green-800 border-green-200";
@@ -180,10 +194,12 @@ export default function StrategicPeriodsManager({
           </h3>
           <p className="text-sm text-gray-500">Define time periods for this strategic plan</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Period
-        </Button>
+        {canManagePeriods && (
+          <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Period
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -193,16 +209,22 @@ export default function StrategicPeriodsManager({
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Calendar className="h-12 w-12 text-gray-400 mb-4" />
             <p className="text-gray-600 dark:text-gray-400 mb-2">No strategic periods defined yet</p>
-            <p className="text-sm text-gray-500 mb-4">Add periods to organize your strategic plan timeline</p>
-            <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add First Period
-            </Button>
+            <p className="text-sm text-gray-500 mb-4">
+              {canManagePeriods
+                ? "Add periods to organize your strategic plan timeline"
+                : "No periods are available for this strategic plan"}
+            </p>
+            {canManagePeriods && (
+              <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add First Period
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {strategicPeriods.map((period: any) => (
+          {strategicPeriods.map((period: StrategicPeriod) => (
             <Card key={period.strategicPeriodId} className="relative overflow-hidden group hover:shadow-md transition-shadow">
               <div className={`absolute top-0 left-0 w-1 h-full ${period.status === "ACTIVE" ? "bg-green-500" : period.status === "DRAFT" ? "bg-yellow-500" : "bg-gray-400"}`}></div>
               <CardHeader className="pb-3">
@@ -221,24 +243,26 @@ export default function StrategicPeriodsManager({
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-gray-400 hover:text-blue-500"
-                      onClick={() => openEditDialog(period)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-gray-400 hover:text-red-500"
-                      onClick={() => handleDelete(period.strategicPeriodId, period.name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {canManagePeriods && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-400 hover:text-blue-500"
+                        onClick={() => openEditDialog(period)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-400 hover:text-red-500"
+                        onClick={() => handleDelete(period.strategicPeriodId, period.name)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -256,7 +280,8 @@ export default function StrategicPeriodsManager({
                 )}
 
                 {/* Status Actions */}
-                <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                {canManagePeriods && (
+                  <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                   {period.status !== "ACTIVE" && (
                     <Button
                       size="sm"
@@ -279,7 +304,8 @@ export default function StrategicPeriodsManager({
                       Archive
                     </Button>
                   )}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -287,7 +313,10 @@ export default function StrategicPeriodsManager({
       )}
 
       {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={canManagePeriods && createOpen}
+        onOpenChange={setCreateOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Strategic Period</DialogTitle>
@@ -314,7 +343,7 @@ export default function StrategicPeriodsManager({
               </Label>
               <Select
                 value={form.periodType}
-                onValueChange={(value: any) => setForm({ ...form, periodType: value })}
+                onValueChange={(value) => setForm({ ...form, periodType: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -369,7 +398,7 @@ export default function StrategicPeriodsManager({
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog open={canManagePeriods && editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Strategic Period</DialogTitle>
@@ -395,7 +424,7 @@ export default function StrategicPeriodsManager({
               </Label>
               <Select
                 value={form.periodType}
-                onValueChange={(value: any) => setForm({ ...form, periodType: value })}
+                onValueChange={(value) => setForm({ ...form, periodType: value })}
               >
                 <SelectTrigger>
                   <SelectValue />

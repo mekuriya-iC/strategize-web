@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtDecode } from "jwt-decode";
+import {
+  canRoleAccessRoute,
+  getRouteRoleRequirement,
+  isProtectedRoute,
+} from "./src/lib/rbac/routePolicy";
 
 // JWT payload structure
 interface JWTPayload {
@@ -11,79 +16,7 @@ interface JWTPayload {
   exp: number;
 }
 
-// Role hierarchy levels (must match src/lib/rbac/roles.ts)
-const ROLE_HIERARCHY: Record<string, number> = {
-  NORMAL: 0,
-  COORDINATOR: 1,
-  MANAGER: 2,
-  DIRECTOR: 3,
-  HR: 4,
-  ADMIN: 5,
-  SUPER_ADMIN: 6,
-};
 
-// Route permission configuration
-// Each route maps to the minimum role required to access it
-const ROUTE_PERMISSIONS: Record<string, string> = {
-  // Admin routes - require ADMIN or higher
-  "/dashboard/admin": "ADMIN",
-
-  // Employee management - require ADMIN or higher
-  "/dashboard/employees": "ADMIN",
-
-  // Organizational structure - require DIRECTOR or higher
-  "/dashboard/divisions": "DIRECTOR",
-  "/dashboard/departments": "DIRECTOR",
-
-  // Approvals - require COORDINATOR or higher (to view, actual approval needs MANAGER+)
-  "/dashboard/approvals": "COORDINATOR",
-
-  // Strategy period management - require ADMIN
-  "/strategy-period": "ADMIN",
-
-  // These are accessible by all authenticated users
-  "/dashboard": "NORMAL",
-  "/dashboard/objectives": "NORMAL",
-  "/dashboard/reports": "NORMAL",
-  "/dashboard/settings": "NORMAL",
-};
-
-/**
- * Check if a role has at least the minimum required level
- */
-function hasMinimumRole(
-  userRole: string | undefined,
-  minimumRole: string
-): boolean {
-  if (!userRole) return false;
-  const userLevel = ROLE_HIERARCHY[userRole] ?? -1;
-  const requiredLevel = ROLE_HIERARCHY[minimumRole] ?? 999;
-  return userLevel >= requiredLevel;
-}
-
-/**
- * Get the minimum role required for a route
- */
-function getRouteMinimumRole(pathname: string): string | null {
-  // Check for exact match first
-  if (ROUTE_PERMISSIONS[pathname]) {
-    return ROUTE_PERMISSIONS[pathname];
-  }
-
-  // Check for prefix matches (for nested routes)
-  // Sort by length descending to match most specific route first
-  const sortedRoutes = Object.keys(ROUTE_PERMISSIONS).sort(
-    (a, b) => b.length - a.length
-  );
-
-  for (const route of sortedRoutes) {
-    if (pathname.startsWith(route + "/") || pathname === route) {
-      return ROUTE_PERMISSIONS[route];
-    }
-  }
-
-  return null;
-}
 
 /**
  * Decode JWT token and get role
@@ -110,19 +43,8 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get("accessToken")?.value;
 
-  // Define protected routes (routes that require authentication)
-  const protectedRoutes = ["/dashboard", "/strategy-period"];
-
-  // Define public routes (routes that don't require authentication)
-  const publicRoutes = ["/auth", "/"];
-
-  // Check if the current path is a protected route
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-
   // Handle authentication logic
-  if (isProtectedRoute) {
+  if (isProtectedRoute(pathname)) {
     // Protected route - requires authentication
     if (!accessToken) {
       // No token found, redirect to auth
@@ -146,13 +68,14 @@ export function proxy(request: NextRequest) {
     }
 
     // Check role-based access
-    const minimumRole = getRouteMinimumRole(pathname);
-
-    if (minimumRole && !hasMinimumRole(userRole, minimumRole)) {
+    if (!canRoleAccessRoute(userRole, pathname)) {
       // User doesn't have permission - redirect to dashboard with error
       const dashboardUrl = new URL("/dashboard", request.url);
+      const requiredRole = getRouteRoleRequirement(pathname);
       dashboardUrl.searchParams.set("access_denied", "true");
-      dashboardUrl.searchParams.set("required_role", minimumRole);
+      if (requiredRole) {
+        dashboardUrl.searchParams.set("required_role", requiredRole);
+      }
       return NextResponse.redirect(dashboardUrl);
     }
 

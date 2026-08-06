@@ -1,18 +1,22 @@
 "use client";
 import StrategyPeriodCard from "./StrategyPeriodCard";
 import Image from "next/image";
-import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { useStrategicPeriodMutations } from "@/hooks/objectives/useStrategicPeriodMutations";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
 import { useRouter } from "next/navigation";
 import { StrategicPeriod } from "@/types/graphql";
 import { useStrategicPeriodStore, useAuthStore } from "@/stores";
-import { getAnnualTimelineForPeriod } from "@/lib/strategic-periods/periodDates";
+import {
+  getAnnualPeriods,
+  getAnnualTimelineForPeriod,
+  getPeriodTimeStatus,
+  parseStrategicDate,
+} from "@/lib/strategic-periods/periodDates";
 
 const getStatusIcon = (period: StrategicPeriod, now: Date) => {
-  const startDate = new Date(period.startDate);
-  const endDate = new Date(period.endDate);
+  const status = getPeriodTimeStatus(period, now);
 
-  if (now < startDate) {
+  if (status === "future") {
     return (
       <Image
         src="/images/choose-strategy/crown.png"
@@ -21,7 +25,7 @@ const getStatusIcon = (period: StrategicPeriod, now: Date) => {
         height={48}
       />
     );
-  } else if (now >= startDate && now <= endDate) {
+  } else if (status === "current") {
     return (
       <Image
         src="/images/choose-strategy/award.png"
@@ -43,21 +47,13 @@ const getStatusIcon = (period: StrategicPeriod, now: Date) => {
 };
 
 const getStatusTitle = (period: StrategicPeriod, now: Date) => {
-  const startDate = new Date(period.startDate);
-  const endDate = new Date(period.endDate);
-
-  if (now < startDate) {
-    return "Future";
-  } else if (now >= startDate && now <= endDate) {
-    return "Current";
-  } else {
-    return "Past";
-  }
+  const status = getPeriodTimeStatus(period, now);
+  return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
 const formatDateRange = (startDate: string, endDate: string) => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseStrategicDate(startDate);
+  const end = parseStrategicDate(endDate);
 
   const startFormatted = start.toLocaleDateString("en-US", {
     month: "long",
@@ -73,14 +69,13 @@ const formatDateRange = (startDate: string, endDate: string) => {
 
 export default function StrategyPeriodGrid() {
   const user = useAuthStore((state) => state.user);
-  const { strategicPeriods, loading, error, refetch } = useStrategicPeriods({
-    limit: 1000,
-    organizationId: user?.organizationId,
-  });
+  const { strategicPeriods, loading, error, refetch } =
+    useActiveStrategicPlanPeriods();
   const { removeStrategicPeriod } = useStrategicPeriodMutations();
   const router = useRouter();
   const { selectPeriodWithTimeline } = useStrategicPeriodStore();
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const canManagePeriods = user?.role === "SUPER_ADMIN";
+  const annualPeriods = getAnnualPeriods(strategicPeriods);
   const now = new Date();
 
   const handlePeriodSelect = (period: StrategicPeriod) => {
@@ -89,8 +84,8 @@ export default function StrategyPeriodGrid() {
       period,
       getAnnualTimelineForPeriod(period, strategicPeriods),
     );
-    // Admins go to create their first strategic objective before the dashboard
-    if (isAdmin) {
+    // Only super admins continue into setup; all other roles use periods read-only.
+    if (canManagePeriods) {
       router.push("/setup/objectives");
     } else {
       router.push("/dashboard");
@@ -137,15 +132,17 @@ export default function StrategyPeriodGrid() {
     );
   }
 
-  if (strategicPeriods.length === 0) {
+  if (annualPeriods.length === 0) {
     return (
       <div className="w-full flex justify-center">
         <div className="text-center">
           <p className="text-lg font-medium text-gray-600 dark:text-gray-400">
-            No strategic periods found
+            No annual strategic periods found
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            Create your first strategic period to get started
+            {canManagePeriods
+              ? "Create an annual strategic period to get started"
+              : "No annual periods are available for the active strategic plan"}
           </p>
         </div>
       </div>
@@ -155,15 +152,17 @@ export default function StrategyPeriodGrid() {
   return (
     <div className="w-full flex justify-center">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full max-w-5xl">
-        {strategicPeriods.map((period) => (
+        {annualPeriods.map((period) => (
           <StrategyPeriodCard
             key={period.strategicPeriodId}
             icon={getStatusIcon(period, now)}
-            title={getStatusTitle(period, now)}
+            title={period.name}
+            context={getStatusTitle(period, now)}
             date={formatDateRange(period.startDate, period.endDate)}
             onClick={() => handlePeriodSelect(period)}
-            period={period}
-            onDelete={isAdmin ? () => handlePeriodDelete(period) : undefined}
+            onDelete={
+              canManagePeriods ? () => handlePeriodDelete(period) : undefined
+            }
           />
         ))}
       </div>

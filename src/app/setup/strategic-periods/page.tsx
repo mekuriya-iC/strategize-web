@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "@apollo/client";
 import { gql } from "@apollo/client";
@@ -24,17 +24,9 @@ import {
   useSystemConfigurationMutations,
 } from "@/hooks/systemConfiguration/useSystemConfiguration";
 import Logo from "@/components/Logo";
-import {
-  format,
-  addMonths,
-  addYears,
-  startOfYear,
-  endOfYear,
-  startOfMonth,
-  endOfMonth,
-  startOfQuarter,
-  endOfQuarter,
-} from "date-fns";
+import { format, endOfMonth } from "date-fns";
+import { getPreviewPeriodStatus } from "./periodPreview";
+import type { PreviewPeriodStatus } from "./periodPreview";
 
 const CREATE_STRATEGIC_PERIOD = gql`
   mutation CreateStrategicPeriod($input: CreateStrategicPeriodInput!) {
@@ -54,7 +46,7 @@ interface Period {
   type: "ANNUAL" | "QUARTERLY" | "MONTHLY";
   startDate: Date;
   endDate: Date;
-  status: "active" | "upcoming" | "past";
+  status: PreviewPeriodStatus;
 }
 
 export default function StrategicPeriodsSetupPage() {
@@ -73,8 +65,6 @@ export default function StrategicPeriodsSetupPage() {
     "ethiopian" | "calendar" | "custom"
   >("calendar");
   const [customStartMonth, setCustomStartMonth] = useState("1");
-  const [periods, setPeriods] = useState<Period[]>([]);
-  const [activePeriodIndex, setActivePeriodIndex] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const strategicPlanId =
@@ -94,14 +84,11 @@ export default function StrategicPeriodsSetupPage() {
     if (!strategicPlanId || !planStartDate || !planEndDate) {
       toast.error("Missing plan information. Please start from the beginning.");
       router.push("/organization-template");
-      return;
     }
+  }, [planEndDate, planStartDate, router, strategicPlanId]);
 
-    generatePeriods();
-  }, [granularity, fiscalType, customStartMonth]);
-
-  const generatePeriods = () => {
-    if (!planStartDate || !planEndDate) return;
+  const periods = useMemo<Period[]>(() => {
+    if (!planStartDate || !planEndDate) return [];
 
     const start = new Date(planStartDate);
     const end = new Date(planEndDate);
@@ -137,12 +124,12 @@ export default function StrategicPeriodsSetupPage() {
         type: "ANNUAL",
         startDate: new Date(currentYear),
         endDate: new Date(yearEnd),
-        status:
-          today >= currentYear && today <= yearEnd
-            ? "active"
-            : today > yearEnd
-              ? "past"
-              : "upcoming",
+        status: getPreviewPeriodStatus(
+          "ANNUAL",
+          currentYear,
+          yearEnd,
+          today,
+        ),
       };
       generatedPeriods.push(yearPeriod);
 
@@ -166,12 +153,12 @@ export default function StrategicPeriodsSetupPage() {
             type: "QUARTERLY",
             startDate: new Date(qStart),
             endDate: new Date(qEnd),
-            status:
-              today >= qStart && today <= qEnd
-                ? "active"
-                : today > qEnd
-                  ? "past"
-                  : "upcoming",
+            status: getPreviewPeriodStatus(
+              "QUARTERLY",
+              qStart,
+              qEnd,
+              today,
+            ),
           };
           generatedPeriods.push(quarterPeriod);
 
@@ -190,12 +177,12 @@ export default function StrategicPeriodsSetupPage() {
                 type: "MONTHLY",
                 startDate: new Date(mStart),
                 endDate: new Date(mEnd),
-                status:
-                  today >= mStart && today <= mEnd
-                    ? "active"
-                    : today > mEnd
-                      ? "past"
-                      : "upcoming",
+                status: getPreviewPeriodStatus(
+                  "MONTHLY",
+                  mStart,
+                  mEnd,
+                  today,
+                ),
               };
               generatedPeriods.push(monthPeriod);
             }
@@ -207,16 +194,8 @@ export default function StrategicPeriodsSetupPage() {
       currentYear.setDate(currentYear.getDate() + 1);
     }
 
-    setPeriods(generatedPeriods);
-
-    // Set active period to the one covering today
-    const activeIndex = generatedPeriods.findIndex(
-      (p) => p.status === "active",
-    );
-    if (activeIndex !== -1) {
-      setActivePeriodIndex(activeIndex);
-    }
-  };
+    return generatedPeriods;
+  }, [customStartMonth, fiscalType, granularity, planEndDate, planStartDate]);
 
   const handleComplete = async () => {
     if (periods.length === 0) {
@@ -277,8 +256,12 @@ export default function StrategicPeriodsSetupPage() {
 
       // Redirect to dashboard - objectives can be created from there
       router.push("/dashboard");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create strategic periods");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to create strategic periods",
+      );
     } finally {
       setLoading(false);
     }
@@ -316,7 +299,15 @@ export default function StrategicPeriodsSetupPage() {
               </Label>
               <RadioGroup
                 value={granularity}
-                onValueChange={(v: any) => setGranularity(v)}
+                onValueChange={(value) =>
+                  setGranularity(
+                    value as
+                      | "annual"
+                      | "annual-quarterly"
+                      | "annual-quarterly-monthly"
+                      | "custom",
+                  )
+                }
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="annual" id="annual" />
@@ -368,7 +359,11 @@ export default function StrategicPeriodsSetupPage() {
               </Label>
               <RadioGroup
                 value={fiscalType}
-                onValueChange={(v: any) => setFiscalType(v)}
+                onValueChange={(value) =>
+                  setFiscalType(
+                    value as "ethiopian" | "calendar" | "custom",
+                  )
+                }
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="ethiopian" id="ethiopian" />
@@ -449,9 +444,10 @@ export default function StrategicPeriodsSetupPage() {
                       ({format(period.startDate, "MMM d, yyyy")} –{" "}
                       {format(period.endDate, "MMM d, yyyy")})
                     </span>
-                    {period.status === "active" && (
+                    {(period.status === "active" ||
+                      period.status === "current") && (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                        Active
+                        {period.status === "active" ? "Active" : "Current"}
                       </span>
                     )}
                   </div>

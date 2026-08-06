@@ -18,7 +18,11 @@ const CUSTOM_COLORS = [
   "#22C55E", "#F59E0B", "#06B6D4", "#A855F7", "#F97316",
 ];
 
-export default function TemplateEntities() {
+interface TemplateEntitiesProps {
+  canManage: boolean;
+}
+
+export default function TemplateEntities({ canManage }: TemplateEntitiesProps) {
   const { builtIn, custom, loading, creating, removing, createNodeType, removeNodeType } = useNodeTypes();
   const [showInput, setShowInput] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -75,19 +79,21 @@ export default function TemplateEntities() {
             <span className="flex-1 text-sm font-medium" style={{ color: entity.color ?? undefined }}>
               {entity.name}
             </span>
-            <button
-              onClick={() => removeNodeType(entity.nodeTypeId)}
-              disabled={removing}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-              title="Delete"
-            >
-              <Trash2 size={12} className="text-red-400" />
-            </button>
+            {canManage && (
+              <button
+                onClick={() => removeNodeType(entity.nodeTypeId)}
+                disabled={removing}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                title="Delete"
+              >
+                <Trash2 size={12} className="text-red-400" />
+              </button>
+            )}
           </div>
         ))}
 
         {/* Inline add input */}
-        {showInput ? (
+        {canManage && (showInput ? (
           <div className="flex gap-2">
             <input
               autoFocus
@@ -115,7 +121,7 @@ export default function TemplateEntities() {
             </div>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Custom</span>
           </button>
-        )}
+        ))}
       </div>
     </div>
   );

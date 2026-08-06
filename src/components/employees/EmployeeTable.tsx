@@ -44,7 +44,7 @@ export interface LegacyEmployee {
 
 // Props interface for the component
 interface EmployeeTableProps {
-  employees: Employee[] | LegacyEmployee[];
+  employees: GraphQLEmployee[] | Employee[] | LegacyEmployee[];
   headers?: HeaderColumn[];
   loading?: boolean;
   error?: string;
@@ -102,7 +102,7 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
           const graphqlEmployee = employee as Employee;
           return {
             transformed: {
-              id: parseInt(graphqlEmployee.employeeId) || Date.now() + index,
+              id: parseInt(graphqlEmployee.employeeId) || index,
               employeeId: graphqlEmployee.employeeId,
               fullName: graphqlEmployee.fullName,
               profilePic: graphqlEmployee.picture

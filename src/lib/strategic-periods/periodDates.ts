@@ -161,7 +161,7 @@ export const findActiveOrCurrentQuarter = (
   const quarters = sortPeriodsByStartDate(periods.filter(isQuarterlyPeriod));
 
   return (
-    quarters.find((period) => period.status?.toLowerCase() === "active") ??
-    findCurrentPeriod(quarters, referenceDate)
+    findCurrentPeriod(quarters, referenceDate) ??
+    quarters.find((period) => period.status?.toLowerCase() === "active")
   );
 };

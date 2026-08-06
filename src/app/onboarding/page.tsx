@@ -92,15 +92,14 @@ export default function OnboardingPage() {
     (user?.role === "SUPER_ADMIN" || user?.role === "ADMIN") &&
     !user?.organizationId;
 
-  // Only SUPER_ADMIN and ADMIN see template selection
-  const isSuperAdminOrAdmin =
-    user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+  // Only SUPER_ADMIN can create or select an organization structure.
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   // Calculate total steps based on whether org creation is needed
   let totalSteps = 2; // Default: password + complete
   if (needsOrgCreation) {
-    totalSteps = 2; // org + password (then redirect to /organization-template)
-  } else if (isSuperAdminOrAdmin) {
+    totalSteps = 2; // organization profile + password
+  } else if (isSuperAdmin) {
     totalSteps = 1; // password only (then redirect to /organization-template)
   } else {
     totalSteps = 2; // password + complete
@@ -216,8 +215,8 @@ export default function OnboardingPage() {
 
       toast.success("Password changed successfully");
 
-      // Redirect to existing organization template page for SUPER_ADMIN/ADMIN
-      if (isSuperAdminOrAdmin) {
+      // Only SUPER_ADMIN continues to organization structure creation.
+      if (isSuperAdmin) {
         window.location.assign("/organization-template");
       } else {
         setStep(2);
@@ -252,7 +251,7 @@ export default function OnboardingPage() {
   const completeOnboarding = async () => {
     try {
       // Only SUPER_ADMIN can mark org onboarding as complete
-      if (isSuperAdminOrAdmin) {
+      if (isSuperAdmin) {
         await updateOrg({
           variables: {
             updateOrganizationInput: {
@@ -438,8 +437,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Complete Step (for non-admin users only) */}
-          {step === 2 && !isSuperAdminOrAdmin && (
+          {/* Complete Step (for users who cannot create organization structure) */}
+          {step === 2 && !isSuperAdmin && (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />

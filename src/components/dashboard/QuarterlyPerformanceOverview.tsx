@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import SuperAdminOrganizationPerformance from "@/components/dashboard/SuperAdminOrganizationPerformance";
 import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { GET_KPI_QUARTER_PERFORMANCE_REPORT } from "@/lib/graphql/queries/quarterly-performance";
 import {
@@ -288,6 +289,10 @@ export default function QuarterlyPerformanceOverview() {
               icon={<BarChart3 className="h-4 w-4" />}
             />
           </div>
+
+          {user?.role === "SUPER_ADMIN" && report.scope === "ORGANIZATION" && (
+            <SuperAdminOrganizationPerformance report={report} />
+          )}
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
             <Card>

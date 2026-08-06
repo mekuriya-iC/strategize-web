@@ -70,13 +70,20 @@ interface UseAnalyticsOptions {
   userId?: string;
   annualTimeline?: string | null;
   selectedPeriodId?: string | null;
+  contextReady?: boolean;
 }
 
 export const useAnalytics = (
   options: UseAnalyticsOptions = {}
 ): AnalyticsStats => {
-  const { selectedUnit, userRole, userId, annualTimeline, selectedPeriodId } =
-    options;
+  const {
+    selectedUnit,
+    userRole,
+    userId,
+    annualTimeline,
+    selectedPeriodId,
+    contextReady = true,
+  } = options;
 
   const objectivesAssigneeId =
     selectedUnit?.id ?? (userRole === "NORMAL" ? userId : undefined);
@@ -93,7 +100,8 @@ export const useAnalytics = (
   } = useQuery<{ divisions: PaginatedDivisions }>(GET_DIVISIONS, {
     variables: { page: 1, limit: 1000 }, // Get all divisions for accurate count
     fetchPolicy: "cache-and-network",
-    skip: !canAccessGlobalData, // Skip for managers
+    notifyOnNetworkStatusChange: true,
+    skip: !contextReady || !canAccessGlobalData, // Skip for managers
   });
 
   const {
@@ -103,7 +111,8 @@ export const useAnalytics = (
   } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS_ANALYTICS, {
     variables: { page: 1, limit: 1000 }, // Get all departments for accurate count
     fetchPolicy: "cache-and-network",
-    skip: !canAccessGlobalData, // Skip for managers
+    notifyOnNetworkStatusChange: true,
+    skip: !contextReady || !canAccessGlobalData, // Skip for managers
   });
 
   // For analytics at corporate level, use a lightweight employees count query to
@@ -115,7 +124,8 @@ export const useAnalytics = (
   } = useQuery(GET_EMPLOYEES_COUNT, {
     variables: { page: 1, limit: 1 },
     fetchPolicy: "cache-and-network",
-    skip: !canAccessGlobalData, // Skip for managers
+    notifyOnNetworkStatusChange: true,
+    skip: !contextReady || !canAccessGlobalData, // Skip for managers
   });
 
   // For objectives, pass assigneeId if a unit is selected
@@ -130,6 +140,8 @@ export const useAnalytics = (
       assigneeId: objectivesAssigneeId,
     },
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+    skip: !contextReady,
   });
 
   // Only fetch global KPIs when no unit is selected (for admin analytics)
@@ -141,7 +153,8 @@ export const useAnalytics = (
   } = useQuery<{ kpis: PaginatedKpis }>(GET_KPIS, {
     variables: { page: 1, limit: 1000 },
     fetchPolicy: "cache-and-network",
-    skip: !!selectedUnit, // Skip when a specific unit is selected
+    notifyOnNetworkStatusChange: true,
+    skip: !contextReady || !!selectedUnit, // Skip when a specific unit is selected
   });
 
   const {
@@ -151,6 +164,8 @@ export const useAnalytics = (
   } = useQuery(GET_INITIATIVES, {
     variables: { page: 1, limit: 1000 },
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+    skip: !contextReady,
   });
 
   // Scoped queries for Directors/Managers who can't access global data
@@ -160,8 +175,9 @@ export const useAnalytics = (
     error: scopedDivisionError,
   } = useQuery<{ division: Division }>(GET_DIVISION_SAFE, {
     variables: { divisionId: selectedUnit?.id },
-    skip: !selectedUnit || selectedUnit.type !== "division",
+    skip: !contextReady || !selectedUnit || selectedUnit.type !== "division",
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const {
@@ -170,8 +186,9 @@ export const useAnalytics = (
     error: scopedDepartmentError,
   } = useQuery<{ department: Department }>(GET_DEPARTMENT_SAFE, {
     variables: { departmentId: selectedUnit?.id },
-    skip: !selectedUnit || selectedUnit.type !== "department",
+    skip: !contextReady || !selectedUnit || selectedUnit.type !== "department",
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   // Calculate statistics
@@ -338,7 +355,14 @@ export const useAnalytics = (
 
     const adminCount = 0; // Skipped in lightweight mode
 
+    const contextLoading = !contextReady;
+    const divisionsAreLoading = contextLoading || divisionsLoading;
+    const departmentsAreLoading = contextLoading || departmentsLoading;
+    const employeesAreLoading = contextLoading || employeesLoading;
+    const objectivesAreLoading = contextLoading || objectivesLoading;
+    const kpisAreLoading = contextLoading || kpisLoading;
     const loading =
+      contextLoading ||
       divisionsLoading ||
       departmentsLoading ||
       employeesLoading ||
@@ -387,11 +411,11 @@ export const useAnalytics = (
 
       // Loading states
       loading,
-      divisionsLoading,
-      departmentsLoading,
-      employeesLoading,
-      objectivesLoading,
-      kpisLoading,
+      divisionsLoading: divisionsAreLoading,
+      departmentsLoading: departmentsAreLoading,
+      employeesLoading: employeesAreLoading,
+      objectivesLoading: objectivesAreLoading,
+      kpisLoading: kpisAreLoading,
 
       // Error states
       error,
@@ -422,6 +446,7 @@ export const useAnalytics = (
     userId,
     objectivesAssigneeId,
     canAccessGlobalData,
+    contextReady,
     annualTimeline,
     selectedPeriodId,
     scopedDivisionData,

@@ -59,8 +59,11 @@ describe("route policy", () => {
     }
   });
 
-  it("restricts positions and nested pages to HR and super admins", () => {
-    for (const route of ["/dashboard/positions", "/dashboard/positions/position-1"]) {
+  it.each([
+    ["positions", "/dashboard/positions", "/dashboard/positions/position-1"],
+    ["teams", "/dashboard/teams", "/dashboard/teams/team-1"],
+  ])("restricts %s and nested pages to HR and super admins", (_, listRoute, detailRoute) => {
+    for (const route of [listRoute, detailRoute]) {
       expect(canRoleAccessRoute("HR", route)).toBe(true);
       expect(canRoleAccessRoute("SUPER_ADMIN", route)).toBe(true);
       expect(canRoleAccessRoute("ADMIN", route)).toBe(false);

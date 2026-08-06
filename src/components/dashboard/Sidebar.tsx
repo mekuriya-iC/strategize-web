@@ -275,6 +275,7 @@ const navCategories: NavCategory[] = [
         label: "Teams",
         href: "/dashboard/teams",
         permission: "nav:employees",
+        rolesOnly: ["HR", "SUPER_ADMIN"],
         icon: (
           <svg
             width="16"

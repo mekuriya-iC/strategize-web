@@ -139,6 +139,25 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
   const totalColumnCount =
     (enableSorting ? 1 : 0) + (columnHeaders.showSecondColumn ? 1 : 0) + 9;
 
+  // Calculate total weight percentage
+  const totalWeight = objectives.reduce((sum, obj) => {
+    const objectiveKPIs = kpis.filter(
+      (k) => k.objective?.objectiveId === obj.objectiveId
+    );
+    const kpiWeightSum = objectiveKPIs.reduce(
+      (kpiSum, kpi) => kpiSum + (parseFloat(String(kpi.weight)) || 0),
+      0
+    );
+    return sum + kpiWeightSum;
+  }, 0);
+
+  const isWeightComplete = Math.abs(totalWeight - 100) < 0.01;
+  const weightColor = isWeightComplete
+    ? "text-green-600 bg-green-50 border-green-200"
+    : totalWeight > 100
+    ? "text-red-600 bg-red-50 border-red-200"
+    : "text-amber-600 bg-amber-50 border-amber-200";
+
   const tableContent = (
     <Table>
       <ObjectiveTableHeader
@@ -151,6 +170,26 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
         enableSorting={enableSorting}
       />
       <TableBody>
+        {groupBy === "none" && objectives.length > 0 && (
+          <TableRow className="bg-gray-50/80 dark:bg-gray-800/50">
+            <TableCell colSpan={totalColumnCount} className="px-6 py-3">
+              <div className="flex items-center justify-end">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase">
+                    Total Weight Budget:
+                  </span>
+                  <span
+                    className={`text-sm font-bold ${
+                      totalWeight > 100 ? "text-red-600" : "text-blue-600"
+                    }`}
+                  >
+                    {totalWeight.toFixed(1)}% / 100%
+                  </span>
+                </div>
+              </div>
+            </TableCell>
+          </TableRow>
+        )}
         {groupKeys.map((groupId) => {
           const groupObjectives = groupedObjectives[groupId];
           const isGroupExpanded =
@@ -158,6 +197,13 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
           const groupName =
             unitNames[groupId] ||
             (groupId === "Unassigned" ? "Unassigned" : groupId);
+
+          const groupWeight = groupObjectives.reduce((total, obj) => {
+            const objKPIs = kpis.filter(
+              (k) => k.objective?.objectiveId === obj.objectiveId && k.status !== "REJECTED"
+            );
+            return total + objKPIs.reduce((sum, kpi) => sum + (kpi.weight || 0), 0);
+          }, 0);
 
           return (
             <React.Fragment key={groupId}>
@@ -177,6 +223,19 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
                         <span className="font-bold text-gray-700 dark:text-gray-300 text-sm">
                           {groupBy.toUpperCase()}: {groupName} (
                           {groupObjectives.length})
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">
+                          Weight Budget:
+                        </span>
+                        <span
+                          className={`text-sm font-bold ${
+                            groupWeight > 100 ? "text-red-600" : "text-blue-600"
+                          }`}
+                        >
+                          {groupWeight.toFixed(1)}% / 100%
                         </span>
                       </div>
                     </div>
@@ -233,7 +292,28 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
   );
 
   return (
-    <div className="rounded-lg border bg-white dark:bg-[#18181b] shadow-sm overflow-hidden">
+    <div className="space-y-3">
+      {/* Total Weight Display */}
+      {objectives.length > 0 && (
+        <div className={`flex items-center justify-between p-3 rounded-lg border ${weightColor}`}>
+          <div>
+            <p className="text-sm font-medium">Total KPI Weight</p>
+            <p className="text-xs opacity-75">
+              {isWeightComplete
+                ? "All weights allocated"
+                : totalWeight > 100
+                ? "Exceeds 100%"
+                : `${(100 - totalWeight).toFixed(2)}% remaining`}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold">{totalWeight.toFixed(2)}%</p>
+            <p className="text-xs opacity-75">of 100%</p>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-white dark:bg-[#18181b] shadow-sm overflow-hidden">
       {enableSorting ? (
         <DndContext
           sensors={sensors}
@@ -267,6 +347,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
       ) : (
         tableContent
       )}
+      </div>
     </div>
   );
 };

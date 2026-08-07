@@ -292,10 +292,10 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
   );
 
   return (
-    <div className="space-y-3">
+    <>
       {/* Total Weight Display */}
       {objectives.length > 0 && (
-        <div className={`flex items-center justify-between p-3 rounded-lg border ${weightColor}`}>
+        <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${weightColor}`}>
           <div>
             <p className="text-sm font-medium">Total KPI Weight</p>
             <p className="text-xs opacity-75">
@@ -348,7 +348,7 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
         tableContent
       )}
       </div>
-    </div>
+    </>
   );
 };
 

@@ -62,19 +62,29 @@ export default function ObjectivesApprovalTable() {
   });
   const selectedPeriod = useSelectedStrategicPeriod();
   const selectedPeriodId = selectedPeriod?.strategicPeriodId;
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const selectedPeriodLabel =
     selectedPeriod?.name || "the selected period/quarter";
 
-  const showTabs =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    user?.role === "DIRECTOR" ||
-    user?.role === "MANAGER";
-  const isCorporateRole =
-    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   // Use RBAC permissions
   const { guards, objectives: objectivePermissions, scope } = usePermissions();
+
+  const isCorporateRole = guards.isAdmin || guards.isSuperAdmin;
+  const showTabs =
+    isCorporateRole || guards.isDirector || guards.isManager || guards.isCoordinator;
 
   // Extract stable values from complex objects to avoid unnecessary re-renders
   const userRole = user?.role;
@@ -87,11 +97,12 @@ export default function ObjectivesApprovalTable() {
   const isSuperAdmin = guards.isSuperAdmin;
   const isDirector = guards.isDirector;
   const isManager = guards.isManager;
+  const isCoordinator = guards.isCoordinator;
   const isEmployee = guards.isEmployee;
 
   // Determine the assigneeId based on the user role and selected organizational unit
   const getAssigneeId = (): string | undefined => {
-    if (isManager && selectedUnit) {
+    if ((isManager || isCoordinator) && selectedUnit) {
       // For managers, show objectives assigned to their selected unit
       return selectedUnit.id;
     } else if (isEmployee) {
@@ -660,8 +671,8 @@ export default function ObjectivesApprovalTable() {
       // For directors, always default to division tab
       setActiveTab("division");
       setHasSetDefaultTab(true);
-    } else if (isManager) {
-      // For managers, check if they have division or department objectives
+    } else if (isManager || isCoordinator) {
+      // For managers and coordinators, check if they have division or department objectives
       // Default to division if they have division objectives, otherwise department
       const hasDivisionObjectives = objectives.some(
         (o) =>
@@ -687,6 +698,7 @@ export default function ObjectivesApprovalTable() {
   }, [
     isDirector,
     isManager,
+    isCoordinator,
     isEmployee,
     isCorporateRole,
     hasSetDefaultTab,
@@ -1044,22 +1056,19 @@ export default function ObjectivesApprovalTable() {
       )}
 
       {/* Hierarchical Level Tabs and Global Weight Tracker */}
-      {showTabs && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-lg border border-gray-100 shadow-sm sticky top-0 z-10">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 backdrop-blur-sm p-2 rounded-lg border border-gray-100 shadow-sm sticky top-0 z-10">
+          {showTabs ? (
             <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1">
               {["corporate", "division", "department", "personnel"]
                 .filter((tab) => {
                   // Only ADMIN and SUPER_ADMIN can see corporate tab
                   if (isCorporateRole) return true;
-                  // Directors can see division, department, and personnel tabs
-                  if (guards.isDirector)
+                  // Directors and Managers can see division, department, and personnel tabs
+                  if (guards.isDirector || guards.isManager || guards.isCoordinator)
                     return ["division", "department", "personnel"].includes(
                       tab,
                     );
-                  // Managers can see department and personnel tabs
-                  if (guards.isManager)
-                    return ["department", "personnel"].includes(tab);
                   return false;
                 })
                 .map((tab) => (
@@ -1079,46 +1088,46 @@ export default function ObjectivesApprovalTable() {
                   </button>
                 ))}
             </div>
+          ) : (
+            <div className="flex-1" />
+          )}
 
-            {/* Level Weight Progress Tracker - Only show for non-grouped view (Corporate) */}
-            {activeTab === "corporate" && (
-              <div className="flex flex-col gap-1 min-w-[200px] px-2">
-                <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider">
-                  <span
-                    className={
-                      cumulativeTabWeight > 100
-                        ? "text-red-600"
-                        : "text-gray-500"
-                    }
-                  >
-                    STRATEGIC WEIGHT BUDGET
-                  </span>
-                  <span
-                    className={
-                      cumulativeTabWeight > 100
-                        ? "text-red-600 font-bold animate-pulse"
-                        : "text-blue-600"
-                    }
-                  >
-                    {cumulativeTabWeight.toFixed(1)}% / 100%
-                  </span>
-                </div>
-                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden shadow-inner border border-gray-100">
-                  <div
-                    className={`h-full transition-all duration-500 ease-out rounded-full ${cumulativeTabWeight > 100 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"}`}
-                    style={{ width: `${Math.min(cumulativeTabWeight, 105)}%` }}
-                  />
-                </div>
-                {cumulativeTabWeight > 100 && (
-                  <p className="text-[10px] text-red-500 font-medium text-right">
-                    ⚠️ Cumulative limit exceeded!
-                  </p>
-                )}
-              </div>
+          {/* Level Weight Progress Tracker */}
+          <div className="flex flex-col gap-1 min-w-[200px] px-2">
+            <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider">
+              <span
+                className={
+                  cumulativeTabWeight > 100
+                    ? "text-red-600"
+                    : "text-gray-500"
+                }
+              >
+                STRATEGIC WEIGHT BUDGET
+              </span>
+              <span
+                className={
+                  cumulativeTabWeight > 100
+                    ? "text-red-600 font-bold animate-pulse"
+                    : "text-blue-600"
+                }
+              >
+                {cumulativeTabWeight.toFixed(1)}% / 100%
+              </span>
+            </div>
+            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden shadow-inner border border-gray-100">
+              <div
+                className={`h-full transition-all duration-500 ease-out rounded-full ${cumulativeTabWeight > 100 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"}`}
+                style={{ width: `${Math.min(cumulativeTabWeight, 105)}%` }}
+              />
+            </div>
+            {cumulativeTabWeight > 100 && (
+              <p className="text-[10px] text-red-500 font-medium text-right">
+                ⚠️ Cumulative limit exceeded!
+              </p>
             )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Error message for managers/directors with no access */}
       {(isDirector || isManager) &&

@@ -260,7 +260,7 @@ export default function UpdateKPIForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-[calc(100vh-2rem)] overflow-y-auto pb-6">
       <KPIFormHeader isEditing={true} onCancel={onCancel} />
 
       {/* Weight Allocation Display */}
@@ -489,36 +489,38 @@ export default function UpdateKPIForm({
                 </p>
               </div>
 
-              {/* Quarterly Breakdown Component */}
-              <div className="mt-8 border-t pt-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium text-gray-900">
-                    Quarterly Planning
-                  </h4>
+              {/* Quarterly Breakdown Component - Hidden for Formula KPIs */}
+              {!isFormulaKpi && (
+                <div className="mt-8 border-t pt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">
+                      Quarterly Planning
+                    </h4>
+                  </div>
+                  <QuarterlyBreakdown
+                    yearlyQuarters={yearlyQuarters}
+                    kpi={kpi}
+                    canEditTargets={canEditTargets}
+                    isEditing={true}
+                    remainingAllocation={remainingAllocation}
+                    strategicTargetsById={{
+                      [kpi.kpiId]: {
+                        [strategicTimeline]: isAnnualTargetLocked
+                          ? (assignedAnnualTarget ?? 0)
+                          : parseFloat(annualTarget || "0"),
+                      },
+                    }}
+                    onYearlyQuartersChange={setYearlyQuarters}
+                    weightType={formData.weightType}
+                    mode="edit"
+                  />
+                  <p className="text-xs text-gray-500 mt-4">
+                    Break down the Target Value into 4 quarters. Manual percentage
+                    KPIs use an average; formula KPIs are reconciled using their
+                    configured temporal rollup below.
+                  </p>
                 </div>
-                <QuarterlyBreakdown
-                  yearlyQuarters={yearlyQuarters}
-                  kpi={kpi}
-                  canEditTargets={canEditTargets}
-                  isEditing={true}
-                  remainingAllocation={remainingAllocation}
-                  strategicTargetsById={{
-                    [kpi.kpiId]: {
-                      [strategicTimeline]: isAnnualTargetLocked
-                        ? (assignedAnnualTarget ?? 0)
-                        : parseFloat(annualTarget || "0"),
-                    },
-                  }}
-                  onYearlyQuartersChange={setYearlyQuarters}
-                  weightType={formData.weightType}
-                  mode="edit"
-                />
-                <p className="text-xs text-gray-500 mt-4">
-                  Break down the Target Value into 4 quarters. Manual percentage
-                  KPIs use an average; formula KPIs are reconciled using their
-                  configured temporal rollup below.
-                </p>
-              </div>
+              )}
 
               {isFormulaKpi && (
                 <div className="mt-8 border-t pt-8">

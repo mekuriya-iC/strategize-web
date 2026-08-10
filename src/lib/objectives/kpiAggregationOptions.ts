@@ -14,8 +14,8 @@ export function resolveKpiUnitType({
   parentUnitType?: KpiUnitType | null;
   measurementUnit?: string | null;
 }): KpiUnitType {
-  if (unitType) return unitType;
   if (parentUnitType) return parentUnitType;
+  if (unitType) return unitType;
 
   switch (measurementUnit?.toUpperCase()) {
     case "PERCENTAGE":

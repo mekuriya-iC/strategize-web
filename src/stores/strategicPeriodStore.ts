@@ -11,11 +11,13 @@ interface StrategicPeriodState {
   // State
   selectedPeriod: StrategicPeriod | null;
   annualTimeline: string | null; // e.g., "2025/26"
+  selectionValidated: boolean;
 
   // Actions
   setSelectedPeriod: (period: StrategicPeriod | null) => void;
   setAnnualTimeline: (timeline: string | null) => void;
   selectPeriodWithTimeline: (period: StrategicPeriod, timeline: string) => void;
+  setSelectionValidated: (validated: boolean) => void;
   clearSelection: () => void;
 }
 
@@ -25,6 +27,7 @@ export const useStrategicPeriodStore = create<StrategicPeriodState>()(
       // Initial state
       selectedPeriod: null,
       annualTimeline: null,
+      selectionValidated: false,
 
       // Set selected period
       setSelectedPeriod: (period) => {
@@ -56,11 +59,16 @@ export const useStrategicPeriodStore = create<StrategicPeriodState>()(
         });
       },
 
+      setSelectionValidated: (validated) => {
+        set({ selectionValidated: validated });
+      },
+
       // Clear selection
       clearSelection: () => {
         set({
           selectedPeriod: null,
           annualTimeline: null,
+          selectionValidated: false,
         });
         appLogger.debug("Strategic period selection cleared");
       },
@@ -68,6 +76,10 @@ export const useStrategicPeriodStore = create<StrategicPeriodState>()(
     {
       name: "strategic-period-storage",
       storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        selectedPeriod: state.selectedPeriod,
+        annualTimeline: state.annualTimeline,
+      }),
     }
   )
 );

@@ -20,6 +20,7 @@ import {
   setupTokenExpirationChecker,
 } from "@/lib/auth-utils";
 import { useAuthStore } from "@/stores/authStore";
+import { useStrategicPeriodStore } from "@/stores/strategicPeriodStore";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -237,10 +238,11 @@ export const useAuth = () => {
     removeRefreshToken();
 
     useAuthStore.getState().logout();
+    useStrategicPeriodStore.getState().clearSelection();
 
     // Clear any session storage and set logout flag
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem("selectedStrategicPeriod");
+      sessionStorage.removeItem("strategic-period-storage");
       sessionStorage.removeItem("authMessage");
       sessionStorage.setItem("intentionalLogout", "true");
     }

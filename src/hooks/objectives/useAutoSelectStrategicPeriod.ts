@@ -22,15 +22,21 @@ export const useAutoSelectStrategicPeriod = () => {
   const {
     selectedPeriod,
     annualTimeline,
+    selectionValidated,
     selectPeriodWithTimeline,
+    setSelectionValidated,
     clearSelection,
   } = useStrategicPeriodStore();
 
   useEffect(() => {
-    if (!contextReady || loading || error) return;
+    if (!contextReady || loading || error) {
+      if (selectionValidated) setSelectionValidated(false);
+      return;
+    }
 
     if (strategicPeriods.length === 0) {
       if (selectedPeriod) clearSelection();
+      setSelectionValidated(true);
       return;
     }
 
@@ -52,6 +58,7 @@ export const useAutoSelectStrategicPeriod = () => {
       if (annualTimeline !== expectedTimeline) {
         selectPeriodWithTimeline(selectedPeriod, expectedTimeline);
       }
+      setSelectionValidated(true);
 
       return;
     }
@@ -88,6 +95,7 @@ export const useAutoSelectStrategicPeriod = () => {
 
       selectPeriodWithTimeline(periodToSelect, annualTimeline);
     }
+    setSelectionValidated(true);
   }, [
     strategicPeriods,
     loading,
@@ -95,7 +103,9 @@ export const useAutoSelectStrategicPeriod = () => {
     error,
     selectedPeriod,
     annualTimeline,
+    selectionValidated,
     selectPeriodWithTimeline,
+    setSelectionValidated,
     clearSelection,
   ]);
 

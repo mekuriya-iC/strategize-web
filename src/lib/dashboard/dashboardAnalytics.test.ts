@@ -33,6 +33,7 @@ describe("isDashboardAnalyticsContextReady", () => {
     hasUser: true,
     hasSelectedPeriod: true,
     hasAnnualTimeline: true,
+    selectionValidated: true,
     requiresOrgUnit: false,
     hasOrgUnit: false,
   };
@@ -48,6 +49,12 @@ describe("isDashboardAnalyticsContextReady", () => {
       isDashboardAnalyticsContextReady({
         ...readyContext,
         hasSelectedPeriod: false,
+      }),
+    ).toBe(false);
+    expect(
+      isDashboardAnalyticsContextReady({
+        ...readyContext,
+        selectionValidated: false,
       }),
     ).toBe(false);
     expect(isDashboardAnalyticsContextReady(readyContext)).toBe(true);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allowsScoreAverage,
+  getCompatibleAggregationMethod,
   isAggregationMethodAllowed,
   isComponentRatioKpi,
 } from "./kpiAggregationOptions";
@@ -11,6 +12,25 @@ describe("KPI aggregation options", () => {
     expect(allowsScoreAverage("NUMBER", "NONE")).toBe(true);
     expect(allowsScoreAverage("RATIO", "NONE")).toBe(false);
     expect(allowsScoreAverage("PERCENT", "DIRECT_VALUE")).toBe(false);
+  });
+
+  it("repairs legacy ratio formulas to denominator-weighted aggregation", () => {
+    expect(
+      getCompatibleAggregationMethod({
+        method: "SUM",
+        unitType: "PERCENT",
+        calculationBasisSource: "NONE",
+        calculationType: "RATIO_FORMULA",
+      }),
+    ).toBe("DENOMINATOR_WEIGHTED_AVERAGE");
+    expect(
+      getCompatibleAggregationMethod({
+        method: "SUM",
+        unitType: "NUMBER",
+        calculationBasisSource: "NONE",
+        calculationType: "SCALAR_FORMULA",
+      }),
+    ).toBe("SUM");
   });
 
   it("keeps sum and score average disabled for component ratio KPIs", () => {

@@ -484,6 +484,8 @@ export const FormulaQuarterPlanningCard = forwardRef<
   }
 
   const isWeighted = approvedFormula.calculationType === "WEIGHTED_INDEX";
+  const usesAnnualComponentRollup =
+    approvedFormula.temporalRollupMethod === "SUM_COMPONENTS_THEN_DIVIDE";
 
   return (
     <div className="space-y-4 rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
@@ -898,7 +900,9 @@ export const FormulaQuarterPlanningCard = forwardRef<
                   </div>
                   <div className="rounded-md border bg-white p-2">
                     <div className="text-[11px] text-muted-foreground">
-                      Configured target
+                      {usesAnnualComponentRollup
+                        ? "Quarter target (reference only)"
+                        : "Configured target"}
                     </div>
                     <div className="mt-1 font-mono text-xs">
                       {configuredTarget == null ? "—" : String(configuredTarget)}
@@ -938,7 +942,11 @@ export const FormulaQuarterPlanningCard = forwardRef<
                     : denominatorSource?.label}
                 </th>
                 <th className="px-2">Calculated target</th>
-                <th className="px-2">Configured target</th>
+                <th className="px-2">
+                  {usesAnnualComponentRollup
+                    ? "Quarter target (reference only)"
+                    : "Configured target"}
+                </th>
                 <th className="px-2">Reconciliation</th>
               </tr>
             </thead>
@@ -1054,7 +1062,9 @@ export const FormulaQuarterPlanningCard = forwardRef<
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-indigo-100 pt-3">
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Submission is allowed only when all four quarters reconcile as VALID.
+          {usesAnnualComponentRollup
+            ? "Quarter rates may vary. Submission requires the ratio of summed annual components to match the annual KPI target within 0.01 percentage points."
+            : "Submission is allowed only when all four quarters reconcile as VALID."}
         </p>
         <Button
           type="button"

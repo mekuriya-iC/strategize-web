@@ -260,7 +260,7 @@ export default function UpdateKPIForm({
   };
 
   return (
-    <div className="space-y-6 max-h-[calc(100vh-2rem)] overflow-y-auto pb-6">
+    <div className="space-y-6 pb-6">
       <KPIFormHeader isEditing={true} onCancel={onCancel} />
 
       {/* Weight Allocation Display */}

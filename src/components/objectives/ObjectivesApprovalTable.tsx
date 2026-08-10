@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import React from "react";
@@ -36,7 +36,27 @@ import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 import { Building2 } from "lucide-react";
 
+const subscribeToClient = () => () => {};
+
 export default function ObjectivesApprovalTable() {
+  const mounted = useSyncExternalStore(
+    subscribeToClient,
+    () => true,
+    () => false,
+  );
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  return <ObjectivesApprovalTableContent />;
+}
+
+function ObjectivesApprovalTableContent() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
@@ -62,22 +82,9 @@ export default function ObjectivesApprovalTable() {
   });
   const selectedPeriod = useSelectedStrategicPeriod();
   const selectedPeriodId = selectedPeriod?.strategicPeriodId;
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const selectedPeriodLabel =
     selectedPeriod?.name || "the selected period/quarter";
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
 
   // Use RBAC permissions
   const { guards, objectives: objectivePermissions, scope } = usePermissions();

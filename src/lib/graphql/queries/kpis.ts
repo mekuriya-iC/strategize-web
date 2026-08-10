@@ -272,6 +272,10 @@ export const GET_KPIS_BY_OBJECTIVE = gql`
         status
         order
         isActive
+        kpiMode
+        managerRetentionPercent
+        calculationType
+        zeroDenominatorPolicy
         calculationBasisSource
         actualBasisSource
         directBasisValue

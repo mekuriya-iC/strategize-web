@@ -918,7 +918,13 @@ export function useUpdateKPIState({
       });
 
       // The KPI update transaction creates/synchronizes quarter plans first.
-      await updateKpi({ input: updateInput });
+      const mutationResult = await updateKpi({ input: updateInput });
+      const persistedMode = mutationResult.data?.updateKpi?.kpiMode;
+      if (persistedMode !== updateInput.kpiMode) {
+        throw new Error(
+          `KPI mode update was not persisted (requested: ${updateInput.kpiMode}, returned: ${persistedMode || "missing"})`,
+        );
+      }
       await afterKpiUpdate?.();
 
       // Refresh any relevant queries

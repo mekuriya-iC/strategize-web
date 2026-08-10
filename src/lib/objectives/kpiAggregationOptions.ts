@@ -5,6 +5,32 @@ import type {
   KpiUnitType,
 } from "@/types/graphql";
 
+export function resolveKpiUnitType({
+  unitType,
+  parentUnitType,
+  measurementUnit,
+}: {
+  unitType?: KpiUnitType | null;
+  parentUnitType?: KpiUnitType | null;
+  measurementUnit?: string | null;
+}): KpiUnitType {
+  if (unitType) return unitType;
+  if (parentUnitType) return parentUnitType;
+
+  switch (measurementUnit?.toUpperCase()) {
+    case "PERCENTAGE":
+      return "PERCENT";
+    case "CURRENCY":
+      return "CURRENCY";
+    case "HOUR":
+      return "HOUR";
+    case "NUMBER":
+      return "NUMBER";
+    default:
+      return "NUMBER";
+  }
+}
+
 export function getCompatibleAggregationMethod({
   method,
   unitType,

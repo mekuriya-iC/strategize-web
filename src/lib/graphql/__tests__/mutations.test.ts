@@ -124,6 +124,7 @@ describe('KPI Mutations', () => {
     expect(printed).toContain('updateKpi(updateKpiInput: $input)');
     expect(printed).toContain('kpiId');
     expect(printed).toContain('updatedAt');
+    expect(printed).toContain('kpiMode');
     expect(printed).toContain('actualBasisSource');
   });
 

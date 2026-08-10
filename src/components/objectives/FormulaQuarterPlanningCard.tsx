@@ -1063,7 +1063,7 @@ export const FormulaQuarterPlanningCard = forwardRef<
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <CheckCircle2 className="h-3.5 w-3.5" />
           {usesAnnualComponentRollup
-            ? "Quarter rates may vary. Submission requires the ratio of summed annual components to match the annual KPI target."
+            ? "Quarter rates may vary. Submission requires the ratio of summed annual components to match the annual KPI target within 0.01 percentage points."
             : "Submission is allowed only when all four quarters reconcile as VALID."}
         </p>
         <Button

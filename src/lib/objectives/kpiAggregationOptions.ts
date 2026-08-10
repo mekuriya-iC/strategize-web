@@ -1,8 +1,31 @@
 import type {
   KpiAggregationMethod,
   KpiCalculationBasisSource,
+  KpiCalculationType,
   KpiUnitType,
 } from "@/types/graphql";
+
+export function getCompatibleAggregationMethod({
+  method,
+  unitType,
+  calculationBasisSource = "NONE",
+  calculationType,
+}: {
+  method: KpiAggregationMethod;
+  unitType?: KpiUnitType;
+  calculationBasisSource?: KpiCalculationBasisSource;
+  calculationType?: KpiCalculationType;
+}): KpiAggregationMethod {
+  const isRate = unitType === "PERCENT" || unitType === "RATIO";
+  if (
+    isRate &&
+    (calculationType === "RATIO_FORMULA" ||
+      calculationBasisSource !== "NONE")
+  ) {
+    return "DENOMINATOR_WEIGHTED_AVERAGE";
+  }
+  return method;
+}
 
 const additiveUnits = new Set<KpiUnitType>([
   "NUMBER",

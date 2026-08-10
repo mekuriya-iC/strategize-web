@@ -4,6 +4,7 @@ import {
   getCompatibleAggregationMethod,
   isAggregationMethodAllowed,
   isComponentRatioKpi,
+  resolveKpiUnitType,
 } from "./kpiAggregationOptions";
 
 describe("KPI aggregation options", () => {
@@ -12,6 +13,30 @@ describe("KPI aggregation options", () => {
     expect(allowsScoreAverage("NUMBER", "NONE")).toBe(true);
     expect(allowsScoreAverage("RATIO", "NONE")).toBe(false);
     expect(allowsScoreAverage("PERCENT", "DIRECT_VALUE")).toBe(false);
+  });
+
+  it("inherits the parent unit for legacy cascaded KPIs before validating a ratio formula", () => {
+    const unitType = resolveKpiUnitType({
+      unitType: null,
+      parentUnitType: "PERCENT",
+      measurementUnit: "PERCENTAGE",
+    });
+    const method = getCompatibleAggregationMethod({
+      method: "SUM",
+      unitType,
+      calculationBasisSource: "NONE",
+      calculationType: "RATIO_FORMULA",
+    });
+
+    expect(unitType).toBe("PERCENT");
+    expect(method).toBe("DENOMINATOR_WEIGHTED_AVERAGE");
+    expect(
+      isAggregationMethodAllowed({
+        method,
+        unitType,
+        calculationBasisSource: "NONE",
+      }),
+    ).toBe(true);
   });
 
   it("repairs legacy ratio formulas to denominator-weighted aggregation", () => {

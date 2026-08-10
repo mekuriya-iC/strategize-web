@@ -704,6 +704,7 @@ export interface Kpi {
   baseline: number; // Float in GraphQL schema
   weight: number; // Float in GraphQL schema - accepts decimal values
   unitType: KpiUnitType;
+  measurementUnit?: string | null;
   status: KpiStatus;
   targetStatus?: KpiTargetStatus;
   targets: KpiTarget[];
@@ -732,7 +733,11 @@ export interface Kpi {
   basisUnitType?: KpiUnitType | null;
   assigneeId?: string; // ID of the person assigned to this KPI
   assigneeType?: string; // Type of assignee (PERSONNEL, DEPARTMENT, DIVISION, CORPORATE)
-  parent?: { kpiId: string; name?: string } | null;
+  parent?: {
+    kpiId: string;
+    name?: string;
+    unitType?: KpiUnitType | null;
+  } | null;
   objective: Objective | null;
   createdAt: string;
   updatedAt: string;

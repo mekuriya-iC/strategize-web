@@ -21,6 +21,7 @@ import type {
 import {
   getCompatibleAggregationMethod,
   isAggregationMethodAllowed,
+  resolveKpiUnitType,
 } from "@/lib/objectives/kpiAggregationOptions";
 import {
   basisQuartersEqualAnnual,
@@ -159,6 +160,11 @@ export function useUpdateKPIState({
   useEffect(() => {
     if (kpi) {
       const { name, baseline, weight, status, unitType, targets } = kpi;
+      const resolvedUnitType = resolveKpiUnitType({
+        unitType,
+        parentUnitType: kpi.parent?.unitType,
+        measurementUnit: kpi.measurementUnit,
+      });
 
       // Initialize form data from current KPI
       setFormData((prev) => ({
@@ -171,13 +177,13 @@ export function useUpdateKPIState({
         weight: weight?.toString() || "0",
         weightType: prev.weightType || ("PERCENT" as KpiWeightType),
         status,
-        unitType: unitType || ("NUMBER" as KpiUnitType),
+        unitType: resolvedUnitType,
         kpiMode: (kpi as any).kpiMode || "AGGREGATED",
         managerRetentionPercent:
           (kpi as any).managerRetentionPercent?.toString() || "30",
         aggregationMethod: getCompatibleAggregationMethod({
           method: kpi.aggregationMethod || "SUM",
-          unitType: unitType || "NUMBER",
+          unitType: resolvedUnitType,
           calculationBasisSource: kpi.calculationBasisSource || "NONE",
           calculationType: kpi.calculationType,
         }),
@@ -381,14 +387,25 @@ export function useUpdateKPIState({
           updateField("weight", parentKpi.weight.toString());
         }
 
-        // Auto-populate weightType and unitType if empty
+        // Inherited unit data repairs legacy cascaded KPIs that did not persist
+        // their own unit type.
+        const resolvedUnitType = resolveKpiUnitType({
+          unitType: kpi.unitType,
+          parentUnitType: parentKpi.unitType,
+          measurementUnit: kpi.measurementUnit,
+        });
         setFormData((prev) => ({
           ...prev,
           weightType:
             prev.weightType ||
             ((parentKpi.unitType || "PERCENT") as KpiWeightType),
-          unitType:
-            prev.unitType || parentKpi.unitType || ("NUMBER" as KpiUnitType),
+          unitType: resolvedUnitType,
+          aggregationMethod: getCompatibleAggregationMethod({
+            method: prev.aggregationMethod,
+            unitType: resolvedUnitType,
+            calculationBasisSource: prev.calculationBasisSource,
+            calculationType: kpi.calculationType,
+          }),
         }));
 
         // Auto-populate annual target from parent if current KPI has no target
@@ -416,7 +433,7 @@ export function useUpdateKPIState({
 
               // Initialize quarterly breakdown by distributing the assigned target
               const quarterlyValue =
-                kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"
+                resolvedUnitType === "PERCENT" || resolvedUnitType === "RATIO"
                   ? assignedValue
                   : (assignedValue / 4).toFixed(2);
 

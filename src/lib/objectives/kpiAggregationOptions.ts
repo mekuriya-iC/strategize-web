@@ -84,16 +84,26 @@ export function isAggregationMethodAllowed({
   method,
   unitType,
   calculationBasisSource = "NONE",
+  calculationType = "MANUAL_VALUE",
 }: {
   method: KpiAggregationMethod;
   unitType?: KpiUnitType;
   calculationBasisSource?: KpiCalculationBasisSource;
+  calculationType?: KpiCalculationType;
 }): boolean {
   if (method === "SIMPLE_AVERAGE") {
     return allowsScoreAverage(unitType, calculationBasisSource);
   }
   if (method === "DENOMINATOR_WEIGHTED_AVERAGE") {
     return unitType === "PERCENT" || unitType === "RATIO";
+  }
+  if (
+    method === "SUM" &&
+    unitType === "PERCENT" &&
+    calculationBasisSource === "NONE" &&
+    calculationType === "MANUAL_VALUE"
+  ) {
+    return true;
   }
   return Boolean(unitType && additiveUnits.has(unitType));
 }

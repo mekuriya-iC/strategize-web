@@ -127,6 +127,7 @@ export function KpiAggregationSelector({
                     method: "SUM",
                     unitType,
                     calculationBasisSource,
+                    calculationType,
                   })
                 }
               >

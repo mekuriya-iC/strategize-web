@@ -58,6 +58,25 @@ describe("KPI aggregation options", () => {
     ).toBe("SUM");
   });
 
+  it("allows SUM for a manual percentage-point KPI but not a ratio formula", () => {
+    expect(
+      isAggregationMethodAllowed({
+        method: "SUM",
+        unitType: "PERCENT",
+        calculationBasisSource: "NONE",
+        calculationType: "MANUAL_VALUE",
+      }),
+    ).toBe(true);
+    expect(
+      isAggregationMethodAllowed({
+        method: "SUM",
+        unitType: "PERCENT",
+        calculationBasisSource: "NONE",
+        calculationType: "RATIO_FORMULA",
+      }),
+    ).toBe(false);
+  });
+
   it("keeps sum and score average disabled for component ratio KPIs", () => {
     expect(isComponentRatioKpi("RATIO", "NONE")).toBe(true);
     expect(isComponentRatioKpi("PERCENT", "LINKED_KPI")).toBe(true);

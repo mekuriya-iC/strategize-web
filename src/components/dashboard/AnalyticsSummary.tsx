@@ -26,7 +26,8 @@ export default function AnalyticsSummary() {
   const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
   const user = useAuthStore((state) => state.user);
   const authLoading = useAuthStore((state) => state.isLoading);
-  const { annualTimeline, selectedPeriod } = useStrategicPeriodStore();
+  const { annualTimeline, selectedPeriod, selectionValidated } =
+    useStrategicPeriodStore();
 
   const primaryDepartment = user?.departments?.[0] as
     | DashboardDepartment
@@ -61,6 +62,7 @@ export default function AnalyticsSummary() {
     hasUser: !!user,
     hasSelectedPeriod: !!selectedPeriod?.strategicPeriodId,
     hasAnnualTimeline: !!annualTimeline,
+    selectionValidated,
     requiresOrgUnit,
     hasOrgUnit: !!roleSelectedUnit,
   });
@@ -69,6 +71,7 @@ export default function AnalyticsSummary() {
     selectedUnit: roleSelectedUnit,
     userRole: user?.role,
     userId: user?.employeeId,
+    organizationId: user?.organizationId,
     annualTimeline,
     selectedPeriodId: selectedPeriod?.strategicPeriodId,
     contextReady,

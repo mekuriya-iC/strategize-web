@@ -68,6 +68,7 @@ interface UseAnalyticsOptions {
   selectedUnit?: { id: string; type: "division" | "department" } | null;
   userRole?: string;
   userId?: string;
+  organizationId?: string;
   annualTimeline?: string | null;
   selectedPeriodId?: string | null;
   contextReady?: boolean;
@@ -80,6 +81,7 @@ export const useAnalytics = (
     selectedUnit,
     userRole,
     userId,
+    organizationId,
     annualTimeline,
     selectedPeriodId,
     contextReady = true,
@@ -98,7 +100,7 @@ export const useAnalytics = (
     loading: divisionsLoading,
     error: divisionsError,
   } = useQuery<{ divisions: PaginatedDivisions }>(GET_DIVISIONS, {
-    variables: { page: 1, limit: 1000 }, // Get all divisions for accurate count
+    variables: { page: 1, limit: 1000, organizationId }, // Get all divisions for accurate count
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !canAccessGlobalData, // Skip for managers
@@ -109,7 +111,7 @@ export const useAnalytics = (
     loading: departmentsLoading,
     error: departmentsError,
   } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS_ANALYTICS, {
-    variables: { page: 1, limit: 1000 }, // Get all departments for accurate count
+    variables: { page: 1, limit: 1000, organizationId }, // Get all departments for accurate count
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !canAccessGlobalData, // Skip for managers
@@ -138,6 +140,7 @@ export const useAnalytics = (
       page: 1,
       limit: 1000,
       assigneeId: objectivesAssigneeId,
+      organizationId,
     },
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
@@ -151,7 +154,7 @@ export const useAnalytics = (
     loading: kpisLoading,
     error: kpisError,
   } = useQuery<{ kpis: PaginatedKpis }>(GET_KPIS, {
-    variables: { page: 1, limit: 1000 },
+    variables: { page: 1, limit: 1000, organizationId },
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !!selectedUnit, // Skip when a specific unit is selected
@@ -162,7 +165,7 @@ export const useAnalytics = (
     loading: initiativesLoading,
     error: initiativesError,
   } = useQuery(GET_INITIATIVES, {
-    variables: { page: 1, limit: 1000 },
+    variables: { page: 1, limit: 1000, organizationId },
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady,

@@ -8,6 +8,7 @@ interface DashboardContextInput {
   hasUser: boolean;
   hasSelectedPeriod: boolean;
   hasAnnualTimeline: boolean;
+  selectionValidated: boolean;
   requiresOrgUnit: boolean;
   hasOrgUnit: boolean;
 }
@@ -17,6 +18,7 @@ export function isDashboardAnalyticsContextReady({
   hasUser,
   hasSelectedPeriod,
   hasAnnualTimeline,
+  selectionValidated,
   requiresOrgUnit,
   hasOrgUnit,
 }: DashboardContextInput): boolean {
@@ -25,6 +27,7 @@ export function isDashboardAnalyticsContextReady({
     hasUser &&
     hasSelectedPeriod &&
     hasAnnualTimeline &&
+    selectionValidated &&
     (!requiresOrgUnit || hasOrgUnit)
   );
 }

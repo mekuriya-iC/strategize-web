@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import SuperAdminOrganizationPerformance from "@/components/dashboard/SuperAdminOrganizationPerformance";
-import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
 import { GET_KPI_QUARTER_PERFORMANCE_REPORT } from "@/lib/graphql/queries/quarterly-performance";
 import {
   findEnclosingAnnualPeriod,
@@ -111,10 +111,11 @@ function QuarterCard({
 export default function QuarterlyPerformanceOverview() {
   const user = useAuthStore((state) => state.user);
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
-  const { strategicPeriods, loading: periodsLoading } = useStrategicPeriods({
-    limit: 1000,
-    organizationId: user?.organizationId,
-  });
+  const selectionValidated = useStrategicPeriodStore(
+    (state) => state.selectionValidated,
+  );
+  const { strategicPeriods, loading: periodsLoading } =
+    useActiveStrategicPlanPeriods();
 
   const context = useMemo(() => {
     if (!selectedPeriod) return null;
@@ -145,12 +146,12 @@ export default function QuarterlyPerformanceOverview() {
         limit: 5,
       },
     },
-    skip: !context?.annualPeriod.strategicPeriodId,
+    skip: !selectionValidated || !context?.annualPeriod.strategicPeriodId,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  if (!selectedPeriod || periodsLoading || loading) {
+  if (!selectionValidated || !selectedPeriod || periodsLoading || loading) {
     return (
       <Card>
         <CardContent className="p-6">

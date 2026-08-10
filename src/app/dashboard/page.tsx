@@ -71,7 +71,7 @@ const GET_DEPARTMENTS_QUERY = gql`
 export default function DashboardPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const { selectedPeriod } = useStrategicPeriodStore();
+  const { selectedPeriod, selectionValidated } = useStrategicPeriodStore();
 
   const primaryDept = user?.departments?.[0];
   const userDepartmentId = primaryDept?.departmentId;
@@ -86,7 +86,9 @@ export default function DashboardPage() {
 
   // Fetch team performance for health metrics
   let teamFilters: any = {
-    strategicPeriodId: selectedPeriod?.strategicPeriodId,
+    strategicPeriodId: selectionValidated
+      ? selectedPeriod?.strategicPeriodId
+      : undefined,
     organizationId: user?.organizationId,
   };
   if (isDirector && userDivisionId) {
@@ -101,7 +103,10 @@ export default function DashboardPage() {
       variables: {
         filters: teamFilters,
       },
-      skip: !isLeadershipRole || !selectedPeriod?.strategicPeriodId,
+      skip:
+        !isLeadershipRole ||
+        !selectionValidated ||
+        !selectedPeriod?.strategicPeriodId,
       fetchPolicy: "cache-and-network",
     },
   );
@@ -115,7 +120,7 @@ export default function DashboardPage() {
       variables: {
         organizationId: user?.organizationId,
       },
-      skip: !hasFullAccess && !isDirector,
+      skip: !user?.organizationId || (!hasFullAccess && !isDirector),
       fetchPolicy: "cache-and-network",
     },
   );
@@ -125,7 +130,7 @@ export default function DashboardPage() {
     variables: {
       organizationId: user?.organizationId,
     },
-    skip: !hasFullAccess && !isDirector,
+    skip: !user?.organizationId || (!hasFullAccess && !isDirector),
     fetchPolicy: "cache-and-network",
   });
 

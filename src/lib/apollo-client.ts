@@ -107,13 +107,13 @@ const apolloClient = new ApolloClient({
         fields: {
           // Merge paginated results properly
           objectives: {
-            keyArgs: ["search", "assigneeId"],
+            keyArgs: ["search", "assigneeId", "organizationId"],
             merge(existing, incoming) {
               return incoming;
             },
           },
           kpis: {
-            keyArgs: ["search"],
+            keyArgs: ["search", "organizationId", "strategicObjectiveId"],
             merge(existing, incoming) {
               return incoming;
             },

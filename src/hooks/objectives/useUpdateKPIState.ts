@@ -918,8 +918,12 @@ export function useUpdateKPIState({
       });
 
       // The KPI update transaction creates/synchronizes quarter plans first.
-      const mutationResult = await updateKpi({ input: updateInput });
-      const persistedMode = mutationResult.data?.updateKpi?.kpiMode;
+      const updatedKpi = await updateKpi({ input: updateInput });
+      let persistedMode = updatedKpi?.kpiMode;
+      if (!persistedMode) {
+        const verificationResult = await refetch();
+        persistedMode = verificationResult.data?.kpi?.kpiMode;
+      }
       if (persistedMode !== updateInput.kpiMode) {
         throw new Error(
           `KPI mode update was not persisted (requested: ${updateInput.kpiMode}, returned: ${persistedMode || "missing"})`,
@@ -929,7 +933,7 @@ export function useUpdateKPIState({
 
       // Refresh any relevant queries
       await client.refetchQueries({
-        include: ["GetKPI", "GetKPIs"],
+        include: ["GetKpi", "GetKpis"],
       });
 
       onSuccess?.();
@@ -944,6 +948,7 @@ export function useUpdateKPIState({
     kpi,
     parentKpi,
     updateKpi,
+    refetch,
     client,
     onSuccess,
     strategicTimeline,

@@ -271,9 +271,27 @@ export const FormulaQuarterPlanningCard = forwardRef<
     () => sumExactDecimals(orderedComponents.map((component) => component.weight)),
     [orderedComponents],
   );
+  const plannedExpressionTerms = useMemo(() => {
+    const byId = new Map<string, FormulaExpressionTermLike>();
+    for (const plan of plans) {
+      for (const termPlan of plan.expressionTermPlans ?? []) {
+        byId.set(termPlan.formulaExpressionTermId, termPlan.formulaExpressionTerm);
+      }
+    }
+    return byId;
+  }, [plans]);
   const expressionTerms = useMemo(
-    () => normalizedExpressionTerms(approvedFormula),
-    [approvedFormula],
+    () =>
+      normalizedExpressionTerms(approvedFormula).map((term) => {
+        const plannedTerm = term.id ? plannedExpressionTerms.get(term.id) : null;
+        return {
+          ...term,
+          metricDefinition:
+            term.metricDefinition ?? plannedTerm?.metricDefinition ?? null,
+          sourceKpi: term.sourceKpi ?? plannedTerm?.sourceKpi ?? null,
+        };
+      }),
+    [approvedFormula, plannedExpressionTerms],
   );
   const hasExpressionTermPlanning = Boolean(
     approvedFormula?.expressionTerms?.length,

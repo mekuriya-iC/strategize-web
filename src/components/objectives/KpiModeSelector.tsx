@@ -13,6 +13,7 @@ interface KpiModeSelectorProps {
   retentionPercent: string;
   onRetentionChange: (percent: string) => void;
   targetValue?: string;
+  disabled?: boolean;
 }
 
 export function KpiModeSelector({
@@ -21,6 +22,7 @@ export function KpiModeSelector({
   retentionPercent,
   onRetentionChange,
   targetValue = "0",
+  disabled = false,
 }: KpiModeSelectorProps) {
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900">
@@ -32,7 +34,11 @@ export function KpiModeSelector({
           results only.
         </p>
       </div>
-      <RadioGroup value={mode} onValueChange={onModeChange}>
+      <RadioGroup
+        value={mode}
+        onValueChange={onModeChange}
+        disabled={disabled}
+      >
         <div className="space-y-3">
           {/* AGGREGATED */}
           <div className="flex items-start space-x-3 p-3 border rounded-lg bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
@@ -106,6 +112,7 @@ export function KpiModeSelector({
             min={1}
             max={99}
             step={1}
+            disabled={disabled}
             className="w-full"
           />
           <div className="grid grid-cols-2 gap-4 text-sm">

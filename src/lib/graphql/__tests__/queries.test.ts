@@ -127,6 +127,9 @@ describe('KPI Queries', () => {
     expect(printed).toContain('kpisByObjective(');
     expect(printed).toContain('objectiveId: $objectiveId');
     expect(printed).toContain('items');
+    expect(printed).toContain('kpiMode');
+    expect(printed).toContain('managerRetentionPercent');
+    expect(printed).toContain('calculationType');
     expect(printed).toContain('meta');
   });
 

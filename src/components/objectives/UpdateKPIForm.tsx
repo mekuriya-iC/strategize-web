@@ -316,6 +316,7 @@ export default function UpdateKPIForm({
                 updateField("managerRetentionPercent", percent)
               }
               targetValue={targetToUse.toString()}
+              disabled={!canEditStructure}
             />
           )}
 

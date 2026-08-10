@@ -834,6 +834,7 @@ export function useUpdateKPIState({
           method: aggregationMethod,
           unitType: effectiveUnitType,
           calculationBasisSource: basisSource,
+          calculationType: kpi.calculationType,
         })
       ) {
         throw new Error(

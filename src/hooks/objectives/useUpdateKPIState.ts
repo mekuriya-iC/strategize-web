@@ -799,15 +799,20 @@ export function useUpdateKPIState({
             : 0;
       }
 
+      const effectiveUnitType = resolveKpiUnitType({
+        unitType: formData.unitType,
+        parentUnitType: parentKpi?.unitType || kpi.parent?.unitType,
+        measurementUnit: kpi.measurementUnit,
+      });
       const basisSource =
-        formData.unitType === "PERCENT" || formData.unitType === "RATIO"
+        effectiveUnitType === "PERCENT" || effectiveUnitType === "RATIO"
           ? formData.calculationBasisSource
           : "NONE";
       const formulaSuppliesDenominator =
         kpi.calculationType === "RATIO_FORMULA";
       const aggregationMethod = getCompatibleAggregationMethod({
         method: formData.aggregationMethod || "SUM",
-        unitType: formData.unitType,
+        unitType: effectiveUnitType,
         calculationBasisSource: basisSource,
         calculationType: kpi.calculationType,
       });
@@ -827,12 +832,12 @@ export function useUpdateKPIState({
         formData.kpiMode !== "DIRECT" &&
         !isAggregationMethodAllowed({
           method: aggregationMethod,
-          unitType: formData.unitType,
+          unitType: effectiveUnitType,
           calculationBasisSource: basisSource,
         })
       ) {
         throw new Error(
-          "Choose an aggregation method compatible with this KPI unit and calculation basis",
+          `Choose an aggregation method compatible with this KPI unit and calculation basis (unit: ${effectiveUnitType}, method: ${aggregationMethod}, basis: ${basisSource}, calculation: ${kpi.calculationType || "MANUAL_VALUE"}, mode: ${formData.kpiMode || "AGGREGATED"})`,
         );
       }
       if (
@@ -897,7 +902,7 @@ export function useUpdateKPIState({
         basisUnitType:
           basisSource === "DIRECT_VALUE" ? formData.basisUnitType : null,
         // Workflow status is controlled by submission approval.
-        ...(formData.unitType && { unitType: formData.unitType }),
+        unitType: effectiveUnitType,
         // Only include targets if we have any
         ...(targets.length > 0 && { targets }),
       };
@@ -930,6 +935,7 @@ export function useUpdateKPIState({
   }, [
     formData,
     kpi,
+    parentKpi,
     updateKpi,
     client,
     onSuccess,

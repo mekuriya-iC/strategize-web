@@ -17,7 +17,7 @@ describe("KPI aggregation options", () => {
 
   it("inherits the parent unit for legacy cascaded KPIs before validating a ratio formula", () => {
     const unitType = resolveKpiUnitType({
-      unitType: null,
+      unitType: "NUMBER",
       parentUnitType: "PERCENT",
       measurementUnit: "PERCENTAGE",
     });

@@ -99,6 +99,7 @@ export function AddTaskDialog({
     CREATE_CHECKINOUT_TASK,
     {
       refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+      awaitRefetchQueries: true,
     },
   );
 
@@ -106,6 +107,7 @@ export function AddTaskDialog({
     UPDATE_CHECKINOUT_TASK,
     {
       refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+      awaitRefetchQueries: true,
     },
   );
 

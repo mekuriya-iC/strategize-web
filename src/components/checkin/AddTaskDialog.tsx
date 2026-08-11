@@ -227,12 +227,18 @@ export function AddTaskDialog({
   };
 
   const handleSubmit = async () => {
+    console.log("🚀 [TASK CREATION] Starting task submission...");
+    console.log("📋 [TASK CREATION] Session ID:", sessionId);
+    console.log("📋 [TASK CREATION] Editing Task:", editingTask);
+    
     if (!task || !startDate || !endDate) {
+      console.error("❌ [TASK CREATION] Validation failed: Missing required fields");
       toast.error("Please fill in all required fields");
       return;
     }
 
     if (!sessionId && !editingTask) {
+      console.error("❌ [TASK CREATION] Validation failed: No active session");
       toast.error("No active session found");
       return;
     }
@@ -243,6 +249,7 @@ export function AddTaskDialog({
       const taskEndDateTime = buildDateTime(endDate, endTime);
 
       if (taskEndDateTime > sessionEndDate) {
+        console.error("❌ [TASK CREATION] Validation failed: Task end date exceeds session end date");
         toast.error(
           `Task end date cannot be after session end date (${format(sessionEndDate, "MMM d, yyyy")})`,
         );
@@ -258,6 +265,7 @@ export function AddTaskDialog({
     ].includes(taskType);
     if (checkoutStatus === "DONE" && isUnmetTask) {
       if (!attachment || !remark.trim()) {
+        console.error("❌ [TASK CREATION] Validation failed: Unmet task marked as done without attachment/remark");
         toast.error(
           "Attachment and remark are required when marking unmet tasks as done",
         );
@@ -290,9 +298,11 @@ export function AddTaskDialog({
         isMidWeekTask: isMidWeekTask,
       };
 
+      console.log("📤 [TASK CREATION] Prepared task data:", taskData);
+
       if (editingTask) {
-        // Update existing task
-        await updateTaskMutation({
+        console.log("✏️ [TASK CREATION] Updating existing task:", editingTask.id);
+        const result = await updateTaskMutation({
           variables: {
             input: {
               checkinoutTaskId: editingTask.id,
@@ -301,10 +311,12 @@ export function AddTaskDialog({
             },
           },
         });
+        console.log("✅ [TASK CREATION] Update mutation result:", result);
+        console.log("✅ [TASK CREATION] Updated task data:", result.data?.updateCheckinoutTask);
         toast.success("Task updated successfully");
       } else {
-        // Create new task
-        await createTaskMutation({
+        console.log("➕ [TASK CREATION] Creating new task for session:", sessionId);
+        const result = await createTaskMutation({
           variables: {
             input: {
               sessionId: sessionId!,
@@ -312,8 +324,13 @@ export function AddTaskDialog({
             },
           },
         });
+        console.log("✅ [TASK CREATION] Create mutation result:", result);
+        console.log("✅ [TASK CREATION] Created task data:", result.data?.createCheckinoutTask);
+        console.log("🆔 [TASK CREATION] New task ID:", result.data?.createCheckinoutTask?.checkinoutTaskId);
         toast.success("Task created successfully");
       }
+
+      console.log("🔄 [TASK CREATION] Calling onSuccess callback to refetch...");
 
       // Show logbook message for fulfilled tasks
       const fulfilledTypes = [
@@ -326,9 +343,15 @@ export function AddTaskDialog({
       }
 
       onSuccess();
+      console.log("✅ [TASK CREATION] onSuccess callback completed");
       resetForm();
+      console.log("✅ [TASK CREATION] Form reset completed");
     } catch (error: any) {
-      console.error("Task operation error:", error);
+      console.error("❌ [TASK CREATION] Error during task operation:", error);
+      console.error("❌ [TASK CREATION] Error message:", error.message);
+      console.error("❌ [TASK CREATION] Error stack:", error.stack);
+      console.error("❌ [TASK CREATION] GraphQL errors:", error.graphQLErrors);
+      console.error("❌ [TASK CREATION] Network error:", error.networkError);
 
       // Check if error is about date validation from backend
       if (

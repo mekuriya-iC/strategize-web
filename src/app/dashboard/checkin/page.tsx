@@ -97,6 +97,15 @@ function EmployeeTaskCard({
     },
     skip: !session.checkinoutSessionId,
     fetchPolicy: "network-only", // Force network request, bypass cache
+    onCompleted: (data) => {
+      console.log("📥 [EMPLOYEE CARD] Tasks query completed for session:", session.checkinoutSessionId);
+      console.log("📥 [EMPLOYEE CARD] Fetched tasks count:", data?.checkinoutTasks?.items?.length || 0);
+      console.log("📥 [EMPLOYEE CARD] Tasks data:", data?.checkinoutTasks?.items);
+    },
+    onError: (error) => {
+      console.error("❌ [EMPLOYEE CARD] Tasks query error for session:", session.checkinoutSessionId);
+      console.error("❌ [EMPLOYEE CARD] Error:", error);
+    },
   });
 
   const tasks = useMemo(() => {
@@ -319,7 +328,11 @@ function EmployeeTaskCard({
                 createdDate={new Date(session.weekStartDate)}
                 endDate={new Date(session.weekEndDate)}
                 searchQuery={searchQuery}
-                onRefetch={refetchTasks}
+                onRefetch={() => {
+                  console.log("🔄 [EMPLOYEE CARD] onRefetch triggered from CheckInTable");
+                  console.log("🔄 [EMPLOYEE CARD] Session ID:", session.checkinoutSessionId);
+                  refetchTasks();
+                }}
                 onEditTask={onEditTask}
                 filters={filters}
                 isEditable={isCurrentUser}
@@ -571,9 +584,17 @@ export default function CheckInPage() {
   // Actually, let's create a sub-component for the Employee Card to handle its own task fetching.
 
   // Update refetch to handle both
-  const refetchAll = () => {
-    refetchEmployeeSessions();
-    refetchSupervisorSessions();
+  const refetchAll = async () => {
+    console.log("🔄 [CHECKIN PAGE] refetchAll() called - refetching sessions...");
+    try {
+      const employeeResult = await refetchEmployeeSessions();
+      console.log("✅ [CHECKIN PAGE] Employee sessions refetched:", employeeResult.data?.checkinoutSessions?.items?.length || 0);
+      
+      const supervisorResult = await refetchSupervisorSessions();
+      console.log("✅ [CHECKIN PAGE] Supervisor sessions refetched:", supervisorResult.data?.checkinoutSessions?.items?.length || 0);
+    } catch (error) {
+      console.error("❌ [CHECKIN PAGE] Error during refetchAll:", error);
+    }
   };
 
   // Get tasks for the current session
@@ -589,6 +610,17 @@ export default function CheckInPage() {
     },
     skip: !currentWeekData?.id,
     fetchPolicy: "network-only", // Force network request, bypass cache
+    onCompleted: (data) => {
+      console.log("📥 [CHECKIN PAGE] Main tasks query completed");
+      console.log("📥 [CHECKIN PAGE] Session ID:", currentWeekData?.id);
+      console.log("📥 [CHECKIN PAGE] Fetched tasks count:", data?.checkinoutTasks?.items?.length || 0);
+      console.log("📥 [CHECKIN PAGE] Tasks data:", data?.checkinoutTasks?.items);
+    },
+    onError: (error) => {
+      console.error("❌ [CHECKIN PAGE] Main tasks query error");
+      console.error("❌ [CHECKIN PAGE] Session ID:", currentWeekData?.id);
+      console.error("❌ [CHECKIN PAGE] Error:", error);
+    },
   });
 
   // Map tasks to frontend format
@@ -1277,6 +1309,8 @@ export default function CheckInPage() {
                 endDate={new Date(currentSession.weekEndDate)}
                 searchQuery={searchQuery}
                 onRefetch={() => {
+                  console.log("🔄 [CHECKIN PAGE] onRefetch triggered from CheckInTable");
+                  console.log("🔄 [CHECKIN PAGE] Calling refetchAll and refetchTasks...");
                   refetchAll();
                   refetchTasks();
                 }}
@@ -1312,6 +1346,7 @@ export default function CheckInPage() {
       <AddTaskDialog
         open={isAddTaskOpen}
         onOpenChange={(open) => {
+          console.log("🔔 [CHECKIN PAGE] AddTaskDialog open state changed:", open);
           setIsAddTaskOpen(open);
           if (!open) {
             setEditingTask(null);
@@ -1319,8 +1354,12 @@ export default function CheckInPage() {
           }
         }}
         onSuccess={() => {
+          console.log("🎯 [CHECKIN PAGE] Task mutation success callback triggered");
+          console.log("🔄 [CHECKIN PAGE] Calling refetchAll()...");
           refetchAll();
+          console.log("🔄 [CHECKIN PAGE] Calling refetchTasks()...");
           refetchTasks();
+          console.log("✅ [CHECKIN PAGE] All refetch calls completed");
           setIsAddTaskOpen(false);
           setEditingTask(null);
           setTargetSessionId(null);

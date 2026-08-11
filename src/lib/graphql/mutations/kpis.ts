@@ -15,6 +15,7 @@ export const CREATE_KPI = gql`
       kpiType
       measurementUnit
       unitType
+      quarterlyAggregationMethod
       customUnitLabel
       targetValue
       baselineValue
@@ -76,6 +77,7 @@ export const UPDATE_KPI = gql`
       kpiType
       measurementUnit
       unitType
+      quarterlyAggregationMethod
       customUnitLabel
       targetValue
       baselineValue

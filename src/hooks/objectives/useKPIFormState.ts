@@ -14,6 +14,7 @@ import type {
   KpiWeightType,
   Objective as GraphQLObjective,
   Kpi,
+  KpiQuarterlyAggregationMethod,
 } from "@/types/graphql";
 import { kpiLogger } from "@/lib/logger";
 import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
@@ -25,6 +26,7 @@ export interface KPIFormData {
   weight: string;
   weightType: KpiWeightType;
   unitType?: string;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod;
 }
 
 export interface YearlyQuarters {
@@ -98,6 +100,7 @@ export const useKPIFormState = ({
     baseline: "",
     weight: "",
     weightType: "PERCENT",
+    quarterlyAggregationMethod: "AVERAGE",
   });
   const [parentId, setParentId] = useState<string>("");
   const [targets, setTargets] = useState<TargetEntry[]>([

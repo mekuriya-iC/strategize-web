@@ -888,7 +888,11 @@ export function KpiFormulaDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {TEMPORAL_ROLLUP_OPTIONS.filter(
-                      (option) => option.value !== "WEIGHTED_INDEX",
+                      (option) =>
+                        option.value !== "WEIGHTED_INDEX" &&
+                        (form.calculationType === "RATIO_FORMULA" ||
+                          (option.value !== "COHORT" &&
+                            option.value !== "SUM_COMPONENTS_THEN_DIVIDE")),
                     ).map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}

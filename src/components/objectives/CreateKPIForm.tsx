@@ -90,10 +90,17 @@ export default function CreateKPIForm({
     weight: formData.weight,
     weightType: formData.weightType,
     unitType: formData.unitType,
+    quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
   };
 
   const handleInputChange = (field: string, value: string) => {
     updateField(field as keyof CreateKPIFormData, value);
+    if (field === "unitType") {
+      updateField(
+        "quarterlyAggregationMethod",
+        value === "PERCENT" || value === "RATIO" ? "AVERAGE" : "SUM",
+      );
+    }
   };
 
   // Calculate available years from strategic period
@@ -158,17 +165,17 @@ export default function CreateKPIForm({
     if (annual <= 0) return false;
 
     const TOLERANCE = 0.01;
-    if (formData.unitType === "PERCENT" || formData.unitType === "RATIO") {
-      return values.every((value) => Math.abs(value - annual) <= TOLERANCE);
-    }
-
-    return Math.abs(sum - annual) <= TOLERANCE;
+    const plannedAnnual =
+      formData.quarterlyAggregationMethod === "AVERAGE"
+        ? sum / values.length
+        : sum;
+    return Math.abs(plannedAnnual - annual) <= TOLERANCE;
   }, [
     isCorporate,
     strategicYear,
     yearlyQuarters,
     annualTargets,
-    formData.unitType,
+    formData.quarterlyAggregationMethod,
   ]);
 
   // 100% weight budget applies to KPIs on this objective only
@@ -287,9 +294,20 @@ export default function CreateKPIForm({
       !isCorporate &&
       (formData.unitType === "PERCENT" || formData.unitType === "RATIO")
     ) {
+      const numericValue = Number(value);
+      const quarterValue =
+        formData.quarterlyAggregationMethod === "SUM" &&
+        Number.isFinite(numericValue)
+          ? String(numericValue / 4)
+          : value;
       setYearlyQuarters((prev) => ({
         ...prev,
-        [strategicYear]: { q1: value, q2: value, q3: value, q4: value },
+        [strategicYear]: {
+          q1: quarterValue,
+          q2: quarterValue,
+          q3: quarterValue,
+          q4: quarterValue,
+        },
       }));
     }
   };
@@ -560,6 +578,8 @@ export default function CreateKPIForm({
                     kpiId: "new",
                     name: formData.name,
                     unitType: formData.unitType,
+                    quarterlyAggregationMethod:
+                      formData.quarterlyAggregationMethod,
                   } as Kpi
                 }
                 canEditTargets={true}

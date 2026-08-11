@@ -39,6 +39,11 @@ import { canUserApproveSubmission } from "@/lib/objectives/cascadeApproval";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 import { summarizeQuarterPlans } from "@/lib/kpi/quarterPlanStatus";
 import type { KpiQuarterPlan } from "@/types/graphql";
+import {
+  getQuarterTargetRollup,
+  getQuartersByYear,
+  getYearlyTotals,
+} from "@/utils/strategic/kpi-math";
 
 type KpiSubmission = {
   submissionId: string;
@@ -58,6 +63,8 @@ type KpiSubmission = {
     weight?: number;
     baseline?: number | string;
     targetValue?: number | string;
+    unitType?: Kpi["unitType"];
+    quarterlyAggregationMethod?: Kpi["quarterlyAggregationMethod"];
     kpiMode?: string;
     managerRetentionPercent?: number;
     quarterPlans?: KpiQuarterPlan[];
@@ -90,6 +97,8 @@ export type GroupedSubmission = {
       weight?: number;
       baseline?: number;
       weightType?: string;
+      unitType?: Kpi["unitType"];
+      quarterlyAggregationMethod?: Kpi["quarterlyAggregationMethod"];
       kpiMode?: string;
       managerRetentionPercent?: number;
       quarterPlans?: KpiQuarterPlan[];
@@ -102,6 +111,8 @@ export type GroupedSubmission = {
     weight?: number;
     baseline?: number | string;
     targetValue?: number | string;
+    unitType?: Kpi["unitType"];
+    quarterlyAggregationMethod?: Kpi["quarterlyAggregationMethod"];
     kpiMode?: string;
     managerRetentionPercent?: number;
     quarterPlans?: KpiQuarterPlan[];
@@ -325,84 +336,6 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
 
   // Removed unused getTargetLabelByObjectiveType function
 
-  // Helper: aggregate targets into yearly totals
-  const getYearlyTotals = (
-    targets: Array<{ timeline: string; target: number }> = [],
-    unitType?: string,
-  ) => {
-    const totals: Record<string, number> = {};
-    const quarterlySums: Record<string, number> = {};
-    const quarterlyCounts: Record<string, number> = {};
-    const yearsWithExplicitTotal: Set<string> = new Set();
-
-    // First, find explicit yearly totals
-    for (const t of targets) {
-      if (!t.timeline.includes("-")) {
-        const year = t.timeline;
-        totals[year] = Number(t.target || 0);
-        yearsWithExplicitTotal.add(year);
-      }
-    }
-
-    // Then, sum/count quarters for years that DON'T have an explicit total
-    for (const t of targets) {
-      const [year, quarter] = t.timeline.split("-");
-      if (quarter && !yearsWithExplicitTotal.has(year)) {
-        quarterlySums[year] =
-          (quarterlySums[year] || 0) + Number(t.target || 0);
-        quarterlyCounts[year] = (quarterlyCounts[year] || 0) + 1;
-      }
-    }
-
-    // Merge the quarterly values into the main totals object
-    // For PERCENT and RATIO, use average; for others, use sum
-    const isAverageable = unitType === "PERCENT" || unitType === "RATIO";
-    for (const year in quarterlySums) {
-      if (!totals[year]) {
-        const total =
-          isAverageable && quarterlyCounts[year] > 0
-            ? quarterlySums[year] / quarterlyCounts[year]
-            : quarterlySums[year];
-        totals[year] = Math.round(total * 100) / 100;
-      }
-    }
-
-    // Also round explicit totals to 2 decimal places
-    for (const year in totals) {
-      totals[year] = Math.round(totals[year] * 100) / 100;
-    }
-
-    const years = Object.keys(totals).sort(
-      (a, b) =>
-        parseInt(a.split("/")?.[0] || "0") - parseInt(b.split("/")?.[0] || "0"),
-    );
-    return { years, totals } as const;
-  };
-
-  const getQuartersByYear = (
-    targets: Array<{ timeline: string; target: number }> = [],
-  ) => {
-    const map: Record<
-      string,
-      { q1?: number; q2?: number; q3?: number; q4?: number }
-    > = {};
-    targets.forEach((t) => {
-      const [year, quarter] = (t.timeline as string).split("-");
-      if (!map[year]) map[year] = {};
-      if (quarter) {
-        const qn = quarter.toUpperCase();
-        if (qn === "Q1") map[year].q1 = Number(t.target || 0);
-        if (qn === "Q2") map[year].q2 = Number(t.target || 0);
-        if (qn === "Q3") map[year].q3 = Number(t.target || 0);
-        if (qn === "Q4") map[year].q4 = Number(t.target || 0);
-      }
-    });
-    const years = Object.keys(map).sort(
-      (a, b) =>
-        parseInt(a.split("/")?.[0] || "0") - parseInt(b.split("/")?.[0] || "0"),
-    );
-    return { years, map } as const;
-  };
 
   // Calculate if all objective submissions are selected
   const selectableSubmissions = objectiveSubmissions.filter(
@@ -876,30 +809,34 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                     level: obj.level,
                                   }}
                                   associatedKPIs={effectiveKpiSubmissions.map(
-                                    (k) => ({
-                                      kpiId: k.kpi?.kpiId || "",
-                                      name: k.kpi?.name || "Unknown KPI",
-                                      status: k.status,
-                                      weight: k.kpi?.weight,
-                                      baseline: k.kpi?.baseline,
-                                      targetValue: k.kpi?.targetValue,
-                                      kpiMode:
-                                        k.kpi?.kpiMode ||
-                                        allKpis.find(
-                                          (full) => full.kpiId === k.kpi?.kpiId,
-                                        )?.kpiMode,
-                                      managerRetentionPercent:
-                                        k.kpi?.managerRetentionPercent ??
-                                        allKpis.find(
-                                          (full) => full.kpiId === k.kpi?.kpiId,
-                                        )?.managerRetentionPercent,
-                                      quarterPlans:
-                                        k.kpi?.quarterPlans ||
-                                        allKpis.find(
-                                          (full) => full.kpiId === k.kpi?.kpiId,
-                                        )?.quarterPlans,
-                                      submissionId: k.submissionId,
-                                    }),
+                                    (k) => {
+                                      const fullKpi = allKpis.find(
+                                        (full) => full.kpiId === k.kpi?.kpiId,
+                                      );
+                                      return {
+                                        kpiId: k.kpi?.kpiId || fullKpi?.kpiId || "",
+                                        name:
+                                          k.kpi?.name ||
+                                          fullKpi?.name ||
+                                          "Unknown KPI",
+                                        status: k.status,
+                                        weight: k.kpi?.weight ?? fullKpi?.weight,
+                                        baseline:
+                                          k.kpi?.baseline ?? fullKpi?.baseline,
+                                        targetValue:
+                                          k.kpi?.targetValue ??
+                                          fullKpi?.targetValue,
+                                        kpiMode:
+                                          k.kpi?.kpiMode ?? fullKpi?.kpiMode,
+                                        managerRetentionPercent:
+                                          k.kpi?.managerRetentionPercent ??
+                                          fullKpi?.managerRetentionPercent,
+                                        quarterPlans:
+                                          k.kpi?.quarterPlans ??
+                                          fullKpi?.quarterPlans,
+                                        submissionId: k.submissionId,
+                                      };
+                                    },
                                   )}
                                   onApprove={async (
                                     id,
@@ -1309,7 +1246,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                 const { years, totals } =
                                                   getYearlyTotals(
                                                     childKpi.targets,
-                                                    childKpi.unitType,
+                                                    childKpi,
                                                   );
                                                 if (years.length === 0)
                                                   return (
@@ -1349,10 +1286,12 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                               const byYear =
                                                 strategicTargetsById[childId] ||
                                                 {};
-                                              const { years, map } =
-                                                getQuartersByYear(
-                                                  childKpi.targets,
-                                                );
+                                              const {
+                                                years,
+                                                qByYear: map,
+                                              } = getQuartersByYear(
+                                                childKpi.targets,
+                                              );
                                               if (
                                                 years.length === 0 &&
                                                 Object.keys(byYear).length === 0
@@ -1447,60 +1386,24 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                                                             ),
                                                           )}
                                                         </div>
-                                                        {/* Sum of quarters */}
+                                                        {/* Configured quarter rollup */}
                                                         {(() => {
-                                                          const q1 =
-                                                            (
-                                                              q as Record<
-                                                                string,
-                                                                number
-                                                              >
-                                                            )["q1"] ?? 0;
-                                                          const q2 =
-                                                            (
-                                                              q as Record<
-                                                                string,
-                                                                number
-                                                              >
-                                                            )["q2"] ?? 0;
-                                                          const q3 =
-                                                            (
-                                                              q as Record<
-                                                                string,
-                                                                number
-                                                              >
-                                                            )["q3"] ?? 0;
-                                                          const q4 =
-                                                            (
-                                                              q as Record<
-                                                                string,
-                                                                number
-                                                              >
-                                                            )["q4"] ?? 0;
-                                                          const quarterlySum =
-                                                            q1 + q2 + q3 + q4;
-                                                          // Round to max 2 decimal places
-                                                          const roundedSum =
-                                                            Math.round(
-                                                              quarterlySum *
-                                                                100,
-                                                            ) / 100;
-
-                                                          if (
-                                                            quarterlySum > 0
-                                                          ) {
-                                                            return (
-                                                              <div className="text-[11px] text-gray-500 mt-2">
-                                                                <span className="text-gray-400">
-                                                                  Sum:
-                                                                </span>{" "}
-                                                                <span className="font-medium text-green-600">
-                                                                  {roundedSum}
-                                                                </span>
-                                                              </div>
+                                                          const rollup =
+                                                            getQuarterTargetRollup(
+                                                              q,
+                                                              childKpi,
                                                             );
-                                                          }
-                                                          return null;
+                                                          if (!rollup) return null;
+                                                          return (
+                                                            <div className="text-[11px] text-gray-500 mt-2">
+                                                              <span className="text-gray-400">
+                                                                {rollup.label}:
+                                                              </span>{" "}
+                                                              <span className="font-medium text-green-600">
+                                                                {rollup.value}
+                                                              </span>
+                                                            </div>
+                                                          );
                                                         })()}
                                                       </div>
                                                     );

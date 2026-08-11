@@ -18,6 +18,7 @@ export const CREATE_SUPPORT_KPI = gql`
       name
       measurementUnit
       unitType
+      quarterlyAggregationMethod
       targetValue
       weight
       kpiMode

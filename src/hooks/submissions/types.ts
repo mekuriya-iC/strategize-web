@@ -3,7 +3,12 @@
  * Centralized type definitions for submission-related functionality
  */
 
-import type { KpiQuarterPlan, SubmissionStatus } from "@/types/graphql";
+import type {
+  KpiQuarterPlan,
+  KpiQuarterlyAggregationMethod,
+  KpiUnitType,
+  SubmissionStatus,
+} from "@/types/graphql";
 
 export type SubmissionLevel = "DEPARTMENT" | "DIVISION" | "PERSONNEL";
 export type SubmissionType = "OBJECTIVE" | "KPI";
@@ -24,6 +29,8 @@ export interface SubmissionKpi extends SubmissionAssignee {
   weight?: number;
   baseline?: number;
   targetValue?: number | string;
+  unitType?: KpiUnitType;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod;
   kpiMode?: string;
   managerRetentionPercent?: number;
   quarterPlans?: KpiQuarterPlan[];

@@ -28,6 +28,7 @@ export const GET_KPIS = gql`
         kpiType
         measurementUnit
         unitType
+        quarterlyAggregationMethod
         customUnitLabel
         targetValue
         assignedTargetValue
@@ -141,6 +142,7 @@ export const GET_KPI = gql`
       kpiType
       measurementUnit
       unitType
+      quarterlyAggregationMethod
       customUnitLabel
       targetValue
       assignedTargetValue
@@ -214,6 +216,7 @@ export const GET_KPI = gql`
         assignedTargetValue
         measurementUnit
         unitType
+        quarterlyAggregationMethod
         baseline
         weight
         targets {
@@ -264,6 +267,7 @@ export const GET_KPIS_BY_OBJECTIVE = gql`
         kpiType
         measurementUnit
         unitType
+        quarterlyAggregationMethod
         customUnitLabel
         targetValue
         baselineValue
@@ -343,6 +347,7 @@ export const GET_MY_KPIS = gql`
         kpiType
         measurementUnit
         unitType
+        quarterlyAggregationMethod
         customUnitLabel
         targetValue
         baselineValue

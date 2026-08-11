@@ -36,6 +36,8 @@ export const SubmissionsFragment = gql`
       weight
       baseline
       targetValue
+      unitType
+      quarterlyAggregationMethod
       kpiMode
       managerRetentionPercent
       quarterPlans {
@@ -78,6 +80,8 @@ export const SubmissionsFragment = gql`
         weight
         baseline
         targetValue
+        unitType
+        quarterlyAggregationMethod
         kpiMode
         managerRetentionPercent
         quarterPlans {

@@ -110,6 +110,7 @@ describe('KPI Mutations', () => {
     expect(printed).toContain('name');
     expect(printed).toContain('kpiType');
     expect(printed).toContain('measurementUnit');
+    expect(printed).toContain('quarterlyAggregationMethod');
     expect(printed).toContain('targetValue');
     expect(printed).toContain('frequency');
     expect(printed).toContain('isActive');
@@ -125,6 +126,7 @@ describe('KPI Mutations', () => {
     expect(printed).toContain('kpiId');
     expect(printed).toContain('updatedAt');
     expect(printed).toContain('kpiMode');
+    expect(printed).toContain('quarterlyAggregationMethod');
     expect(printed).toContain('actualBasisSource');
   });
 

@@ -31,6 +31,7 @@ import {
   isDivisionLevelObjective,
 } from "@/lib/objectives/cascadeApproval";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import { getYearlyTotals } from "@/utils/strategic/kpi-math";
 import { isKpiSubmittable } from "@/lib/objectives/submissionLevel";
 
 export default function ObjectiveDetailPage() {
@@ -844,32 +845,10 @@ export default function ObjectiveDetailPage() {
                     return;
                   }
 
-                  const byYear: Record<string, number> = {};
-                  const quarterCounts: Record<string, number> = {};
-
-                  // Process targets like the approval table
-                  (parentKpi.targets || []).forEach((t) => {
-                    const tl = t.timeline as string;
-                    if (tl.includes("-Q")) {
-                      const year = tl.split("-")[0];
-                      byYear[year] =
-                        (byYear[year] || 0) + Number(t.target || 0);
-                      quarterCounts[year] = (quarterCounts[year] || 0) + 1;
-                    } else {
-                      byYear[tl] = Number(t.target || 0);
-                    }
-                  });
-
-                  // If percentage, average the quarterly sums
-                  if (parentKpi.unitType === "PERCENT") {
-                    Object.keys(byYear).forEach((year) => {
-                      if (quarterCounts[year] > 0) {
-                        byYear[year] = byYear[year] / quarterCounts[year];
-                      }
-                    });
-                  }
-
-                  map[childKpi.kpiId] = byYear;
+                  map[childKpi.kpiId] = getYearlyTotals(
+                    parentKpi.targets || [],
+                    parentKpi,
+                  ).totals;
                 });
 
                 return map;

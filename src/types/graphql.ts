@@ -441,6 +441,7 @@ export interface PaginatedObjectives {
 export type KpiWeightType = "NUMBER" | "PERCENT";
 export type KpiUnitType =
   "NUMBER" | "PERCENT" | "CURRENCY" | "HOUR" | "RATIO" | "COUNT";
+export type KpiQuarterlyAggregationMethod = "AVERAGE" | "SUM";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiTargetStatus =
   "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
@@ -704,6 +705,7 @@ export interface Kpi {
   baseline: number; // Float in GraphQL schema
   weight: number; // Float in GraphQL schema - accepts decimal values
   unitType: KpiUnitType;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod;
   measurementUnit?: string | null;
   status: KpiStatus;
   targetStatus?: KpiTargetStatus;
@@ -749,6 +751,7 @@ export interface CreateKpiInput {
   baselineValue?: number;
   weight?: number;
   unitType?: string;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod;
   customUnitLabel?: string;
   targets?: KpiTargetInput[];
   strategicObjectiveId: string; // Backend uses strategicObjectiveId not objectiveId
@@ -790,6 +793,7 @@ export interface CreateSupportKpiInput {
   targetValue: number;
   weight: number;
   unitType?: string;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod;
   targets: KpiTargetInput[];
   kpiMode?: string;
   managerRetentionPercent?: number;
@@ -803,6 +807,7 @@ export interface UpdateKpiInput {
   weight?: number; // Float in GraphQL schema - accepts decimal values
   targetValue?: number; // Target value for the KPI
   unitType?: KpiUnitType;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod;
   status?: KpiStatus;
   targetStatus?: KpiTargetStatus;
   targets?: KpiTargetInput[];

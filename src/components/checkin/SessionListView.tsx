@@ -12,6 +12,11 @@ import { useQuery, useMutation } from "@apollo/client";
 import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
 import { REMOVE_CHECKINOUT_SESSION, UPDATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
+import {
+  groupCheckinoutSessionsByWeek,
+  type CheckinoutSessionWeekGroup,
+  type CheckinoutSessionLike,
+} from "@/utils/checkin-session-groups";
 
 interface SessionListViewProps {
   currentUser: any;
@@ -129,15 +134,31 @@ export default function SessionListView({
     },
   });
 
-  const teamSessions = (teamData?.checkinoutSessions?.items || []).filter(
-    (s: any) =>
-      s.employee && s.employee?.employeeId !== currentUser?.employeeId,
+  const teamSessions = useMemo(
+    () =>
+      (teamData?.checkinoutSessions?.items || []).filter(
+        (session: CheckinoutSessionLike) =>
+          session.employee?.employeeId !== currentUser?.employeeId,
+      ),
+    [currentUser?.employeeId, teamData],
   );
-  const ownSessions = (ownData?.checkinoutSessions?.items || []).filter(
-    (s: any) => s.employee,
+  const ownSessions = useMemo(
+    () =>
+      (ownData?.checkinoutSessions?.items || []).filter(
+        (session: CheckinoutSessionLike) => session.employee,
+      ),
+    [ownData],
   );
-  const allSessions = (allData?.checkinoutSessions?.items || []).filter(
-    (s: any) => s.employee,
+  const allSessions = useMemo(
+    () =>
+      (allData?.checkinoutSessions?.items || []).filter(
+        (session: CheckinoutSessionLike) => session.employee,
+      ),
+    [allData],
+  );
+  const teamWeekGroups = useMemo(
+    () => groupCheckinoutSessionsByWeek(teamSessions),
+    [teamSessions],
   );
 
   // Filter peer managers' sessions (managers who are employees in sessions)
@@ -277,6 +298,27 @@ export default function SessionListView({
     });
   };
 
+  const filterWeekGroups = (
+    groups: CheckinoutSessionWeekGroup<CheckinoutSessionLike>[],
+  ) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return groups;
+
+    return groups.filter(({ representativeSession, participantSessions }) => {
+      const searchableValues = [
+        representativeSession.title,
+        representativeSession.weekStartDate,
+        representativeSession.weekEndDate,
+        representativeSession.strategicPeriod?.name,
+        representativeSession.supervisor?.fullName,
+        ...participantSessions.map((session) => session.employee?.fullName),
+      ];
+      return searchableValues.some((value) =>
+        value?.toLowerCase().includes(query),
+      );
+    });
+  };
+
   const renderSessionCard = (
     session: any,
     index: number,
@@ -399,6 +441,164 @@ export default function SessionListView({
     );
   };
 
+  const renderWeekGroupCard = (
+    group: CheckinoutSessionWeekGroup<CheckinoutSessionLike>,
+    index: number,
+  ) => {
+    const session = group.representativeSession;
+    const sprintTitle = getSprintTitle(session, index);
+    const statuses = new Set(
+      group.participantSessions.map(
+        (participant) => participant.overallStatus || "OPEN",
+      ),
+    );
+    const groupStatus = statuses.size === 1 ? Array.from(statuses)[0] : "MIXED";
+    const lockedCount = group.participantSessions.filter(
+      (participant) => participant.isLocked,
+    ).length;
+
+    return (
+      <Card key={group.key} className="hover:shadow-md transition-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {sprintTitle}
+                </h3>
+                {lockedCount > 0 && (
+                  <div title={`${lockedCount} participant session(s) locked`}>
+                    <Lock className="h-4 w-4 text-amber-600" />
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">
+                Supervisor:{" "}
+                <span className="font-medium">
+                  {session.supervisor?.fullName || "Unknown Supervisor"}
+                </span>
+              </p>
+              <p className="text-sm text-gray-600">
+                {group.participantSessions.length}{" "}
+                {group.participantSessions.length === 1
+                  ? "participant"
+                  : "participants"}
+              </p>
+            </div>
+            <Badge className={getStatusColor(groupStatus)}>{groupStatus}</Badge>
+          </div>
+
+          <div className="flex items-center gap-1 text-sm text-gray-600 mb-4">
+            <Calendar className="h-4 w-4" />
+            <span>
+              {new Date(session.weekStartDate).toLocaleDateString()} -{" "}
+              {new Date(session.weekEndDate).toLocaleDateString()}
+            </span>
+          </div>
+
+          {session.strategicPeriod && (
+            <div className="mb-4">
+              <Badge variant="outline" className="text-xs">
+                {session.strategicPeriod.name}
+              </Badge>
+            </div>
+          )}
+
+          <div className="space-y-2 mb-4">
+            {group.participantSessions.map((participant) => {
+              const participantName =
+                participant.employee?.fullName || "Unknown Employee";
+              const isSessionOwner =
+                participant.supervisor?.employeeId === currentUser?.employeeId;
+              const isLocked = Boolean(participant.isLocked);
+
+              return (
+                <div
+                  key={participant.checkinoutSessionId}
+                  className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-gray-900">
+                      {participantName}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{participant.overallStatus || "OPEN"}</span>
+                      {isLocked && (
+                        <span className="flex items-center gap-1 text-amber-700">
+                          <Lock className="h-3 w-3" /> Locked
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {isSessionOwner && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={
+                          isLocked
+                            ? "h-8 w-8 p-0 text-green-600"
+                            : "h-8 w-8 p-0 text-amber-600"
+                        }
+                        onClick={() =>
+                          handleToggleLock(
+                            participant.checkinoutSessionId,
+                            isLocked,
+                          )
+                        }
+                        title={isLocked ? "Unlock session" : "Lock session"}
+                      >
+                        {isLocked ? (
+                          <Unlock className="h-4 w-4" />
+                        ) : (
+                          <Lock className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                    {(isAdminOrHR || isSessionOwner) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-red-600"
+                        onClick={() =>
+                          handleDeleteSession(
+                            participant.checkinoutSessionId,
+                            `${sprintTitle} - ${participantName}`,
+                          )
+                        }
+                        disabled={
+                          deletingSessionId === participant.checkinoutSessionId
+                        }
+                        title="Delete participant session"
+                      >
+                        {deletingSessionId ===
+                        participant.checkinoutSessionId ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-red-600" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <Button
+            size="sm"
+            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => onSelectSession(session.checkinoutSessionId)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Week
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderEmptyState = (message: string, showCreateButton = false) => (
     <div className="flex flex-col items-center justify-center h-64">
       <Users className="h-16 w-16 text-gray-400 mb-4" />
@@ -511,7 +711,7 @@ export default function SessionListView({
             value="my-team"
             className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
           >
-            My Team ({teamSessions.length})
+            My Team ({teamWeekGroups.length})
           </TabsTrigger>
           <TabsTrigger
             value="my-sessions"
@@ -548,10 +748,10 @@ export default function SessionListView({
                 </p>
               </div>
             </div>
-          ) : filterSessions(teamSessions).length > 0 ? (
+          ) : filterWeekGroups(teamWeekGroups).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterSessions(teamSessions).map((session: any, index: number) =>
-                renderSessionCard(session, index),
+              {filterWeekGroups(teamWeekGroups).map((group, index) =>
+                renderWeekGroupCard(group, index),
               )}
             </div>
           ) : (

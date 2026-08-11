@@ -1081,8 +1081,12 @@ export const FormulaQuarterPlanningCard = forwardRef<
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <CheckCircle2 className="h-3.5 w-3.5" />
           {usesAnnualComponentRollup
-            ? "Quarter rates may vary. Decimal targets reconcile within 0.01 percentage points; exact ratio results may round to a configured whole-percent target."
-            : "Submission is allowed only when all four quarters reconcile as VALID."}
+            ? "Quarter rates may vary. The annual target is calculated from summed raw numerator and denominator components."
+            : approvedFormula.temporalRollupMethod === "AVERAGE"
+              ? "Quarter rates may vary. Their arithmetic average must match the cascaded annual target."
+              : approvedFormula.temporalRollupMethod === "SUM"
+                ? "Quarter percentage-point contributions may vary. Their sum must match the cascaded annual target."
+                : "Submission is allowed only when all four quarters reconcile as VALID."}
         </p>
         <Button
           type="button"

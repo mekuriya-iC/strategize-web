@@ -59,8 +59,8 @@ type TaskType =
   | "UNLINKED";
 
 const TASK_TYPES = [
-  { value: "KPI_FULFILLED", label: "KPI Fulfilled" },
   { value: "KPI_UNMET", label: "KPI Unmet" },
+  { value: "KPI_FULFILLED", label: "KPI Fulfilled" },
   { value: "INITIATIVE_FULFILLED", label: "Initiative Fulfilled" },
   { value: "INITIATIVE_UNMET", label: "Initiative Unmet" },
   { value: "SELF_DEVELOPMENT", label: "Self Development" },
@@ -137,7 +137,7 @@ export function AddTaskDialog({
 
   const today = new Date();
 
-  const [taskType, setTaskType] = useState<TaskType>("KPI_FULFILLED");
+  const [taskType, setTaskType] = useState<TaskType>("KPI_UNMET");
   const [task, setTask] = useState("");
   const [description, setDescription] = useState("");
   const [relatedTo, setRelatedTo] = useState("");
@@ -345,7 +345,7 @@ export function AddTaskDialog({
 
   const resetForm = () => {
     const newToday = new Date();
-    setTaskType("KPI_FULFILLED");
+    setTaskType("KPI_UNMET");
     setTask("");
     setDescription("");
     setRelatedTo("");

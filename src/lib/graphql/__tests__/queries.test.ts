@@ -96,6 +96,7 @@ describe('KPI Queries', () => {
     expect(printed).toContain('name');
     expect(printed).toContain('kpiType');
     expect(printed).toContain('measurementUnit');
+    expect(printed).toContain('quarterlyAggregationMethod');
     expect(printed).toContain('targetValue');
     expect(printed).toContain('frequency');
     expect(printed).toContain('status');
@@ -117,6 +118,7 @@ describe('KPI Queries', () => {
     expect(printed).toContain('objective');
     expect(printed).toContain('createdBy');
     expect(printed).toContain('parent');
+    expect(printed).toContain('quarterlyAggregationMethod');
     expect(printed).toContain('targets');
   });
 
@@ -130,6 +132,7 @@ describe('KPI Queries', () => {
     expect(printed).toContain('kpiMode');
     expect(printed).toContain('managerRetentionPercent');
     expect(printed).toContain('calculationType');
+    expect(printed).toContain('quarterlyAggregationMethod');
     expect(printed).toContain('meta');
   });
 

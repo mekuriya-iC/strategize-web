@@ -42,7 +42,10 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
     const childQuarters = !corporate ? childQuartersByParentId?.[kpi.kpiId] || {} : undefined;
     const hasChildQuarters = childQuarters && Object.keys(childQuarters).length > 0;
 
-    const isPercent = kpi.unitType === "PERCENT";
+    const isRateUnit = kpi.unitType === "PERCENT" || kpi.unitType === "RATIO";
+    const shouldAverageQuarters = kpi.quarterlyAggregationMethod
+        ? kpi.quarterlyAggregationMethod === "AVERAGE"
+        : isRateUnit;
     const { years, totals } = hasChildQuarters
         ? (() => {
             const yrs = Object.keys(childQuarters).sort(
@@ -54,7 +57,7 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                 const sum = (q.q1 || 0) + (q.q2 || 0) + (q.q3 || 0) + (q.q4 || 0);
                 const count = [q.q1, q.q2, q.q3, q.q4].filter(v => v !== undefined).length;
 
-                if (isPercent && count > 0) {
+                if (shouldAverageQuarters && count > 0) {
                     t[y] = sum / count;
                 } else {
                     t[y] = sum;
@@ -104,13 +107,16 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                             });
 
                             if (childValues.length > 0) {
-                                const result = isPercent
+                                if (kpi.calculationType === "RATIO_FORMULA") return null;
+                                const averageChildren =
+                                    kpi.aggregationMethod === "SIMPLE_AVERAGE";
+                                const result = averageChildren
                                     ? childValues.reduce((a, b) => a + b, 0) / childValues.length
                                     : childValues.reduce((a, b) => a + b, 0);
 
                                 return (
                                     <div className="text-[10px] text-gray-400">
-                                        {isPercent ? "Avg" : "Sum"}: <span className="font-medium text-blue-600">
+                                        {averageChildren ? "Avg" : "Sum"}: <span className="font-medium text-blue-600">
                                             {formatKpiValue(result, kpi.unitType || "NUMBER", { showUnit: false })}
                                         </span>
                                     </div>
@@ -129,7 +135,7 @@ const KPITargetsCell: React.FC<KPITargetsCellProps> = ({
                                         <div key={qKey} className="flex justify-between items-center gap-1.5 min-w-[35px]">
                                             <span className="text-[9px] text-gray-400 font-bold uppercase">{qKey}</span>
                                             <span className="text-[10px] font-medium text-gray-600">
-                                                {formatKpiValue(val, kpi.unitType || "NUMBER", { showUnit: false, decimals: isPercent ? 1 : 0 })}
+                                                {formatKpiValue(val, kpi.unitType || "NUMBER", { showUnit: false, decimals: isRateUnit ? 1 : 0 })}
                                             </span>
                                         </div>
                                     );

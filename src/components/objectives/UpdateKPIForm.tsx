@@ -147,13 +147,22 @@ export default function UpdateKPIForm({
     [handleSubmit],
   );
 
+  const canChooseQuarterlyAggregation =
+    !kpi?.calculationType || kpi.calculationType === "MANUAL_VALUE";
+
   // Wrapper function to match KPIInformationCard's expected signature
   // Must be declared before early returns to satisfy Rules of Hooks
   const handleInputChange = useCallback(
     (field: string, value: string) => {
       updateField(field as keyof typeof formData, value);
+      if (field === "unitType" && canChooseQuarterlyAggregation) {
+        updateField(
+          "quarterlyAggregationMethod",
+          value === "PERCENT" || value === "RATIO" ? "AVERAGE" : "SUM",
+        );
+      }
     },
-    [updateField],
+    [updateField, canChooseQuarterlyAggregation],
   );
 
   const handleBasisSourceChange = (source: KpiCalculationBasisSource) => {
@@ -257,6 +266,8 @@ export default function UpdateKPIForm({
     baseline: formData.baseline,
     weight: formData.weight,
     weightType: formData.weightType,
+    unitType: formData.unitType,
+    quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
   };
 
   return (
@@ -303,6 +314,10 @@ export default function UpdateKPIForm({
               onParentIdChange={() => {}} // Disabled in update mode
               objective={kpi.objective || undefined}
               mode="edit"
+              quarterlyAggregationLocked={
+                Boolean(kpi.calculationType) &&
+                kpi.calculationType !== "MANUAL_VALUE"
+              }
             />
           </KPIFormSection>
 
@@ -490,9 +505,8 @@ export default function UpdateKPIForm({
                 </p>
               </div>
 
-              {/* Quarterly Breakdown Component - Hidden for Formula KPIs */}
-              {!isFormulaKpi && (
-                <div className="mt-8 border-t pt-8">
+              {/* Quarterly target schedule for manual and formula KPIs */}
+              <div className="mt-8 border-t pt-8">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium text-gray-900">
                       Quarterly Planning
@@ -516,12 +530,11 @@ export default function UpdateKPIForm({
                     mode="edit"
                   />
                   <p className="text-xs text-gray-500 mt-4">
-                    Break down the Target Value into 4 quarters. Manual percentage
-                    KPIs use an average; formula KPIs are reconciled using their
-                    configured temporal rollup below.
+                    Break down the Target Value into four quarters using the selected
+                    quarterly calculation. Formula KPIs are also reconciled against
+                    their exact configured inputs below.
                   </p>
                 </div>
-              )}
 
               {isFormulaKpi && (
                 <div className="mt-8 border-t pt-8">

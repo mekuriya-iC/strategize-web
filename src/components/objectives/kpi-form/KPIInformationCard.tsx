@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type {
-  KpiWeightType,
+  KpiQuarterlyAggregationMethod,
   Objective as GraphQLObjective,
 } from "@/types/graphql";
 import type { KPIFormData } from "@/hooks/objectives/useKPIFormState";
@@ -30,6 +30,7 @@ interface KPIInformationCardProps {
   onParentIdChange: (value: string) => void;
   mode?: "create" | "edit";
   hideParentSelector?: boolean;
+  quarterlyAggregationLocked?: boolean;
 }
 
 export function KPIInformationCard({
@@ -41,8 +42,8 @@ export function KPIInformationCard({
   kpiId,
   onInputChange,
   onParentIdChange,
-  mode = "create",
   hideParentSelector = false,
+  quarterlyAggregationLocked = false,
 }: KPIInformationCardProps) {
   const unitPlaceholder = (() => {
     switch (formData.unitType) {
@@ -179,7 +180,7 @@ export function KPIInformationCard({
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Note: This unit type applies to baseline, weight, and targets
+              Note: This unit type applies to baseline and targets; weight remains a percentage
             </p>
             {parentId && (
               <p className="text-xs text-blue-600 mt-1">
@@ -192,6 +193,41 @@ export function KPIInformationCard({
               </p>
             )}
           </div>
+
+          {(formData.unitType === "PERCENT" ||
+            formData.unitType === "RATIO") && (
+            <div>
+              <Label htmlFor="quarterly-aggregation-method">
+                Quarterly target calculation
+              </Label>
+              <Select
+                value={formData.quarterlyAggregationMethod || "AVERAGE"}
+                onValueChange={(value: KpiQuarterlyAggregationMethod) =>
+                  onInputChange("quarterlyAggregationMethod", value)
+                }
+                disabled={!canEditStructure || quarterlyAggregationLocked}
+              >
+                <SelectTrigger id="quarterly-aggregation-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AVERAGE">
+                    Average quarterly rates
+                  </SelectItem>
+                  <SelectItem value="SUM">
+                    Sum quarterly percentage points
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                {quarterlyAggregationLocked
+                  ? "Controlled by the approved KPI formula. Create and approve a new formula version to change it."
+                  : formData.quarterlyAggregationMethod === "SUM"
+                    ? "Use for additive change targets, such as 2% + 3% + 4% + 3% = 12%."
+                    : "Use for rates where different quarterly results average to the annual target."}
+              </p>
+            </div>
+          )}
 
           {/* Weight */}
           <div>

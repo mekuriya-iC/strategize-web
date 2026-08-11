@@ -40,6 +40,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import {
+  getCheckinoutSessionWeekKey,
+  groupCheckinoutSessionsByWeek,
+  type CheckinoutSessionLike,
+} from "@/utils/checkin-session-groups";
 
 // Helper function to map backend task to frontend format
 const mapTaskToFrontend = (task: any) => ({
@@ -94,9 +99,14 @@ function EmployeeTaskCard({
   });
 
   const tasks = useMemo(() => {
-    if (!tasksData?.checkinoutTasks?.items) return [];
-    return tasksData.checkinoutTasks.items.map(mapTaskToFrontend);
-  }, [tasksData]);
+    const items = tasksData?.checkinoutTasks?.items || [];
+    return items
+      .filter(
+        (task: any) =>
+          task.session?.checkinoutSessionId === session.checkinoutSessionId,
+      )
+      .map(mapTaskToFrontend);
+  }, [tasksData, session.checkinoutSessionId]);
 
   useEffect(() => {
     if (!onTasksSummary || !session?.checkinoutSessionId) return;
@@ -398,8 +408,14 @@ export default function CheckInPage() {
     skip: !currentUser?.employeeId,
   });
 
-  const employeeSessions = employeeData?.checkinoutSessions?.items || [];
-  const supervisedSessions = supervisorData?.checkinoutSessions?.items || [];
+  const employeeSessions = useMemo<CheckinoutSessionLike[]>(
+    () => employeeData?.checkinoutSessions?.items || [],
+    [employeeData],
+  );
+  const supervisedSessions = useMemo<CheckinoutSessionLike[]>(
+    () => supervisorData?.checkinoutSessions?.items || [],
+    [supervisorData],
+  );
 
   // Combine all relevant sessions for the list view
   const allSessions = useMemo(() => {
@@ -465,16 +481,21 @@ export default function CheckInPage() {
       return myOwnSession ? [myOwnSession] : [];
     }
 
-    // If supervisor, show all supervised sessions for this week
-    const weekStart = normalizeDate(currentSession.weekStartDate);
-
-    // Get all sessions supervised by the current user for this week
-    const supervisedThisWeek = supervisedSessions.filter(
-      (s: any) => normalizeDate(s.weekStartDate) === weekStart,
+    // If supervisor, show all participant sessions in this exact week group.
+    const selectedWeekKey = getCheckinoutSessionWeekKey(currentSession);
+    return supervisedSessions.filter(
+      (session: any) =>
+        getCheckinoutSessionWeekKey(session) === selectedWeekKey,
     );
-
-    return supervisedThisWeek;
   }, [supervisedSessions, employeeSessions, currentSession, currentUser]);
+
+  const selectableSessionGroups = useMemo(
+    () =>
+      groupCheckinoutSessionsByWeek(
+        isManagerMode ? supervisedSessions : employeeSessions,
+      ),
+    [employeeSessions, isManagerMode, supervisedSessions],
+  );
 
   useEffect(() => {
     const activeSessionIds = new Set(
@@ -837,24 +858,29 @@ export default function CheckInPage() {
             Back to Sessions
           </Button>
 
-          {allSessions.length > 1 && (
+          {selectableSessionGroups.length > 1 && (
             <Select
               value={currentSession?.checkinoutSessionId || ""}
               onValueChange={(value) => setSelectedSessionId(value)}
             >
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Select session..." />
+              <SelectTrigger className="w-72">
+                <SelectValue placeholder="Select week..." />
               </SelectTrigger>
               <SelectContent>
-                {allSessions.map((session: any) => (
-                  <SelectItem
-                    key={session.checkinoutSessionId}
-                    value={session.checkinoutSessionId}
-                  >
-                    {session.employee?.fullName} - Week of{" "}
-                    {new Date(session.weekStartDate).toLocaleDateString()}
-                  </SelectItem>
-                ))}
+                {selectableSessionGroups.map((group) => {
+                  const session = group.representativeSession;
+                  return (
+                    <SelectItem
+                      key={group.key}
+                      value={session.checkinoutSessionId}
+                    >
+                      {session.title || "Week of"}{" "}
+                      {new Date(session.weekStartDate).toLocaleDateString()}
+                      {isManagerMode &&
+                        ` · ${group.participantSessions.length} people`}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           )}

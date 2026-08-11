@@ -86,10 +86,11 @@ export const getAssignedTarget = (
 
     if (quarterlyTargets.length > 0) {
       const sum = quarterlyTargets.reduce((acc, t) => acc + t.target, 0);
-      // PERCENT and RATIO: average across quarters, others: sum
-      return kpi.unitType === "PERCENT" || kpi.unitType === "RATIO" 
-        ? sum / quarterlyTargets.length 
-        : sum;
+      const shouldAverage =
+        kpi.quarterlyAggregationMethod === "AVERAGE" ||
+        (!kpi.quarterlyAggregationMethod &&
+          (kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"));
+      return shouldAverage ? sum / quarterlyTargets.length : sum;
     }
   }
 
@@ -110,8 +111,10 @@ export const validateQuarterlyBreakdown = (
   let assignedTarget = getAssignedTarget(year, kpi, strategicTargetsById, yearlyQuarters);
   const currentSum = calculateQuarterlySum(year, yearlyQuarters);
   const unitLabel = kpi ? getDetailedUnitLabel(kpi) : (weightType === "PERCENT" ? "%" : "units");
-  const isPercent = kpi?.unitType 
-    ? (kpi.unitType === "PERCENT" || kpi.unitType === "RATIO") 
+  const shouldAverage = kpi
+    ? kpi.quarterlyAggregationMethod === "AVERAGE" ||
+      (!kpi.quarterlyAggregationMethod &&
+        (kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"))
     : weightType === "PERCENT";
 
   // If no assigned target found from direct mapping, fallback to remaining allocation
@@ -131,12 +134,12 @@ export const validateQuarterlyBreakdown = (
   }
   //here is tollerance 0.01
   const TOLERANCE = 0.001;
-  const currentVal = isPercent ? (currentSum / 4) : currentSum;
+  const currentVal = shouldAverage ? currentSum / 4 : currentSum;
 
   if (currentVal < assignedTarget - TOLERANCE) {
     return {
       isValid: false,
-      message: `${isPercent ? "Average" : "Sum"} (${roundTarget(currentVal)} ${unitLabel}) is below Target (${roundTarget(assignedTarget)} ${unitLabel})`,
+      message: `${shouldAverage ? "Average" : "Sum"} (${roundTarget(currentVal)} ${unitLabel}) is below Target (${roundTarget(assignedTarget)} ${unitLabel})`,
       assignedTarget,
       currentSum: currentVal,
       unitLabel,
@@ -147,7 +150,7 @@ export const validateQuarterlyBreakdown = (
   if (currentVal > assignedTarget + TOLERANCE) {
     return {
       isValid: false,
-      message: `${isPercent ? "Average" : "Sum"} (${roundTarget(currentVal)} ${unitLabel}) exceeds Target (${roundTarget(assignedTarget)} ${unitLabel})`,
+      message: `${shouldAverage ? "Average" : "Sum"} (${roundTarget(currentVal)} ${unitLabel}) exceeds Target (${roundTarget(assignedTarget)} ${unitLabel})`,
       assignedTarget,
       currentSum: currentVal,
       unitLabel,

@@ -13,8 +13,8 @@ import { useObjectives } from "@/hooks/objectives/useObjectives";
 import { useKPIs } from "@/hooks/objectives/useKPIs";
 import { toast } from "sonner";
 import { CheckCircle, XCircle } from "lucide-react";
-import type { Kpi } from "@/types/graphql";
 import type { SubmissionListMode } from "@/hooks/submissions/types";
+import { getYearlyTotals } from "@/utils/strategic/kpi-math";
 import {
   Select,
   SelectContent,
@@ -125,54 +125,31 @@ export default function SubmissionApprovalsTable({
   // Fetch all KPIs to resolve targets in approvals view
   const { kpis: allKpis } = useKPIs({ page: 1, limit: 1000 });
 
-  // Build corporate target map for each child KPI id
+  // Build parent targets from explicit KPI parent links. Array position is not
+  // reliable for cascaded or support KPIs.
   const strategicTargetsById = useMemo(() => {
     try {
       const byChildId: Record<string, Record<string, number>> = {};
-
-      // Group KPIs by objective
-      const kpisByObjective: Record<string, Kpi[]> = {};
-      (allKpis || []).forEach((k) => {
-        const oid = k.objective?.objectiveId || "";
-        if (!oid) return;
-        if (!kpisByObjective[oid]) kpisByObjective[oid] = [] as Kpi[];
-        kpisByObjective[oid].push(k);
-      });
-
-      // For each child objective that has a parent, map child->parent yearly targets by index
-      (allObjectivesLookup || []).forEach(
-        (child: {
-          objectiveId: string;
-          parent?: { objectiveId: string } | null;
-        }) => {
-          const parentId = child?.parent?.objectiveId;
-          if (!parentId) return;
-          const childKpis = kpisByObjective[child.objectiveId] || [];
-          const parentKpis = kpisByObjective[parentId] || [];
-
-          childKpis.forEach((ck, idx) => {
-            const pk = parentKpis[idx];
-            if (!pk) return;
-            const map: Record<string, number> = {};
-            (pk.targets || []).forEach((t) => {
-              const tl = t.timeline as string;
-              if (tl.includes("-Q")) {
-                const year = tl.split("-")[0];
-                map[year] = (map[year] || 0) + Number(t.target || 0);
-              } else {
-                map[tl] = Number(t.target || 0);
-              }
-            });
-            byChildId[ck.kpiId] = map;
-          });
-        },
+      const kpisById = new Map(
+        (allKpis || []).map((kpi) => [kpi.kpiId, kpi] as const),
       );
+
+      for (const childKpi of allKpis || []) {
+        const parentKpiId = childKpi.parent?.kpiId;
+        if (!parentKpiId) continue;
+        const parentKpi = kpisById.get(parentKpiId);
+        if (!parentKpi) continue;
+        byChildId[childKpi.kpiId] = getYearlyTotals(
+          parentKpi.targets || [],
+          parentKpi,
+        ).totals;
+      }
 
       return byChildId;
     } catch {
       return {} as Record<string, Record<string, number>>;
     }
-  }, [allObjectivesLookup, allKpis]);
+  }, [allKpis]);
 
   // Submission approval mutations
   const {

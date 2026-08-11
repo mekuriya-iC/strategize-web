@@ -19,6 +19,7 @@ import type {
   KpiCalculationBasisSource,
   KpiActualBasisSource,
   KpiZeroDenominatorPolicy,
+  KpiQuarterlyAggregationMethod,
 } from "@/types/graphql";
 import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
 import {
@@ -35,6 +36,7 @@ export interface CreateKPIFormData {
   weightType: KpiWeightType;
   status: KpiStatus;
   unitType: KpiUnitType;
+  quarterlyAggregationMethod: KpiQuarterlyAggregationMethod;
   kpiMode?: string;
   managerRetentionPercent?: string;
   aggregationMethod: KpiAggregationMethod;
@@ -107,6 +109,7 @@ export function useCreateKPIForm({
     weightType: "PERCENT",
     status: "NOT_SUBMITTED",
     unitType: "NUMBER",
+    quarterlyAggregationMethod: "SUM",
     kpiMode: isSupport ? "DIRECT" : "AGGREGATED",
     managerRetentionPercent: "30",
     aggregationMethod: "SUM",
@@ -192,18 +195,12 @@ export function useCreateKPIForm({
         const sum = q1 + q2 + q3 + q4;
 
         const TOLERANCE = 0.01;
-        const isPercent =
-          formData.unitType === "PERCENT" || formData.unitType === "RATIO";
-        const plannedVal = isPercent ? sum / 4 : sum;
-        if (
-          isPercent
-            ? values.some((value) => Math.abs(value - annualValue) > TOLERANCE)
-            : Math.abs(plannedVal - annualValue) > TOLERANCE
-        ) {
+        const shouldAverage =
+          formData.quarterlyAggregationMethod === "AVERAGE";
+        const plannedVal = shouldAverage ? sum / values.length : sum;
+        if (Math.abs(plannedVal - annualValue) > TOLERANCE) {
           throw new Error(
-            isPercent
-              ? "Every quarterly ratio/percentage target must equal the annual target"
-              : "Quarterly breakdown sum must equal the annual target",
+            `Quarterly ${shouldAverage ? "average" : "sum"} must equal the annual target`,
           );
         }
 
@@ -278,6 +275,7 @@ export function useCreateKPIForm({
           formData.baseline !== "" ? parseFloat(formData.baseline) : undefined,
         weight: parseFloat(formData.weight) || 0,
         unitType: formData.unitType,
+        quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
         strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
         frequency: "QUARTERLY", // Default to QUARTERLY
         measurementUnit: measurementUnitFor(formData.unitType),
@@ -336,6 +334,7 @@ export function useCreateKPIForm({
           baseline: input.baseline,
           weight: input.weight ?? 0,
           unitType: input.unitType,
+          quarterlyAggregationMethod: input.quarterlyAggregationMethod,
           frequency: input.frequency,
           measurementUnit: input.measurementUnit,
           targetValue: input.targetValue,

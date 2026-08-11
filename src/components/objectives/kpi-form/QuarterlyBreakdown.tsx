@@ -45,6 +45,12 @@ export function QuarterlyBreakdown({
   getRemainingAllocation,
   weightType,
 }: QuarterlyBreakdownProps) {
+  const shouldAverage = kpi
+    ? kpi.quarterlyAggregationMethod === "AVERAGE" ||
+      (!kpi.quarterlyAggregationMethod &&
+        (kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"))
+    : weightType === "PERCENT" || weightType === "RATIO";
+
   if (Object.keys(yearlyQuarters).length === 0) {
     return (
       <div className="text-center py-8 text-gray-500 border rounded-lg border-dashed">
@@ -68,9 +74,8 @@ export function QuarterlyBreakdown({
       <div className="bg-blue-50 p-4 rounded-lg">
         <h4 className="font-medium text-blue-900 mb-2">Quarterly Breakdown</h4>
         <p className="text-sm text-blue-700">
-          Break down your assigned targets into quarterly values. For NUMBER
-          KPIs the quarterly sum must match the assigned target. For PERCENT
-          KPIs the quarterly average must match the assigned target.
+          Break down your assigned target into quarterly values. The quarterly {" "}
+          {shouldAverage ? "average" : "sum"} must match the annual target.
         </p>
       </div>
 
@@ -220,8 +225,7 @@ export function QuarterlyBreakdown({
             {isFormulaKpi && (
               <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-700">
                 Formula KPI quarter targets are validated against their exact
-                ratio or weighted component inputs below, not by a simple
-                quarterly average.
+                inputs and the approved formula&apos;s configured annual rollup.
               </div>
             )}
 

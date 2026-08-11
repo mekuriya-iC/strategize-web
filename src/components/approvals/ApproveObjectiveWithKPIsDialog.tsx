@@ -195,9 +195,12 @@ export default function ApproveObjectiveWithKPIsDialog({
                       <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                         <span>Weight: {kpi.weight ?? "N/A"}%</span>
                         <span>
-                          Target: {kpi.targetValue?.toLocaleString() || "N/A"}
+                          Target:{" "}
+                          {kpi.targetValue == null
+                            ? "N/A"
+                            : Number(kpi.targetValue).toLocaleString()}
                         </span>
-                        <span>Baseline: {kpi.baseline || "N/A"}</span>
+                        <span>Baseline: {kpi.baseline ?? "N/A"}</span>
                         <Badge
                           className={`text-xs ${
                             kpi.status === "PENDING"

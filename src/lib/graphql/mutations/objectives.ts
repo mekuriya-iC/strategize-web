@@ -173,6 +173,7 @@ export const ASSIGN_OBJECTIVE = gql`
         targetValue
         assignedTargetValue
         unitType
+        quarterlyAggregationMethod
         measurementUnit
         calculationBasisSource
         actualBasisSource

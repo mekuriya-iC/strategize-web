@@ -15,6 +15,19 @@ describe("resolveAnnualKpiTarget", () => {
     ).toBe(0.3333333333333333);
   });
 
+  it("sums quarterly percentage points when explicitly configured", () => {
+    expect(
+      resolveAnnualKpiTarget({
+        unitType: "PERCENT",
+        quarterlyAggregationMethod: "SUM",
+        targets: [2, 3, 4, 3].map((target, index) => ({
+          timeline: `2026-Q${index + 1}`,
+          target,
+        })),
+      }),
+    ).toBe(12);
+  });
+
   it("averages quarterly ratio targets without rounding to two decimals", () => {
     expect(
       resolveAnnualKpiTarget({
@@ -46,9 +59,27 @@ describe("buildAssignedQuarterTargets", () => {
     expect(result.reduce((sum, target) => sum + target.target, 0)).toBe(50);
   });
 
-  it("repeats the annual target in every quarter for percentage KPIs", () => {
+  it("proportionally allocates additive percentage points across quarters", () => {
     const result = buildAssignedQuarterTargets(
-      { unitType: "PERCENT", targets },
+      {
+        unitType: "PERCENT",
+        quarterlyAggregationMethod: "SUM",
+        targets,
+      },
+      12,
+    );
+
+    expect(result.map((target) => target.target)).toEqual([1.2, 2.4, 3.6, 4.8]);
+    expect(result.reduce((sum, target) => sum + target.target, 0)).toBe(12);
+  });
+
+  it("repeats the annual target in every quarter for average percentage KPIs", () => {
+    const result = buildAssignedQuarterTargets(
+      {
+        unitType: "PERCENT",
+        quarterlyAggregationMethod: "AVERAGE",
+        targets,
+      },
       50,
     );
 

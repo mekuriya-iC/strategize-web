@@ -17,6 +17,7 @@ import type {
   KpiCalculationBasisSource,
   KpiActualBasisSource,
   KpiZeroDenominatorPolicy,
+  KpiQuarterlyAggregationMethod,
 } from "@/types/graphql";
 import {
   getCompatibleAggregationMethod,
@@ -44,6 +45,7 @@ export interface UpdateKPIFormData {
   weightType: KpiWeightType;
   status?: KpiStatus;
   unitType?: KpiUnitType;
+  quarterlyAggregationMethod: KpiQuarterlyAggregationMethod;
   kpiMode?: string;
   managerRetentionPercent?: string;
   aggregationMethod: KpiAggregationMethod;
@@ -103,6 +105,7 @@ export function useUpdateKPIState({
     weight: "",
     weightType: "PERCENT" as KpiWeightType,
     unitType: "NUMBER" as KpiUnitType,
+    quarterlyAggregationMethod: "SUM",
     kpiMode: "AGGREGATED",
     managerRetentionPercent: "30",
     aggregationMethod: "SUM",
@@ -178,6 +181,11 @@ export function useUpdateKPIState({
         weightType: prev.weightType || ("PERCENT" as KpiWeightType),
         status,
         unitType: resolvedUnitType,
+        quarterlyAggregationMethod:
+          kpi.quarterlyAggregationMethod ||
+          (resolvedUnitType === "PERCENT" || resolvedUnitType === "RATIO"
+            ? "AVERAGE"
+            : "SUM"),
         kpiMode: (kpi as any).kpiMode || "AGGREGATED",
         managerRetentionPercent:
           (kpi as any).managerRetentionPercent?.toString() || "30",
@@ -247,10 +255,12 @@ export function useUpdateKPIState({
                 (acc, t) => acc + t.target,
                 0,
               );
-              const derived =
-                kpi.unitType === "PERCENT" || kpi.unitType === "RATIO"
-                  ? sum / quarterlyTargets.length
-                  : sum;
+              const shouldAverage = kpi.quarterlyAggregationMethod
+                ? kpi.quarterlyAggregationMethod === "AVERAGE"
+                : kpi.unitType === "PERCENT" || kpi.unitType === "RATIO";
+              const derived = shouldAverage
+                ? sum / quarterlyTargets.length
+                : sum;
               setAnnualTarget(derived.toString());
             } else {
               // Fallback: use first target value if it matches strategic period year prefix
@@ -433,9 +443,12 @@ export function useUpdateKPIState({
 
               // Initialize quarterly breakdown by distributing the assigned target
               const quarterlyValue =
-                resolvedUnitType === "PERCENT" || resolvedUnitType === "RATIO"
-                  ? assignedValue
-                  : (assignedValue / 4).toFixed(2);
+                (kpi.quarterlyAggregationMethod ??
+                  (resolvedUnitType === "PERCENT" || resolvedUnitType === "RATIO"
+                    ? "AVERAGE"
+                    : "SUM")) === "SUM"
+                  ? (assignedValue / 4).toFixed(2)
+                  : assignedValue;
 
               setYearlyQuarters((prev) => ({
                 ...prev,
@@ -470,8 +483,11 @@ export function useUpdateKPIState({
 
                 // Initialize quarterly breakdown by distributing the annual target
                 const quarterlyValue =
-                  parentKpi.unitType === "PERCENT" ||
-                  parentKpi.unitType === "RATIO"
+                  (parentKpi.quarterlyAggregationMethod ??
+                    (parentKpi.unitType === "PERCENT" ||
+                    parentKpi.unitType === "RATIO"
+                      ? "AVERAGE"
+                      : "SUM")) === "AVERAGE"
                     ? parentAnnualTarget.target
                     : (parentAnnualTarget.target / 4).toFixed(2);
 
@@ -493,15 +509,15 @@ export function useUpdateKPIState({
                 );
 
                 if (parentQuarterlyTargets.length > 0) {
-                  // Calculate the average for PERCENT/RATIO or sum for NUMBER/CURRENCY/COUNT
-                  const isPercent =
-                    parentKpi.unitType === "PERCENT" ||
-                    parentKpi.unitType === "RATIO";
+                  const shouldAverage = parentKpi.quarterlyAggregationMethod
+                    ? parentKpi.quarterlyAggregationMethod === "AVERAGE"
+                    : parentKpi.unitType === "PERCENT" ||
+                      parentKpi.unitType === "RATIO";
                   const total = parentQuarterlyTargets.reduce(
                     (sum, t) => sum + t.target,
                     0,
                   );
-                  const derivedAnnual = isPercent
+                  const derivedAnnual = shouldAverage
                     ? total / parentQuarterlyTargets.length
                     : total;
 
@@ -631,10 +647,13 @@ export function useUpdateKPIState({
 
         if (parentQuarterlies.length > 0) {
           const sum = parentQuarterlies.reduce((acc, t) => acc + t.target, 0);
-          const result =
-            parentKpi.unitType === "PERCENT"
-              ? sum / parentQuarterlies.length
-              : sum;
+          const shouldAverage = parentKpi.quarterlyAggregationMethod
+            ? parentKpi.quarterlyAggregationMethod === "AVERAGE"
+            : parentKpi.unitType === "PERCENT" ||
+              parentKpi.unitType === "RATIO";
+          const result = shouldAverage
+            ? sum / parentQuarterlies.length
+            : sum;
           console.log("🎯 Fallback: Using parent quarterly sum/avg:", result);
           return result;
         }
@@ -702,11 +721,8 @@ export function useUpdateKPIState({
             : Number(annualTarget);
       const total = values.reduce((sum, value) => sum + value, 0);
       const averageBased =
-        formData.unitType === "PERCENT" || formData.unitType === "RATIO";
-      const plannedAnnual = averageBased ? total / 4 : total;
-      const rateTargetsRepeat = averageBased
-        ? values.every((value) => Math.abs(value - annualValue) <= 0.01)
-        : true;
+        formData.quarterlyAggregationMethod === "AVERAGE";
+      const plannedAnnual = averageBased ? total / values.length : total;
       const isFormulaKpi =
         kpi.calculationType === "RATIO_FORMULA" ||
         kpi.calculationType === "SCALAR_FORMULA" ||
@@ -714,15 +730,10 @@ export function useUpdateKPIState({
       if (
         !Number.isFinite(annualValue) ||
         annualValue <= 0 ||
-        (!isFormulaKpi &&
-          (averageBased
-            ? !rateTargetsRepeat
-            : Math.abs(plannedAnnual - annualValue) > 0.01))
+        (!isFormulaKpi && Math.abs(plannedAnnual - annualValue) > 0.01)
       ) {
         throw new Error(
-          averageBased
-            ? "Every quarterly ratio/percentage target must equal the annual target"
-            : "Quarterly sum must match the annual target",
+          `Quarterly ${averageBased ? "average" : "sum"} must match the annual target`,
         );
       }
     }
@@ -904,6 +915,7 @@ export function useUpdateKPIState({
           basisSource === "DIRECT_VALUE" ? formData.basisUnitType : null,
         // Workflow status is controlled by submission approval.
         unitType: effectiveUnitType,
+        quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
         // Only include targets if we have any
         ...(targets.length > 0 && { targets }),
       };
@@ -967,12 +979,28 @@ export function useUpdateKPIState({
       !isCorporate &&
       (formData.unitType === "PERCENT" || formData.unitType === "RATIO")
     ) {
+      const numericValue = Number(value);
+      const quarterValue =
+        formData.quarterlyAggregationMethod === "SUM" &&
+        Number.isFinite(numericValue)
+          ? String(numericValue / 4)
+          : value;
       setYearlyQuarters((prev) => ({
         ...prev,
-        [strategicTimeline]: { q1: value, q2: value, q3: value, q4: value },
+        [strategicTimeline]: {
+          q1: quarterValue,
+          q2: quarterValue,
+          q3: quarterValue,
+          q4: quarterValue,
+        },
       }));
     }
-  }, [strategicTimeline, isCorporate, formData.unitType]);
+  }, [
+    strategicTimeline,
+    isCorporate,
+    formData.unitType,
+    formData.quarterlyAggregationMethod,
+  ]);
 
   return {
     // State

@@ -1,5 +1,38 @@
 import { Kpi } from "@/types/graphql";
 
+export type QuarterTargetValues = {
+    q1?: number;
+    q2?: number;
+    q3?: number;
+    q4?: number;
+};
+
+const roundToTwoDecimals = (value: number) => Math.round(value * 100) / 100;
+
+const shouldAverageQuarterTargets = (kpi?: Partial<Kpi>) => {
+    if (kpi?.quarterlyAggregationMethod) {
+        return kpi.quarterlyAggregationMethod === "AVERAGE";
+    }
+    return kpi?.unitType === "PERCENT" || kpi?.unitType === "RATIO";
+};
+
+export const getQuarterTargetRollup = (
+    quarters: QuarterTargetValues,
+    kpi?: Partial<Kpi>,
+) => {
+    const values = [quarters.q1, quarters.q2, quarters.q3, quarters.q4].filter(
+        (value): value is number => value !== undefined && Number.isFinite(value),
+    );
+    if (values.length === 0) return null;
+
+    const sum = values.reduce((total, value) => total + value, 0);
+    const shouldAverage = shouldAverageQuarterTargets(kpi);
+    return {
+        label: shouldAverage ? "Average" : "Sum",
+        value: roundToTwoDecimals(shouldAverage ? sum / values.length : sum),
+    } as const;
+};
+
 /**
  * Aggregates targets into yearly totals.
  * Handles both explicit yearly targets and quarterly sums/averages.
@@ -9,7 +42,7 @@ export const getYearlyTotals = (targets: Kpi["targets"], kpi?: Partial<Kpi>) => 
     const quarterlySums: Record<string, number> = {};
     const quarterlyCounts: Record<string, number> = {};
     const yearsWithExplicitTotal: Set<string> = new Set();
-    const unitType = kpi?.unitType || "NUMBER";
+
 
     // First, find explicit yearly totals
     for (const t of targets) {
@@ -37,18 +70,19 @@ export const getYearlyTotals = (targets: Kpi["targets"], kpi?: Partial<Kpi>) => 
 
     // Merge the quarterly values into the main totals object
     for (const year in quarterlySums) {
-        if (!totals[year]) {
+        if (!(year in totals)) {
+            const shouldAverage = shouldAverageQuarterTargets(kpi);
             const total =
-                (unitType === "PERCENT" || unitType === "RATIO") && quarterlyCounts[year] > 0
+                shouldAverage && quarterlyCounts[year] > 0
                     ? quarterlySums[year] / quarterlyCounts[year]
                     : quarterlySums[year];
-            totals[year] = Math.round(total * 100) / 100;
+            totals[year] = roundToTwoDecimals(total);
         }
     }
 
     // Round explicit totals to 2 decimal places
     for (const year in totals) {
-        totals[year] = Math.round(totals[year] * 100) / 100;
+        totals[year] = roundToTwoDecimals(totals[year]);
     }
 
     const years = Object.keys(totals).sort((a, b) => {

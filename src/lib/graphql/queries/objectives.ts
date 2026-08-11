@@ -70,6 +70,7 @@ export const GET_OBJECTIVES = gql`
           baseline
           weight
           unitType
+          quarterlyAggregationMethod
           status
           targetValue
           calculationBasisSource
@@ -196,6 +197,7 @@ export const GET_OBJECTIVE = gql`
         name
         description
         unitType
+        quarterlyAggregationMethod
         baseline
         weight
         status

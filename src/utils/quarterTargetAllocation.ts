@@ -5,6 +5,7 @@ interface QuarterTarget {
 
 interface QuarterTargetSource {
   unitType?: string | null;
+  quarterlyAggregationMethod?: "AVERAGE" | "SUM" | null;
   targetValue?: number | null;
   targets?: QuarterTarget[] | null;
 }
@@ -34,11 +35,12 @@ export function resolveAnnualKpiTarget(sourceKpi: QuarterTargetSource): number {
     (sum, target) => sum + Number(target.target || 0),
     0,
   );
-  return ["PERCENT", "RATIO"].includes(
-    String(sourceKpi.unitType || "").toUpperCase(),
-  )
-    ? total / quarterTargets.length
-    : total;
+  const shouldAverage = sourceKpi.quarterlyAggregationMethod
+    ? sourceKpi.quarterlyAggregationMethod === "AVERAGE"
+    : ["PERCENT", "RATIO"].includes(
+        String(sourceKpi.unitType || "").toUpperCase(),
+      );
+  return shouldAverage ? total / quarterTargets.length : total;
 }
 
 export function buildAssignedQuarterTargets(
@@ -49,9 +51,11 @@ export function buildAssignedQuarterTargets(
   const quarterTargets = (sourceKpi.targets || []).filter((target) =>
     /-Q[1-4]$/i.test(target.timeline || ""),
   );
-  const isAverageBased = ["PERCENT", "RATIO"].includes(
-    String(sourceKpi.unitType || "").toUpperCase(),
-  );
+  const isAverageBased = sourceKpi.quarterlyAggregationMethod
+    ? sourceKpi.quarterlyAggregationMethod === "AVERAGE"
+    : ["PERCENT", "RATIO"].includes(
+        String(sourceKpi.unitType || "").toUpperCase(),
+      );
 
   if (isAverageBased) {
     const timeline =

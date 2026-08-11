@@ -96,6 +96,7 @@ function EmployeeTaskCard({
       page: 1,
     },
     skip: !session.checkinoutSessionId,
+    fetchPolicy: "network-only", // Force network request, bypass cache
   });
 
   const tasks = useMemo(() => {
@@ -587,6 +588,7 @@ export default function CheckInPage() {
       page: 1,
     },
     skip: !currentWeekData?.id,
+    fetchPolicy: "network-only", // Force network request, bypass cache
   });
 
   // Map tasks to frontend format

@@ -7,6 +7,7 @@ import { PencilIcon, TrashIcon, FileIcon, LockIcon } from "lucide-react";
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
+import { getTaskColors, getTaskCategory } from "@/utils/task-colors";
 
 interface Task {
   id: string;
@@ -63,6 +64,10 @@ export function CheckInTableRow({
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
     refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
   });
+
+  // Get color configuration for this task type
+  const taskColors = getTaskColors(task.taskType);
+  const taskCategory = getTaskCategory(task.taskType);
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
@@ -134,8 +139,8 @@ export function CheckInTableRow({
       className={`${
         !isEditable
           ? "bg-gray-50 dark:bg-gray-900/50 opacity-75"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-      } transition-colors`}
+          : `${taskColors.background} hover:brightness-95 dark:hover:brightness-110`
+      } transition-all border-l-4 ${taskColors.border}`}
     >
       {/* Major Task */}
       <td className="px-4 py-4">
@@ -149,18 +154,18 @@ export function CheckInTableRow({
 
       {/* Linked KPI/Initiative */}
       <td className="px-4 py-4">
-        {task.linkedKpiName || task.linkedInitiativeName ? (
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            {task.linkedKpiName || task.linkedInitiativeName}
-          </span>
-        ) : (
-          <Badge
-            variant="outline"
-            className="bg-[#ECECFF] text-[#3838EC] border-[#3838EC]/20"
-          >
-            {TASK_TYPE_LABELS[task.taskType] || task.taskType}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${taskCategory.dotColor}`} />
+          {task.linkedKpiName || task.linkedInitiativeName ? (
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {task.linkedKpiName || task.linkedInitiativeName}
+            </span>
+          ) : (
+            <Badge variant="outline" className={taskColors.badge}>
+              {TASK_TYPE_LABELS[task.taskType] || task.taskType}
+            </Badge>
+          )}
+        </div>
       </td>
 
       {/* Objective */}

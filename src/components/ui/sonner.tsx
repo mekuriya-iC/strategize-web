@@ -17,14 +17,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
           border: "1px solid #e5e7eb",
           borderRadius: "30px",
           boxShadow:
-            "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-          padding: "16px",
+            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          padding: "20px 24px",
           fontSize: "14px",
           fontWeight: "500",
           color: "#374151",
           gap: "16px",
           display: "flex",
           alignItems: "center",
+          minWidth: "400px",
+          maxWidth: "600px",
         },
         className: "toast",
         descriptionClassName: "text-gray-500 text-sm mt-1",
@@ -56,7 +58,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           </div>
         ),
       }}
-      position="bottom-right"
+      position="top-center"
       {...props}
     />
   );

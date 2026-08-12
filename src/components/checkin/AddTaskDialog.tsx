@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/error-handling";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
@@ -231,9 +232,39 @@ export function AddTaskDialog({
     console.log("📋 [TASK CREATION] Session ID:", sessionId);
     console.log("📋 [TASK CREATION] Editing Task:", editingTask);
     
+    // Frontend validation
+    const QUALIFYING_VERBS = [
+      'prepare', 'submit', 'review', 'complete', 'deliver',
+      'meet', 'meeting', 'discuss', 'analyze', 'create',
+      'develop', 'implement', 'test', 'deploy', 'present',
+      'coordinate', 'organize', 'plan', 'research', 'document',
+      'approve', 'finalize', 'update', 'monitor', 'evaluate',
+      'conduct', 'schedule', 'send', 'follow-up', 'attend',
+      'draft', 'compile', 'process', 'verify', 'confirm',
+    ];
+    
     if (!task || !startDate || !endDate) {
       console.error("❌ [TASK CREATION] Validation failed: Missing required fields");
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate task title starts with action verb
+    const firstWord = task.trim().split(' ')[0].toLowerCase();
+    if (!QUALIFYING_VERBS.includes(firstWord)) {
+      console.error("❌ [TASK CREATION] Validation failed: Invalid action verb");
+      toast.error(
+        "Task must start with an action verb (e.g., Prepare, Submit, Meet, Review)"
+      );
+      return;
+    }
+
+    // Validate description is provided and meaningful
+    if (!description || description.trim().length < 10) {
+      console.error("❌ [TASK CREATION] Validation failed: Description too short or missing");
+      toast.error(
+        "Please provide a detailed description (minimum 10 characters)"
+      );
       return;
     }
 
@@ -313,7 +344,7 @@ export function AddTaskDialog({
         });
         console.log("✅ [TASK CREATION] Update mutation result:", result);
         console.log("✅ [TASK CREATION] Updated task data:", result.data?.updateCheckinoutTask);
-        toast.success("Task updated successfully");
+        showSuccessToast("Task updated successfully");
       } else {
         console.log("➕ [TASK CREATION] Creating new task for session:", sessionId);
         const result = await createTaskMutation({
@@ -327,7 +358,7 @@ export function AddTaskDialog({
         console.log("✅ [TASK CREATION] Create mutation result:", result);
         console.log("✅ [TASK CREATION] Created task data:", result.data?.createCheckinoutTask);
         console.log("🆔 [TASK CREATION] New task ID:", result.data?.createCheckinoutTask?.checkinoutTaskId);
-        toast.success("Task created successfully");
+        showSuccessToast("Task created successfully");
       }
 
       console.log("🔄 [TASK CREATION] Calling onSuccess callback to refetch...");
@@ -348,23 +379,9 @@ export function AddTaskDialog({
       console.log("✅ [TASK CREATION] Form reset completed");
     } catch (error: any) {
       console.error("❌ [TASK CREATION] Error during task operation:", error);
-      console.error("❌ [TASK CREATION] Error message:", error.message);
-      console.error("❌ [TASK CREATION] Error stack:", error.stack);
-      console.error("❌ [TASK CREATION] GraphQL errors:", error.graphQLErrors);
-      console.error("❌ [TASK CREATION] Network error:", error.networkError);
-
-      // Check if error is about date validation from backend
-      if (
-        error.message?.includes("end date") ||
-        error.message?.includes("session")
-      ) {
-        toast.error(error.message);
-      } else {
-        toast.error(
-          error.message ||
-            `Failed to ${editingTask ? "update" : "create"} task`,
-        );
-      }
+      
+      // Use the error handling utility to show user-friendly error
+      showErrorToast(error);
     }
   };
 
@@ -478,11 +495,14 @@ export function AddTaskDialog({
               </Label>
               <Input
                 id="task"
-                placeholder="Write major task..."
+                placeholder="e.g., Prepare quarterly report, Submit proposal, Meet with client..."
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
                 className="h-10 text-sm"
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                💡 Start with an action verb: Prepare, Submit, Meet, Review, Complete, etc.
+              </p>
 
               {/* Mid-Week Task Checkbox */}
               {!editingTask && (
@@ -508,14 +528,17 @@ export function AddTaskDialog({
             {/* Description */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description
+                Description <span className="text-red-500">*</span>
               </Label>
               <Textarea
-                placeholder="Write description..."
+                placeholder="Provide detailed description of what needs to be done (minimum 10 characters)..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="min-h-[100px] text-sm resize-none"
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {description.trim().length}/10 characters minimum
+              </p>
             </div>
 
             {/* Related To */}
@@ -646,7 +669,12 @@ export function AddTaskDialog({
                           setEndDateOpen(false);
                         }
                       }}
-                      disabled={(d) => d < startDate}
+                      disabled={(d) => {
+                        // Allow same day or future dates
+                        const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                        const checkDateOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                        return checkDateOnly < startDateOnly;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>

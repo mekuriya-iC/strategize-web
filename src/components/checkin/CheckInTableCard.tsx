@@ -16,6 +16,7 @@ import {
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
+import { getTaskColors, getTaskCategory, getTaskBorderStyle } from "@/utils/task-colors";
 
 interface Task {
   id: string;
@@ -73,6 +74,11 @@ export function CheckInTableCard({
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
     refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
   });
+
+  // Get color configuration for this task type
+  const taskColors = getTaskColors(task.taskType);
+  const taskCategory = getTaskCategory(task.taskType);
+  const borderStyle = getTaskBorderStyle(task.taskType);
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
@@ -141,11 +147,11 @@ export function CheckInTableCard({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg border ${
+      className={`rounded-lg border ${borderStyle} ${
         !isEditable
           ? "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 opacity-75"
-          : "border-gray-200 dark:border-gray-700"
-      } overflow-hidden`}
+          : `${taskColors.background} ${taskColors.border}`
+      } overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
     >
       {/* Card Header */}
       <div className="p-4">
@@ -155,6 +161,7 @@ export function CheckInTableCard({
               {!isEditable && (
                 <LockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
               )}
+              <div className={`w-2 h-2 rounded-full ${taskCategory.dotColor} flex-shrink-0`} />
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                 {task.task}
               </h3>
@@ -164,10 +171,7 @@ export function CheckInTableCard({
                 {task.linkedKpiName || task.linkedInitiativeName}
               </span>
             ) : (
-              <Badge
-                variant="outline"
-                className="bg-[#ECECFF] text-[#3838EC] border-[#3838EC]/20"
-              >
+              <Badge variant="outline" className={taskColors.badge}>
                 {TASK_TYPE_LABELS[task.taskType] || task.taskType}
               </Badge>
             )}

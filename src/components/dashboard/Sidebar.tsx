@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores";
 import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
+import { useFlaggedKpiCount } from "@/hooks/kpis/useFlaggedKpiCount";
 
 interface NavLink {
   label: string;
@@ -442,6 +443,28 @@ const navCategories: NavCategory[] = [
           </svg>
         ),
       },
+      {
+        label: "Flagged KPIs",
+        href: "/dashboard/flagged-kpis",
+        permission: "nav:dashboard",
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-current"
+          >
+            <path
+              d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15.5L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <circle cx="10" cy="10" r="2" fill="currentColor" />
+          </svg>
+        ),
+      },
     ],
   },
   {
@@ -797,10 +820,11 @@ export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const { can } = usePermissions();
   const user = useAuthStore((state) => state.user);
   const { count: pendingApprovalsCount } = usePendingApprovalsCount();
+  const { count: flaggedKpiCount } = useFlaggedKpiCount();
 
-  // Badge map: route → count (only "Approve Requests" for now)
   const badgeCounts: Record<string, number> = {
     "/dashboard/approvals": pendingApprovalsCount,
+    "/dashboard/flagged-kpis": flaggedKpiCount,
   };
 
   const isLinkActive = (href: string) => {

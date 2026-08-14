@@ -31,6 +31,7 @@ import {
   XIcon,
   SearchIcon,
   ClockIcon,
+  LinkIcon,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -160,6 +161,7 @@ export function AddTaskDialog({
   });
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentLink, setAttachmentLink] = useState("");
   const [remark, setRemark] = useState("");
   const [isMidWeekTask, setIsMidWeekTask] = useState(false);
   const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
@@ -204,6 +206,7 @@ export function AddTaskDialog({
 
       setCheckoutStatus(editingTask.checkoutStatus || "NOT_DONE");
       setRemark(editingTask.remark || "");
+      setAttachmentLink(editingTask.evidenceUrl || "");
     } else if (!open) {
       // Reset form when dialog closes
       resetForm();
@@ -225,6 +228,15 @@ export function AddTaskDialog({
     if (time.period === "AM" && hour === 12) hour = 0;
     dt.setHours(hour, parseInt(time.minute), 0, 0);
     return dt;
+  };
+
+  const isValidUrl = (urlString: string): boolean => {
+    try {
+      const url = new URL(urlString);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
   };
 
   const handleSubmit = async () => {
@@ -268,6 +280,20 @@ export function AddTaskDialog({
       return;
     }
 
+    // Validate remark is required when editing
+    if (editingTask && (!remark || remark.trim().length === 0)) {
+      console.error("❌ [TASK EDIT] Validation failed: Remark is required when editing");
+      toast.error("Remark is required when updating task status");
+      return;
+    }
+
+    // Validate attachment link format if provided
+    if (attachmentLink.trim() && !isValidUrl(attachmentLink.trim())) {
+      console.error("❌ [TASK CREATION] Validation failed: Invalid URL format");
+      toast.error("Please enter a valid URL (e.g., https://drive.google.com/...)");
+      return;
+    }
+
     if (!sessionId && !editingTask) {
       console.error("❌ [TASK CREATION] Validation failed: No active session");
       toast.error("No active session found");
@@ -295,10 +321,10 @@ export function AddTaskDialog({
       "SELF_DEVELOPMENT_UNMET",
     ].includes(taskType);
     if (checkoutStatus === "DONE" && isUnmetTask) {
-      if (!attachment || !remark.trim()) {
+      if ((!attachment && !attachmentLink.trim()) || !remark.trim()) {
         console.error("❌ [TASK CREATION] Validation failed: Unmet task marked as done without attachment/remark");
         toast.error(
-          "Attachment and remark are required when marking unmet tasks as done",
+          "Attachment/Link and remark are required when marking unmet tasks as done",
         );
         return;
       }
@@ -324,7 +350,7 @@ export function AddTaskDialog({
         taskStartDate: buildDateTime(startDate, startTime).toISOString(),
         taskEndDate: buildDateTime(endDate, endTime).toISOString(),
         taskStatus: checkoutStatus || "NOT_DONE",
-        evidenceUrl: attachment?.name || null,
+        evidenceUrl: attachmentLink.trim() || attachment?.name || null,
         challenges: remark.trim() || null,
         isMidWeekTask: isMidWeekTask,
       };
@@ -399,6 +425,7 @@ export function AddTaskDialog({
     setEndTime({ hour: "07", minute: "00", period: "AM" });
     setCheckoutStatus("");
     setAttachment(null);
+    setAttachmentLink("");
     setRemark("");
     setIsMidWeekTask(false);
   };
@@ -423,7 +450,10 @@ export function AddTaskDialog({
                 {TASK_TYPES.map((type) => (
                   <label
                     key={type.value}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className={cn(
+                      "flex items-center gap-2",
+                      editingTask ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    )}
                   >
                     <input
                       type="radio"
@@ -431,7 +461,8 @@ export function AddTaskDialog({
                       value={type.value}
                       checked={taskType === type.value}
                       onChange={(e) => setTaskType(e.target.value as TaskType)}
-                      className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                      disabled={!!editingTask}
+                      className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC] disabled:cursor-not-allowed"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
                       {type.label}
@@ -458,6 +489,7 @@ export function AddTaskDialog({
                     placeholder="Select Linked KPI"
                     searchable
                     searchPlaceholder="Search KPI..."
+                    disabled={!!editingTask}
                   />
                 </div>
               )}
@@ -480,6 +512,7 @@ export function AddTaskDialog({
                     placeholder="Select Linked Initiative"
                     searchable
                     searchPlaceholder="Search Initiative..."
+                    disabled={!!editingTask}
                   />
                 </div>
               )}
@@ -498,7 +531,11 @@ export function AddTaskDialog({
                 placeholder="e.g., Prepare quarterly report, Submit proposal, Meet with client..."
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
-                className="h-10 text-sm"
+                disabled={!!editingTask}
+                className={cn(
+                  "h-10 text-sm",
+                  editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                )}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 💡 Start with an action verb: Prepare, Submit, Meet, Review, Complete, etc.
@@ -534,7 +571,11 @@ export function AddTaskDialog({
                 placeholder="Provide detailed description of what needs to be done (minimum 10 characters)..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[100px] text-sm resize-none"
+                disabled={!!editingTask}
+                className={cn(
+                  "min-h-[100px] text-sm resize-none",
+                  editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                )}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {description.trim().length}/10 characters minimum
@@ -558,6 +599,7 @@ export function AddTaskDialog({
                 placeholder="Search a person..."
                 searchable
                 searchPlaceholder="Search employees..."
+                disabled={!!editingTask}
               />
             </div>
 
@@ -576,7 +618,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 h-10 justify-start text-sm font-normal"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "flex-1 h-10 justify-start text-sm font-normal",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="truncate">
@@ -610,7 +656,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-28 h-10 justify-start text-sm font-normal shrink-0"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "w-28 h-10 justify-start text-sm font-normal shrink-0",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <ClockIcon className="mr-1.5 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="tabular-nums text-xs">
@@ -647,7 +697,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 h-10 justify-start text-sm font-normal"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "flex-1 h-10 justify-start text-sm font-normal",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="truncate">
@@ -688,7 +742,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-28 h-10 justify-start text-sm font-normal shrink-0"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "w-28 h-10 justify-start text-sm font-normal shrink-0",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <ClockIcon className="mr-1.5 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="tabular-nums text-xs">
@@ -716,6 +774,8 @@ export function AddTaskDialog({
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Attachment (Optional)
               </Label>
+              
+              {/* File Upload */}
               <label
                 htmlFor="file-upload"
                 className={cn(
@@ -729,7 +789,10 @@ export function AddTaskDialog({
                   type="file"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files?.[0]) setAttachment(e.target.files[0]);
+                    if (e.target.files?.[0]) {
+                      setAttachment(e.target.files[0]);
+                      setAttachmentLink(""); // Clear link when file is selected
+                    }
                   }}
                 />
                 <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -739,6 +802,7 @@ export function AddTaskDialog({
                   Click or drag here to upload
                 </span>
               </label>
+              
               {attachment && (
                 <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
                   <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">
@@ -753,6 +817,46 @@ export function AddTaskDialog({
                   </button>
                 </div>
               )}
+              
+              {/* Or divider */}
+              <div className="flex items-center gap-2 py-2">
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                <span className="text-xs text-gray-400 dark:text-gray-500">OR</span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+              </div>
+              
+              {/* Link Input */}
+              <div className="space-y-1">
+                <div className="relative">
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="url"
+                    placeholder="Paste Google Drive link or any file URL..."
+                    value={attachmentLink}
+                    onChange={(e) => {
+                      setAttachmentLink(e.target.value);
+                      if (e.target.value.trim()) {
+                        setAttachment(null); // Clear file when link is entered
+                      }
+                    }}
+                    className={cn(
+                      "pl-9 h-10 text-sm",
+                      attachmentLink.trim() && !isValidUrl(attachmentLink.trim()) && 
+                      "border-red-300 focus:border-red-500 focus:ring-red-500"
+                    )}
+                  />
+                </div>
+                {attachmentLink.trim() && !isValidUrl(attachmentLink.trim()) && (
+                  <p className="text-xs text-red-500">
+                    ⚠️ Please enter a valid URL starting with http:// or https://
+                  </p>
+                )}
+                {(!attachmentLink.trim() || isValidUrl(attachmentLink.trim())) && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    💡 Paste a link to Google Drive, Dropbox, or any file sharing service
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Checkout Status - only shown while editing an existing task */}
@@ -779,14 +883,20 @@ export function AddTaskDialog({
             {/* Remark */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Remark (Optional)
+                Remark {editingTask && <span className="text-red-500">*</span>}
+                {!editingTask && <span className="text-gray-500">(Optional)</span>}
               </Label>
               <Textarea
-                placeholder="Write remark..."
+                placeholder={editingTask ? "Remark is required when editing task status..." : "Write remark..."}
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 className="min-h-[100px] text-sm resize-none"
               />
+              {editingTask && (
+                <p className="text-xs text-red-500">
+                  ⚠️ Remark is mandatory when updating task status
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -47,7 +47,7 @@ const authLink = setContext(async (_, { headers }) => {
 });
 
 // Error link - handles GraphQL and network errors
-const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+const errorLink = onError(({ graphQLErrors, networkError, operation, response }) => {
   if (graphQLErrors) {
     for (const err of graphQLErrors) {
       // Check for "not found" errors - these are expected when data is deleted
@@ -60,6 +60,16 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
           { operation: operation.operationName }
         );
         continue; // Skip further processing for not-found errors
+      }
+
+      // Skip logging errors if the mutation actually succeeded
+      // This happens when there's a refetch race condition
+      if (response?.data && operation.operationName?.toLowerCase().includes('create')) {
+        apolloLogger.debug(
+          `[GraphQL warning]: Operation succeeded but encountered validation on refetch: ${err.message}`,
+          { operation: operation.operationName }
+        );
+        continue;
       }
 
       const operationName = operation.operationName || "UnknownOperation";
@@ -79,6 +89,9 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
         handleSessionExpired("Your session has expired. Please log in again.");
         return;
       }
+
+      // Note: User-facing errors are now handled in the component's catch block
+      // We no longer show global toasts here to avoid duplicate error messages
     }
   }
 

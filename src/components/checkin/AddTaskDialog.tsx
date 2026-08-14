@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/error-handling";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
@@ -30,6 +31,7 @@ import {
   XIcon,
   SearchIcon,
   ClockIcon,
+  LinkIcon,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -159,6 +161,7 @@ export function AddTaskDialog({
   });
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentLink, setAttachmentLink] = useState("");
   const [remark, setRemark] = useState("");
   const [isMidWeekTask, setIsMidWeekTask] = useState(false);
   const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
@@ -203,6 +206,7 @@ export function AddTaskDialog({
 
       setCheckoutStatus(editingTask.checkoutStatus || "NOT_DONE");
       setRemark(editingTask.remark || "");
+      setAttachmentLink(editingTask.evidenceUrl || "");
     } else if (!open) {
       // Reset form when dialog closes
       resetForm();
@@ -226,14 +230,67 @@ export function AddTaskDialog({
     return dt;
   };
 
+  const isValidUrl = (urlString: string): boolean => {
+    try {
+      const url = new URL(urlString);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async () => {
     console.log("🚀 [TASK CREATION] Starting task submission...");
     console.log("📋 [TASK CREATION] Session ID:", sessionId);
     console.log("📋 [TASK CREATION] Editing Task:", editingTask);
     
+    // Frontend validation
+    const QUALIFYING_VERBS = [
+      'prepare', 'submit', 'review', 'complete', 'deliver',
+      'meet', 'meeting', 'discuss', 'analyze', 'create',
+      'develop', 'implement', 'test', 'deploy', 'present',
+      'coordinate', 'organize', 'plan', 'research', 'document',
+      'approve', 'finalize', 'update', 'monitor', 'evaluate',
+      'conduct', 'schedule', 'send', 'follow-up', 'attend',
+      'draft', 'compile', 'process', 'verify', 'confirm',
+    ];
+    
     if (!task || !startDate || !endDate) {
       console.error("❌ [TASK CREATION] Validation failed: Missing required fields");
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate task title starts with action verb
+    const firstWord = task.trim().split(' ')[0].toLowerCase();
+    if (!QUALIFYING_VERBS.includes(firstWord)) {
+      console.error("❌ [TASK CREATION] Validation failed: Invalid action verb");
+      toast.error(
+        "Task must start with an action verb (e.g., Prepare, Submit, Meet, Review)"
+      );
+      return;
+    }
+
+    // Validate description is provided and meaningful
+    if (!description || description.trim().length < 10) {
+      console.error("❌ [TASK CREATION] Validation failed: Description too short or missing");
+      toast.error(
+        "Please provide a detailed description (minimum 10 characters)"
+      );
+      return;
+    }
+
+    // Validate remark is required when editing
+    if (editingTask && (!remark || remark.trim().length === 0)) {
+      console.error("❌ [TASK EDIT] Validation failed: Remark is required when editing");
+      toast.error("Remark is required when updating task status");
+      return;
+    }
+
+    // Validate attachment link format if provided
+    if (attachmentLink.trim() && !isValidUrl(attachmentLink.trim())) {
+      console.error("❌ [TASK CREATION] Validation failed: Invalid URL format");
+      toast.error("Please enter a valid URL (e.g., https://drive.google.com/...)");
       return;
     }
 
@@ -264,10 +321,10 @@ export function AddTaskDialog({
       "SELF_DEVELOPMENT_UNMET",
     ].includes(taskType);
     if (checkoutStatus === "DONE" && isUnmetTask) {
-      if (!attachment || !remark.trim()) {
+      if ((!attachment && !attachmentLink.trim()) || !remark.trim()) {
         console.error("❌ [TASK CREATION] Validation failed: Unmet task marked as done without attachment/remark");
         toast.error(
-          "Attachment and remark are required when marking unmet tasks as done",
+          "Attachment/Link and remark are required when marking unmet tasks as done",
         );
         return;
       }
@@ -293,7 +350,7 @@ export function AddTaskDialog({
         taskStartDate: buildDateTime(startDate, startTime).toISOString(),
         taskEndDate: buildDateTime(endDate, endTime).toISOString(),
         taskStatus: checkoutStatus || "NOT_DONE",
-        evidenceUrl: attachment?.name || null,
+        evidenceUrl: attachmentLink.trim() || attachment?.name || null,
         challenges: remark.trim() || null,
         isMidWeekTask: isMidWeekTask,
       };
@@ -313,7 +370,7 @@ export function AddTaskDialog({
         });
         console.log("✅ [TASK CREATION] Update mutation result:", result);
         console.log("✅ [TASK CREATION] Updated task data:", result.data?.updateCheckinoutTask);
-        toast.success("Task updated successfully");
+        showSuccessToast("Task updated successfully");
       } else {
         console.log("➕ [TASK CREATION] Creating new task for session:", sessionId);
         const result = await createTaskMutation({
@@ -327,7 +384,7 @@ export function AddTaskDialog({
         console.log("✅ [TASK CREATION] Create mutation result:", result);
         console.log("✅ [TASK CREATION] Created task data:", result.data?.createCheckinoutTask);
         console.log("🆔 [TASK CREATION] New task ID:", result.data?.createCheckinoutTask?.checkinoutTaskId);
-        toast.success("Task created successfully");
+        showSuccessToast("Task created successfully");
       }
 
       console.log("🔄 [TASK CREATION] Calling onSuccess callback to refetch...");
@@ -348,23 +405,9 @@ export function AddTaskDialog({
       console.log("✅ [TASK CREATION] Form reset completed");
     } catch (error: any) {
       console.error("❌ [TASK CREATION] Error during task operation:", error);
-      console.error("❌ [TASK CREATION] Error message:", error.message);
-      console.error("❌ [TASK CREATION] Error stack:", error.stack);
-      console.error("❌ [TASK CREATION] GraphQL errors:", error.graphQLErrors);
-      console.error("❌ [TASK CREATION] Network error:", error.networkError);
-
-      // Check if error is about date validation from backend
-      if (
-        error.message?.includes("end date") ||
-        error.message?.includes("session")
-      ) {
-        toast.error(error.message);
-      } else {
-        toast.error(
-          error.message ||
-            `Failed to ${editingTask ? "update" : "create"} task`,
-        );
-      }
+      
+      // Use the error handling utility to show user-friendly error
+      showErrorToast(error);
     }
   };
 
@@ -382,6 +425,7 @@ export function AddTaskDialog({
     setEndTime({ hour: "07", minute: "00", period: "AM" });
     setCheckoutStatus("");
     setAttachment(null);
+    setAttachmentLink("");
     setRemark("");
     setIsMidWeekTask(false);
   };
@@ -406,7 +450,10 @@ export function AddTaskDialog({
                 {TASK_TYPES.map((type) => (
                   <label
                     key={type.value}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className={cn(
+                      "flex items-center gap-2",
+                      editingTask ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    )}
                   >
                     <input
                       type="radio"
@@ -414,7 +461,8 @@ export function AddTaskDialog({
                       value={type.value}
                       checked={taskType === type.value}
                       onChange={(e) => setTaskType(e.target.value as TaskType)}
-                      className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                      disabled={!!editingTask}
+                      className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC] disabled:cursor-not-allowed"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
                       {type.label}
@@ -441,6 +489,7 @@ export function AddTaskDialog({
                     placeholder="Select Linked KPI"
                     searchable
                     searchPlaceholder="Search KPI..."
+                    disabled={!!editingTask}
                   />
                 </div>
               )}
@@ -463,6 +512,7 @@ export function AddTaskDialog({
                     placeholder="Select Linked Initiative"
                     searchable
                     searchPlaceholder="Search Initiative..."
+                    disabled={!!editingTask}
                   />
                 </div>
               )}
@@ -478,11 +528,18 @@ export function AddTaskDialog({
               </Label>
               <Input
                 id="task"
-                placeholder="Write major task..."
+                placeholder="e.g., Prepare quarterly report, Submit proposal, Meet with client..."
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
-                className="h-10 text-sm"
+                disabled={!!editingTask}
+                className={cn(
+                  "h-10 text-sm",
+                  editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                )}
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                💡 Start with an action verb: Prepare, Submit, Meet, Review, Complete, etc.
+              </p>
 
               {/* Mid-Week Task Checkbox */}
               {!editingTask && (
@@ -508,14 +565,21 @@ export function AddTaskDialog({
             {/* Description */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description
+                Description <span className="text-red-500">*</span>
               </Label>
               <Textarea
-                placeholder="Write description..."
+                placeholder="Provide detailed description of what needs to be done (minimum 10 characters)..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[100px] text-sm resize-none"
+                disabled={!!editingTask}
+                className={cn(
+                  "min-h-[100px] text-sm resize-none",
+                  editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                )}
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {description.trim().length}/10 characters minimum
+              </p>
             </div>
 
             {/* Related To */}
@@ -535,6 +599,7 @@ export function AddTaskDialog({
                 placeholder="Search a person..."
                 searchable
                 searchPlaceholder="Search employees..."
+                disabled={!!editingTask}
               />
             </div>
 
@@ -553,7 +618,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 h-10 justify-start text-sm font-normal"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "flex-1 h-10 justify-start text-sm font-normal",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="truncate">
@@ -587,7 +656,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-28 h-10 justify-start text-sm font-normal shrink-0"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "w-28 h-10 justify-start text-sm font-normal shrink-0",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <ClockIcon className="mr-1.5 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="tabular-nums text-xs">
@@ -624,7 +697,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 h-10 justify-start text-sm font-normal"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "flex-1 h-10 justify-start text-sm font-normal",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="truncate">
@@ -646,7 +723,12 @@ export function AddTaskDialog({
                           setEndDateOpen(false);
                         }
                       }}
-                      disabled={(d) => d < startDate}
+                      disabled={(d) => {
+                        // Allow same day or future dates
+                        const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                        const checkDateOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                        return checkDateOnly < startDateOnly;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -660,7 +742,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-28 h-10 justify-start text-sm font-normal shrink-0"
+                      disabled={!!editingTask}
+                      className={cn(
+                        "w-28 h-10 justify-start text-sm font-normal shrink-0",
+                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                      )}
                     >
                       <ClockIcon className="mr-1.5 h-4 w-4 text-gray-500 shrink-0" />
                       <span className="tabular-nums text-xs">
@@ -688,6 +774,8 @@ export function AddTaskDialog({
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Attachment (Optional)
               </Label>
+              
+              {/* File Upload */}
               <label
                 htmlFor="file-upload"
                 className={cn(
@@ -701,7 +789,10 @@ export function AddTaskDialog({
                   type="file"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files?.[0]) setAttachment(e.target.files[0]);
+                    if (e.target.files?.[0]) {
+                      setAttachment(e.target.files[0]);
+                      setAttachmentLink(""); // Clear link when file is selected
+                    }
                   }}
                 />
                 <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -711,6 +802,7 @@ export function AddTaskDialog({
                   Click or drag here to upload
                 </span>
               </label>
+              
               {attachment && (
                 <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
                   <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">
@@ -725,6 +817,46 @@ export function AddTaskDialog({
                   </button>
                 </div>
               )}
+              
+              {/* Or divider */}
+              <div className="flex items-center gap-2 py-2">
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                <span className="text-xs text-gray-400 dark:text-gray-500">OR</span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+              </div>
+              
+              {/* Link Input */}
+              <div className="space-y-1">
+                <div className="relative">
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="url"
+                    placeholder="Paste Google Drive link or any file URL..."
+                    value={attachmentLink}
+                    onChange={(e) => {
+                      setAttachmentLink(e.target.value);
+                      if (e.target.value.trim()) {
+                        setAttachment(null); // Clear file when link is entered
+                      }
+                    }}
+                    className={cn(
+                      "pl-9 h-10 text-sm",
+                      attachmentLink.trim() && !isValidUrl(attachmentLink.trim()) && 
+                      "border-red-300 focus:border-red-500 focus:ring-red-500"
+                    )}
+                  />
+                </div>
+                {attachmentLink.trim() && !isValidUrl(attachmentLink.trim()) && (
+                  <p className="text-xs text-red-500">
+                    ⚠️ Please enter a valid URL starting with http:// or https://
+                  </p>
+                )}
+                {(!attachmentLink.trim() || isValidUrl(attachmentLink.trim())) && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    💡 Paste a link to Google Drive, Dropbox, or any file sharing service
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Checkout Status - only shown while editing an existing task */}
@@ -751,14 +883,20 @@ export function AddTaskDialog({
             {/* Remark */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Remark (Optional)
+                Remark {editingTask && <span className="text-red-500">*</span>}
+                {!editingTask && <span className="text-gray-500">(Optional)</span>}
               </Label>
               <Textarea
-                placeholder="Write remark..."
+                placeholder={editingTask ? "Remark is required when editing task status..." : "Write remark..."}
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 className="min-h-[100px] text-sm resize-none"
               />
+              {editingTask && (
+                <p className="text-xs text-red-500">
+                  ⚠️ Remark is mandatory when updating task status
+                </p>
+              )}
             </div>
           </div>
         </div>

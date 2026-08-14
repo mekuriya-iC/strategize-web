@@ -18,6 +18,7 @@ interface CheckboxSelectProps {
   searchable?: boolean;
   searchPlaceholder?: string;
   predefinedTasks?: CheckboxSelectOption[];
+  disabled?: boolean;
 }
 
 export function CheckboxSelect({
@@ -29,6 +30,7 @@ export function CheckboxSelect({
   searchable = false,
   searchPlaceholder = "Search...",
   predefinedTasks = [],
+  disabled = false,
 }: CheckboxSelectProps) {
   // ✅ Build grouped options so predefined tasks show separately
   const groupedOptions =
@@ -96,8 +98,9 @@ export function CheckboxSelect({
       boxShadow: state.isFocused ? "0 0 0 1px #3838EC" : "none",
       "&:hover": { borderColor: "#d1d5db" },
       borderRadius: "6px",
-      cursor: "pointer",
-      backgroundColor: "transparent",
+      cursor: state.isDisabled ? "not-allowed" : "pointer",
+      backgroundColor: state.isDisabled ? "#f9fafb" : "transparent",
+      opacity: state.isDisabled ? 0.6 : 1,
     }),
     valueContainer: (base) => ({
       ...base,
@@ -180,6 +183,7 @@ export function CheckboxSelect({
         placeholder={placeholder}
         isSearchable={searchable}
         isClearable={value.length > 0}
+        isDisabled={disabled}
         components={{ Option: CustomOption, Menu: CustomMenu }}
         styles={styles}
         // ✅ THIS IS THE KEY FIX:

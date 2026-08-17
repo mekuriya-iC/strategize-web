@@ -15,6 +15,15 @@ import { useAuthStore } from "@/stores";
  */
 export function useFlaggedKpiCount() {
   const user = useAuthStore((state) => state.user);
+  const canViewTeam = [
+    "COORDINATOR",
+    "MANAGER",
+    "DIRECTOR",
+    "CEO",
+    "HR",
+    "ADMIN",
+    "SUPER_ADMIN",
+  ].includes(user?.role || "");
 
   // Fetch personal flagged KPI count
   const { data: myData, loading: myLoading } = useQuery(GET_MY_FLAGGED_KPI_COUNT, {
@@ -25,7 +34,7 @@ export function useFlaggedKpiCount() {
   // Fetch team flagged KPI count (for supervisors/managers)
   const { data: teamData, loading: teamLoading } = useQuery(GET_TEAM_FLAGGED_KPI_COUNT, {
     pollInterval: 60000,
-    skip: !user,
+    skip: !user || !canViewTeam,
   });
 
   const myCount = myData?.myFlaggedKpiCount || 0;
@@ -38,6 +47,6 @@ export function useFlaggedKpiCount() {
     count: totalCount,
     myCount,
     teamCount,
-    loading: myLoading || teamLoading,
+    loading: myLoading || (canViewTeam && teamLoading),
   };
 }

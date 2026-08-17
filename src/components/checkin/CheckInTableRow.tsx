@@ -8,6 +8,10 @@ import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 import { getTaskColors, getTaskCategory } from "@/utils/task-colors";
+import {
+  getSubmissionStatusMeta,
+  type TaskSubmissionStatus,
+} from "./weekly-submission";
 
 interface Task {
   id: string;
@@ -29,6 +33,7 @@ interface Task {
   isSelfDevComplete: boolean;
   createdAt: string;
   isMidWeekTask?: boolean;
+  submissionStatus?: TaskSubmissionStatus;
 }
 
 interface CheckInTableRowProps {
@@ -36,6 +41,9 @@ interface CheckInTableRowProps {
   isEditable: boolean;
   onRefetch: () => void;
   onEditTask?: (task: Task) => void;
+  isSelectionEnabled?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (taskId: string, selected: boolean) => void;
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -43,6 +51,8 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   KPI_UNMET: "KPI Unmet",
   INITIATIVE_FULFILLED: "Initiative Fulfilled",
   INITIATIVE_UNMET: "Initiative Unmet",
+  SELF_DEVELOPMENT_FULFILLED: "Self-Development Fulfilled",
+  SELF_DEVELOPMENT_UNMET: "Self-Development Unmet",
   SELF_DEVELOPMENT: "Self Development",
   UNLINKED: "Unlinked",
 };
@@ -60,6 +70,9 @@ export function CheckInTableRow({
   isEditable,
   onRefetch,
   onEditTask,
+  isSelectionEnabled = false,
+  isSelected = false,
+  onSelectionChange,
 }: CheckInTableRowProps) {
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
     refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
@@ -68,6 +81,9 @@ export function CheckInTableRow({
   // Get color configuration for this task type
   const taskColors = getTaskColors(task.taskType);
   const taskCategory = getTaskCategory(task.taskType);
+  const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
+  const canSelect =
+    isSelectionEnabled && task.submissionStatus === "DRAFT";
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
@@ -94,10 +110,17 @@ export function CheckInTableRow({
         label: "Initiative Unmet",
         color: "text-red-600 bg-red-50 dark:bg-red-900/20",
       };
-    } else if (task.taskType === "SELF_DEVELOPMENT") {
+    } else if (
+      task.taskType === "SELF_DEVELOPMENT_FULFILLED" ||
+      task.taskType === "SELF_DEVELOPMENT_UNMET" ||
+      task.taskType === "SELF_DEVELOPMENT"
+    ) {
       return {
-        label: "Self Development",
-        color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+        label:
+          task.taskType === "SELF_DEVELOPMENT_UNMET"
+            ? "Self-Development Unmet"
+            : "Self-Development Fulfilled",
+        color: "text-amber-700 bg-amber-50 dark:bg-amber-900/20",
       };
     }
     return { label: "-", color: "text-gray-600" };
@@ -142,20 +165,53 @@ export function CheckInTableRow({
           : `${taskColors.background} hover:brightness-95 dark:hover:brightness-110`
       } transition-all border-l-4 ${taskColors.border}`}
     >
+      {isSelectionEnabled && onSelectionChange && (
+        <td className="px-4 py-4">
+          {task.submissionStatus === "DRAFT" && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              disabled={!canSelect}
+              onChange={(event) =>
+                onSelectionChange(task.id, event.target.checked)
+              }
+              aria-label={`Select draft task: ${task.task}`}
+              className="h-4 w-4 rounded border-gray-300 text-[#3838EC] focus:ring-[#3838EC] disabled:cursor-not-allowed"
+            />
+          )}
+        </td>
+      )}
+
       {/* Major Task */}
       <td className="px-4 py-4">
         <div className="flex items-center gap-2">
           {!isEditable && <LockIcon className="w-4 h-4 text-gray-400" />}
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            {task.task}
-          </span>
+          <div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {task.task}
+            </span>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <Badge className={submissionStatus.badgeClassName}>
+                {submissionStatus.label}
+              </Badge>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {submissionStatus.description}
+              </span>
+            </div>
+          </div>
         </div>
       </td>
 
       {/* Linked KPI/Initiative */}
       <td className="px-4 py-4">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${taskCategory.dotColor}`} />
+          <div
+            className={`w-2 h-2 rounded-full ${taskCategory.dotColor}`}
+            aria-hidden="true"
+          />
+          <span className={`text-xs font-semibold ${taskCategory.colorClass}`}>
+            {taskCategory.label}
+          </span>
           {task.linkedKpiName || task.linkedInitiativeName ? (
             <span className="text-sm font-medium text-gray-900 dark:text-white">
               {task.linkedKpiName || task.linkedInitiativeName}

@@ -12,6 +12,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores";
 import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
 import { useFlaggedKpiCount } from "@/hooks/kpis/useFlaggedKpiCount";
+import { usePendingTaskCollaborationCount } from "@/hooks/tasks/usePendingTaskCollaborationCount";
 
 interface NavLink {
   label: string;
@@ -331,6 +332,55 @@ const navCategories: NavCategory[] = [
               d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z"
               stroke="currentColor"
               strokeWidth="1.5"
+            />
+          </svg>
+        ),
+      },
+      {
+        label: "Task Requests",
+        href: "/dashboard/task-requests",
+        permission: "nav:checkin",
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-current"
+          >
+            <path
+              d="M4 5H16M4 10H12M4 15H9"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M14 13L16 15L19 11"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ),
+      },
+      {
+        label: "Task Completion",
+        href: "/dashboard/task-completion",
+        permission: "nav:checkin",
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-current"
+          >
+            <path
+              d="M3 17V11M10 17V7M17 17V3"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
             />
           </svg>
         ),
@@ -821,10 +871,13 @@ export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const user = useAuthStore((state) => state.user);
   const { count: pendingApprovalsCount } = usePendingApprovalsCount();
   const { count: flaggedKpiCount } = useFlaggedKpiCount();
+  const { pendingCount: pendingTaskRequestCount } =
+    usePendingTaskCollaborationCount();
 
   const badgeCounts: Record<string, number> = {
     "/dashboard/approvals": pendingApprovalsCount,
     "/dashboard/flagged-kpis": flaggedKpiCount,
+    "/dashboard/task-requests": pendingTaskRequestCount,
   };
 
   const isLinkActive = (href: string) => {

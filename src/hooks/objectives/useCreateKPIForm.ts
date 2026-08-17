@@ -61,7 +61,6 @@ export interface YearlyQuarters {
 
 interface UseCreateKPIFormProps {
   objectiveId: string;
-  onSuccess?: () => void;
   isCorporate?: boolean;
   isSupport?: boolean;
   supportSourceIds?: string[];
@@ -78,7 +77,6 @@ const measurementUnitFor = (unitType: KpiUnitType): string => {
 
 export function useCreateKPIForm({
   objectiveId,
-  onSuccess,
   isCorporate = false,
   isSupport = false,
   supportSourceIds = [],
@@ -348,17 +346,11 @@ export function useCreateKPIForm({
         await createKpi({ input });
       }
 
-      // client.refetchQueries is handled by mutations, but we can do extra safety
-      // await client.refetchQueries({ include: ["GetKPIs", "GetObjective"] });
-      // useKPIMutations handles refetching.
-
-      onSuccess?.();
+      // Success - let the caller handle success feedback
+      // No onSuccess callback here anymore
     } catch (error) {
       console.error(error);
-      // Toast handled by mutation hooks usually, but if error propagates
-      // throw error;
-      // actually useCreateKPIForm swallows error in catch block at Step 1707?
-      // "throw error;" is there.
+      // Re-throw the error so the form can catch it and show appropriate error message
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -373,7 +365,6 @@ export function useCreateKPIForm({
     isSupport,
     supportSourceIds,
     selectedSupportSourceIds,
-    onSuccess,
     isCorporate,
     organizationId,
     basisQuarters,

@@ -186,14 +186,15 @@ const GET_DEPARTMENT_SCORECARD = gql`
 `;
 
 const GET_PERIODS = gql`
-  query GetStrategicPeriods {
-    strategicPeriods {
+  query GetStrategicPeriods($page: Int!, $limit: Int!) {
+    strategicPeriods(page: $page, limit: $limit) {
       items {
         strategicPeriodId
         name
         periodType
         startDate
         endDate
+        status
       }
     }
   }
@@ -270,7 +271,9 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
   const hasFullAccess = !!user?.role && fullAccessRoles.has(user.role as string);
 
   // Fetch periods
-  const { data: periodsData } = useQuery(GET_PERIODS);
+  const { data: periodsData } = useQuery(GET_PERIODS, {
+    variables: { page: 1, limit: 100 },
+  });
   const periods = periodsData?.strategicPeriods?.items || [];
   const activePeriod = periods.find((p: any) => {
     // Check if period is currently active based on dates

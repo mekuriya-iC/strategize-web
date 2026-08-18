@@ -81,12 +81,16 @@ function TaskCompletionDashboardContent() {
   );
   const queryReady = !authLoading && !!user;
 
+  // NOTE: personalTaskCompletionAnalytics and hierarchyTaskCompletionAnalytics
+  // are not yet implemented on the backend. Both queries are skipped until
+  // the backend supports PersonalTaskCompletionAnalyticsInput and the
+  // corresponding query resolvers.
   const personalQuery = useQuery<
     PersonalTaskCompletionAnalyticsData,
     PersonalTaskCompletionAnalyticsVariables
   >(GET_PERSONAL_TASK_COMPLETION_ANALYTICS, {
     variables: personalVariables,
-    skip: !queryReady || visibleView !== "personal",
+    skip: true,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
@@ -96,7 +100,7 @@ function TaskCompletionDashboardContent() {
     HierarchyTaskCompletionAnalyticsVariables
   >(GET_HIERARCHY_TASK_COMPLETION_ANALYTICS, {
     variables: hierarchyVariables,
-    skip: !queryReady || !canViewTeam || visibleView !== "team",
+    skip: true,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });

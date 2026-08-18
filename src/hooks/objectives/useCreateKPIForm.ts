@@ -67,12 +67,13 @@ interface UseCreateKPIFormProps {
 }
 
 const measurementUnitFor = (unitType: KpiUnitType): string => {
-  if (unitType === "PERCENT") return "PERCENTAGE";
-  if (unitType === "RATIO") return "NUMBER"; // RATIO KPIs use "NUMBER" as measurementUnit
-  if (unitType === "CURRENCY") return "CURRENCY";
-  if (unitType === "HOUR") return "HOUR";
-  if (unitType === "COUNT") return "NUMBER"; // COUNT KPIs use "NUMBER"
-  return "NUMBER"; // Default to "NUMBER" for NUMBER unit type
+  // Backend KpiMeasurementUnit enum uses lowercase values
+  if (unitType === "PERCENT") return "percentage";
+  if (unitType === "RATIO") return "number"; // RATIO KPIs use "number" as measurementUnit
+  if (unitType === "CURRENCY") return "currency";
+  if (unitType === "HOUR") return "hour";
+  if (unitType === "COUNT") return "number"; // COUNT KPIs use "number"
+  return "number"; // Default to "number" for NUMBER unit type
 };
 
 export function useCreateKPIForm({
@@ -275,7 +276,7 @@ export function useCreateKPIForm({
         unitType: formData.unitType,
         quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
         strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
-        frequency: "QUARTERLY", // Default to QUARTERLY
+        frequency: "quarterly", // Backend KpiFrequency enum uses lowercase
         measurementUnit: measurementUnitFor(formData.unitType),
         organizationId: organizationId, // Required by backend
         targetValue: annualValue, // Use the annual target value directly

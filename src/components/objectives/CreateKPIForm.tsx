@@ -61,6 +61,7 @@ export default function CreateKPIForm({
     handleSubmit,
   } = useCreateKPIForm({
     objectiveId,
+    organizationId: (objective as any)?.organizationId || (objective as any)?.organization?.organizationId,
     isCorporate: usesAnnualOnlyKpiTargets(objective),
     isSupport: objective.cascadeType === "SUPPORT",
     supportSourceIds: (objective.supportSources ?? []).map(

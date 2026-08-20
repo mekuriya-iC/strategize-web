@@ -61,6 +61,7 @@ export interface YearlyQuarters {
 
 interface UseCreateKPIFormProps {
   objectiveId: string;
+  organizationId?: string;
   isCorporate?: boolean;
   isSupport?: boolean;
   supportSourceIds?: string[];
@@ -78,6 +79,7 @@ const measurementUnitFor = (unitType: KpiUnitType): string => {
 
 export function useCreateKPIForm({
   objectiveId,
+  organizationId: propOrganizationId,
   isCorporate = false,
   isSupport = false,
   supportSourceIds = [],
@@ -102,11 +104,14 @@ export function useCreateKPIForm({
     string[]
   >(() => (supportSourceIds.length === 1 ? supportSourceIds : []));
 
-  // Fetch strategic plans to get organizationId
+  // Fetch strategic plans to get organizationId as fallback
   const { strategicPlans } = useStrategicPlansQuery();
   const activeStrategicPlan = strategicPlans.find((plan) => plan.isActive);
   const organizationId =
-    activeStrategicPlan?.organization?.organizationId || "";
+    propOrganizationId ||
+    activeStrategicPlan?.organization?.organizationId ||
+    (activeStrategicPlan as any)?.organizationId ||
+    "";
 
   const [formData, setFormData] = useState<CreateKPIFormData>({
     name: "",
@@ -369,9 +374,13 @@ export function useCreateKPIForm({
           managerRetentionPercent: input.managerRetentionPercent,
           sourceCorporateKpiIds: selectedSupportSourceIds,
         };
-        await createSupportKpi({ variables: { input: supportInput } });
+        console.log("🚀 [useCreateKPIForm] Submitting Support KPI:", supportInput);
+        const result = await createSupportKpi({ variables: { input: supportInput } });
+        console.log("✅ [useCreateKPIForm] Support KPI creation result:", result);
       } else {
-        await createKpi({ input });
+        console.log("🚀 [useCreateKPIForm] Submitting standard KPI:", input);
+        const result = await createKpi({ input });
+        console.log("✅ [useCreateKPIForm] Standard KPI creation result:", result);
       }
 
       // Success - let the caller handle success feedback

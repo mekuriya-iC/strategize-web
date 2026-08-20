@@ -23,12 +23,14 @@ export const GET_OBJECTIVES = gql`
     ) {
       items {
         objectiveId
+        organizationId
         title
         description
         type
         level
         status
         cascadeStatus
+        cascadeType
         assigneeType
         assigneeId
         assignerId
@@ -129,6 +131,7 @@ export const GET_OBJECTIVE = gql`
   query GetObjective($objectiveId: ID!) {
     objective(objectiveId: $objectiveId) {
       objectiveId
+      organizationId
       title
       description
       type

@@ -9,7 +9,7 @@ export type ExtendedUnitType = "NUMBER_MILLION" | "NUMBER_COUNT" | "PERCENT";
 
 // Get detailed unit label for display based on backend unitType and name analysis
 export const getDetailedUnitLabel = (kpi: Kpi): string => {
-  const { unitType, name } = kpi; // "NUMBER" | "PERCENT"
+  const { unitType, name } = kpi; // "NUMBER" | "PERCENT" | "CURRENCY" | "RATIO"
 
   if (unitType === "PERCENT") {
     return "%";
@@ -23,7 +23,7 @@ export const getDetailedUnitLabel = (kpi: Kpi): string => {
     return "ETB";
   }
 
-  // For legacy NUMBER values, analyze the name to determine the display unit
+  // For NUMBER type, analyze the name to determine if it's financial or count-based
   const nameLower = name.toLowerCase();
 
   // Check for revenue, profit, cost, financial indicators (million ETB)
@@ -60,8 +60,8 @@ export const getDetailedUnitLabel = (kpi: Kpi): string => {
     return "items";
   }
 
-  // Default for NUMBER type
-  return "million ETB";
+  // Default for NUMBER type without clear indicators - just show "units"
+  return "units";
 };
 
 // Get display name for unit type selection (for UI consistency)

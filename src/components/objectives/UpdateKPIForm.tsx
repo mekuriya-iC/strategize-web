@@ -139,9 +139,15 @@ export default function UpdateKPIForm({
         await handleSubmit(async () => {
           await formulaPlanningRef.current?.save();
         });
-      } catch (error) {
-        console.error("Error updating KPI:", error);
-        toast.error("Failed to update KPI");
+      } catch (error: any) {
+        const graphQLMessage = error?.graphQLErrors?.[0]?.message;
+        const networkMessage = error?.networkError?.result?.errors?.[0]?.message;
+        const description =
+          graphQLMessage ||
+          networkMessage ||
+          (error instanceof Error ? error.message : "An unexpected error occurred");
+        console.error("❌ Error updating KPI:", error);
+        toast.error("Failed to update KPI", { description });
       }
     },
     [handleSubmit],
@@ -211,6 +217,10 @@ export default function UpdateKPIForm({
   // Determine level-based restrictions (cascaded corporate → quarterly, not annual-only)
   const planningObjective = objectiveProp || kpi.objective;
   const isCorporate = usesAnnualOnlyKpiTargets(planningObjective);
+  const isSupport =
+    (planningObjective as any)?.cascadeType === "SUPPORT" ||
+    (kpi?.objective as any)?.cascadeType === "SUPPORT" ||
+    (kpi as any)?.cascadeType === "SUPPORT";
 
   const objectiveType =
     planningObjective?.assigneeType ||
@@ -221,7 +231,7 @@ export default function UpdateKPIForm({
     objectiveType?.toUpperCase() === "DIVISION" ||
     objectiveType?.toUpperCase() === "DEPARTMENT";
 
-  const hasParent = !!kpi.parent?.kpiId;
+  const hasParent = !isSupport && !!kpi.parent?.kpiId;
 
   // For corporate KPIs, all fields are editable regardless of approval status
   // For non-corporate KPIs, fields are only editable if not approved
@@ -238,6 +248,7 @@ export default function UpdateKPIForm({
     kpi.calculationType === "WEIGHTED_INDEX";
   const isAnnualTargetLocked =
     !isCorporate &&
+    !isSupport &&
     hasParent &&
     !isFormulaKpi &&
     assignedAnnualTarget !== null &&

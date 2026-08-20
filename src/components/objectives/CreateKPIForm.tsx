@@ -231,8 +231,16 @@ export default function CreateKPIForm({
     if (totalWeight > 100) return false;
     if (!hasValidBasicFields || !hasValidBasis) return false;
     if (!strategicYear) return false;
-    if (!hasAnnualTarget) return false;
-    if (!isCorporate && !hasQuarterlyData) return false;
+    
+    // For corporate objectives, annual target is required
+    // For non-corporate, either annual target OR valid quarterly data is acceptable
+    if (isCorporate) {
+      if (!hasAnnualTarget) return false;
+    } else {
+      // Non-corporate: accept if either annual target OR quarterly data is valid
+      if (!hasAnnualTarget && !hasQuarterlyData) return false;
+    }
+    
     if (isSupport && supportSources.length === 0) return false;
     if (isSupport && selectedSupportSourceIds.length === 0) return false;
     if (

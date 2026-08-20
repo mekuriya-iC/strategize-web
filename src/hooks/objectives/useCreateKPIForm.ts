@@ -84,12 +84,19 @@ export function useCreateKPIForm({
 }: UseCreateKPIFormProps) {
   const { createKpi } = useKPIMutations();
   const [createSupportKpi] = useMutation(CREATE_SUPPORT_KPI, {
-    onCompleted: () => invalidateAfterMutation.kpi(),
+    onCompleted: (data) => {
+      console.log('✅ Support KPI created:', data);
+      invalidateAfterMutation.kpi();
+    },
+    // NOTE: Do NOT add onError here. When onError is defined, Apollo swallows
+    // the error instead of throwing from the await, which prevents the caller
+    // from catching it and showing the appropriate error toast.
     refetchQueries: [
       { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
       { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
       "GetObjectives",
     ],
+    awaitRefetchQueries: true,
   });
   const [selectedSupportSourceIds, setSelectedSupportSourceIds] = useState<
     string[]

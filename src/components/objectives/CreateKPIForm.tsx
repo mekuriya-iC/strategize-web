@@ -75,11 +75,16 @@ export default function CreateKPIForm({
       // Only show success toast and trigger callback if mutation succeeded
       toast.success("KPI Created Successfully");
       onSuccess?.();
-    } catch (error) {
-      toast.error("Failed to create KPI", {
-        description:
-          error instanceof Error ? error.message : "An unexpected error occurred",
-      });
+    } catch (error: any) {
+      // Apollo GraphQL errors carry the message in graphQLErrors
+      const graphQLMessage = error?.graphQLErrors?.[0]?.message;
+      const networkMessage = error?.networkError?.result?.errors?.[0]?.message;
+      const description =
+        graphQLMessage ||
+        networkMessage ||
+        (error instanceof Error ? error.message : "An unexpected error occurred");
+      console.error("❌ KPI creation failed:", error);
+      toast.error("Failed to create KPI", { description });
     }
   };
 

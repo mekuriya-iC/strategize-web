@@ -160,8 +160,17 @@ export default function CreateKPIForm({
     const q3 = parseFloat(q.q3) || 0;
     const q4 = parseFloat(q.q4) || 0;
     const values = [q1, q2, q3, q4];
-    if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
-      return false;
+    
+    const isRateLike =
+      formData.unitType === "PERCENT" || formData.unitType === "RATIO";
+    if (isRateLike) {
+      if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
+        return false;
+      }
+    } else {
+      if (values.some((value) => !Number.isFinite(value) || value < 0)) {
+        return false;
+      }
     }
     const sum = q1 + q2 + q3 + q4;
 
@@ -179,6 +188,7 @@ export default function CreateKPIForm({
     strategicYear,
     yearlyQuarters,
     annualTargets,
+    formData.unitType,
     formData.quarterlyAggregationMethod,
   ]);
 

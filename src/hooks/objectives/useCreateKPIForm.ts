@@ -195,9 +195,29 @@ export function useCreateKPIForm({
         const q3 = parseFloat(quarters.q3 || "0") || 0;
         const q4 = parseFloat(quarters.q4 || "0") || 0;
         const values = [q1, q2, q3, q4];
-        if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
-          throw new Error("Every quarter must have a value greater than zero");
+        
+        console.log("📊 [useCreateKPIForm] Quarterly Breakdown Values:", {
+          strategicYear,
+          annualValue,
+          quarters: { q1, q2, q3, q4 },
+          unitType: formData.unitType,
+          aggregationMethod: formData.quarterlyAggregationMethod,
+        });
+
+        const isRateLike =
+          formData.unitType === "PERCENT" || formData.unitType === "RATIO";
+        if (isRateLike) {
+          if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
+            throw new Error(
+              "Every quarter must have a percentage/rate value greater than zero",
+            );
+          }
+        } else {
+          if (values.some((value) => !Number.isFinite(value) || value < 0)) {
+            throw new Error("Quarterly values cannot be negative");
+          }
         }
+
         const sum = q1 + q2 + q3 + q4;
 
         const TOLERANCE = 0.01;
@@ -206,7 +226,7 @@ export function useCreateKPIForm({
         const plannedVal = shouldAverage ? sum / values.length : sum;
         if (Math.abs(plannedVal - annualValue) > TOLERANCE) {
           throw new Error(
-            `Quarterly ${shouldAverage ? "average" : "sum"} must equal the annual target`,
+            `Quarterly ${shouldAverage ? "average" : "sum"} (${plannedVal.toFixed(2)}) must equal the annual target (${annualValue})`,
           );
         }
 

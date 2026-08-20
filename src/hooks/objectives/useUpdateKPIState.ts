@@ -72,6 +72,7 @@ interface UseUpdateKPIStateProps {
     assigneeType?: string | null;
     assigneeId?: string | null;
     parentId?: string | null;
+    cascadeType?: string | null;
   };
 }
 
@@ -97,6 +98,10 @@ export function useUpdateKPIState({
   );
 
   const isCorporate = usesAnnualOnlyKpiTargetsForKpi(kpi);
+  const isSupport =
+    objectiveOverride?.cascadeType === "SUPPORT" ||
+    (kpi?.objective as any)?.cascadeType === "SUPPORT" ||
+    (kpi as any)?.cascadeType === "SUPPORT";
 
   // Form state
   const [formData, setFormData] = useState<UpdateKPIFormData>({
@@ -595,7 +600,7 @@ export function useUpdateKPIState({
   );
 
   const assignedAnnualTarget = useMemo(() => {
-    if (!strategicTimeline) return null;
+    if (!strategicTimeline || isSupport) return null;
 
     // 1. PRIMARY: Use the current KPI's own assignedTargetValue
     // This is the value specifically assigned to THIS KPI during cascading (e.g., 168M for division)
@@ -688,7 +693,7 @@ export function useUpdateKPIState({
 
     console.log("🎯 No assigned target found, returning null");
     return null;
-  }, [kpi, parentKpi, strategicTimeline, annualTarget]);
+  }, [kpi, parentKpi, strategicTimeline, annualTarget, isSupport]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (afterKpiUpdate?: () => Promise<void>) => {
@@ -710,13 +715,23 @@ export function useUpdateKPIState({
         quarterSet.q3,
         quarterSet.q4,
       ].map(Number);
-      if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
-        throw new Error("Every quarter must have a value greater than zero");
+      const isRateLike =
+        formData.unitType === "PERCENT" || formData.unitType === "RATIO";
+      if (isRateLike) {
+        if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
+          throw new Error(
+            "Every quarter must have a percentage/rate value greater than zero",
+          );
+        }
+      } else {
+        if (values.some((value) => !Number.isFinite(value) || value < 0)) {
+          throw new Error("Quarterly values cannot be negative");
+        }
       }
       const annualValue =
-        kpi.assignedTargetValue && kpi.assignedTargetValue > 0
+        !isSupport && kpi.assignedTargetValue && kpi.assignedTargetValue > 0
           ? kpi.assignedTargetValue
-          : assignedAnnualTarget && assignedAnnualTarget > 0
+          : !isSupport && assignedAnnualTarget && assignedAnnualTarget > 0
             ? assignedAnnualTarget
             : Number(annualTarget);
       const total = values.reduce((sum, value) => sum + value, 0);
@@ -733,7 +748,7 @@ export function useUpdateKPIState({
         (!isFormulaKpi && Math.abs(plannedAnnual - annualValue) > 0.01)
       ) {
         throw new Error(
-          `Quarterly ${averageBased ? "average" : "sum"} must match the annual target`,
+          `Quarterly ${averageBased ? "average" : "sum"} (${plannedAnnual.toFixed(2)}) must match the annual target (${annualValue})`,
         );
       }
     }
@@ -782,7 +797,7 @@ export function useUpdateKPIState({
       // falls through to kpi.targetValue for DIVISION/DEPARTMENT/PERSONNEL KPIs, so overwriting
       // it with a quarterly value (e.g., 24) would corrupt the assigned target (e.g., 96).
       let calculatedTargetValue: number;
-      if (isCorporate) {
+      if (isCorporate || isSupport) {
         calculatedTargetValue = parseFloat(annualTarget) || 0;
       } else if (
         kpi.calculationType === "RATIO_FORMULA" ||

@@ -76,6 +76,7 @@ export const GET_KPIS = gql`
           level
           status
           type
+          cascadeType
           assigneeType
           assigneeId
           strategicPeriod {
@@ -191,6 +192,7 @@ export const GET_KPI = gql`
         type
         level
         status
+        cascadeType
         assigneeType
         assigneeId
         parent {

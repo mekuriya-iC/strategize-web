@@ -77,6 +77,11 @@ export const CREATE_CHECKINOUT_TASK = gql`
       requiresApproval
       isMidWeekTask
       logbookStatus
+      submissionStatus
+      submittedAt
+      submissionBatchId
+      isCollaborativeTask
+      collaborationRequestId
       taskStartDate
       taskEndDate
       createdAt
@@ -106,6 +111,11 @@ export const UPDATE_CHECKINOUT_TASK = gql`
       requiresApproval
       isMidWeekTask
       logbookStatus
+      submissionStatus
+      submittedAt
+      submissionBatchId
+      isCollaborativeTask
+      collaborationRequestId
       taskStartDate
       taskEndDate
       updatedAt
@@ -118,6 +128,23 @@ export const REMOVE_CHECKINOUT_TASK = gql`
   mutation RemoveCheckinoutTask($checkinoutTaskId: ID!) {
     removeCheckinoutTask(checkinoutTaskId: $checkinoutTaskId) {
       checkinoutTaskId
+    }
+  }
+`;
+
+export const SUBMIT_WEEKLY_TASKS = gql`
+  mutation SubmitWeeklyTasks($sessionId: ID!, $taskIds: [ID!]!) {
+    submitWeeklyTasks(sessionId: $sessionId, taskIds: $taskIds) {
+      submissionBatchId
+      submittedTaskCount
+      submittedAt
+      session {
+        checkinoutSessionId
+      }
+      employee {
+        employeeId
+        fullName
+      }
     }
   }
 `;

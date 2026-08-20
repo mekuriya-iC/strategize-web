@@ -105,7 +105,7 @@ export const GET_TEAM_FLAGGED_KPIS = gql`
  */
 export const GET_KPI_TRACKER_STATS = gql`
   ${KPI_PERFORMANCE_TRACKER_FIELDS}
-  query GetKpiTrackerStats($kpiId: String!, $employeeId: String!) {
+  query GetKpiTrackerStats($kpiId: ID!, $employeeId: ID!) {
     kpiTrackerStats(kpiId: $kpiId, employeeId: $employeeId) {
       ...KpiPerformanceTrackerFields
       kpi {

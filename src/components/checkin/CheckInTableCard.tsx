@@ -16,7 +16,15 @@ import {
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
-import { getTaskColors, getTaskCategory, getTaskBorderStyle } from "@/utils/task-colors";
+import {
+  getTaskBorderStyle,
+  getTaskCategory,
+  getTaskColors,
+} from "@/utils/task-colors";
+import {
+  getSubmissionStatusMeta,
+  type TaskSubmissionStatus,
+} from "./weekly-submission";
 
 interface Task {
   id: string;
@@ -38,6 +46,7 @@ interface Task {
   isSelfDevComplete: boolean;
   createdAt: string;
   isMidWeekTask?: boolean;
+  submissionStatus?: TaskSubmissionStatus;
 }
 
 interface CheckInTableCardProps {
@@ -45,6 +54,9 @@ interface CheckInTableCardProps {
   isEditable: boolean;
   onRefetch: () => void;
   onEditTask?: (task: Task) => void;
+  isSelectionEnabled?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (taskId: string, selected: boolean) => void;
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -52,6 +64,8 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   KPI_UNMET: "KPI Unmet",
   INITIATIVE_FULFILLED: "Initiative Fulfilled",
   INITIATIVE_UNMET: "Initiative Unmet",
+  SELF_DEVELOPMENT_FULFILLED: "Self-Development Fulfilled",
+  SELF_DEVELOPMENT_UNMET: "Self-Development Unmet",
   SELF_DEVELOPMENT: "Self Development",
   UNLINKED: "Unlinked",
 };
@@ -69,6 +83,9 @@ export function CheckInTableCard({
   isEditable,
   onRefetch,
   onEditTask,
+  isSelectionEnabled = false,
+  isSelected = false,
+  onSelectionChange,
 }: CheckInTableCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
@@ -79,6 +96,9 @@ export function CheckInTableCard({
   const taskColors = getTaskColors(task.taskType);
   const taskCategory = getTaskCategory(task.taskType);
   const borderStyle = getTaskBorderStyle(task.taskType);
+  const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
+  const canSelect =
+    isSelectionEnabled && task.submissionStatus === "DRAFT";
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
@@ -105,10 +125,17 @@ export function CheckInTableCard({
         label: "Initiative Unmet",
         color: "text-red-600 bg-red-50 dark:bg-red-900/20",
       };
-    } else if (task.taskType === "SELF_DEVELOPMENT") {
+    } else if (
+      task.taskType === "SELF_DEVELOPMENT_FULFILLED" ||
+      task.taskType === "SELF_DEVELOPMENT_UNMET" ||
+      task.taskType === "SELF_DEVELOPMENT"
+    ) {
       return {
-        label: "Self Development",
-        color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+        label:
+          task.taskType === "SELF_DEVELOPMENT_UNMET"
+            ? "Self-Development Unmet"
+            : "Self-Development Fulfilled",
+        color: "text-amber-700 bg-amber-50 dark:bg-amber-900/20",
       };
     }
     return { label: "-", color: "text-gray-600" };
@@ -161,10 +188,36 @@ export function CheckInTableCard({
               {!isEditable && (
                 <LockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
               )}
-              <div className={`w-2 h-2 rounded-full ${taskCategory.dotColor} flex-shrink-0`} />
+              {onSelectionChange && task.submissionStatus === "DRAFT" && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  disabled={!canSelect}
+                  onChange={(event) =>
+                    onSelectionChange(task.id, event.target.checked)
+                  }
+                  aria-label={`Select draft task: ${task.task}`}
+                  className="h-4 w-4 rounded border-gray-300 text-[#3838EC] focus:ring-[#3838EC] disabled:cursor-not-allowed"
+                />
+              )}
+              <div
+                className={`w-2 h-2 rounded-full ${taskCategory.dotColor} flex-shrink-0`}
+                aria-hidden="true"
+              />
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                 {task.task}
               </h3>
+            </div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className={`text-xs font-semibold ${taskCategory.colorClass}`}>
+                {taskCategory.label}
+              </span>
+              <Badge className={submissionStatus.badgeClassName}>
+                {submissionStatus.label}
+              </Badge>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {submissionStatus.description}
+              </span>
             </div>
             {task.linkedKpiName || task.linkedInitiativeName ? (
               <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -181,6 +234,7 @@ export function CheckInTableCard({
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
             className="ml-2"
+            aria-label={isExpanded ? "Collapse task details" : "Expand task details"}
           >
             {isExpanded ? (
               <ChevronUpIcon className="w-5 h-5" />

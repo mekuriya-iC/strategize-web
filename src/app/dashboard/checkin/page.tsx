@@ -5,14 +5,21 @@ import { useQuery, useMutation } from "@apollo/client";
 import {
   GET_CHECKINOUT_SESSIONS,
   GET_CHECKINOUT_TASKS,
+  GET_TASK_POOL_SUMMARY,
 } from "@/lib/graphql/queries/checkins";
-import { CREATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
+import {
+  CREATE_CHECKINOUT_SESSION,
+  SUBMIT_WEEKLY_TASKS,
+} from "@/lib/graphql/mutations/checkins";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { CheckInTable } from "@/components/checkin/CheckInTable";
 import { AddTaskDialog } from "@/components/checkin/AddTaskDialog";
 import { FilterDialog, FilterState } from "@/components/checkin/FilterDialog";
 import CreateSessionDialog from "@/components/checkin/CreateSessionDialog";
 import SessionListView from "@/components/checkin/SessionListView";
+import { TaskColorLegend } from "@/components/checkin/TaskColorLegend";
+import { WeeklySubmissionPanel } from "@/components/checkin/WeeklySubmissionPanel";
+import { canSubmitWeeklyTasks } from "@/components/checkin/weekly-submission";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -67,7 +74,13 @@ const mapTaskToFrontend = (task: any) => ({
   remark: task.challenges || "",
   isKpiMet: task.taskLinkType === "KPI_FULFILLED",
   isInitiativeMet: task.taskLinkType === "INITIATIVE_FULFILLED",
-  isSelfDevComplete: task.taskLinkType === "SELF_DEVELOPMENT",
+  isSelfDevComplete:
+    task.taskLinkType === "SELF_DEVELOPMENT_FULFILLED",
+  submissionStatus: task.submissionStatus,
+  submittedAt: task.submittedAt || null,
+  submissionBatchId: task.submissionBatchId || null,
+  isCollaborativeTask: task.isCollaborativeTask || false,
+  collaborationRequestId: task.collaborationRequestId || null,
   createdAt: task.createdAt,
   isMidWeekTask: false,
   achievedDescription: task.achievedDescription || "",
@@ -356,6 +369,9 @@ export default function CheckInPage() {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [teamTaskSummaries, setTeamTaskSummaries] = useState<
     Record<string, { totalTasks: number; kpiMet: number; kpiUnmet: number }>
   >({});
@@ -467,8 +483,11 @@ export default function CheckInPage() {
   // This determines whether to show team view or individual view
   const isManagerMode = useMemo(() => {
     if (!currentSession || !currentUser) return false;
-    // Only show manager mode if user is the supervisor of THIS session
-    return currentSession.supervisor?.employeeId === currentUser.employeeId;
+    // A self-supervised session is still the employee's own detail view.
+    return (
+      currentSession.supervisor?.employeeId === currentUser.employeeId &&
+      currentSession.employee?.employeeId !== currentUser.employeeId
+    );
   }, [currentSession, currentUser]);
 
   // Helper to normalize dates for comparison (ignoring time components)
@@ -637,6 +656,96 @@ export default function CheckInPage() {
       tasks,
     };
   }, [currentWeekData, tasks]);
+
+  const {
+    data: poolSummaryData,
+    loading: poolSummaryLoading,
+    refetch: refetchPoolSummary,
+  } = useQuery(GET_TASK_POOL_SUMMARY, {
+    variables: { sessionId: currentWeekData?.id },
+    skip: !currentWeekData?.id || isManagerMode,
+    fetchPolicy: "network-only",
+    onError: (error) => {
+      toast.error(error.message || "Could not load the weekly task pool.");
+    },
+  });
+
+  const [submitWeeklyTasks, { loading: submittingWeeklyTasks }] = useMutation(
+    SUBMIT_WEEKLY_TASKS,
+    { errorPolicy: "none" },
+  );
+
+  const poolSummary = poolSummaryData?.taskPoolSummary;
+  const alreadySubmitted =
+    !isManagerMode &&
+    ((poolSummary?.submittedCount ?? 0) > 0 ||
+      tasks.some((task: any) => task.submissionStatus === "SUBMITTED"));
+
+  const validSelectedTaskIds = useMemo(() => {
+    if (alreadySubmitted) return new Set<string>();
+    const draftIds = new Set(
+      tasks
+        .filter((task: any) => task.submissionStatus === "DRAFT")
+        .map((task: any) => task.id),
+    );
+    return new Set([...selectedTaskIds].filter((taskId) => draftIds.has(taskId)));
+  }, [alreadySubmitted, selectedTaskIds, tasks]);
+
+  const handleTaskSelectionChange = (taskId: string, selected: boolean) => {
+    if (alreadySubmitted) return;
+    const task = tasks.find((candidate: any) => candidate.id === taskId);
+    if (task?.submissionStatus !== "DRAFT") return;
+
+    setSelectedTaskIds((previous) => {
+      const next = new Set(previous);
+      if (selected) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+  };
+
+  const handleWeeklySubmission = async () => {
+    const sessionId = currentWeekData?.id;
+    const minimum = poolSummary?.minimumSubmissionCount ?? 6;
+    const maximum = poolSummary?.maximumSubmissionCount ?? 10;
+
+    if (!sessionId) {
+      toast.error("Could not determine the session to submit.");
+      return;
+    }
+    if (
+      alreadySubmitted ||
+      !canSubmitWeeklyTasks(validSelectedTaskIds.size, minimum, maximum)
+    ) {
+      toast.error(`Select between ${minimum} and ${maximum} draft tasks.`);
+      return;
+    }
+
+    try {
+      const result = await submitWeeklyTasks({
+        variables: {
+          sessionId,
+          taskIds: [...validSelectedTaskIds],
+        },
+      });
+      if (!result.data?.submitWeeklyTasks) {
+        throw new Error("The server did not confirm the weekly submission.");
+      }
+      await Promise.all([
+        refetchTasks(),
+        refetchPoolSummary(),
+        refetchEmployeeSessions(),
+      ]);
+      setSelectedTaskIds(new Set());
+      const submittedCount =
+        result.data.submitWeeklyTasks.submittedTaskCount;
+      toast.success(
+        `${submittedCount} weekly tasks submitted. Your supervisor can now see them.`,
+      );
+    } catch (error: any) {
+      toast.error(error?.message || "Weekly task submission failed. Try again.");
+    }
+  };
 
   // Calculate if we can add mid-week tasks
   const canAddMidWeekTask = useMemo(() => {
@@ -844,11 +953,13 @@ export default function CheckInPage() {
   };
 
   const handleSelectSession = (sessionId: string) => {
+    setSelectedTaskIds(new Set());
     setSelectedSessionId(sessionId);
     setView("detail");
   };
 
   const handleBackToList = () => {
+    setSelectedTaskIds(new Set());
     setView("list");
     setSelectedSessionId(null);
   };
@@ -895,7 +1006,10 @@ export default function CheckInPage() {
           {selectableSessionGroups.length > 1 && (
             <Select
               value={currentSession?.checkinoutSessionId || ""}
-              onValueChange={(value) => setSelectedSessionId(value)}
+              onValueChange={(value) => {
+                setSelectedTaskIds(new Set());
+                setSelectedSessionId(value);
+              }}
             >
               <SelectTrigger className="w-72">
                 <SelectValue placeholder="Select week..." />
@@ -953,6 +1067,7 @@ export default function CheckInPage() {
             )}
           </p>
         </div>
+        <TaskColorLegend />
       </div>
 
       {employeeLoading || supervisorLoading ? (
@@ -1080,6 +1195,17 @@ export default function CheckInPage() {
               </div>
             </div>
           </div>
+
+          {!isManagerMode && (
+            <WeeklySubmissionPanel
+              summary={poolSummary}
+              selectedCount={validSelectedTaskIds.size}
+              alreadySubmitted={alreadySubmitted}
+              loading={poolSummaryLoading}
+              submitting={submittingWeeklyTasks}
+              onSubmit={handleWeeklySubmission}
+            />
+          )}
 
           {isManagerMode ? (
             <div className="flex-1 flex flex-col">
@@ -1313,10 +1439,14 @@ export default function CheckInPage() {
                   console.log("🔄 [CHECKIN PAGE] Calling refetchAll and refetchTasks...");
                   refetchAll();
                   refetchTasks();
+                  refetchPoolSummary();
                 }}
                 onEditTask={handleEditTask}
                 filters={filters}
                 isEditable={true}
+                isSelectionEnabled={!alreadySubmitted}
+                selectedTaskIds={validSelectedTaskIds}
+                onSelectionChange={handleTaskSelectionChange}
               />
 
               {/* Add Mid Week Task Button */}
@@ -1359,6 +1489,9 @@ export default function CheckInPage() {
           refetchAll();
           console.log("🔄 [CHECKIN PAGE] Calling refetchTasks()...");
           refetchTasks();
+          if (!isManagerMode) {
+            refetchPoolSummary();
+          }
           console.log("✅ [CHECKIN PAGE] All refetch calls completed");
           setIsAddTaskOpen(false);
           setEditingTask(null);

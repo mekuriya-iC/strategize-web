@@ -42,6 +42,11 @@ import {
 import { TimePicker } from "@/components/ui/time-picker";
 import { CheckboxSelect } from "@/components/ui/checkbox-select";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_TASK_TYPE,
+  TASK_TYPES,
+  type TaskType,
+} from "./task-form";
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -51,23 +56,6 @@ interface AddTaskDialogProps {
   editingTask?: any;
   session?: any; // Add session prop to check lock status
 }
-
-type TaskType =
-  | "KPI_FULFILLED"
-  | "KPI_UNMET"
-  | "INITIATIVE_FULFILLED"
-  | "INITIATIVE_UNMET"
-  | "SELF_DEVELOPMENT"
-  | "UNLINKED";
-
-const TASK_TYPES = [
-  { value: "KPI_UNMET", label: "KPI Unmet" },
-  { value: "KPI_FULFILLED", label: "KPI Fulfilled" },
-  { value: "INITIATIVE_FULFILLED", label: "Initiative Fulfilled" },
-  { value: "INITIATIVE_UNMET", label: "Initiative Unmet" },
-  { value: "SELF_DEVELOPMENT", label: "Self Development" },
-  { value: "UNLINKED", label: "Unlinked" },
-];
 
 const CHECKOUT_STATUS = [
   { value: "NOT_DONE", label: "Not Done" },
@@ -100,16 +88,26 @@ export function AddTaskDialog({
   const [createTaskMutation, { loading: creating }] = useMutation(
     CREATE_CHECKINOUT_TASK,
     {
-      refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+      refetchQueries: [
+        "GetCheckinoutSessions",
+        "GetCheckinoutTasks",
+        "TaskPoolSummary",
+      ],
       awaitRefetchQueries: true,
+      errorPolicy: "none",
     },
   );
 
   const [updateTaskMutation, { loading: updating }] = useMutation(
     UPDATE_CHECKINOUT_TASK,
     {
-      refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
+      refetchQueries: [
+        "GetCheckinoutSessions",
+        "GetCheckinoutTasks",
+        "TaskPoolSummary",
+      ],
       awaitRefetchQueries: true,
+      errorPolicy: "none",
     },
   );
 
@@ -141,10 +139,11 @@ export function AddTaskDialog({
 
   const today = new Date();
 
-  const [taskType, setTaskType] = useState<TaskType>("KPI_UNMET");
+  const [taskType, setTaskType] = useState<TaskType>(DEFAULT_TASK_TYPE);
   const [task, setTask] = useState("");
   const [description, setDescription] = useState("");
   const [relatedTo, setRelatedTo] = useState("");
+  const [collaborationMessage, setCollaborationMessage] = useState("");
   const [linkedKpi, setLinkedKpi] = useState("");
   const [linkedInitiative, setLinkedInitiative] = useState("");
   const [startDate, setStartDate] = useState<Date>(today);
@@ -261,23 +260,30 @@ export function AddTaskDialog({
       return;
     }
 
-    // Validate task title starts with action verb
-    const firstWord = task.trim().split(' ')[0].toLowerCase();
-    if (!QUALIFYING_VERBS.includes(firstWord)) {
-      console.error("❌ [TASK CREATION] Validation failed: Invalid action verb");
-      toast.error(
-        "Task must start with an action verb (e.g., Prepare, Submit, Meet, Review)"
-      );
-      return;
-    }
+    if (!editingTask) {
+      const words = task.trim().split(/\s+/);
+      const firstWord = words[0].toLowerCase();
+      if (!QUALIFYING_VERBS.includes(firstWord)) {
+        console.error("❌ [TASK CREATION] Validation failed: Invalid action verb");
+        toast.error(
+          "Task must start with an action verb (e.g., Prepare, Submit, Meet, Review)",
+        );
+        return;
+      }
+      if (words.length < 2 || task.trim().length < 8) {
+        toast.error(
+          'Add a specific outcome after the action verb (e.g., "Prepare quarterly report").',
+        );
+        return;
+      }
 
-    // Validate description is provided and meaningful
-    if (!description || description.trim().length < 10) {
-      console.error("❌ [TASK CREATION] Validation failed: Description too short or missing");
-      toast.error(
-        "Please provide a detailed description (minimum 10 characters)"
-      );
-      return;
+      if (!description || description.trim().length < 10) {
+        console.error("❌ [TASK CREATION] Validation failed: Description too short or missing");
+        toast.error(
+          "Please provide a detailed description (minimum 10 characters)",
+        );
+        return;
+      }
     }
 
     // Validate remark is required when editing
@@ -301,8 +307,24 @@ export function AddTaskDialog({
     }
 
     // Validate end date is within session range
-    if (session) {
-      const sessionEndDate = new Date(session.endDate);
+    if (session && !editingTask) {
+      const rawSessionEnd = session.weekEndDate || session.endDate;
+      const dateOnlyMatch =
+        typeof rawSessionEnd === "string"
+          ? rawSessionEnd.match(/^(\d{4})-(\d{2})-(\d{2})/)
+          : null;
+      const sessionEndDate = dateOnlyMatch
+        ? new Date(
+            Number(dateOnlyMatch[1]),
+            Number(dateOnlyMatch[2]) - 1,
+            Number(dateOnlyMatch[3]),
+            23,
+            59,
+            59,
+            999,
+          )
+        : new Date(rawSessionEnd);
+      if (!dateOnlyMatch) sessionEndDate.setHours(23, 59, 59, 999);
       const taskEndDateTime = buildDateTime(endDate, endTime);
 
       if (taskEndDateTime > sessionEndDate) {
@@ -346,7 +368,10 @@ export function AddTaskDialog({
             ? linkedInitiative
             : null,
         relatedToEmployeeId: relatedTo || null,
-        plannedDescription: description.trim() || null,
+        collaborationRequestMessage: relatedTo
+          ? collaborationMessage.trim() || null
+          : null,
+        plannedDescription: description.trim(),
         taskStartDate: buildDateTime(startDate, startTime).toISOString(),
         taskEndDate: buildDateTime(endDate, endTime).toISOString(),
         taskStatus: checkoutStatus || "NOT_DONE",
@@ -363,13 +388,18 @@ export function AddTaskDialog({
           variables: {
             input: {
               checkinoutTaskId: editingTask.id,
-              ...taskData,
-              achievedDescription: description.trim() || null,
+              taskStatus: checkoutStatus || "NOT_DONE",
+              achievedDescription: remark.trim() || null,
+              challenges: remark.trim() || null,
+              evidenceUrl: attachmentLink.trim() || attachment?.name || null,
             },
           },
         });
+        if (!result.data?.updateCheckinoutTask) {
+          throw new Error("The server did not confirm the task update.");
+        }
         console.log("✅ [TASK CREATION] Update mutation result:", result);
-        console.log("✅ [TASK CREATION] Updated task data:", result.data?.updateCheckinoutTask);
+        console.log("✅ [TASK CREATION] Updated task data:", result.data.updateCheckinoutTask);
         showSuccessToast("Task updated successfully");
       } else {
         console.log("➕ [TASK CREATION] Creating new task for session:", sessionId);
@@ -381,23 +411,22 @@ export function AddTaskDialog({
             },
           },
         });
+        if (!result.data?.createCheckinoutTask) {
+          throw new Error("The server did not confirm task creation.");
+        }
         console.log("✅ [TASK CREATION] Create mutation result:", result);
-        console.log("✅ [TASK CREATION] Created task data:", result.data?.createCheckinoutTask);
+        console.log("✅ [TASK CREATION] Created task data:", result.data.createCheckinoutTask);
         console.log("🆔 [TASK CREATION] New task ID:", result.data?.createCheckinoutTask?.checkinoutTaskId);
-        showSuccessToast("Task created successfully");
+        const submissionStatus =
+          result.data?.createCheckinoutTask?.submissionStatus;
+        showSuccessToast(
+          submissionStatus === "PERSONAL_TODO"
+            ? "Task saved as a private personal to-do"
+            : "Task saved privately as a draft",
+        );
       }
 
       console.log("🔄 [TASK CREATION] Calling onSuccess callback to refetch...");
-
-      // Show logbook message for fulfilled tasks
-      const fulfilledTypes = [
-        "KPI_FULFILLED",
-        "INITIATIVE_FULFILLED",
-        "SELF_DEVELOPMENT_FULFILLED",
-      ];
-      if (fulfilledTypes.includes(taskType)) {
-        toast.success("Task added to logbook for approval");
-      }
 
       onSuccess();
       console.log("✅ [TASK CREATION] onSuccess callback completed");
@@ -413,10 +442,11 @@ export function AddTaskDialog({
 
   const resetForm = () => {
     const newToday = new Date();
-    setTaskType("KPI_UNMET");
+    setTaskType(DEFAULT_TASK_TYPE);
     setTask("");
     setDescription("");
     setRelatedTo("");
+    setCollaborationMessage("");
     setLinkedKpi("");
     setLinkedInitiative("");
     setStartDate(newToday);
@@ -437,6 +467,12 @@ export function AddTaskDialog({
           <DialogTitle className="text-xl font-semibold">
             {editingTask ? "Edit Task" : "Add a Task"}
           </DialogTitle>
+          {!editingTask && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              This task is saved privately as a draft. If this week was already
+              submitted, it is saved as a private personal to-do instead.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="overflow-y-auto max-h-[80vh] px-6 py-6">
@@ -524,13 +560,15 @@ export function AddTaskDialog({
                 htmlFor="task"
                 className="text-sm font-medium text-gray-700 dark:text-gray-300"
               >
-                Task <span className="text-red-500">*</span>
+                Task — start with an action verb{" "}
+                <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="task"
                 placeholder="e.g., Prepare quarterly report, Submit proposal, Meet with client..."
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
+                required
                 disabled={!!editingTask}
                 className={cn(
                   "h-10 text-sm",
@@ -565,12 +603,14 @@ export function AddTaskDialog({
             {/* Description */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description <span className="text-red-500">*</span>
+                Required description <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 placeholder="Provide detailed description of what needs to be done (minimum 10 characters)..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                required
+                minLength={10}
                 disabled={!!editingTask}
                 className={cn(
                   "min-h-[100px] text-sm resize-none",
@@ -585,14 +625,16 @@ export function AddTaskDialog({
             {/* Related To */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Related To (Optional)
+                Invite a Collaborator (Optional)
               </Label>
               <CheckboxSelect
                 options={
-                  employeesData?.employees?.items?.map((emp: any) => ({
-                    value: emp.employeeId,
-                    label: emp.fullName,
-                  })) || []
+                  employeesData?.employees?.items
+                    ?.filter((emp: any) => emp.employeeId !== user?.employeeId)
+                    .map((emp: any) => ({
+                      value: emp.employeeId,
+                      label: emp.fullName,
+                    })) || []
                 }
                 value={relatedTo ? [relatedTo] : []}
                 onChange={(vals) => setRelatedTo(vals[0] || "")}
@@ -601,6 +643,20 @@ export function AddTaskDialog({
                 searchPlaceholder="Search employees..."
                 disabled={!!editingTask}
               />
+              <p className="text-xs text-muted-foreground">
+                Selecting a person sends them a collaboration request. Their task
+                is added only after they accept.
+              </p>
+              {relatedTo && !editingTask && (
+                <Textarea
+                  value={collaborationMessage}
+                  onChange={(event) =>
+                    setCollaborationMessage(event.target.value)
+                  }
+                  placeholder="Optional message for the collaborator"
+                  className="min-h-20 resize-none text-sm"
+                />
+              )}
             </div>
 
             {/* Start Date & Time */}
@@ -919,10 +975,10 @@ export function AddTaskDialog({
             {mutationLoading
               ? editingTask
                 ? "Updating..."
-                : "Adding..."
+                : "Saving privately..."
               : editingTask
                 ? "Save Changes"
-                : "Add Task"}
+                : "Save private draft"}
           </Button>
         </div>
       </DialogContent>

@@ -213,10 +213,10 @@ export default function QuarterlyPerformanceOverview() {
     ? `Q${context.quarterNumber}`
     : "Annual / YTD";
   const scopeLabel = scopeLabels[report.scope] || "Quarterly performance";
-  const carryDetail =
-    Number(summary.carryIn || 0) === 0
-      ? "No carry-in adjustment"
-      : `Original ${formatNumber(summary.originalTarget)} · Carry ${summary.carryIn > 0 ? "+" : ""}${formatNumber(summary.carryIn)}`;
+  const hasCarryIn = Number(summary.carryIn || 0) !== 0;
+  const targetDetail = hasCarryIn
+    ? `Planned: ${formatNumber(summary.originalTarget)} | Carry: ${summary.carryIn > 0 ? "+" : ""}${formatNumber(summary.carryIn)}`
+    : `Planned target (no carry adjustment)`;
   const statusCount = summary.pendingResultCount + summary.provisionalCount;
   const attentionItems = [
     summary.pendingResultCount > 0
@@ -266,9 +266,9 @@ export default function QuarterlyPerformanceOverview() {
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              label="Effective target"
+              label="Target"
               value={formatNumber(summary.effectiveTarget)}
-              detail={carryDetail}
+              detail={targetDetail}
               icon={<Target className="h-4 w-4" />}
             />
             <MetricCard

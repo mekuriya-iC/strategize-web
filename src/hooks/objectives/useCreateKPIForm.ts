@@ -61,24 +61,23 @@ export interface YearlyQuarters {
 
 interface UseCreateKPIFormProps {
   objectiveId: string;
-  onSuccess?: () => void;
   isCorporate?: boolean;
   isSupport?: boolean;
   supportSourceIds?: string[];
 }
 
 const measurementUnitFor = (unitType: KpiUnitType): string => {
-  if (unitType === "PERCENT") return "PERCENTAGE";
-  if (unitType === "RATIO") return "NUMBER"; // RATIO KPIs use "NUMBER" as measurementUnit
-  if (unitType === "CURRENCY") return "CURRENCY";
-  if (unitType === "HOUR") return "HOUR";
-  if (unitType === "COUNT") return "NUMBER"; // COUNT KPIs use "NUMBER"
-  return "NUMBER"; // Default to "NUMBER" for NUMBER unit type
+  // Backend KpiMeasurementUnit enum uses lowercase values
+  if (unitType === "PERCENT") return "percentage";
+  if (unitType === "RATIO") return "number"; // RATIO KPIs use "number" as measurementUnit
+  if (unitType === "CURRENCY") return "currency";
+  if (unitType === "HOUR") return "hour";
+  if (unitType === "COUNT") return "number"; // COUNT KPIs use "number"
+  return "number"; // Default to "number" for NUMBER unit type
 };
 
 export function useCreateKPIForm({
   objectiveId,
-  onSuccess,
   isCorporate = false,
   isSupport = false,
   supportSourceIds = [],
@@ -277,7 +276,7 @@ export function useCreateKPIForm({
         unitType: formData.unitType,
         quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
         strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
-        frequency: "QUARTERLY", // Default to QUARTERLY
+        frequency: "quarterly", // Backend KpiFrequency enum uses lowercase
         measurementUnit: measurementUnitFor(formData.unitType),
         organizationId: organizationId, // Required by backend
         targetValue: annualValue, // Use the annual target value directly
@@ -348,17 +347,11 @@ export function useCreateKPIForm({
         await createKpi({ input });
       }
 
-      // client.refetchQueries is handled by mutations, but we can do extra safety
-      // await client.refetchQueries({ include: ["GetKPIs", "GetObjective"] });
-      // useKPIMutations handles refetching.
-
-      onSuccess?.();
+      // Success - let the caller handle success feedback
+      // No onSuccess callback here anymore
     } catch (error) {
       console.error(error);
-      // Toast handled by mutation hooks usually, but if error propagates
-      // throw error;
-      // actually useCreateKPIForm swallows error in catch block at Step 1707?
-      // "throw error;" is there.
+      // Re-throw the error so the form can catch it and show appropriate error message
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -373,7 +366,6 @@ export function useCreateKPIForm({
     isSupport,
     supportSourceIds,
     selectedSupportSourceIds,
-    onSuccess,
     isCorporate,
     organizationId,
     basisQuarters,

@@ -12,6 +12,29 @@ import { GET_MY_FLAGGED_KPIS, GET_TEAM_FLAGGED_KPIS } from "@/lib/graphql/querie
 import { format } from "date-fns";
 import { useAuthStore } from "@/stores";
 
+interface FlaggedKpiTracker {
+  trackerId: string;
+  consecutiveUnmetWeeks: number;
+  firstUnmetDate?: string | null;
+  flaggedAt?: string | null;
+  kpi: {
+    name: string;
+    description?: string | null;
+    targetValue?: number | string | null;
+    aggregationMethod?: string | null;
+    weight?: number | string | null;
+  };
+  employee?: {
+    fullName: string;
+    title?: string | null;
+  } | null;
+  lastUnmetSession?: {
+    weekStartDate: string;
+    weekEndDate: string;
+    overallStatus?: string | null;
+  } | null;
+}
+
 /**
  * Flagged KPIs Page
  * 
@@ -24,6 +47,15 @@ import { useAuthStore } from "@/stores";
 export default function FlaggedKpisPage() {
   const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState<"my" | "team">("my");
+  const canViewTeam = [
+    "COORDINATOR",
+    "MANAGER",
+    "DIRECTOR",
+    "CEO",
+    "HR",
+    "ADMIN",
+    "SUPER_ADMIN",
+  ].includes(user?.role || "");
 
   const { data: myData, loading: myLoading, error: myError } = useQuery(GET_MY_FLAGGED_KPIS, {
     fetchPolicy: "network-only",
@@ -31,12 +63,13 @@ export default function FlaggedKpisPage() {
 
   const { data: teamData, loading: teamLoading, error: teamError } = useQuery(GET_TEAM_FLAGGED_KPIS, {
     fetchPolicy: "network-only",
+    skip: !canViewTeam,
   });
 
-  const myFlaggedKpis = myData?.myFlaggedKpis || [];
-  const teamFlaggedKpis = teamData?.teamFlaggedKpis || [];
+  const myFlaggedKpis: FlaggedKpiTracker[] = myData?.myFlaggedKpis ?? [];
+  const teamFlaggedKpis: FlaggedKpiTracker[] = teamData?.teamFlaggedKpis ?? [];
 
-  if (myLoading && teamLoading) {
+  if (myLoading || (canViewTeam && teamLoading)) {
     return <LoadingSkeleton />;
   }
 
@@ -65,15 +98,17 @@ export default function FlaggedKpisPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Team Flagged KPIs
-            {teamFlaggedKpis.length > 0 && (
-              <Badge variant="outline" className="ml-2 border-orange-500 text-orange-600">
-                {teamFlaggedKpis.length}
-              </Badge>
-            )}
-          </TabsTrigger>
+          {canViewTeam && (
+            <TabsTrigger value="team" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team Flagged KPIs
+              {teamFlaggedKpis.length > 0 && (
+                <Badge variant="outline" className="ml-2 border-orange-500 text-orange-600">
+                  {teamFlaggedKpis.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* My Flagged KPIs Tab */}
@@ -106,7 +141,7 @@ export default function FlaggedKpisPage() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Great Job! 🎉</h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  You don't have any flagged KPIs. All your KPIs are on track or have been resolved.
+                  You have no flagged KPIs. All your KPIs are on track or have been resolved.
                 </p>
               </CardContent>
             </Card>
@@ -124,7 +159,7 @@ export default function FlaggedKpisPage() {
                 </AlertDescription>
               </Alert>
 
-              {myFlaggedKpis.map((tracker: any) => (
+              {myFlaggedKpis.map((tracker) => (
                 <FlaggedKpiCard key={tracker.trackerId} tracker={tracker} showEmployee={false} />
               ))}
             </div>
@@ -132,7 +167,8 @@ export default function FlaggedKpisPage() {
         </TabsContent>
 
         {/* Team Flagged KPIs Tab */}
-        <TabsContent value="team">
+        {canViewTeam && (
+          <TabsContent value="team">
           {teamError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -161,7 +197,7 @@ export default function FlaggedKpisPage() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Excellent Team Performance! 🎉</h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  Your team has no flagged KPIs. All team members' KPIs are on track.
+                  Your team has no flagged KPIs. Every team member’s KPIs are on track.
                 </p>
               </CardContent>
             </Card>
@@ -179,12 +215,13 @@ export default function FlaggedKpisPage() {
                 </AlertDescription>
               </Alert>
 
-              {teamFlaggedKpis.map((tracker: any) => (
+              {teamFlaggedKpis.map((tracker) => (
                 <FlaggedKpiCard key={tracker.trackerId} tracker={tracker} showEmployee={true} />
               ))}
             </div>
           )}
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -193,7 +230,13 @@ export default function FlaggedKpisPage() {
 /**
  * Individual Flagged KPI Card
  */
-function FlaggedKpiCard({ tracker, showEmployee = false }: { tracker: any; showEmployee?: boolean }) {
+function FlaggedKpiCard({
+  tracker,
+  showEmployee = false,
+}: {
+  tracker: FlaggedKpiTracker;
+  showEmployee?: boolean;
+}) {
   const { kpi, employee, consecutiveUnmetWeeks, firstUnmetDate, flaggedAt, lastUnmetSession } =
     tracker;
 
@@ -283,11 +326,11 @@ function FlaggedKpiCard({ tracker, showEmployee = false }: { tracker: any; showE
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Target Value</p>
-              <p className="font-semibold">{kpi.targetValue || "N/A"}</p>
+              <p className="font-semibold">{kpi.targetValue ?? "N/A"}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Weight</p>
-              <p className="font-semibold">{kpi.weight ? `${kpi.weight}%` : "N/A"}</p>
+              <p className="font-semibold">{kpi.weight != null ? `${kpi.weight}%` : "N/A"}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Aggregation</p>
@@ -314,10 +357,9 @@ function FlaggedKpiCard({ tracker, showEmployee = false }: { tracker: any; showE
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
-            {showEmployee 
-              ? `Work with ${employee?.fullName || 'this employee'} to create a KPI_FULFILLED task to resolve this flag.`
-              : 'Create a KPI_FULFILLED task in your next check-in to resolve this flag.'
-            } Once completed, the counter will reset to 0.
+            {showEmployee
+              ? `Work with ${employee?.fullName || "this employee"} to submit a KPI_FULFILLED task in the next weekly plan.`
+              : "Submit a KPI_FULFILLED task in your next weekly plan."} The flag resets when that official weekly outcome is finalized.
           </AlertDescription>
         </Alert>
       </CardContent>

@@ -8,6 +8,8 @@ export type TaskLinkType =
   | "KPI_UNMET"
   | "INITIATIVE_FULFILLED"
   | "INITIATIVE_UNMET"
+  | "SELF_DEVELOPMENT_FULFILLED"
+  | "SELF_DEVELOPMENT_UNMET"
   | "SELF_DEVELOPMENT"
   | "UNLINKED";
 
@@ -50,6 +52,8 @@ export function getTaskColors(taskType: string): TaskColorConfig {
       };
 
     // Self-Development Tasks - Yellow/Amber
+    case "SELF_DEVELOPMENT_FULFILLED":
+    case "SELF_DEVELOPMENT_UNMET":
     case "SELF_DEVELOPMENT":
       return {
         background: "bg-amber-50 dark:bg-amber-950/30",
@@ -100,6 +104,8 @@ export function getTaskCategory(taskType: string): {
         dotColor: "bg-green-500",
       };
 
+    case "SELF_DEVELOPMENT_FULFILLED":
+    case "SELF_DEVELOPMENT_UNMET":
     case "SELF_DEVELOPMENT":
       return {
         label: "Self-Development",
@@ -132,6 +138,8 @@ export function getTaskBorderStyle(taskType: string): string {
     case "INITIATIVE_UNMET":
       return "border-l-4 border-l-green-500";
 
+    case "SELF_DEVELOPMENT_FULFILLED":
+    case "SELF_DEVELOPMENT_UNMET":
     case "SELF_DEVELOPMENT":
       return "border-l-4 border-l-amber-500";
 

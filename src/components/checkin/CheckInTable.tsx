@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { CheckInTableRow } from "./CheckInTableRow";
 import { CheckInTableCard } from "./CheckInTableCard";
+import type { TaskSubmissionStatus } from "./weekly-submission";
 
 interface Task {
   id: string;
@@ -24,6 +25,7 @@ interface Task {
   isSelfDevComplete: boolean;
   createdAt: string;
   isMidWeekTask?: boolean;
+  submissionStatus?: TaskSubmissionStatus;
 }
 
 interface CheckInTableProps {
@@ -34,6 +36,9 @@ interface CheckInTableProps {
   onRefetch: () => void;
   onEditTask?: (task: Task) => void;
   isEditable?: boolean;
+  isSelectionEnabled?: boolean;
+  selectedTaskIds?: ReadonlySet<string>;
+  onSelectionChange?: (taskId: string, selected: boolean) => void;
   filters?: {
     objective: string;
     startDate: Date | undefined;
@@ -52,6 +57,9 @@ export function CheckInTable({
   onEditTask,
   filters,
   isEditable = true,
+  isSelectionEnabled = false,
+  selectedTaskIds = new Set<string>(),
+  onSelectionChange,
 }: CheckInTableProps) {
   void createdDate;
   void endDate;
@@ -129,6 +137,11 @@ export function CheckInTable({
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
+                {isSelectionEnabled && onSelectionChange && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Select
+                  </th>
+                )}
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Major Task
                 </th>
@@ -172,6 +185,9 @@ export function CheckInTable({
                   isEditable={isEditable}
                   onRefetch={onRefetch}
                   onEditTask={onEditTask}
+                  isSelectionEnabled={isSelectionEnabled}
+                  isSelected={selectedTaskIds.has(task.id)}
+                  onSelectionChange={onSelectionChange}
                 />
               ))}
             </tbody>
@@ -188,6 +204,9 @@ export function CheckInTable({
             isEditable={isEditable}
             onRefetch={onRefetch}
             onEditTask={onEditTask}
+            isSelectionEnabled={isSelectionEnabled}
+            isSelected={selectedTaskIds.has(task.id)}
+            onSelectionChange={onSelectionChange}
           />
         ))}
       </div>

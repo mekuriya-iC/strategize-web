@@ -61,10 +61,6 @@ export default function CreateKPIForm({
     handleSubmit,
   } = useCreateKPIForm({
     objectiveId,
-    onSuccess: useCallback(() => {
-      toast.success("KPI Created Successfully");
-      onSuccess?.();
-    }, [onSuccess]),
     isCorporate: usesAnnualOnlyKpiTargets(objective),
     isSupport: objective.cascadeType === "SUPPORT",
     supportSourceIds: (objective.supportSources ?? []).map(
@@ -76,6 +72,9 @@ export default function CreateKPIForm({
     e.preventDefault();
     try {
       await handleSubmit();
+      // Only show success toast and trigger callback if mutation succeeded
+      toast.success("KPI Created Successfully");
+      onSuccess?.();
     } catch (error) {
       toast.error("Failed to create KPI", {
         description:

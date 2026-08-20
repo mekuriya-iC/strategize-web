@@ -186,14 +186,15 @@ const GET_DEPARTMENT_SCORECARD = gql`
 `;
 
 const GET_PERIODS = gql`
-  query GetStrategicPeriods {
-    strategicPeriods {
+  query GetStrategicPeriods($page: Int!, $limit: Int!) {
+    strategicPeriods(page: $page, limit: $limit) {
       items {
         strategicPeriodId
         name
         periodType
         startDate
         endDate
+        status
       }
     }
   }
@@ -270,7 +271,9 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
   const hasFullAccess = !!user?.role && fullAccessRoles.has(user.role as string);
 
   // Fetch periods
-  const { data: periodsData } = useQuery(GET_PERIODS);
+  const { data: periodsData } = useQuery(GET_PERIODS, {
+    variables: { page: 1, limit: 100 },
+  });
   const periods = periodsData?.strategicPeriods?.items || [];
   const activePeriod = periods.find((p: any) => {
     // Check if period is currently active based on dates
@@ -433,10 +436,47 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
 
   if (!selectedPeriodId) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-600 dark:text-gray-400">
-          Please select a period to view KPI performance data.
-        </p>
+      <div className="space-y-6">
+        {/* Show period selector when no period is selected */}
+        <Card className="border-2 border-amber-200 dark:border-amber-900/40">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Select a Period</CardTitle>
+                <CardDescription>Choose a strategic period to view KPI performance data</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Strategic Period
+                </label>
+                <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+                  <SelectTrigger className="w-full max-w-md">
+                    <SelectValue placeholder="Select a strategic period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.map((period: any) => (
+                      <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
+                        {period.name} ({new Date(period.startDate).toLocaleDateString()} - {new Date(period.endDate).toLocaleDateString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {periods.length === 0 
+                  ? "No strategic periods available. Please create a strategic period first."
+                  : "Select a period above to view comprehensive KPI performance analytics across all organizational levels."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

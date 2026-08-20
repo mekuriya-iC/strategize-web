@@ -66,6 +66,29 @@ export const GET_CHECKINOUT_SESSIONS = gql`
   }
 `;
 
+export const GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES = gql`
+  query SuperAdminCheckinoutSessionCandidates {
+    superAdminCheckinoutSessionCandidates {
+      employeeId
+      managerId
+      fullName
+      email
+      title
+      role
+      status
+      picture
+      departments {
+        departmentId
+        name
+        division {
+          divisionId
+          name
+        }
+      }
+    }
+  }
+`;
+
 // Get single check-in session
 export const GET_CHECKINOUT_SESSION = gql`
   query GetCheckinoutSession($checkinoutSessionId: ID!) {
@@ -138,6 +161,11 @@ export const GET_CHECKINOUT_TASKS = gql`
         requiresApproval
         isMidWeekTask
         logbookStatus
+        submissionStatus
+        submittedAt
+        submissionBatchId
+        isCollaborativeTask
+        collaborationRequestId
         taskStartDate
         taskEndDate
         approvedAt
@@ -195,6 +223,11 @@ export const GET_CHECKINOUT_TASK = gql`
       requiresApproval
       isMidWeekTask
       logbookStatus
+      submissionStatus
+      submittedAt
+      submissionBatchId
+      isCollaborativeTask
+      collaborationRequestId
       taskStartDate
       taskEndDate
       approvedAt
@@ -209,6 +242,22 @@ export const GET_CHECKINOUT_TASK = gql`
         employeeId
         fullName
       }
+    }
+  }
+`;
+
+export const GET_TASK_POOL_SUMMARY = gql`
+  query TaskPoolSummary($sessionId: ID!) {
+    taskPoolSummary(sessionId: $sessionId) {
+      sessionId
+      draftCount
+      submittedCount
+      personalTodoCount
+      activeCount
+      remainingCapacity
+      minimumSubmissionCount
+      maximumSubmissionCount
+      maximumActiveTaskCount
     }
   }
 `;

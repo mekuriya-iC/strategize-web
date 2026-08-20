@@ -26,7 +26,10 @@ import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
-import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
+import {
+  GET_CHECKINOUT_SESSIONS,
+  GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES,
+} from "@/lib/graphql/queries/checkins";
 import { CREATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useOrganizationId } from "@/hooks/useOrganizationId";
@@ -58,8 +61,8 @@ export default function CreateSessionDialog({
   const { data: userData, loading: userLoading } = useQuery(GET_ME);
   const currentUser = userData?.me;
   const safeCurrentUserId = currentUserId || currentUser?.employeeId || "";
-  const isAdmin =
-    currentUser?.role === "ADMIN" || currentUser?.role === "SUPER_ADMIN";
+  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+  const isAdmin = currentUser?.role === "ADMIN" || isSuperAdmin;
 
   // Debug logging
   console.log("👤 Current User:", currentUser);
@@ -67,7 +70,8 @@ export default function CreateSessionDialog({
   console.log("👔 Is Admin:", isAdmin);
   console.log("⏳ User Loading:", userLoading);
 
-  // Get all employees (only for admins)
+  // Organization admins retain the existing employee list. Super admins use a
+  // server-authoritative list restricted to directors/managers under a CEO.
   const { data: employeesData, loading: employeesLoading } = useQuery(
     GET_EMPLOYEES,
     {
@@ -75,10 +79,17 @@ export default function CreateSessionDialog({
         page: 1,
         limit: 1000,
       },
-      skip: !isAdmin || userLoading, // Skip if not admin or still loading user data
+      skip: currentUser?.role !== "ADMIN" || userLoading,
       fetchPolicy: "cache-and-network",
     },
   );
+  const {
+    data: superAdminCandidatesData,
+    loading: superAdminCandidatesLoading,
+  } = useQuery(GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES, {
+    skip: !isSuperAdmin || userLoading || !open,
+    fetchPolicy: "network-only",
+  });
 
   // Get departments where current user is head (for managers)
   const { data: departmentsData, loading: departmentsLoading } = useQuery(
@@ -105,7 +116,7 @@ export default function CreateSessionDialog({
     GET_CHECKINOUT_SESSIONS,
     {
       variables: {
-        supervisorUserId: safeCurrentUserId,
+        supervisorUserId: isSuperAdmin ? undefined : safeCurrentUserId,
         page: 1,
         limit: 1000,
       },
@@ -123,9 +134,13 @@ export default function CreateSessionDialog({
     },
   );
 
-  const [createSession] = useMutation(CREATE_CHECKINOUT_SESSION);
+  const [createSession] = useMutation(CREATE_CHECKINOUT_SESSION, {
+    errorPolicy: "none",
+  });
 
   const allEmployees = employeesData?.employees?.items || [];
+  const superAdminCandidates =
+    superAdminCandidatesData?.superAdminCheckinoutSessionCandidates || [];
   const departments = departmentsData?.departments?.items || [];
   const divisions = divisionsData?.divisions?.items || [];
   const periods = periodsData?.strategicPeriods?.items || [];
@@ -226,13 +241,22 @@ export default function CreateSessionDialog({
       allEmployeesCount: allEmployees.length,
       employeesFromDepartmentsCount: employeesFromDepartments.length,
     });
+    if (isSuperAdmin) {
+      return superAdminCandidates;
+    }
     if (isAdmin) {
       console.log("  → Using allEmployees for admin");
       return allEmployees;
     }
     console.log("  → Using employeesFromDepartments for manager");
     return employeesFromDepartments;
-  }, [isAdmin, allEmployees, employeesFromDepartments]);
+  }, [
+    isAdmin,
+    isSuperAdmin,
+    allEmployees,
+    superAdminCandidates,
+    employeesFromDepartments,
+  ]);
 
   // Check for active sessions for each employee
   const employeesWithActiveSessions = useMemo(() => {
@@ -408,6 +432,9 @@ export default function CreateSessionDialog({
             },
           });
 
+          if (!result.data?.createCheckinoutSession) {
+            throw new Error("The server did not confirm session creation.");
+          }
           console.log("✅ Session created:", result.data);
           successCount++;
 
@@ -623,6 +650,7 @@ export default function CreateSessionDialog({
             </div>
 
             {employeesLoading ||
+            superAdminCandidatesLoading ||
             departmentsLoading ||
             divisionsLoading ||
             sessionsLoading ? (
@@ -693,9 +721,11 @@ export default function CreateSessionDialog({
                   No team members found
                 </p>
                 <p className="text-xs text-gray-500 mt-2 text-center px-4 max-w-sm">
-                  {isAdmin
-                    ? "No employees found in the system"
-                    : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}
+                  {isSuperAdmin
+                    ? "No active directors or managers reporting directly to an organization CEO were found."
+                    : isAdmin
+                      ? "No employees found in the system"
+                      : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}
                 </p>
               </div>
             )}

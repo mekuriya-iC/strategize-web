@@ -16,6 +16,7 @@ export function TaskColorLegend() {
           variant="outline"
           size="sm"
           className="gap-2 text-gray-600 dark:text-gray-300"
+          aria-label="Open task category color guide"
         >
           <InfoIcon className="w-4 h-4" />
           Color Guide
@@ -35,7 +36,7 @@ export function TaskColorLegend() {
           <div className="space-y-2">
             {/* KPI Tasks */}
             <div className="flex items-center gap-3 p-2 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-              <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+              <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
               <div>
                 <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
                   KPI Tasks
@@ -48,7 +49,7 @@ export function TaskColorLegend() {
 
             {/* Initiative Tasks */}
             <div className="flex items-center gap-3 p-2 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-              <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+              <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" aria-hidden="true" />
               <div>
                 <div className="text-sm font-medium text-green-900 dark:text-green-100">
                   Initiative Tasks
@@ -61,20 +62,20 @@ export function TaskColorLegend() {
 
             {/* Self-Development Tasks */}
             <div className="flex items-center gap-3 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-              <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
+              <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" aria-hidden="true" />
               <div>
                 <div className="text-sm font-medium text-amber-900 dark:text-amber-100">
                   Self-Development
                 </div>
                 <div className="text-xs text-amber-700 dark:text-amber-300">
-                  Personal development activities
+                  Fulfilled or unmet personal development activities
                 </div>
               </div>
             </div>
 
             {/* Unlinked Tasks */}
             <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700">
-              <div className="w-3 h-3 rounded-full bg-gray-500 flex-shrink-0" />
+              <div className="w-3 h-3 rounded-full bg-gray-500 flex-shrink-0" aria-hidden="true" />
               <div>
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Unlinked Tasks

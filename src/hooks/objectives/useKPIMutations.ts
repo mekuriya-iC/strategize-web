@@ -43,6 +43,7 @@ import { invalidateAfterMutation } from "@/stores/cacheStore";
 export const useKPIMutations = () => {
   const [createKpi, { loading: createLoading, error: createError }] =
     useMutation(CREATE_KPI, {
+      errorPolicy: "none",
       onCompleted: () => {
         invalidateAfterMutation.kpi();
       },
@@ -229,7 +230,13 @@ export const useKPIMutations = () => {
   const handleCreateKpi = async (variables: CreateKpiMutationVariables) => {
     try {
       const result = await createKpi({ variables });
-      return result.data?.createKpi;
+      const createdKpi = result.data?.createKpi;
+      if (!createdKpi) {
+        throw new Error(
+          "KPI creation failed because the server returned no created KPI.",
+        );
+      }
+      return createdKpi;
     } catch (error) {
       console.error("Error creating KPI:", error);
       throw error;

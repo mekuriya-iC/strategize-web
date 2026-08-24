@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { UPDATE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
 import { GET_LOGBOOK_FORMULA_FOR_CONTEXT } from "@/lib/graphql/queries/logbook";
@@ -16,16 +16,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { XIcon, PlusIcon, TrashIcon, UploadIcon } from "lucide-react";
+import {
+  AlertCircle,
+  XIcon,
+  PlusIcon,
+  TrashIcon,
+  UploadIcon,
+} from "lucide-react";
 import {
   getOrderedLogbookFormulaSources,
   isLogbookFormulaCalculationType,
   logbookFormulaSourceName,
   type FrontendLogbookItem,
+  type LogbookEvidenceType,
   type LogbookFormulaForContextQueryData,
   type LogbookFormulaForContextQueryVariables,
 } from "@/types/logbook";
 import { useUser } from "@/stores";
+import {
+  getQuarterPlanSubmissionBlock,
+  isQuarterPlanSubmissionError,
+} from "./logbook-submission-readiness";
 
 const getApiBaseUrl = () => {
   const graphqlUrl =
@@ -33,7 +44,17 @@ const getApiBaseUrl = () => {
   return graphqlUrl.replace(/\/graphql\/?$/, "");
 };
 
-const uploadEvidenceFile = async (file: File): Promise<string> => {
+interface UploadedEvidenceFile {
+  url: string;
+  filename: string;
+  originalname: string;
+  size: number;
+  type: string;
+}
+
+const uploadEvidenceFile = async (
+  file: File,
+): Promise<UploadedEvidenceFile> => {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -49,28 +70,71 @@ const uploadEvidenceFile = async (file: File): Promise<string> => {
     throw new Error(body?.message || `File upload failed (${response.status})`);
   }
 
-  const result = await response.json();
-  if (typeof result.url === "string" && /^https?:\/\//i.test(result.url)) {
-    return result.url;
-  }
-  if (typeof result.url === "string" && result.url.startsWith("/")) {
-    return `${getApiBaseUrl()}${result.url}`;
-  }
-  return `${getApiBaseUrl()}/storage/${result.filename}`;
+  const result = (await response.json()) as UploadedEvidenceFile;
+  const url =
+    typeof result.url === "string" && /^https?:\/\//i.test(result.url)
+      ? result.url
+      : typeof result.url === "string" && result.url.startsWith("/")
+        ? `${getApiBaseUrl()}${result.url}`
+        : `${getApiBaseUrl()}/storage/${result.filename}`;
+
+  return { ...result, url };
 };
+
+type EvidenceItemType =
+  | "file"
+  | "image"
+  | "link"
+  | "email"
+  | "certificate";
 
 interface EvidenceItem {
   id: string;
-  type: "file" | "email" | "drive_link" | "certificate";
+  type: EvidenceItemType;
   value: string;
   file?: File;
+  name?: string;
+  mimeType?: string;
+  size?: number;
 }
+
+const API_EVIDENCE_TYPE: Record<EvidenceItemType, LogbookEvidenceType> = {
+  file: "FILE",
+  image: "IMAGE",
+  link: "LINK",
+  email: "EMAIL",
+  certificate: "CERTIFICATE",
+};
+
+const UI_EVIDENCE_TYPE: Record<LogbookEvidenceType, EvidenceItemType> = {
+  FILE: "file",
+  IMAGE: "image",
+  LINK: "link",
+  EMAIL: "email",
+  CERTIFICATE: "certificate",
+};
+
+const createEmptyEvidenceItem = (id = "initial"): EvidenceItem => ({
+  id,
+  type: "file",
+  value: "",
+});
+
+const isHttpUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 interface SubmitApprovalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: FrontendLogbookItem;
   onSuccess: () => void;
+  onEditAchievement?: () => void;
 }
 
 export function SubmitApprovalDialog({
@@ -78,6 +142,7 @@ export function SubmitApprovalDialog({
   onOpenChange,
   item,
   onSuccess,
+  onEditAchievement,
 }: SubmitApprovalDialogProps) {
   const currentUser = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +154,10 @@ export function SubmitApprovalDialog({
     item.linkedKpi?.calculationType,
   );
   const contextKpiId = item.linkedKpiId ?? item.linkedKpi?.kpiId ?? "";
+  const quarterPlanSubmissionBlock = getQuarterPlanSubmissionBlock(
+    contextKpiId,
+    item.quarterPlan,
+  );
   const { data: formulaData, loading: formulaLoading } = useQuery<
     LogbookFormulaForContextQueryData,
     LogbookFormulaForContextQueryVariables
@@ -109,16 +178,41 @@ export function SubmitApprovalDialog({
   );
 
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([
-    { id: "1", type: "email", value: "Enter email date and subject" },
+    createEmptyEvidenceItem(),
   ]);
 
+  useEffect(() => {
+    if (!open) return;
+    const existingEvidence: EvidenceItem[] = (item.evidenceItems || []).map((evidence) => ({
+      id: crypto.randomUUID(),
+      type: UI_EVIDENCE_TYPE[evidence.type],
+      value: evidence.value,
+      name: evidence.name || undefined,
+      mimeType: evidence.mimeType || undefined,
+      size: evidence.size || undefined,
+    }));
+    if (existingEvidence.length === 0 && item.attachmentUrl) {
+      existingEvidence.push({
+        id: crypto.randomUUID(),
+        type: "link",
+        value: item.attachmentUrl,
+        name: "Existing evidence",
+      });
+    }
+    // Dialog-local form state intentionally mirrors the selected draft.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEvidenceItems(
+      existingEvidence.length > 0
+        ? existingEvidence
+        : [createEmptyEvidenceItem()],
+    );
+  }, [item.attachmentUrl, item.evidenceItems, item.id, open]);
+
   const addEvidenceItem = () => {
-    const newItem: EvidenceItem = {
-      id: Date.now().toString(),
-      type: "file",
-      value: "",
-    };
-    setEvidenceItems([...evidenceItems, newItem]);
+    setEvidenceItems((items) => [
+      ...items,
+      createEmptyEvidenceItem(crypto.randomUUID()),
+    ]);
   };
 
   const removeEvidenceItem = (id: string) => {
@@ -137,62 +231,135 @@ export function SubmitApprovalDialog({
     );
   };
 
+  const changeEvidenceType = (id: string, type: EvidenceItemType) => {
+    setEvidenceItems((items) =>
+      items.map((item) =>
+        item.id === id
+          ? { id: item.id, type, value: "" }
+          : item,
+      ),
+    );
+  };
+
+  const formulaMetricSources = formulaSources.filter(
+    (source) => source.sourceType === "METRIC",
+  );
+  const hasRecordedKpiResult = !item.linkedKpiId
+    ? true
+    : isFormulaKpi
+      ? !formulaLoading &&
+        (formulaMetricSources.length === 0 ||
+          formulaMetricSources.every((source) =>
+            (item.metricObservations || []).some(
+              (observation) =>
+                observation.metricDefinitionId === source.metricDefinitionId &&
+                String(observation.value).trim() !== "",
+            ),
+          ))
+      : item.kpiAchievedValue != null ||
+        Boolean(item.kpiActualNumeratorExact || item.kpiActualRateExact);
+
   const [updateLogbookEntry] = useMutation(UPDATE_LOGBOOK_ENTRY, {
     refetchQueries: ["GetLogbookEntries"],
   });
 
   const handleSubmit = async () => {
+    if (quarterPlanSubmissionBlock) {
+      toast.warning(quarterPlanSubmissionBlock.title, {
+        description: quarterPlanSubmissionBlock.description,
+        duration: 8000,
+      });
+      return;
+    }
+
+    if (!hasRecordedKpiResult) {
+      toast.error(
+        "Enter the KPI achievement value or formula observations before submitting.",
+      );
+      return;
+    }
+
+    if (evidenceItems.length === 0) {
+      toast.error("Add at least one evidence item before submitting.");
+      return;
+    }
+
+    const invalidEvidenceIndex = evidenceItems.findIndex((evidence) => {
+      if (evidence.type === "email") return !evidence.value.trim();
+      if (evidence.type === "link") return !isHttpUrl(evidence.value.trim());
+      return !evidence.file && !isHttpUrl(evidence.value.trim());
+    });
+    if (invalidEvidenceIndex >= 0) {
+      toast.error(
+        `Complete evidence item ${invalidEvidenceIndex + 1} with a valid file, image, link, certificate, or email reference.`,
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const uploadedEvidence = await Promise.all(
         evidenceItems.map(async (evidence) => {
           if (
-            (evidence.type === "file" || evidence.type === "certificate") &&
+            ["file", "image", "certificate"].includes(evidence.type) &&
             evidence.file
           ) {
-            const url = await uploadEvidenceFile(evidence.file);
-            return { ...evidence, value: url };
+            const uploaded = await uploadEvidenceFile(evidence.file);
+            return {
+              ...evidence,
+              value: uploaded.url,
+              name: uploaded.originalname || evidence.file.name,
+              mimeType: uploaded.type || evidence.file.type,
+              size: uploaded.size || evidence.file.size,
+            };
           }
           return evidence;
         }),
       );
 
-      const evidenceDescription = uploadedEvidence
-        .filter((evidence) => evidence.value?.trim())
-        .map((evidence) => `${evidence.type}: ${evidence.value}`)
-        .join("\n");
+      const structuredEvidence = uploadedEvidence.map((evidence) => ({
+        type: API_EVIDENCE_TYPE[evidence.type],
+        value: evidence.value.trim(),
+        name: evidence.name || evidence.file?.name || undefined,
+        mimeType: evidence.mimeType || evidence.file?.type || undefined,
+        size: evidence.size || evidence.file?.size || undefined,
+      }));
 
       const input: Record<string, unknown> = {
         logbookEntryId: item.id,
         entryStatus: "SUBMITTED",
-        evidenceDescription:
-          [description.trim(), evidenceDescription]
-            .filter(Boolean)
-            .join("\n") || null,
-        decisionsMade: remark || null,
+        evidenceDescription: description.trim() || null,
+        evidenceItems: structuredEvidence,
+        decisionsMade: remark.trim() || null,
       };
 
-
-
-      const firstEvidenceUrl = uploadedEvidence.find(
-        (evidence) =>
-          ["file", "certificate", "drive_link"].includes(evidence.type) &&
-          /^https?:\/\//i.test(evidence.value?.trim() || ""),
+      const firstEvidenceUrl = structuredEvidence.find(
+        (evidence) => evidence.type !== "EMAIL" && isHttpUrl(evidence.value),
       )?.value;
 
-      if (firstEvidenceUrl) {
-        input.evidenceUrl = firstEvidenceUrl.trim();
-      }
+      if (firstEvidenceUrl) input.evidenceUrl = firstEvidenceUrl;
 
-      await updateLogbookEntry({
+      const result = await updateLogbookEntry({
         variables: { input },
+        errorPolicy: "none",
       });
+      if (!result.data?.updateLogbookEntry) {
+        throw new Error("The server did not confirm the logbook submission.");
+      }
 
       toast.success("Logbook entry submitted for approval");
       onSuccess();
       onOpenChange(false);
     } catch (error: unknown) {
+      if (isQuarterPlanSubmissionError(error)) {
+        toast.warning("Quarter plan approval required", {
+          description:
+            "The KPI quarterly target plan changed or is not approved. Refresh the logbook and confirm that the reporting quarter is approved before submitting.",
+          duration: 8000,
+        });
+        return;
+      }
       toast.error(
         error instanceof Error
           ? error.message
@@ -206,17 +373,24 @@ export function SubmitApprovalDialog({
   const renderEvidenceInput = (evidence: EvidenceItem) => {
     switch (evidence.type) {
       case "file":
+      case "image":
         return (
           <div className="space-y-2">
             <label className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-[#3838EC] transition-colors">
               <UploadIcon className="w-6 h-6 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-blue-600">
-                Click or drag here to upload file
+                Click to upload {evidence.type === "image" ? "an image" : "a file"}
               </p>
-              <p className="text-xs text-gray-500">Upload</p>
+              <p className="text-xs text-gray-500">
+                Maximum size 10 MB
+              </p>
               <input
                 type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept={
+                  evidence.type === "image"
+                    ? "image/jpeg,image/png,image/webp"
+                    : ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                }
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -227,12 +401,13 @@ export function SubmitApprovalDialog({
                 }}
               />
             </label>
-            {evidence.file && (
+            {evidence.file ? (
               <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
                 <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
-                  📄 {evidence.file.name}
+                  {evidence.type === "image" ? "🖼️" : "📄"} {evidence.file.name}
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     updateEvidenceItem(evidence.id, "file", undefined);
                     updateEvidenceItem(evidence.id, "value", "");
@@ -242,7 +417,16 @@ export function SubmitApprovalDialog({
                   <TrashIcon className="w-4 h-4" />
                 </button>
               </div>
-            )}
+            ) : isHttpUrl(evidence.value) ? (
+              <a
+                href={evidence.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block break-all text-sm text-blue-600 underline"
+              >
+                {evidence.name || evidence.value}
+              </a>
+            ) : null}
           </div>
         );
 
@@ -257,10 +441,11 @@ export function SubmitApprovalDialog({
           />
         );
 
-      case "drive_link":
+      case "link":
         return (
           <Input
-            placeholder="Enter drive link"
+            type="url"
+            placeholder="Enter an HTTPS link"
             value={evidence.value}
             onChange={(e) =>
               updateEvidenceItem(evidence.id, "value", e.target.value)
@@ -282,11 +467,20 @@ export function SubmitApprovalDialog({
                 }
               }}
             />
-            {evidence.file && (
+            {evidence.file ? (
               <p className="text-xs text-gray-500">
                 Selected: {evidence.file.name}
               </p>
-            )}
+            ) : isHttpUrl(evidence.value) ? (
+              <a
+                href={evidence.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block break-all text-xs text-blue-600 underline"
+              >
+                {evidence.name || evidence.value}
+              </a>
+            ) : null}
           </div>
         );
 
@@ -339,6 +533,24 @@ export function SubmitApprovalDialog({
             </div>
           </div>
 
+          {quarterPlanSubmissionBlock && (
+            <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">
+                  {quarterPlanSubmissionBlock.title}
+                </p>
+                <p className="mt-1 text-sm text-amber-800">
+                  {quarterPlanSubmissionBlock.description}
+                </p>
+                <p className="mt-2 text-xs text-amber-700">
+                  Your weekly task remains submitted and visible to your supervisor.
+                  Only this KPI achievement approval is waiting for the quarterly plan.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Bottom Row - Evidence and Quantity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Evidence of Performance */}
@@ -383,87 +595,34 @@ export function SubmitApprovalDialog({
                       )}
                     </div>
 
-                    {/* Radio buttons */}
+                    {/* Evidence type */}
                     <div className="flex flex-wrap gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`evidence-${evidence.id}`}
-                          value="file"
-                          checked={evidence.type === "file"}
-                          onChange={(e) =>
-                            updateEvidenceItem(
-                              evidence.id,
-                              "type",
-                              e.target.value as EvidenceItem["type"],
-                            )
-                          }
-                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          File
-                        </span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`evidence-${evidence.id}`}
-                          value="email"
-                          checked={evidence.type === "email"}
-                          onChange={(e) =>
-                            updateEvidenceItem(
-                              evidence.id,
-                              "type",
-                              e.target.value as EvidenceItem["type"],
-                            )
-                          }
-                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Email
-                        </span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`evidence-${evidence.id}`}
-                          value="drive_link"
-                          checked={evidence.type === "drive_link"}
-                          onChange={(e) =>
-                            updateEvidenceItem(
-                              evidence.id,
-                              "type",
-                              e.target.value as EvidenceItem["type"],
-                            )
-                          }
-                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Drive Link
-                        </span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`evidence-${evidence.id}`}
-                          value="certificate"
-                          checked={evidence.type === "certificate"}
-                          onChange={(e) =>
-                            updateEvidenceItem(
-                              evidence.id,
-                              "type",
-                              e.target.value as EvidenceItem["type"],
-                            )
-                          }
-                          className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Certificate
-                        </span>
-                      </label>
+                      {(
+                        [
+                          ["file", "File"],
+                          ["image", "Image"],
+                          ["link", "Link"],
+                          ["email", "Email"],
+                          ["certificate", "Certificate"],
+                        ] as Array<[EvidenceItemType, string]>
+                      ).map(([type, label]) => (
+                        <label
+                          key={type}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <input
+                            type="radio"
+                            name={`evidence-${evidence.id}`}
+                            value={type}
+                            checked={evidence.type === type}
+                            onChange={() => changeEvidenceType(evidence.id, type)}
+                            className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC]"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {label}
+                          </span>
+                        </label>
+                      ))}
                     </div>
 
                     {/* Dynamic input based on type */}
@@ -593,6 +752,27 @@ export function SubmitApprovalDialog({
                       required for submission.
                     </p>
                   )}
+                {!hasRecordedKpiResult && (
+                  <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3">
+                    <p className="text-sm font-medium text-amber-900">
+                      Formula observations are missing.
+                    </p>
+                    <p className="text-xs text-amber-800">
+                      Edit this draft and enter every required metric observation
+                      before submission.
+                    </p>
+                    {onEditAchievement && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onEditAchievement}
+                      >
+                        Enter KPI achievement
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
@@ -620,14 +800,34 @@ export function SubmitApprovalDialog({
                       </p>
                     </div>
                   </div>
-                ) : (
+                ) : hasRecordedKpiResult ? (
                   <p className="font-medium text-gray-900">
-                    {item.kpiAchievedValue ?? "No KPI value recorded"}
+                    {item.kpiAchievedValue}
                   </p>
+                ) : (
+                  <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3">
+                    <p className="font-medium text-amber-900">
+                      No KPI achievement has been recorded.
+                    </p>
+                    <p className="text-xs text-amber-800">
+                      Edit this draft and enter the achieved value, or the numerator
+                      and actual denominator required by this KPI.
+                    </p>
+                    {onEditAchievement && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onEditAchievement}
+                      >
+                        Enter KPI achievement
+                      </Button>
+                    )}
+                  </div>
                 )}
                 <p className="text-xs text-gray-500">
-                  To change the KPI result or denominator, close this dialog and edit
-                  the logbook entry. Submission does not overwrite result components.
+                  Submission preserves the KPI result components recorded in the
+                  logbook editor; evidence submission never replaces them.
                 </p>
               </div>
             )}
@@ -645,10 +845,20 @@ export function SubmitApprovalDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={
+              isSubmitting ||
+              !hasRecordedKpiResult ||
+              Boolean(quarterPlanSubmissionBlock)
+            }
+            title={
+              quarterPlanSubmissionBlock?.title ||
+              (hasRecordedKpiResult
+                ? undefined
+                : "Enter the KPI achievement before submitting")
+            }
             className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-8"
           >
-            {isSubmitting ? "Submitting..." : "Submit"}
+            {isSubmitting ? "Uploading evidence and submitting..." : "Submit"}
           </Button>
         </div>
       </DialogContent>

@@ -410,6 +410,21 @@ export interface LogbookMetricObservation {
   };
 }
 
+export type LogbookEvidenceType =
+  | "FILE"
+  | "IMAGE"
+  | "LINK"
+  | "EMAIL"
+  | "CERTIFICATE";
+
+export interface LogbookEvidence {
+  type: LogbookEvidenceType;
+  value: string;
+  name?: string | null;
+  mimeType?: string | null;
+  size?: number | null;
+}
+
 export interface FrontendLogbookItem {
   id: string;
   activity: string;
@@ -417,6 +432,7 @@ export interface FrontendLogbookItem {
   outcome: string;
   entryDate: string;
   attachmentUrl?: string | null;
+  evidenceItems?: LogbookEvidence[];
   status?: string;
   rejectionReason?: string;
   createdAt: string;

@@ -117,10 +117,10 @@ export function LogbookTableCard({
           </div>
         )}
 
-        {item.attachmentUrl && (
+        {(item.attachmentUrl || item.evidenceItems?.length) && (
           <div className="flex items-center gap-1 text-[#3838EC] text-xs mt-2">
             <FileIcon className="w-3 h-3" />
-            <span>Attachment</span>
+            <span>{item.evidenceItems?.length || 1} evidence</span>
           </div>
         )}
       </div>
@@ -235,6 +235,10 @@ export function LogbookTableCard({
         open={isSubmitDialogOpen}
         onOpenChange={setIsSubmitDialogOpen}
         item={item}
+        onEditAchievement={() => {
+          setIsSubmitDialogOpen(false);
+          handleEdit();
+        }}
         onSuccess={() => {
           setIsSubmitDialogOpen(false);
           onRefetch();

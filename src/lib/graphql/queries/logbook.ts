@@ -245,6 +245,13 @@ export const GET_LOGBOOK_ENTRIES = gql`
         kpiCompletionPercent
         contributionUnit
         evidenceUrl
+        evidenceItems {
+          type
+          value
+          name
+          mimeType
+          size
+        }
         evidenceDescription
         decisionsMade
         risksIssues

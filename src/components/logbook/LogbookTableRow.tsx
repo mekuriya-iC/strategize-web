@@ -148,10 +148,12 @@ export function LogbookTableRow({
 
         {/* Attachment */}
         <td className="px-4 py-4">
-          {item.attachmentUrl ? (
+          {item.attachmentUrl || item.evidenceItems?.length ? (
             <div className="flex items-center gap-1 text-[#3838EC]">
               <FileIcon className="w-4 h-4" />
-              <span className="text-xs">File</span>
+              <span className="text-xs">
+                {item.evidenceItems?.length || 1} evidence
+              </span>
             </div>
           ) : (
             <span className="text-sm text-gray-400">None</span>
@@ -284,6 +286,10 @@ export function LogbookTableRow({
         open={isSubmitDialogOpen}
         onOpenChange={setIsSubmitDialogOpen}
         item={item}
+        onEditAchievement={() => {
+          setIsSubmitDialogOpen(false);
+          handleEdit();
+        }}
         onSuccess={() => {
           setIsSubmitDialogOpen(false);
           onRefetch();

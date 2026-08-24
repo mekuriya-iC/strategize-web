@@ -19,6 +19,7 @@ const mapEntryToFrontend = (entry: any): FrontendLogbookItem => ({
   outcome: entry.decisionsMade || entry.lessonsLearned || "",
   entryDate: entry.entryDate,
   attachmentUrl: entry.evidenceUrl || null,
+  evidenceItems: entry.evidenceItems || [],
   status: entry.entryStatus,
   linkedKpiId: entry.linkedKpiId || "",
   linkedKpi: entry.linkedKpi || null,

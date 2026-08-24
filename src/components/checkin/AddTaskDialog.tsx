@@ -32,6 +32,7 @@ import {
   SearchIcon,
   ClockIcon,
   LinkIcon,
+  AlertCircle,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -45,8 +46,13 @@ import { cn } from "@/lib/utils";
 import {
   DEFAULT_TASK_TYPE,
   TASK_TYPES,
+  isKpiReadyForAchievementSubmission,
   type TaskType,
 } from "./task-form";
+import {
+  getTaskOverlapFeedback,
+  validateTaskTimeRange,
+} from "./task-schedule-validation";
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -65,6 +71,17 @@ const CHECKOUT_STATUS = [
 ];
 
 type TimeValue = { hour: string; minute: string; period: "AM" | "PM" };
+
+const addOneHour = (time: TimeValue): TimeValue => {
+  let hour = Number(time.hour) % 12;
+  if (time.period === "PM") hour += 12;
+  hour = (hour + 1) % 24;
+  return {
+    hour: String(hour % 12 || 12).padStart(2, "0"),
+    minute: time.minute,
+    period: hour >= 12 ? "PM" : "AM",
+  };
+};
 
 export function AddTaskDialog({
   open,
@@ -115,7 +132,7 @@ export function AddTaskDialog({
 
   // Queries
   const { data: kpisData } = useQuery(GET_MY_KPIS, {
-    variables: { page: 1, limit: 100 },
+    variables: { page: 1, limit: 100, status: "APPROVED" },
     skip: !open,
   });
 
@@ -128,14 +145,6 @@ export function AddTaskDialog({
     variables: { page: 1, limit: 500 },
     skip: !open,
   });
-
-  const getNextSaturday = (fromDate: Date = new Date()) => {
-    const date = new Date(fromDate);
-    const day = date.getDay();
-    const diff = day === 6 ? 7 : 6 - day;
-    date.setDate(date.getDate() + diff);
-    return date;
-  };
 
   const today = new Date();
 
@@ -152,9 +161,9 @@ export function AddTaskDialog({
     minute: "00",
     period: "AM",
   });
-  const [endDate, setEndDate] = useState<Date>(getNextSaturday(today));
+  const [endDate, setEndDate] = useState<Date>(new Date(today));
   const [endTime, setEndTime] = useState<TimeValue>({
-    hour: "07",
+    hour: "08",
     minute: "00",
     period: "AM",
   });
@@ -164,12 +173,34 @@ export function AddTaskDialog({
   const [remark, setRemark] = useState("");
   const [isMidWeekTask, setIsMidWeekTask] = useState(false);
   const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   // ✅ Track popover open states separately so they don't conflict
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
   const [startTimeOpen, setStartTimeOpen] = useState(false);
   const [endTimeOpen, setEndTimeOpen] = useState(false);
+
+  function resetForm() {
+    const newToday = new Date();
+    setTaskType(DEFAULT_TASK_TYPE);
+    setTask("");
+    setDescription("");
+    setRelatedTo("");
+    setCollaborationMessage("");
+    setLinkedKpi("");
+    setLinkedInitiative("");
+    setStartDate(newToday);
+    setStartTime({ hour: "07", minute: "00", period: "AM" });
+    setEndDate(new Date(newToday));
+    setEndTime({ hour: "08", minute: "00", period: "AM" });
+    setCheckoutStatus("");
+    setAttachment(null);
+    setAttachmentLink("");
+    setRemark("");
+    setIsMidWeekTask(false);
+    setScheduleError(null);
+  }
 
   // Populate form when editing
   useEffect(() => {
@@ -215,8 +246,20 @@ export function AddTaskDialog({
   const handleStartDateChange = (date: Date | undefined) => {
     if (date) {
       setStartDate(date);
-      setEndDate(getNextSaturday(date));
+      setEndDate(new Date(date));
+      setScheduleError(null);
       setStartDateOpen(false);
+    }
+  };
+
+  const handleStartTimeChange = (value: TimeValue) => {
+    setStartTime(value);
+    setScheduleError(null);
+    const nextStart = buildDateTime(startDate, value);
+    const currentEnd = buildDateTime(endDate, endTime);
+    if (currentEnd <= nextStart) {
+      setEndDate(new Date(startDate));
+      setEndTime(addOneHour(value));
     }
   };
 
@@ -306,6 +349,21 @@ export function AddTaskDialog({
       return;
     }
 
+    const taskStartDateTime = buildDateTime(startDate, startTime);
+    const taskEndDateTime = buildDateTime(endDate, endTime);
+    const localScheduleError = validateTaskTimeRange(
+      taskStartDateTime,
+      taskEndDateTime,
+    );
+    if (localScheduleError) {
+      setScheduleError(localScheduleError);
+      toast.warning("Check the task schedule", {
+        description: localScheduleError,
+      });
+      return;
+    }
+    setScheduleError(null);
+
     // Validate end date is within session range
     if (session && !editingTask) {
       const rawSessionEnd = session.weekEndDate || session.endDate;
@@ -325,13 +383,11 @@ export function AddTaskDialog({
           )
         : new Date(rawSessionEnd);
       if (!dateOnlyMatch) sessionEndDate.setHours(23, 59, 59, 999);
-      const taskEndDateTime = buildDateTime(endDate, endTime);
 
       if (taskEndDateTime > sessionEndDate) {
-        console.error("❌ [TASK CREATION] Validation failed: Task end date exceeds session end date");
-        toast.error(
-          `Task end date cannot be after session end date (${format(sessionEndDate, "MMM d, yyyy")})`,
-        );
+        const message = `Task end date cannot be after session end date (${format(sessionEndDate, "MMM d, yyyy")}).`;
+        setScheduleError(message);
+        toast.warning("Check the task schedule", { description: message });
         return;
       }
     }
@@ -372,8 +428,8 @@ export function AddTaskDialog({
           ? collaborationMessage.trim() || null
           : null,
         plannedDescription: description.trim(),
-        taskStartDate: buildDateTime(startDate, startTime).toISOString(),
-        taskEndDate: buildDateTime(endDate, endTime).toISOString(),
+        taskStartDate: taskStartDateTime.toISOString(),
+        taskEndDate: taskEndDateTime.toISOString(),
         taskStatus: checkoutStatus || "NOT_DONE",
         evidenceUrl: attachmentLink.trim() || attachment?.name || null,
         challenges: remark.trim() || null,
@@ -432,32 +488,20 @@ export function AddTaskDialog({
       console.log("✅ [TASK CREATION] onSuccess callback completed");
       resetForm();
       console.log("✅ [TASK CREATION] Form reset completed");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const overlapFeedback = getTaskOverlapFeedback(error);
+      if (overlapFeedback) {
+        setScheduleError(overlapFeedback.inlineMessage);
+        toast.warning("Time slot unavailable", {
+          description: overlapFeedback.toastDescription,
+          duration: 7000,
+        });
+        return;
+      }
+
       console.error("❌ [TASK CREATION] Error during task operation:", error);
-      
-      // Use the error handling utility to show user-friendly error
       showErrorToast(error);
     }
-  };
-
-  const resetForm = () => {
-    const newToday = new Date();
-    setTaskType(DEFAULT_TASK_TYPE);
-    setTask("");
-    setDescription("");
-    setRelatedTo("");
-    setCollaborationMessage("");
-    setLinkedKpi("");
-    setLinkedInitiative("");
-    setStartDate(newToday);
-    setStartTime({ hour: "07", minute: "00", period: "AM" });
-    setEndDate(getNextSaturday(newToday));
-    setEndTime({ hour: "07", minute: "00", period: "AM" });
-    setCheckoutStatus("");
-    setAttachment(null);
-    setAttachmentLink("");
-    setRemark("");
-    setIsMidWeekTask(false);
   };
 
   return (
@@ -517,7 +561,9 @@ export function AddTaskDialog({
                     options={
                       kpisData?.myKpis?.items?.map((kpi: any) => ({
                         value: kpi.kpiId,
-                        label: kpi.name,
+                        label: isKpiReadyForAchievementSubmission(kpi)
+                          ? kpi.name
+                          : `${kpi.name} — quarter plan not approved`,
                       })) || []
                     }
                     value={linkedKpi ? [linkedKpi] : []}
@@ -527,6 +573,12 @@ export function AddTaskDialog({
                     searchPlaceholder="Search KPI..."
                     disabled={!!editingTask}
                   />
+                  {!editingTask && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Approved KPIs can be linked for weekly planning. Achievement
+                      submission requires an approved quarterly plan.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -664,7 +716,12 @@ export function AddTaskDialog({
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Start Date & Time
               </Label>
-              <div className="flex gap-2">
+              <div
+                className={cn(
+                  "flex gap-2 rounded-md",
+                  scheduleError && "ring-2 ring-red-300 ring-offset-2",
+                )}
+              >
                 {/* ✅ Calendar Popover */}
                 <Popover
                   open={startDateOpen}
@@ -731,7 +788,7 @@ export function AddTaskDialog({
                   >
                     <TimePicker
                       value={startTime}
-                      onChange={setStartTime}
+                      onChange={handleStartTimeChange}
                       onClose={() => setStartTimeOpen(false)}
                     />
                   </PopoverContent>
@@ -744,7 +801,12 @@ export function AddTaskDialog({
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 End Date & Time
               </Label>
-              <div className="flex gap-2">
+              <div
+                className={cn(
+                  "flex gap-2 rounded-md",
+                  scheduleError && "ring-2 ring-red-300 ring-offset-2",
+                )}
+              >
                 <Popover
                   open={endDateOpen}
                   onOpenChange={setEndDateOpen}
@@ -776,6 +838,7 @@ export function AddTaskDialog({
                       onSelect={(d) => {
                         if (d) {
                           setEndDate(d);
+                          setScheduleError(null);
                           setEndDateOpen(false);
                         }
                       }}
@@ -817,13 +880,33 @@ export function AddTaskDialog({
                   >
                     <TimePicker
                       value={endTime}
-                      onChange={setEndTime}
+                      onChange={(value) => {
+                        setEndTime(value);
+                        setScheduleError(null);
+                      }}
                       onClose={() => setEndTimeOpen(false)}
                     />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
+
+            {scheduleError && (
+              <div
+                role="alert"
+                className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-red-900 sm:col-span-2 lg:col-span-3 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+              >
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold">Schedule conflict</p>
+                  <p className="mt-1 text-sm">{scheduleError}</p>
+                  <p className="mt-1 text-xs opacity-80">
+                    The task was not created. All other information in this form
+                    has been preserved.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Attachment */}
             <div className="space-y-2">

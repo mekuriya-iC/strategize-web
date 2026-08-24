@@ -9,6 +9,26 @@ export type TaskType =
 
 export const DEFAULT_TASK_TYPE: TaskType = "KPI_UNMET";
 
+interface TaskKpiPlanningOption {
+  status?: string | null;
+  quarterPlans?: Array<{ status?: string | null }> | null;
+}
+
+export function isKpiReadyForAchievementSubmission(
+  kpi: TaskKpiPlanningOption,
+): boolean {
+  if (String(kpi.status || "").toUpperCase() !== "APPROVED") return false;
+  const plans = kpi.quarterPlans || [];
+  if (plans.length === 0) return false;
+  const statuses = plans.map((plan) =>
+    String(plan.status || "DRAFT").toUpperCase(),
+  );
+  return (
+    statuses.includes("APPROVED") &&
+    statuses.every((status) => status === "APPROVED" || status === "LOCKED")
+  );
+}
+
 export const TASK_TYPES: ReadonlyArray<{
   value: TaskType;
   label: string;

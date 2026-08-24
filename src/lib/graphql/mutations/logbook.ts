@@ -48,6 +48,13 @@ export const CREATE_LOGBOOK_ENTRY = gql`
       kpiActualBasisExact
       kpiCompletionPercent
       evidenceUrl
+      evidenceItems {
+        type
+        value
+        name
+        mimeType
+        size
+      }
       evidenceDescription
       decisionsMade
       risksIssues
@@ -106,6 +113,13 @@ export const UPDATE_LOGBOOK_ENTRY = gql`
       kpiCompletionPercent
       contributionUnit
       evidenceUrl
+      evidenceItems {
+        type
+        value
+        name
+        mimeType
+        size
+      }
       evidenceDescription
       decisionsMade
       risksIssues

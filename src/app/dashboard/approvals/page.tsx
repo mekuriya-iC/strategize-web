@@ -52,6 +52,7 @@ import {
   type LogbookFormulaForContextQueryData,
   type LogbookFormulaForContextQueryVariables,
   type LogbookKpiCalculationType,
+  type LogbookEvidence,
   type LogbookMetricObservation,
 } from "@/types/logbook";
 
@@ -102,6 +103,7 @@ type LogbookReviewEntry = {
   kpiActualBasisExact?: string | null;
   evidenceDescription?: string | null;
   evidenceUrl?: string | null;
+  evidenceItems?: LogbookEvidence[] | null;
   decisionsMade?: string | null;
   lessonsLearned?: string | null;
   risksIssues?: string | null;
@@ -915,12 +917,12 @@ export default function ApprovalsPage() {
                 </div>
               )}
 
-              {/* Evidence Description */}
+              {/* Performance Description */}
               {selectedLogbookEntry.evidenceDescription && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    Evidence of Performance
+                    Performance Description
                   </Label>
                   <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                     <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
@@ -930,8 +932,54 @@ export default function ApprovalsPage() {
                 </div>
               )}
 
-              {/* Evidence URL */}
-              {selectedLogbookEntry.evidenceUrl && (
+              {Boolean(selectedLogbookEntry.evidenceItems?.length) && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Evidence of Performance
+                  </Label>
+                  <div className="space-y-2 rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+                    {selectedLogbookEntry.evidenceItems?.map(
+                      (evidence, index) => (
+                        <div
+                          key={`${evidence.type}-${evidence.value}-${index}`}
+                          className="rounded-md border bg-white p-3 dark:bg-gray-950"
+                        >
+                          <p className="text-xs font-semibold text-gray-500">
+                            {evidence.type.replaceAll("_", " ")}
+                          </p>
+                          {evidence.type === "EMAIL" ? (
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
+                              {evidence.value}
+                            </p>
+                          ) : (
+                            <a
+                              href={evidence.value}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-1 block break-all text-sm text-blue-600 underline hover:text-blue-700"
+                            >
+                              {evidence.name || evidence.value}
+                            </a>
+                          )}
+                          {evidence.mimeType && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              {evidence.mimeType}
+                              {evidence.size != null
+                                ? ` · ${(evidence.size / 1024).toFixed(1)} KB`
+                                : ""}
+                            </p>
+                          )}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Legacy Evidence URL */}
+              {selectedLogbookEntry.evidenceUrl &&
+                !selectedLogbookEntry.evidenceItems?.length && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <LinkIcon className="w-4 h-4" />

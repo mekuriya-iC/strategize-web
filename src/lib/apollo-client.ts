@@ -13,6 +13,7 @@ import {
   refreshAccessToken,
 } from "@/lib/auth-utils";
 import { apolloLogger } from "@/lib/logger";
+import { isExpectedGraphqlBusinessError } from "@/lib/graphql/error-classification";
 
 const httpLink = createHttpLink({
   // Browser requests stay on the current web origin. The Next.js route proxies
@@ -73,6 +74,14 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, response })
       }
 
       const operationName = operation.operationName || "UnknownOperation";
+      if (isExpectedGraphqlBusinessError(err.message)) {
+        apolloLogger.warn(
+          `[GraphQL validation]: Operation: ${operationName}, Message: ${err.message}`,
+          { operation: operationName },
+        );
+        continue;
+      }
+
       apolloLogger.error(
         `[GraphQL error]: Operation: ${operationName}, Message: ${err.message}, Path: ${err.path?.join(".")}`,
         { operation: operationName },

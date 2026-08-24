@@ -20,6 +20,10 @@ import SessionListView from "@/components/checkin/SessionListView";
 import { TaskColorLegend } from "@/components/checkin/TaskColorLegend";
 import { WeeklySubmissionPanel } from "@/components/checkin/WeeklySubmissionPanel";
 import { canSubmitWeeklyTasks } from "@/components/checkin/weekly-submission";
+import {
+  summarizeTaskTypes,
+  type TaskTypeSummary,
+} from "@/components/checkin/task-summary";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -133,17 +137,10 @@ function EmployeeTaskCard({
 
   useEffect(() => {
     if (!onTasksSummary || !session?.checkinoutSessionId) return;
-    const totalTasks = tasks.length;
-    const kpiMet = tasks.filter(
-      (task: any) =>
-        task.taskType === "KPI_FULFILLED" || task.checkoutStatus === "DONE",
-    ).length;
-    const kpiUnmet = totalTasks - kpiMet;
-    onTasksSummary(session.checkinoutSessionId, {
-      totalTasks,
-      kpiMet,
-      kpiUnmet,
-    });
+    onTasksSummary(
+      session.checkinoutSessionId,
+      summarizeTaskTypes(tasks),
+    );
   }, [onTasksSummary, session?.checkinoutSessionId, tasks]);
 
   const isCurrentUser =
@@ -373,22 +370,27 @@ export default function CheckInPage() {
     () => new Set(),
   );
   const [teamTaskSummaries, setTeamTaskSummaries] = useState<
-    Record<string, { totalTasks: number; kpiMet: number; kpiUnmet: number }>
+    Record<string, TaskTypeSummary>
   >({});
-  const handleTasksSummary = useCallback((sessionId: string, summary: any) => {
-    setTeamTaskSummaries((prev) => {
-      const existing = prev[sessionId];
-      if (
-        existing &&
-        existing.totalTasks === summary.totalTasks &&
-        existing.kpiMet === summary.kpiMet &&
-        existing.kpiUnmet === summary.kpiUnmet
-      ) {
-        return prev;
-      }
-      return { ...prev, [sessionId]: summary };
-    });
-  }, []);
+  const handleTasksSummary = useCallback(
+    (sessionId: string, summary: TaskTypeSummary) => {
+      setTeamTaskSummaries((prev) => {
+        const existing = prev[sessionId];
+        if (
+          existing &&
+          existing.totalTasks === summary.totalTasks &&
+          existing.totalKpiTasks === summary.totalKpiTasks &&
+          existing.nonKpiTasks === summary.nonKpiTasks &&
+          existing.kpiFulfilled === summary.kpiFulfilled &&
+          existing.kpiUnmet === summary.kpiUnmet
+        ) {
+          return prev;
+        }
+        return { ...prev, [sessionId]: summary };
+      });
+    },
+    [],
+  );
 
   const handleEditTask = (task: any) => {
     setEditingTask(task);
@@ -535,10 +537,7 @@ export default function CheckInPage() {
       teamSessions.map((s: any) => s.checkinoutSessionId).filter(Boolean),
     );
     setTeamTaskSummaries((prev) => {
-      const next: Record<
-        string,
-        { totalTasks: number; kpiMet: number; kpiUnmet: number }
-      > = {};
+      const next: Record<string, TaskTypeSummary> = {};
       for (const [sessionId, summary] of Object.entries(prev)) {
         if (activeSessionIds.has(sessionId)) next[sessionId] = summary;
       }
@@ -805,7 +804,9 @@ export default function CheckInPage() {
   const teamAggregatedStats = useMemo(() => {
     if (!isManagerMode || !teamSessions.length) return null;
     let totalTasks = 0;
-    let kpiMet = 0;
+    let totalKpiTasks = 0;
+    let nonKpiTasks = 0;
+    let kpiFulfilled = 0;
     let kpiUnmet = 0;
     for (const session of teamSessions) {
       const sessionId = session?.checkinoutSessionId;
@@ -813,38 +814,29 @@ export default function CheckInPage() {
       const summary = teamTaskSummaries[sessionId];
       if (!summary) continue;
       totalTasks += summary.totalTasks;
-      kpiMet += summary.kpiMet;
+      totalKpiTasks += summary.totalKpiTasks;
+      nonKpiTasks += summary.nonKpiTasks;
+      kpiFulfilled += summary.kpiFulfilled;
       kpiUnmet += summary.kpiUnmet;
     }
     return {
       totalTasks,
-      kpiMet,
+      totalKpiTasks,
+      nonKpiTasks,
+      kpiFulfilled,
       kpiUnmet,
-      kpiMetPercentage:
-        totalTasks > 0 ? Math.round((kpiMet / totalTasks) * 100) : 0,
+      kpiFulfilledPercentage:
+        totalKpiTasks > 0
+          ? Math.round((kpiFulfilled / totalKpiTasks) * 100)
+          : 0,
       kpiUnmetPercentage:
-        totalTasks > 0 ? Math.round((kpiUnmet / totalTasks) * 100) : 0,
+        totalKpiTasks > 0 ? Math.round((kpiUnmet / totalKpiTasks) * 100) : 0,
     };
   }, [isManagerMode, teamSessions, teamTaskSummaries]);
 
   const statistics = useMemo(() => {
     if (isManagerMode && teamAggregatedStats) return teamAggregatedStats;
-    const currentTasks = currentWeekDataWithTasks?.tasks || [];
-    const totalTasks = currentTasks.length;
-    const kpiMet = currentTasks.filter(
-      (task: any) =>
-        task.taskType === "KPI_FULFILLED" || task.checkoutStatus === "DONE",
-    ).length;
-    const kpiUnmet = totalTasks - kpiMet;
-    return {
-      totalTasks,
-      kpiMet,
-      kpiUnmet,
-      kpiMetPercentage:
-        totalTasks > 0 ? Math.round((kpiMet / totalTasks) * 100) : 0,
-      kpiUnmetPercentage:
-        totalTasks > 0 ? Math.round((kpiUnmet / totalTasks) * 100) : 0,
-    };
+    return summarizeTaskTypes(currentWeekDataWithTasks?.tasks || []);
   }, [currentWeekDataWithTasks, isManagerMode, teamAggregatedStats]);
 
   // Force open the add task modal with a specific session ID
@@ -1126,7 +1118,7 @@ export default function CheckInPage() {
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-2xl font-bold text-green-600">
-                    {statistics.kpiMetPercentage}%
+                    {statistics.kpiFulfilledPercentage}%
                   </span>
                 </div>
               </div>
@@ -1136,28 +1128,19 @@ export default function CheckInPage() {
                 </p>
                 <div className="flex items-baseline gap-2">
                   <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                    {statistics.kpiMet}
+                    {statistics.kpiFulfilled}
                   </h3>
                   <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden max-w-[80px]">
                     <div
                       className="h-full bg-green-500 transition-all duration-500"
-                      style={{ width: `${statistics.kpiMetPercentage}%` }}
+                      style={{ width: `${statistics.kpiFulfilledPercentage}%` }}
                     />
                   </div>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-xs text-gray-400 font-medium">
-                {isManagerMode && teamStatistics ? (
-                  <>
-                    <span>Team Completion</span>
-                    <span className="text-green-600 font-bold">
-                      {teamStatistics.completedSessions}/
-                      {teamStatistics.teamSize}
-                    </span>
-                  </>
-                ) : (
-                  "Tasks marked as Done or Met"
-                )}
+                <span>{statistics.totalKpiTasks} KPI Tasks</span>
+                <span>{statistics.nonKpiTasks} Non-KPI Excluded</span>
               </div>
             </div>
 
@@ -1175,7 +1158,7 @@ export default function CheckInPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Pending / Unmet
+                  KPIs Unmet
                 </p>
                 <div className="flex items-baseline gap-2">
                   <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -1190,8 +1173,8 @@ export default function CheckInPage() {
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-xs text-gray-400">
-                <span>Action Required</span>
-                <span className="text-amber-500 font-bold">Needs Checkout</span>
+                <span>Based on KPI task type</span>
+                <span className="text-amber-500 font-bold">Action Required</span>
               </div>
             </div>
           </div>

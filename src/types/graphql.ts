@@ -441,6 +441,20 @@ export interface PaginatedObjectives {
 export type KpiWeightType = "NUMBER" | "PERCENT";
 export type KpiUnitType =
   "NUMBER" | "PERCENT" | "CURRENCY" | "HOUR" | "RATIO" | "COUNT";
+export type KpiFrequency =
+  | "WEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "SEMI_ANNUAL"
+  | "ANNUAL";
+export type KpiMeasurementUnit =
+  | "PERCENTAGE"
+  | "NUMBER"
+  | "CURRENCY"
+  | "BOOLEAN"
+  | "RATING"
+  | "HOUR"
+  | "CUSTOM";
 export type KpiQuarterlyAggregationMethod = "AVERAGE" | "SUM";
 export type KpiStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 export type KpiTargetStatus =
@@ -756,8 +770,8 @@ export interface CreateKpiInput {
   targets?: KpiTargetInput[];
   strategicObjectiveId: string; // Backend uses strategicObjectiveId not objectiveId
   parentId?: string;
-  frequency: string; // KpiFrequency: DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
-  measurementUnit: string; // KpiMeasurementUnit: NUMBER, PERCENTAGE, CURRENCY, etc.
+  frequency: KpiFrequency;
+  measurementUnit: KpiMeasurementUnit;
   organizationId: string; // Required by backend
   targetValue: number; // Required by backend
   description?: string;
@@ -786,8 +800,8 @@ export interface CreateSupportKpiInput {
   objectiveId: string;
   name: string;
   description?: string;
-  measurementUnit: string;
-  frequency: string;
+  measurementUnit: KpiMeasurementUnit;
+  frequency: KpiFrequency;
   baselineValue?: number;
   baseline?: number;
   targetValue: number;

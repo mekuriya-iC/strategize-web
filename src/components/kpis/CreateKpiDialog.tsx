@@ -37,6 +37,7 @@ import type {
   KpiCarryPolicy,
   KpiUnitType,
 } from "@/types/graphql";
+import { normalizeKpiCreationEnums } from "@/lib/objectives/kpi-enum-normalization";
 
 interface CreateKpiDialogProps {
   open: boolean;
@@ -66,11 +67,11 @@ const UNIT_TYPES = [
 ];
 
 const FREQUENCIES = [
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "semi_annual", label: "Semi-Annual" },
-  { value: "annual", label: "Annual" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "SEMI_ANNUAL", label: "Semi-Annual" },
+  { value: "ANNUAL", label: "Annual" },
 ];
 
 const KPI_TYPES = [
@@ -216,7 +217,7 @@ export function CreateKpiDialog({
     if (!isValid) return;
 
     try {
-      const payload = {
+      const payload = normalizeKpiCreationEnums({
         name: form.name,
         description: form.description || undefined,
         kpiType: form.kpiType || undefined,
@@ -254,7 +255,7 @@ export function CreateKpiDialog({
           form.aggregationMethod === "DENOMINATOR_WEIGHTED_AVERAGE"
             ? "NONE"
             : form.carryPolicy,
-      };
+      });
 
       if (isEdit && editKpi) {
         await updateKpi({ kpiId: editKpi.kpiId, ...payload } as any);

@@ -23,6 +23,10 @@ import type {
 } from "@/types/graphql";
 import { isAggregationMethodAllowed } from "@/lib/objectives/kpiAggregationOptions";
 import {
+  measurementUnitForKpiUnitType,
+  normalizeKpiCreationEnums,
+} from "@/lib/objectives/kpi-enum-normalization";
+import {
   basisQuartersEqualAnnual,
   buildDirectBasisTargets,
   EMPTY_BASIS_QUARTERS,
@@ -66,16 +70,6 @@ interface UseCreateKPIFormProps {
   isSupport?: boolean;
   supportSourceIds?: string[];
 }
-
-const measurementUnitFor = (unitType: KpiUnitType): string => {
-  // Backend KpiMeasurementUnit enum uses lowercase values
-  if (unitType === "PERCENT") return "percentage";
-  if (unitType === "RATIO") return "number"; // RATIO KPIs use "number" as measurementUnit
-  if (unitType === "CURRENCY") return "currency";
-  if (unitType === "HOUR") return "hour";
-  if (unitType === "COUNT") return "number"; // COUNT KPIs use "number"
-  return "number"; // Default to "number" for NUMBER unit type
-};
 
 export function useCreateKPIForm({
   objectiveId,
@@ -301,7 +295,7 @@ export function useCreateKPIForm({
         );
       }
 
-      const input: CreateKpiInput = {
+      const input: CreateKpiInput = normalizeKpiCreationEnums({
         name: formData.name,
         baseline:
           formData.baseline !== "" ? parseFloat(formData.baseline) : undefined,
@@ -309,8 +303,8 @@ export function useCreateKPIForm({
         unitType: formData.unitType,
         quarterlyAggregationMethod: formData.quarterlyAggregationMethod,
         strategicObjectiveId: objectiveId, // Backend uses strategicObjectiveId
-        frequency: "quarterly", // Backend KpiFrequency enum uses lowercase
-        measurementUnit: measurementUnitFor(formData.unitType),
+        frequency: "QUARTERLY",
+        measurementUnit: measurementUnitForKpiUnitType(formData.unitType),
         organizationId: organizationId, // Required by backend
         targetValue: annualValue, // Use the annual target value directly
         targets: targets,
@@ -348,7 +342,7 @@ export function useCreateKPIForm({
           basisSource !== "NONE" ? formData.denominatorLabel.trim() : undefined,
         basisUnitType:
           basisSource === "DIRECT_VALUE" ? formData.basisUnitType : undefined,
-      };
+      });
 
       if (isSupport) {
         if (supportSourceIds.length === 0) {
@@ -360,7 +354,7 @@ export function useCreateKPIForm({
           throw new Error("Select at least one Corporate KPI to support.");
         }
 
-        const supportInput: CreateSupportKpiInput = {
+        const supportInput: CreateSupportKpiInput = normalizeKpiCreationEnums({
           objectiveId,
           name: input.name,
           baseline: input.baseline,
@@ -374,7 +368,7 @@ export function useCreateKPIForm({
           kpiMode: input.kpiMode,
           managerRetentionPercent: input.managerRetentionPercent,
           sourceCorporateKpiIds: selectedSupportSourceIds,
-        };
+        });
         console.log("🚀 [useCreateKPIForm] Submitting Support KPI:", supportInput);
         const result = await createSupportKpi({
           variables: { input: supportInput },

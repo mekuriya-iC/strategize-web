@@ -29,6 +29,7 @@ import {
   validateForm,
 } from "./kpi-form";
 import { kpiLogger } from "@/lib/logger";
+import { normalizeKpiCreationEnums } from "@/lib/objectives/kpi-enum-normalization";
 
 interface KPIFormProps {
   objectiveId: string;
@@ -152,7 +153,7 @@ export default function KPIForm({
           ) as KpiTargetInput[];
       }
 
-      const kpiData = {
+      const kpiData = normalizeKpiCreationEnums({
         name: formData.name.trim() || "",
         baseline:
           formData.baseline !== "" ? Number(formData.baseline) : undefined,
@@ -168,7 +169,7 @@ export default function KPIForm({
             ? Math.max(...validTargets.map((t) => t.target))
             : 0, // Calculate from targets
         ...(parentId ? { parentId } : {}),
-      };
+      });
 
       kpiLogger.debug("Submitting KPI data:", kpiData);
 

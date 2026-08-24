@@ -34,6 +34,10 @@ import { CREATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useOrganizationId } from "@/hooks/useOrganizationId";
 import { toast } from "sonner";
+import {
+  getEmployeesWithOverlappingOpenSessions,
+  sortSessionCandidates,
+} from "./session-candidate-availability";
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -242,7 +246,7 @@ export default function CreateSessionDialog({
       employeesFromDepartmentsCount: employeesFromDepartments.length,
     });
     if (isSuperAdmin) {
-      return superAdminCandidates;
+      return sortSessionCandidates(superAdminCandidates);
     }
     if (isAdmin) {
       console.log("  → Using allEmployees for admin");
@@ -258,18 +262,18 @@ export default function CreateSessionDialog({
     employeesFromDepartments,
   ]);
 
-  // Check for active sessions for each employee
-  const employeesWithActiveSessions = useMemo(() => {
-    const activeSessionEmployeeIds = new Set<string>();
-
-    existingSessions.forEach((session: any) => {
-      if (session.overallStatus === "OPEN") {
-        activeSessionEmployeeIds.add(session.employee?.employeeId);
-      }
-    });
-
-    return activeSessionEmployeeIds;
-  }, [existingSessions]);
+  // Exclude only sessions that overlap the selected week in the same period.
+  // Historical OPEN sessions must not hide directors/managers from future weeks.
+  const employeesWithActiveSessions = useMemo(
+    () =>
+      getEmployeesWithOverlappingOpenSessions(
+        existingSessions,
+        strategicPeriodId,
+        weekStartDate,
+        weekEndDate,
+      ),
+    [existingSessions, strategicPeriodId, weekStartDate, weekEndDate],
+  );
 
   // Filter out employees who already have active sessions
   const availableEmployees = useMemo(() => {
@@ -543,7 +547,10 @@ export default function CreateSessionDialog({
             </Label>
             <Select
               value={strategicPeriodId}
-              onValueChange={setStrategicPeriodId}
+              onValueChange={(value) => {
+                setStrategicPeriodId(value);
+                setSelectedEmployees([]);
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select period..." />
@@ -584,7 +591,10 @@ export default function CreateSessionDialog({
                     id="startDate"
                     type="date"
                     value={weekStartDate}
-                    onChange={(e) => setWeekStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setWeekStartDate(e.target.value);
+                      setSelectedEmployees([]);
+                    }}
                     min={today}
                     className="pl-10"
                   />
@@ -604,7 +614,10 @@ export default function CreateSessionDialog({
                     id="endDate"
                     type="date"
                     value={weekEndDate}
-                    onChange={(e) => setWeekEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setWeekEndDate(e.target.value);
+                      setSelectedEmployees([]);
+                    }}
                     min={weekStartDate || today}
                     className="pl-10"
                   />
@@ -690,9 +703,20 @@ export default function CreateSessionDialog({
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">
-                              {employee.fullName}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-gray-900">
+                                {employee.fullName}
+                              </p>
+                              {employee.role && (
+                                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                                  {employee.role === "DIRECTOR"
+                                    ? "Director"
+                                    : employee.role === "MANAGER"
+                                      ? "Manager"
+                                      : employee.role}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-600">
                               {employee.email}
                             </p>
@@ -707,11 +731,11 @@ export default function CreateSessionDialog({
               <div className="flex flex-col items-center justify-center h-32 border rounded-lg bg-amber-50">
                 <Users className="h-8 w-8 text-amber-500 mb-2" />
                 <p className="text-sm text-amber-700 font-medium">
-                  All team members have active sessions
+                  All team members have overlapping sessions
                 </p>
                 <p className="text-xs text-amber-600 mt-2 text-center px-4 max-w-sm">
-                  Close existing sessions before creating new ones. Only one
-                  active session per employee is allowed.
+                  Each listed person already has an open session overlapping the
+                  selected dates in this strategic period.
                 </p>
               </div>
             ) : (
@@ -722,7 +746,7 @@ export default function CreateSessionDialog({
                 </p>
                 <p className="text-xs text-gray-500 mt-2 text-center px-4 max-w-sm">
                   {isSuperAdmin
-                    ? "No active division or department managers are assigned as heads in the organizational structure."
+                    ? "No active directors in the reporting hierarchy or active division/department heads were found."
                     : isAdmin
                       ? "No employees found in the system"
                       : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}

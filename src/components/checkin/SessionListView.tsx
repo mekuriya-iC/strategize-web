@@ -17,6 +17,11 @@ import {
   type CheckinoutSessionWeekGroup,
   type CheckinoutSessionLike,
 } from "@/utils/checkin-session-groups";
+import {
+  deduplicateCheckinoutSessions,
+  isClosedCheckinoutSession,
+  isHistoricalCheckinoutSession,
+} from "@/utils/checkin-session-history";
 
 interface SessionListViewProps {
   currentUser: any;
@@ -32,6 +37,8 @@ export default function SessionListView({
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("my-team");
+  const [employeeTab, setEmployeeTab] = useState("active");
+  const today = useMemo(() => new Date(), []);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(
     null,
   );
@@ -134,7 +141,7 @@ export default function SessionListView({
     },
   });
 
-  const teamSessions = useMemo(
+  const teamSessions = useMemo<CheckinoutSessionLike[]>(
     () =>
       (teamData?.checkinoutSessions?.items || []).filter(
         (session: CheckinoutSessionLike) =>
@@ -142,36 +149,76 @@ export default function SessionListView({
       ),
     [currentUser?.employeeId, teamData],
   );
-  const ownSessions = useMemo(
+  const ownSessions = useMemo<CheckinoutSessionLike[]>(
     () =>
       (ownData?.checkinoutSessions?.items || []).filter(
         (session: CheckinoutSessionLike) => session.employee,
       ),
     [ownData],
   );
-  const allSessions = useMemo(
+  const allSessions = useMemo<CheckinoutSessionLike[]>(
     () =>
       (allData?.checkinoutSessions?.items || []).filter(
         (session: CheckinoutSessionLike) => session.employee,
       ),
     [allData],
   );
+  const activeTeamSessions = useMemo(
+    () =>
+      teamSessions.filter(
+        (session) => !isHistoricalCheckinoutSession(session, today),
+      ),
+    [teamSessions, today],
+  );
+  const activeOwnSessions = useMemo(
+    () =>
+      ownSessions.filter(
+        (session) => !isHistoricalCheckinoutSession(session, today),
+      ),
+    [ownSessions, today],
+  );
+  const historicalOwnSessions = useMemo(
+    () =>
+      ownSessions.filter((session) =>
+        isHistoricalCheckinoutSession(session, today),
+      ),
+    [ownSessions, today],
+  );
+  const activeAllSessions = useMemo(
+    () =>
+      allSessions.filter(
+        (session) => !isHistoricalCheckinoutSession(session, today),
+      ),
+    [allSessions, today],
+  );
+  const historicalScopedSessions = useMemo(() => {
+    const scopedSessions = isAdminOrHR
+      ? [...allSessions, ...teamSessions, ...ownSessions]
+      : [...teamSessions, ...ownSessions];
+    return deduplicateCheckinoutSessions(scopedSessions).filter((session) =>
+      isHistoricalCheckinoutSession(session, today),
+    );
+  }, [allSessions, isAdminOrHR, ownSessions, teamSessions, today]);
   const teamWeekGroups = useMemo(
-    () => groupCheckinoutSessionsByWeek(teamSessions),
-    [teamSessions],
+    () => groupCheckinoutSessionsByWeek(activeTeamSessions),
+    [activeTeamSessions],
+  );
+  const historyWeekGroups = useMemo(
+    () => groupCheckinoutSessionsByWeek(historicalScopedSessions),
+    [historicalScopedSessions],
   );
 
   // Filter peer managers' sessions (managers who are employees in sessions)
   const peerManagerSessions = useMemo(() => {
     if (!isManager) return [];
-    return allSessions.filter((session: any) => {
+    return activeAllSessions.filter((session: any) => {
       const employeeRole = session.employee?.role;
       return (
         ["MANAGER", "DIRECTOR"].includes(employeeRole) &&
         session.employee?.employeeId !== currentUser?.employeeId
       );
     });
-  }, [allSessions, isManager, currentUser?.employeeId]);
+  }, [activeAllSessions, isManager, currentUser?.employeeId]);
 
   const getSprintTitle = (session: any, index: number) => {
     // Use custom title if available, otherwise generate from dates
@@ -196,6 +243,8 @@ export default function SessionListView({
         return "bg-green-100 text-green-700";
       case "REJECTED":
         return "bg-red-100 text-red-700";
+      case "CLOSED":
+        return "bg-slate-200 text-slate-800";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -330,7 +379,9 @@ export default function SessionListView({
     const employeeName = session.employee?.fullName || "Unknown Employee";
     const supervisorName = session.supervisor?.fullName || "Unknown Supervisor";
     const isSessionOwner = session.supervisor?.employeeId === currentUser?.employeeId;
-    const isLocked = session.isLocked || false;
+    const isClosed = isClosedCheckinoutSession(session);
+    const isHistorical = isHistoricalCheckinoutSession(session, today);
+    const isLocked = Boolean(session.isLocked) || isClosed;
 
     return (
       <Card
@@ -345,7 +396,9 @@ export default function SessionListView({
                   {sprintTitle}
                 </h3>
                 {isLocked && (
-                  <div title="Session is locked">
+                  <div
+                    title={isClosed ? "Session is closed" : "Session is locked"}
+                  >
                     <Lock className="h-4 w-4 text-amber-600" />
                   </div>
                 )}
@@ -372,7 +425,9 @@ export default function SessionListView({
             <div className="mb-4 p-2 bg-amber-50 border border-amber-200 rounded-md">
               <p className="text-xs text-amber-800 flex items-center gap-1">
                 <Lock className="h-3 w-3" />
-                This session is locked. No tasks can be added or edited.
+                {isClosed
+                  ? "This session is closed and cannot be changed."
+                  : "This session is locked. No tasks can be added or edited."}
               </p>
             </div>
           )}
@@ -404,7 +459,7 @@ export default function SessionListView({
               <Eye className="h-4 w-4 mr-2" />
               View Session
             </Button>
-            {isSessionOwner && (
+            {isSessionOwner && !isHistorical && (
               <Button
                 size="sm"
                 variant="outline"
@@ -454,7 +509,8 @@ export default function SessionListView({
     );
     const groupStatus = statuses.size === 1 ? Array.from(statuses)[0] : "MIXED";
     const lockedCount = group.participantSessions.filter(
-      (participant) => participant.isLocked,
+      (participant) =>
+        participant.isLocked || isClosedCheckinoutSession(participant),
     ).length;
 
     return (
@@ -510,7 +566,12 @@ export default function SessionListView({
                 participant.employee?.fullName || "Unknown Employee";
               const isSessionOwner =
                 participant.supervisor?.employeeId === currentUser?.employeeId;
-              const isLocked = Boolean(participant.isLocked);
+              const isClosed = isClosedCheckinoutSession(participant);
+              const isHistorical = isHistoricalCheckinoutSession(
+                participant,
+                today,
+              );
+              const isLocked = Boolean(participant.isLocked) || isClosed;
 
               return (
                 <div
@@ -525,14 +586,15 @@ export default function SessionListView({
                       <span>{participant.overallStatus || "OPEN"}</span>
                       {isLocked && (
                         <span className="flex items-center gap-1 text-amber-700">
-                          <Lock className="h-3 w-3" /> Locked
+                          <Lock className="h-3 w-3" />
+                          {isClosed ? "Closed" : "Locked"}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {isSessionOwner && (
+                    {isSessionOwner && !isHistorical && (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -599,6 +661,9 @@ export default function SessionListView({
     );
   };
 
+  const historyLoading =
+    teamLoading || ownLoading || (isAdminOrHR && allLoading);
+
   const renderEmptyState = (message: string, showCreateButton = false) => (
     <div className="flex flex-col items-center justify-center h-64">
       <Users className="h-16 w-16 text-gray-400 mb-4" />
@@ -619,9 +684,24 @@ export default function SessionListView({
     return <div>Loading...</div>;
   }
 
-  // Regular employee view (no tabs)
+  // Regular employee view
   if (!isManager) {
-    const filteredSessions = filterSessions(ownSessions);
+    const filteredActiveSessions = filterSessions(activeOwnSessions);
+    const filteredHistoricalSessions = filterSessions(historicalOwnSessions);
+
+    const renderEmployeeSessions = (
+      sessions: CheckinoutSessionLike[],
+      emptyMessage: string,
+    ) =>
+      sessions.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sessions.map((session, index) =>
+            renderSessionCard(session, index, false),
+          )}
+        </div>
+      ) : (
+        renderEmptyState(emptyMessage)
+      );
 
     return (
       <div className="space-y-6">
@@ -648,23 +728,58 @@ export default function SessionListView({
           />
         </div>
 
-        {/* Sessions Grid */}
-        {ownLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-600">Loading sessions...</p>
-            </div>
-          </div>
-        ) : filteredSessions.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSessions.map((session: any, index: number) =>
-              renderSessionCard(session, index, false),
+        <Tabs value={employeeTab} onValueChange={setEmployeeTab}>
+          <TabsList className="bg-white border border-gray-200">
+            <TabsTrigger
+              value="active"
+              className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+            >
+              Active ({activeOwnSessions.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+            >
+              History ({historicalOwnSessions.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="mt-6">
+            {ownLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
+                  <p className="mt-2 text-sm text-gray-600">
+                    Loading sessions...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              renderEmployeeSessions(
+                filteredActiveSessions,
+                "No active check-in sessions found",
+              )
             )}
-          </div>
-        ) : (
-          renderEmptyState("No check-in sessions found")
-        )}
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6">
+            {ownLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
+                  <p className="mt-2 text-sm text-gray-600">
+                    Loading session history...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              renderEmployeeSessions(
+                filteredHistoricalSessions,
+                "No historical check-in sessions found",
+              )
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
@@ -706,7 +821,7 @@ export default function SessionListView({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border border-gray-200">
+        <TabsList className="h-auto flex-wrap bg-white border border-gray-200">
           <TabsTrigger
             value="my-team"
             className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
@@ -717,7 +832,13 @@ export default function SessionListView({
             value="my-sessions"
             className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
           >
-            My Sessions ({ownSessions.length})
+            My Sessions ({activeOwnSessions.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+          >
+            History ({historyWeekGroups.length})
           </TabsTrigger>
           {isManager && (
             <TabsTrigger
@@ -732,7 +853,7 @@ export default function SessionListView({
               value="all-sessions"
               className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
             >
-              All Sessions ({allSessions.length})
+              All Sessions ({activeAllSessions.length})
             </TabsTrigger>
           )}
         </TabsList>
@@ -770,14 +891,37 @@ export default function SessionListView({
                 </p>
               </div>
             </div>
-          ) : filterSessions(ownSessions).length > 0 ? (
+          ) : filterSessions(activeOwnSessions).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterSessions(ownSessions).map((session: any, index: number) =>
-                renderSessionCard(session, index, false),
+              {filterSessions(activeOwnSessions).map(
+                (session: any, index: number) =>
+                  renderSessionCard(session, index, false),
               )}
             </div>
           ) : (
             renderEmptyState("No personal sessions found")
+          )}
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="mt-6">
+          {historyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Loading session history...
+                </p>
+              </div>
+            </div>
+          ) : filterWeekGroups(historyWeekGroups).length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filterWeekGroups(historyWeekGroups).map((group, index) =>
+                renderWeekGroupCard(group, index),
+              )}
+            </div>
+          ) : (
+            renderEmptyState("No historical sessions found")
           )}
         </TabsContent>
 
@@ -818,9 +962,9 @@ export default function SessionListView({
                   </p>
                 </div>
               </div>
-            ) : filterSessions(allSessions).length > 0 ? (
+            ) : filterSessions(activeAllSessions).length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filterSessions(allSessions).map(
+                {filterSessions(activeAllSessions).map(
                   (session: any, index: number) =>
                     renderSessionCard(session, index),
                 )}

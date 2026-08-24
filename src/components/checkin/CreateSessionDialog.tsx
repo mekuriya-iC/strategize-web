@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Users } from "lucide-react";
+import { AlertCircle, Calendar, RefreshCw, Users } from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
@@ -90,6 +90,8 @@ export default function CreateSessionDialog({
   const {
     data: superAdminCandidatesData,
     loading: superAdminCandidatesLoading,
+    error: superAdminCandidatesError,
+    refetch: refetchSuperAdminCandidates,
   } = useQuery(GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES, {
     skip: !isSuperAdmin || userLoading || !open,
     fetchPolicy: "network-only",
@@ -674,6 +676,26 @@ export default function CreateSessionDialog({
                     Loading employees...
                   </p>
                 </div>
+              </div>
+            ) : isSuperAdmin && superAdminCandidatesError ? (
+              <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                <AlertCircle className="mb-2 h-8 w-8 text-red-500" />
+                <p className="text-sm font-medium text-red-700">
+                  Unable to load directors and managers
+                </p>
+                <p className="mt-1 max-w-md text-xs text-red-600">
+                  {superAdminCandidatesError.message}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-red-200 text-red-700 hover:bg-red-100"
+                  onClick={() => void refetchSuperAdminCandidates()}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
               </div>
             ) : availableEmployees.length > 0 ? (
               <div className="border rounded-lg max-h-64 overflow-y-auto">

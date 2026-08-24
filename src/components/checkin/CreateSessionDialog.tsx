@@ -722,7 +722,7 @@ export default function CreateSessionDialog({
                 </p>
                 <p className="text-xs text-gray-500 mt-2 text-center px-4 max-w-sm">
                   {isSuperAdmin
-                    ? "No active directors or managers reporting directly to an organization CEO were found."
+                    ? "No active division or department managers are assigned as heads in the organizational structure."
                     : isAdmin
                       ? "No employees found in the system"
                       : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}

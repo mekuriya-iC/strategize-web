@@ -86,6 +86,7 @@ export function useCreateKPIForm({
 }: UseCreateKPIFormProps) {
   const { createKpi } = useKPIMutations();
   const [createSupportKpi] = useMutation(CREATE_SUPPORT_KPI, {
+    errorPolicy: "none",
     onCompleted: (data) => {
       console.log('✅ Support KPI created:', data);
       invalidateAfterMutation.kpi();
@@ -375,12 +376,24 @@ export function useCreateKPIForm({
           sourceCorporateKpiIds: selectedSupportSourceIds,
         };
         console.log("🚀 [useCreateKPIForm] Submitting Support KPI:", supportInput);
-        const result = await createSupportKpi({ variables: { input: supportInput } });
+        const result = await createSupportKpi({
+          variables: { input: supportInput },
+        });
+        if (!result.data?.createSupportKpi) {
+          throw new Error(
+            "Support KPI creation failed because the server returned no created KPI.",
+          );
+        }
         console.log("✅ [useCreateKPIForm] Support KPI creation result:", result);
       } else {
         console.log("🚀 [useCreateKPIForm] Submitting standard KPI:", input);
-        const result = await createKpi({ input });
-        console.log("✅ [useCreateKPIForm] Standard KPI creation result:", result);
+        const createdKpi = await createKpi({ input });
+        if (!createdKpi?.kpiId) {
+          throw new Error(
+            "KPI creation failed because the server returned no created KPI.",
+          );
+        }
+        console.log("✅ [useCreateKPIForm] Standard KPI creation result:", createdKpi);
       }
 
       // Success - let the caller handle success feedback

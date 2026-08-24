@@ -149,8 +149,11 @@ const apolloClient = new ApolloClient({
     query: {
       errorPolicy: "all",
     },
+    // Mutations must reject GraphQL errors. Using "all" here caused callers
+    // to receive data: undefined and show success even when the API rejected
+    // the write.
     mutate: {
-      errorPolicy: "all",
+      errorPolicy: "none",
     },
   },
 });

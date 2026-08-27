@@ -25,7 +25,8 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     ObjectivesQueryVariables
   >(GET_OBJECTIVES, {
     variables: queryVariables,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 
@@ -63,7 +64,8 @@ export const useObjective = (variables: ObjectiveQueryVariables) => {
     ObjectiveQueryVariables
   >(GET_OBJECTIVE, {
     variables,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     // Skip query if objectiveId is empty or undefined
     skip: !variables.objectiveId,
   });

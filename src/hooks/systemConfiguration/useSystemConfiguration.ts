@@ -58,7 +58,8 @@ export const useSystemConfigurations = (variables: {
   const { page = 1, limit = 50 } = variables;
   const { data, loading, error, refetch } = useQuery(GET_SYSTEM_CONFIGURATIONS, {
     variables: { page, limit },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -74,7 +75,8 @@ export const useSystemConfiguration = (systemConfigurationId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_SYSTEM_CONFIGURATION, {
     variables: { systemConfigurationId },
     skip: !systemConfigurationId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -89,7 +91,8 @@ export const useSystemConfigurationByOrg = (organizationId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_SYSTEM_CONFIGURATION_BY_ORG, {
     variables: { organizationId },
     skip: !organizationId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

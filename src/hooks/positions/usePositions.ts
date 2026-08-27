@@ -67,7 +67,8 @@ export const usePositions = (variables: {
   const { page = 1, limit = 20, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_POSITIONS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -83,7 +84,8 @@ export const usePosition = (positionId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_POSITION, {
     variables: { positionId },
     skip: !positionId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -104,7 +106,8 @@ export const useCompetencyPositionAssignments = (variables: {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCY_POSITION_ASSIGNMENTS, {
     variables: { page, limit, ...rest },
     skip: !rest.positionId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

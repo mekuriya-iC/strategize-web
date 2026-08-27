@@ -71,7 +71,8 @@ export const useSharedKpiParticipants = (variables: {
   const { data, loading, error, refetch } = useQuery(GET_SHARED_KPI_PARTICIPANTS, {
     variables: { page, limit, ...rest },
     skip: !rest.kpiId && !rest.participantUserId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -87,7 +88,8 @@ export const useSharedKpiParticipant = (sharedKpiParticipantId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_SHARED_KPI_PARTICIPANT, {
     variables: { sharedKpiParticipantId },
     skip: !sharedKpiParticipantId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

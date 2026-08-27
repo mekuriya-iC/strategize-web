@@ -21,7 +21,8 @@ export const useEvaluationWeightConfigs = (
     {
       variables: { evaluationCycleId, page, limit },
       skip: !evaluationCycleId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -40,7 +41,8 @@ export const useEvaluationWeightsForCycle = (evaluationCycleId?: string) => {
     {
       variables: { evaluationCycleId },
       skip: !evaluationCycleId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 

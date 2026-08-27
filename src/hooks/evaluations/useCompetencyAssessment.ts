@@ -28,7 +28,8 @@ export const useCompetencyAssessments = (
 ) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCY_ASSESSMENTS, {
     variables: { page, limit, evaluationCycleId, evaluateeUserId, evaluatorUserId },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -44,7 +45,8 @@ export const useCompetencyAssessment = (competencyAssessmentId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCY_ASSESSMENT, {
     variables: { competencyAssessmentId },
     skip: !competencyAssessmentId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -59,7 +61,8 @@ export const useAssessmentResponses = (assessmentId: string, page = 1, limit = 5
   const { data, loading, error, refetch } = useQuery(GET_ASSESSMENT_RESPONSES, {
     variables: { assessmentId, page, limit },
     skip: !assessmentId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

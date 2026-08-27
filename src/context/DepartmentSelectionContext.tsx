@@ -5,9 +5,8 @@ import React, {
   useContext,
   useState,
   ReactNode,
-  useEffect,
+  useMemo,
 } from "react";
-import { useUserDepartments } from "@/hooks/org-structure/useUserDepartments";
 import { useAuthStore } from "@/stores";
 
 // Simplified department type that matches what's returned from user query
@@ -28,6 +27,8 @@ interface DepartmentSelectionContextType {
   needsSelection: boolean;
 }
 
+const EMPTY_DEPARTMENTS: UserDepartment[] = [];
+
 const DepartmentSelectionContext = createContext<
   DepartmentSelectionContextType | undefined
 >(undefined);
@@ -37,38 +38,41 @@ export function DepartmentSelectionProvider({
 }: {
   children: ReactNode;
 }) {
-  const user = useAuthStore((state) => state.user);
-  const { departments, isMultipleDepartments, hasDepartments } =
-    useUserDepartments();
+  const role = useAuthStore((state) => state.user?.role);
+  const departments = useAuthStore(
+    (state) => state.user?.departments ?? EMPTY_DEPARTMENTS
+  );
+  const isMultipleDepartments = departments.length > 1;
   const [selected, setSelected] = useState<DepartmentSelectionState | null>(
     null
   );
 
-  // Auto-select the first department for employees
-  useEffect(() => {
-    if (
-      user?.role === "NORMAL" &&
-      hasDepartments &&
-      !selected &&
-      departments.length > 0
-    ) {
-      setSelected({ department: departments[0] });
-    }
-  }, [user, departments, hasDepartments, selected]);
+  const effectiveSelection = useMemo(
+    () =>
+      selected ??
+      (role === "NORMAL" && departments.length > 0
+        ? { department: departments[0] }
+        : null),
+    [selected, role, departments]
+  );
 
   // Determine if employee needs to make a selection
   const needsSelection =
-    user?.role === "NORMAL" && isMultipleDepartments && !selected;
+    role === "NORMAL" && isMultipleDepartments && !effectiveSelection;
+  const value = useMemo<DepartmentSelectionContextType>(
+    () => ({
+      selected: effectiveSelection,
+      setSelected,
+      availableDepartments: departments,
+      isMultipleDepartments,
+      needsSelection,
+    }),
+    [effectiveSelection, departments, isMultipleDepartments, needsSelection]
+  );
 
   return (
     <DepartmentSelectionContext.Provider
-      value={{
-        selected,
-        setSelected,
-        availableDepartments: departments,
-        isMultipleDepartments,
-        needsSelection,
-      }}
+      value={value}
     >
       {children}
     </DepartmentSelectionContext.Provider>

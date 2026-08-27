@@ -58,11 +58,13 @@ export default function FlaggedKpisPage() {
   ].includes(user?.role || "");
 
   const { data: myData, loading: myLoading, error: myError } = useQuery(GET_MY_FLAGGED_KPIS, {
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const { data: teamData, loading: teamLoading, error: teamError } = useQuery(GET_TEAM_FLAGGED_KPIS, {
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     skip: !canViewTeam,
   });
 

@@ -17,7 +17,8 @@ export default function SupportReadinessCard() {
     {
       variables: { filters: { annualStrategicPeriodId: selectedPeriod?.strategicPeriodId } },
       skip: !selectedPeriod?.strategicPeriodId || !isAnnual,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 

@@ -125,38 +125,37 @@ const apolloClient = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache({
     typePolicies: {
-      Query: {
-        fields: {
-          // Merge paginated results properly
-          objectives: {
-            keyArgs: ["search", "assigneeId", "organizationId"],
-            merge(existing, incoming) {
-              return incoming;
-            },
-          },
-          kpis: {
-            keyArgs: ["search", "organizationId", "strategicObjectiveId"],
-            merge(existing, incoming) {
-              return incoming;
-            },
-          },
-          submissions: {
-            keyArgs: ["type", "status"],
-            merge(existing, incoming) {
-              return incoming;
-            },
-          },
-        },
+      Employee: { keyFields: ["employeeId"] },
+      Department: { keyFields: ["departmentId"] },
+      Division: { keyFields: ["divisionId"] },
+      Objective: { keyFields: ["objectiveId"] },
+      Kpi: { keyFields: ["kpiId"] },
+      Submission: { keyFields: ["submissionId"] },
+      StrategicPeriod: { keyFields: ["strategicPeriodId"] },
+      KpiUpdate: { keyFields: ["kpiUpdateId"] },
+      KpiQuarterPlan: { keyFields: ["kpiQuarterPlanId"] },
+      KpiQuarterResult: { keyFields: ["kpiQuarterResultId"] },
+      CheckinoutSession: { keyFields: ["checkinoutSessionId"] },
+      CheckinoutTask: { keyFields: ["checkinoutTaskId"] },
+      CheckinoutSchedule: { keyFields: ["scheduleId"] },
+      CheckinoutScheduleWeek: { keyFields: ["scheduleWeekId"] },
+      CheckinoutScheduleWeekCoverage: {
+        keyFields: ["scheduleWeekCoverageId"],
       },
+      // Query fields intentionally use Apollo's default keyArgs behavior. Every
+      // pagination and filter argument is part of the cache key, so pages and
+      // filtered variants cannot overwrite one another.
     },
   }),
   defaultOptions: {
     watchQuery: {
       errorPolicy: "all",
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
     query: {
       errorPolicy: "all",
+      fetchPolicy: "cache-first",
     },
     // Mutations must reject GraphQL errors. Using "all" here caused callers
     // to receive data: undefined and show success even when the API rejected

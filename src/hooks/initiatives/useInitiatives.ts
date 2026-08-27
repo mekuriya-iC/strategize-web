@@ -100,7 +100,8 @@ export const useInitiatives = (variables: {
   const { page = 1, limit = 20, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_INITIATIVES, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -116,7 +117,8 @@ export const useInitiative = (initiativeId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_INITIATIVE, {
     variables: { initiativeId },
     skip: !initiativeId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -138,7 +140,8 @@ export const useActivities = (variables: {
   const { data, loading, error, refetch } = useQuery(GET_ACTIVITIES, {
     variables: { page, limit, ...rest },
     skip: !rest.initiativeId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -154,7 +157,8 @@ export const useActivity = (activityId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_ACTIVITY, {
     variables: { activityId },
     skip: !activityId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

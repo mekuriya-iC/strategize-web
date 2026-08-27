@@ -20,7 +20,8 @@ export const useStrategicPeriods = (
         ...variables,
       },
       skip: options.skip,
-      fetchPolicy: 'cache-and-network',
+      fetchPolicy: 'cache-first',
+      nextFetchPolicy: 'cache-first',
     }
   );
 
@@ -38,7 +39,8 @@ export const useStrategicPeriod = (variables: StrategicPeriodQueryVariables) => 
     GET_STRATEGIC_PERIOD,
     {
       variables,
-      fetchPolicy: 'cache-and-network',
+      fetchPolicy: 'cache-first',
+      nextFetchPolicy: 'cache-first',
     }
   );
 

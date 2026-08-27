@@ -19,8 +19,7 @@ import {
   UPDATE_SHARED_KPI_PARTICIPANT,
   REMOVE_SHARED_KPI_PARTICIPANT,
 } from "@/lib/graphql/mutations/kpis";
-import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
-import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
+import { evictDeletedEntity, evictRootFields } from "@/lib/graphql/cache-invalidation";
 import {
   CreateKpiMutationVariables,
   UpdateKpiMutationVariables,
@@ -38,194 +37,58 @@ import {
   ToggleKpiActiveMutationVariables,
   CreateSharedKpiMutationVariables,
 } from "@/types/graphql";
-import { invalidateAfterMutation } from "@/stores/cacheStore";
 
 export const useKPIMutations = () => {
+  const invalidateKpiLists = (cache: Parameters<typeof evictRootFields>[0]) =>
+    evictRootFields(cache, ["kpis", "kpisByObjective", "objectives"]);
+  const listOptions = { update: invalidateKpiLists };
+
   const [createKpi, { loading: createLoading, error: createError }] =
-    useMutation(CREATE_KPI, {
-      errorPolicy: "none",
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-        "GetObjectives",
-      ],
-    });
-
+    useMutation(CREATE_KPI, { errorPolicy: "none", ...listOptions });
   const [updateKpi, { loading: updateLoading, error: updateError }] =
-    useMutation(UPDATE_KPI, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-        { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-        "GetObjectives",
-        "GetKpi",
-      ],
-    });
-
+    useMutation(UPDATE_KPI, listOptions);
   const [deleteKpi, { loading: deleteLoading, error: deleteError }] =
     useMutation(DELETE_KPI, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
+      update: (cache, { data }, { variables }) => {
+        const kpiId = variables?.kpiId ?? data?.removeKpi?.kpiId;
+        if (kpiId) {
+          evictDeletedEntity(cache, ["kpis", "kpisByObjective", "objectives"], {
+            __typename: "Kpi",
+            kpiId,
+          });
+        }
       },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
     });
-
   const [createKpiUpdate, { loading: createUpdateLoading, error: createUpdateError }] =
-    useMutation(CREATE_KPI_UPDATE, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(CREATE_KPI_UPDATE, listOptions);
   const [updateKpiProgress, { loading: updateProgressLoading, error: updateProgressError }] =
-    useMutation(UPDATE_KPI_PROGRESS, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(UPDATE_KPI_PROGRESS, listOptions);
   const [approveKpiUpdate, { loading: approveLoading, error: approveError }] =
-    useMutation(APPROVE_KPI_UPDATE, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(APPROVE_KPI_UPDATE, listOptions);
   const [assignKpiToEmployee, { loading: assignEmployeeLoading, error: assignEmployeeError }] =
-    useMutation(CREATE_KPI_ASSIGNMENT_EMPLOYEE, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(CREATE_KPI_ASSIGNMENT_EMPLOYEE, listOptions);
   const [assignKpiToDepartment, { loading: assignDepartmentLoading, error: assignDepartmentError }] =
-    useMutation(CREATE_KPI_ASSIGNMENT_DEPARTMENT, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(CREATE_KPI_ASSIGNMENT_DEPARTMENT, listOptions);
   const [assignKpiToDivision, { loading: assignDivisionLoading, error: assignDivisionError }] =
-    useMutation(CREATE_KPI_ASSIGNMENT_DIVISION, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(CREATE_KPI_ASSIGNMENT_DIVISION, listOptions);
   const [removeKpiAssignmentEmployee, { loading: removeEmployeeLoading, error: removeEmployeeError }] =
-    useMutation(REMOVE_KPI_ASSIGNMENT_EMPLOYEE, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(REMOVE_KPI_ASSIGNMENT_EMPLOYEE, listOptions);
   const [removeKpiAssignmentDepartment, { loading: removeDepartmentLoading, error: removeDepartmentError }] =
-    useMutation(REMOVE_KPI_ASSIGNMENT_DEPARTMENT, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(REMOVE_KPI_ASSIGNMENT_DEPARTMENT, listOptions);
   const [removeKpiAssignmentDivision, { loading: removeDivisionLoading, error: removeDivisionError }] =
-    useMutation(REMOVE_KPI_ASSIGNMENT_DIVISION, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(REMOVE_KPI_ASSIGNMENT_DIVISION, listOptions);
   const [updateKpiStatus, { loading: statusLoading, error: statusError }] =
-    useMutation(UPDATE_KPI_STATUS, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(UPDATE_KPI_STATUS, listOptions);
   const [toggleKpiActive, { loading: toggleLoading, error: toggleError }] =
-    useMutation(TOGGLE_KPI_ACTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(TOGGLE_KPI_ACTIVE, listOptions);
   const [createSharedKpi, { loading: createSharedLoading, error: createSharedError }] =
-    useMutation(CREATE_SHARED_KPI, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(CREATE_SHARED_KPI, listOptions);
   const [createSharedKpiParticipant, { loading: createParticipantLoading, error: createParticipantError }] =
-    useMutation(CREATE_SHARED_KPI_PARTICIPANT, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(CREATE_SHARED_KPI_PARTICIPANT, listOptions);
   const [updateSharedKpiParticipant, { loading: updateParticipantLoading, error: updateParticipantError }] =
-    useMutation(UPDATE_SHARED_KPI_PARTICIPANT, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
-
+    useMutation(UPDATE_SHARED_KPI_PARTICIPANT, listOptions);
   const [removeSharedKpiParticipant, { loading: removeParticipantLoading, error: removeParticipantError }] =
-    useMutation(REMOVE_SHARED_KPI_PARTICIPANT, {
-      onCompleted: () => {
-        invalidateAfterMutation.kpi();
-      },
-      refetchQueries: [
-        { query: GET_KPIS, variables: { page: 1, limit: 1000 } },
-      ],
-    });
+    useMutation(REMOVE_SHARED_KPI_PARTICIPANT, listOptions);
 
   const handleCreateKpi = async (variables: CreateKpiMutationVariables) => {
     try {
@@ -256,7 +119,7 @@ export const useKPIMutations = () => {
   const handleDeleteKpi = async (variables: DeleteKpiMutationVariables) => {
     try {
       const result = await deleteKpi({ variables });
-      return result.data?.deleteKpi;
+      return result.data?.removeKpi;
     } catch (error) {
       console.error("Error deleting KPI:", error);
       throw error;
@@ -383,7 +246,9 @@ export const useKPIMutations = () => {
     }
   };
 
-  const handleCreateSharedKpiParticipant = async (variables: any) => {
+  const handleCreateSharedKpiParticipant = async (
+      variables: Record<string, unknown>,
+    ) => {
     try {
       const result = await createSharedKpiParticipant({ variables });
       return result.data?.createSharedKpiParticipant;
@@ -393,7 +258,9 @@ export const useKPIMutations = () => {
     }
   };
 
-  const handleUpdateSharedKpiParticipant = async (variables: any) => {
+  const handleUpdateSharedKpiParticipant = async (
+      variables: Record<string, unknown>,
+    ) => {
     try {
       const result = await updateSharedKpiParticipant({ variables });
       return result.data?.updateSharedKpiParticipant;
@@ -403,7 +270,9 @@ export const useKPIMutations = () => {
     }
   };
 
-  const handleRemoveSharedKpiParticipant = async (variables: any) => {
+  const handleRemoveSharedKpiParticipant = async (
+      variables: Record<string, unknown>,
+    ) => {
     try {
       const result = await removeSharedKpiParticipant({ variables });
       return result.data?.removeSharedKpiParticipant;

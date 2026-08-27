@@ -23,7 +23,8 @@ export function useNodeTypes() {
   const { data, loading, refetch } = useQuery(GET_NODE_TYPES, {
     variables: { organizationId },
     skip: !organizationId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   const [createMutation, { loading: creating }] = useMutation(CREATE_NODE_TYPE, {

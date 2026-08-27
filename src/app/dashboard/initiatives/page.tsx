@@ -31,7 +31,8 @@ export default function InitiativesPage() {
   // Fetch objectives for the create dialog
   const { data: objData } = useQuery(GET_OBJECTIVES, {
     variables: { page: 1, limit: 500 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const objectives = (objData?.objectives?.items || []).map(

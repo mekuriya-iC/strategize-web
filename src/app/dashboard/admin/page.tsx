@@ -24,7 +24,8 @@ export default function AdminPanelPage() {
   // Fetch all employees to filter admins
   const { data, loading, refetch } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     skip: !admin.canAccess(), // Don't fetch if user doesn't have access
   });
 

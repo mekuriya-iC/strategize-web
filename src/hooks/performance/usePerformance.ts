@@ -83,7 +83,8 @@ export const useAggregatePerformanceResults = (variables: {
   const { page = 1, limit = 50, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_AGGREGATE_PERFORMANCE_RESULTS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -103,7 +104,8 @@ export const usePerformanceWeightConfigs = (variables: {
   const { page = 1, limit = 20, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_PERFORMANCE_WEIGHT_CONFIGS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

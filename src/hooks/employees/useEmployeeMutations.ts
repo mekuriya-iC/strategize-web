@@ -1,14 +1,17 @@
 "use client";
 
-import { useMutation, Reference } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import {
   CREATE_EMPLOYEE,
   UPDATE_EMPLOYEE,
   REMOVE_EMPLOYEE,
 } from "@/lib/graphql/mutations/employees";
-import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
+
 import { CreateEmployeeInput, UpdateEmployeeInput } from "@/types/graphql";
-import { invalidateAfterMutation } from "@/stores/cacheStore";
+import {
+  evictDeletedEntity,
+  evictRootFields,
+} from "@/lib/graphql/cache-invalidation";
 import logger from "@/lib/logger";
 
 const empLogger = logger.createChild("Employee");
@@ -19,31 +22,8 @@ export const useEmployeeMutations = () => {
     createEmployeeMutation,
     { loading: createLoading, error: createError },
   ] = useMutation(CREATE_EMPLOYEE, {
-    // Optimistically prepend to the list, then refetch to get server-confirmed data
     update: (cache, { data }) => {
-      if (data?.createEmployee) {
-        cache.modify({
-          fields: {
-            employees(existingEmployees = null) {
-              if (!existingEmployees) return existingEmployees;
-              const items = existingEmployees.items || [];
-              return {
-                ...existingEmployees,
-                items: [data.createEmployee, ...items],
-                meta: {
-                  ...existingEmployees.meta,
-                  totalItems: (existingEmployees.meta?.totalItems || 0) + 1,
-                },
-              };
-            },
-          },
-        });
-      }
-    },
-    // Refetch all active employee queries so every table/list reflects the change
-    refetchQueries: "active",
-    onCompleted: () => {
-      invalidateAfterMutation.employee();
+      if (data?.createEmployee) evictRootFields(cache, ["employees"]);
     },
   });
 
@@ -52,30 +32,10 @@ export const useEmployeeMutations = () => {
     updateEmployeeMutation,
     { loading: updateLoading, error: updateError },
   ] = useMutation(UPDATE_EMPLOYEE, {
+    // The payload updates the normalized Employee. Evict lists because name,
+    // status, department membership, or another filtered/sorted field may change.
     update: (cache, { data }) => {
-      if (data?.updateEmployee) {
-        const updated = data.updateEmployee;
-        cache.modify({
-          fields: {
-            employees(existingEmployees = null, { readField }) {
-              if (!existingEmployees) return existingEmployees;
-              const items = existingEmployees.items || [];
-              return {
-                ...existingEmployees,
-                items: items.map((item: Reference) =>
-                  readField("employeeId", item) === updated.employeeId
-                    ? updated
-                    : item
-                ),
-              };
-            },
-          },
-        });
-      }
-    },
-    refetchQueries: "active",
-    onCompleted: () => {
-      invalidateAfterMutation.employee();
+      if (data?.updateEmployee) evictRootFields(cache, ["employees"]);
     },
   });
 
@@ -86,34 +46,11 @@ export const useEmployeeMutations = () => {
   ] = useMutation(REMOVE_EMPLOYEE, {
     update: (cache, { data }, { variables }) => {
       if (data?.removeEmployee && variables?.employeeId) {
-        const deletedId = variables.employeeId;
-        cache.modify({
-          fields: {
-            employees(existingEmployees = null, { readField }) {
-              if (!existingEmployees) return existingEmployees;
-              const items = existingEmployees.items || [];
-              return {
-                ...existingEmployees,
-                items: items.filter(
-                  (item: Reference) =>
-                    readField("employeeId", item) !== deletedId
-                ),
-                meta: {
-                  ...existingEmployees.meta,
-                  totalItems: Math.max(
-                    0,
-                    (existingEmployees.meta?.totalItems || 0) - 1
-                  ),
-                },
-              };
-            },
-          },
+        evictDeletedEntity(cache, ["employees"], {
+          __typename: "Employee",
+          employeeId: variables.employeeId,
         });
       }
-    },
-    refetchQueries: "active",
-    onCompleted: () => {
-      invalidateAfterMutation.employee();
     },
   });
 

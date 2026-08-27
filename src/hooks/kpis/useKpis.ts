@@ -6,6 +6,10 @@ import {
   UPDATE_KPI,
   DELETE_KPI,
 } from "@/lib/graphql/mutations/kpis";
+import {
+  evictDeletedEntity,
+  evictRootFields,
+} from "@/lib/graphql/cache-invalidation";
 
 // ===================== TYPES =====================
 
@@ -109,7 +113,8 @@ export const useKpis = (
   const { page = 1, limit = 20, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_KPIS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -125,7 +130,8 @@ export const useKpi = (kpiId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_KPI, {
     variables: { kpiId },
     skip: !kpiId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -142,6 +148,9 @@ export const useKpiMutations = () => {
   const [createKpiMutation, { loading: createLoading }] = useMutation(
     CREATE_KPI,
     {
+      update: (cache, { data }) => {
+        if (data?.createKpi) evictRootFields(cache, ["kpis", "objectives"]);
+      },
       onCompleted: (data) => {
         toast.success("KPI created successfully!", {
           description: `"${data.createKpi.name}" has been created.`,
@@ -150,14 +159,15 @@ export const useKpiMutations = () => {
       onError: (error) => {
         toast.error("Failed to create KPI", { description: error.message });
       },
-      refetchQueries: "active",
-      awaitRefetchQueries: true,
     },
   );
 
   const [updateKpiMutation, { loading: updateLoading }] = useMutation(
     UPDATE_KPI,
     {
+      update: (cache, { data }) => {
+        if (data?.updateKpi) evictRootFields(cache, ["kpis", "objectives"]);
+      },
       onCompleted: (data) => {
         toast.success("KPI updated successfully!", {
           description: `"${data.updateKpi.name}" has been updated.`,
@@ -166,14 +176,21 @@ export const useKpiMutations = () => {
       onError: (error) => {
         toast.error("Failed to update KPI", { description: error.message });
       },
-      refetchQueries: "active",
-      awaitRefetchQueries: true,
     },
   );
 
   const [deleteKpiMutation, { loading: deleteLoading }] = useMutation(
     DELETE_KPI,
     {
+      update: (cache, { data }, { variables }) => {
+        const kpiId = variables?.kpiId ?? data?.removeKpi?.kpiId;
+        if (kpiId) {
+          evictDeletedEntity(cache, ["kpis", "kpisByObjective", "objectives"], {
+            __typename: "Kpi",
+            kpiId,
+          });
+        }
+      },
       onCompleted: (data) => {
         toast.success("KPI deleted successfully!", {
           description: data?.removeKpi?.name
@@ -184,8 +201,6 @@ export const useKpiMutations = () => {
       onError: (error) => {
         toast.error("Failed to delete KPI", { description: error.message });
       },
-      refetchQueries: "active",
-      awaitRefetchQueries: true,
     },
   );
 

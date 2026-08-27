@@ -1,7 +1,6 @@
 "use client";
 import {
   ChevronRight,
-  Bell,
   Globe,
   Sun,
   Moon,
@@ -21,28 +20,29 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import OrgUnitSelector from "./OrgUnitSelector";
-import StrategySelector from "./StrategySelector";
 import StrategicPeriodSelector from "./StrategicPeriodSelector";
 import DepartmentSelector from "../departments/DepartmentSelector";
 import { useTheme } from "next-themes";
 import { useUIStore, useAuthStore } from "@/stores";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/auth/useAuth";
+import { useAuthContext } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
 import NotificationDropdown from "./NotificationDropdown";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
-  const { sidebarOpen: open, toggleSidebar } = useUIStore();
+  const open = useUIStore((state) => state.sidebarOpen);
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const pathname = usePathname();
-  const user = useAuthStore((state) => state.user);
-  const { logout } = useAuth();
+  const userPicture = useAuthStore((state) => state.user?.picture);
+  const userFullName = useAuthStore((state) => state.user?.fullName);
+  const userEmail = useAuthStore((state) => state.user?.email);
+  const { logout } = useAuthContext();
   const router = useRouter();
 
   const handleLogout = () => {
-    logout();
-    router.push("/auth");
+    void logout();
   };
 
   // Function to get page name from pathname
@@ -151,12 +151,12 @@ export default function Topbar() {
               className="flex items-center gap-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <UserAvatar
-                src={user?.picture}
-                alt={user?.fullName || "User"}
+                src={userPicture}
+                alt={userFullName || "User"}
                 size="sm"
               />
               <span className="hidden sm:inline">
-                {user?.fullName || "User"}
+                {userFullName || "User"}
               </span>
               <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 rotate-90" />
             </Button>
@@ -165,16 +165,16 @@ export default function Topbar() {
             <DropdownMenuItem disabled>
               <div className="flex items-center gap-3">
                 <UserAvatar
-                  src={user?.picture}
-                  alt={user?.fullName || "User"}
+                  src={userPicture}
+                  alt={userFullName || "User"}
                   size="md"
                 />
                 <div className="flex flex-col">
                   <span className="font-medium">
-                    {user?.fullName || "User"}
+                    {userFullName || "User"}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {user?.email || ""}
+                    {userEmail || ""}
                   </span>
                 </div>
               </div>

@@ -9,9 +9,53 @@ export type TaskType =
 
 export const DEFAULT_TASK_TYPE: TaskType = "KPI_UNMET";
 
+export type TaskEditMode = "PLANNING" | "CHECKOUT";
+
+export interface CheckoutStatusOption {
+  value: "NOT_DONE" | "DONE" | "POSTPONED" | "CANCELLED";
+  label: string;
+}
+
+export const CHECKOUT_STATUS_OPTIONS: ReadonlyArray<CheckoutStatusOption> = [
+  { value: "NOT_DONE", label: "Not Done" },
+  { value: "DONE", label: "Done" },
+  { value: "POSTPONED", label: "Postponed" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
+
+export function getTaskEditMode(submissionStatus?: string | null): TaskEditMode {
+  return submissionStatus === "DRAFT" || submissionStatus === "PERSONAL_TODO"
+    ? "PLANNING"
+    : "CHECKOUT";
+}
+
+export function getCheckoutStatusOptions(
+  taskType: TaskType,
+): ReadonlyArray<CheckoutStatusOption> {
+  return taskType === "KPI_FULFILLED"
+    ? CHECKOUT_STATUS_OPTIONS.filter((status) => status.value === "DONE")
+    : CHECKOUT_STATUS_OPTIONS;
+}
+
+export function normalizeCheckoutStatus(
+  taskType: TaskType,
+  currentStatus?: string | null,
+): CheckoutStatusOption["value"] {
+  if (taskType === "KPI_FULFILLED") return "DONE";
+  return CHECKOUT_STATUS_OPTIONS.some(
+    (status) => status.value === currentStatus,
+  )
+    ? (currentStatus as CheckoutStatusOption["value"])
+    : "NOT_DONE";
+}
+
 interface TaskKpiPlanningOption {
   status?: string | null;
   quarterPlans?: Array<{ status?: string | null }> | null;
+}
+
+export function requiresLinkedKpi(taskType: TaskType): boolean {
+  return taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET";
 }
 
 export function isKpiReadyForAchievementSubmission(

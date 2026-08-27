@@ -63,7 +63,8 @@ export const useActivityLogs = (variables: ActivityLogsQueryVariables = {}) => {
   const { page = 1, limit = 50, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_ACTIVITY_LOGS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -79,7 +80,8 @@ export const useAuditLogs = (variables: AuditLogsQueryVariables = {}) => {
   const { page = 1, limit = 50, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_AUDIT_LOGS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -95,7 +97,8 @@ export const useActivityLog = (activityLogId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_ACTIVITY_LOG, {
     variables: { activityLogId },
     skip: !activityLogId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -110,7 +113,8 @@ export const useAuditLog = (auditLogId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_AUDIT_LOG, {
     variables: { auditLogId },
     skip: !auditLogId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

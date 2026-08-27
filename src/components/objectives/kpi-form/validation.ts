@@ -231,7 +231,7 @@ export const validateForm = (params: {
       const hasQuarterlyTargets = Object.values(yearlyQuarters).some(
         (quarters) =>
           [quarters.q1, quarters.q2, quarters.q3, quarters.q4].some(
-            (q) => q !== "" && Number(q) > 0
+            (q) => q !== "" && !isNaN(Number(q))
           )
       );
       if (!hasQuarterlyTargets) {

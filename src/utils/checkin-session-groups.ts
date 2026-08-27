@@ -8,6 +8,7 @@ export type CheckinoutSessionLike = {
   employee?: {
     employeeId?: string | null;
     fullName?: string | null;
+    role?: string | null;
   } | null;
   supervisor?: {
     employeeId?: string | null;
@@ -23,6 +24,23 @@ export type CheckinoutSessionWeekGroup<T extends CheckinoutSessionLike> = {
   key: string;
   representativeSession: T;
   participantSessions: T[];
+};
+
+export const getLeadershipCheckinoutSessions = <
+  T extends CheckinoutSessionLike,
+>(sessions: T[]): T[] => {
+  const sessionsById = new Map<string, T>();
+  for (const session of sessions) {
+    if (
+      session?.checkinoutSessionId &&
+      ["MANAGER", "DIRECTOR"].includes(
+        String(session.employee?.role || "").toUpperCase(),
+      )
+    ) {
+      sessionsById.set(session.checkinoutSessionId, session);
+    }
+  }
+  return Array.from(sessionsById.values());
 };
 
 export const getCheckinoutSessionWeekKey = (

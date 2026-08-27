@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getCheckinoutSessionWeekKey,
+  getLeadershipCheckinoutSessions,
   groupCheckinoutSessionsByWeek,
   type CheckinoutSessionLike,
 } from "./checkin-session-groups";
@@ -37,6 +38,32 @@ describe("check-in/out session week grouping", () => {
         (participant) => participant.employee?.fullName,
       ),
     ).toEqual(["Alpha Person", "Beta Person"]);
+  });
+
+  it("deduplicates Super Admin leadership sessions and excludes non-leaders", () => {
+    const director = session({
+      checkinoutSessionId: "director-session",
+      employee: {
+        employeeId: "director-1",
+        fullName: "Director",
+        role: "DIRECTOR",
+      },
+    });
+
+    expect(
+      getLeadershipCheckinoutSessions([
+        director,
+        { ...director },
+        session({
+          checkinoutSessionId: "employee-session",
+          employee: {
+            employeeId: "employee-1",
+            fullName: "Employee",
+            role: "EMPLOYEE",
+          },
+        }),
+      ]).map((item) => item.checkinoutSessionId),
+    ).toEqual(["director-session"]);
   });
 
   it("keeps different weeks in separate cards", () => {

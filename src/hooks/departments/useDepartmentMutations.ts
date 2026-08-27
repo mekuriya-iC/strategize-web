@@ -1,4 +1,4 @@
-import { useMutation } from "@apollo/client";
+import { useApolloClient, useMutation } from "@apollo/client";
 import { toast } from "sonner";
 import {
   CREATE_DEPARTMENT,
@@ -7,43 +7,30 @@ import {
   ADD_EMPLOYEE_TO_DEPARTMENT,
   REMOVE_EMPLOYEE_FROM_DEPARTMENT,
 } from "@/lib/graphql/mutations/departments";
-import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
+import {
+  evictDeletedEntity,
+  evictRootFields,
+} from "@/lib/graphql/cache-invalidation";
 import type {
   CreateDepartmentMutationVariables,
   UpdateDepartmentMutationVariables,
   RemoveDepartmentMutationVariables,
   AddEmployeeToDepartmentMutationVariables,
   RemoveEmployeeFromDepartmentMutationVariables,
-  PaginatedDepartments,
+
 } from "@/types/graphql";
 import logger from "@/lib/logger";
 
 const deptLogger = logger.createChild("Department");
 
 export const useDepartmentMutations = () => {
+  const client = useApolloClient();
+  const invalidateMembership = () =>
+    evictRootFields(client.cache, ["departments", "department", "employees"]);
   const [createDepartmentMutation, { loading: createLoading }] = useMutation(
     CREATE_DEPARTMENT,
     {
-      update: (cache, { data }) => {
-        if (data?.createDepartment) {
-          cache.modify({
-            fields: {
-              departments(existingDepartments = null) {
-                if (!existingDepartments) return existingDepartments;
-                const items = existingDepartments.items || [];
-                return {
-                  ...existingDepartments,
-                  items: [data.createDepartment, ...items],
-                  meta: {
-                    ...existingDepartments.meta,
-                    totalItems: (existingDepartments.meta?.totalItems || 0) + 1,
-                  },
-                };
-              },
-            },
-          });
-        }
-      },
+
       onCompleted: (data) => {
         toast.success("Department created successfully!", {
           description: `${data.createDepartment.name} has been added to the system.`,
@@ -54,33 +41,13 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: 'active',
-      awaitRefetchQueries: true,
     }
   );
 
   const [updateDepartmentMutation, { loading: updateLoading }] = useMutation(
     UPDATE_DEPARTMENT,
     {
-      update: (cache, { data }) => {
-        if (data?.updateDepartment) {
-          const updated = data.updateDepartment;
-          cache.modify({
-            fields: {
-              departments(existingDepartments = null, { readField }) {
-                if (!existingDepartments) return existingDepartments;
-                const items = existingDepartments.items || [];
-                return {
-                  ...existingDepartments,
-                  items: items.map((item: any) =>
-                    readField('departmentId', item) === updated.departmentId ? updated : item
-                  ),
-                };
-              },
-            },
-          });
-        }
-      },
+
       onCompleted: (data) => {
         toast.success("Department updated successfully!", {
           description: `${data.updateDepartment.name} has been updated.`,
@@ -91,8 +58,6 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: 'active',
-      awaitRefetchQueries: true,
     }
   );
 
@@ -100,30 +65,12 @@ export const useDepartmentMutations = () => {
     REMOVE_DEPARTMENT,
     {
       update: (cache, { data }, { variables }) => {
-        if (variables?.departmentId || data?.removeDepartment) {
-          const deletedId = variables?.departmentId || data?.removeDepartment?.departmentId;
-          if (deletedId) {
-            cache.modify({
-              fields: {
-                departments(existingDepartments = null, { readField }) {
-                  if (!existingDepartments) return existingDepartments;
-                  const items = existingDepartments.items || [];
-                  return {
-                    ...existingDepartments,
-                    items: items.filter((item: any) => readField('departmentId', item) !== deletedId),
-                    meta: {
-                      ...existingDepartments.meta,
-                      totalItems: Math.max(0, (existingDepartments.meta?.totalItems || 0) - 1),
-                    },
-                  };
-                },
-              },
-            });
-            
-            // Also evict the specific department from cache
-            cache.evict({ id: cache.identify({ __typename: 'Department', departmentId: deletedId }) });
-            cache.gc();
-          }
+        const departmentId = variables?.departmentId ?? data?.removeDepartment?.departmentId;
+        if (departmentId) {
+          evictDeletedEntity(cache, ["departments", "employees"], {
+            __typename: "Department",
+            departmentId,
+          });
         }
       },
       onCompleted: (data) => {
@@ -136,8 +83,6 @@ export const useDepartmentMutations = () => {
           description: error.message,
         });
       },
-      refetchQueries: 'active',
-      awaitRefetchQueries: true,
     }
   );
 
@@ -199,6 +144,11 @@ export const useDepartmentMutations = () => {
         }
       }
 
+      if (variables.employeeIds?.length) {
+        invalidateMembership();
+      } else {
+        evictRootFields(client.cache, ["departments"]);
+      }
       return createdDepartment;
     } catch (error) {
       deptLogger.error("Error creating department:", error);
@@ -260,8 +210,20 @@ export const useDepartmentMutations = () => {
           });
           await Promise.all(removePromises);
         }
+
       }
 
+      const requestedIds = variables.employeeIds;
+      const currentIds = variables.currentEmployeeIds ?? [];
+      const membershipChanged = requestedIds !== undefined && (
+        requestedIds.length !== currentIds.length ||
+        requestedIds.some((id) => !currentIds.includes(id))
+      );
+      if (membershipChanged) {
+        invalidateMembership();
+      } else {
+        evictRootFields(client.cache, ["departments"]);
+      }
       return updatedDepartment;
     } catch (error) {
       deptLogger.error("Error updating department:", error);
@@ -286,6 +248,7 @@ export const useDepartmentMutations = () => {
   ) => {
     try {
       const result = await addEmployeeToDepartmentMutation({ variables });
+      invalidateMembership();
       return result.data?.addEmployeeToDepartment;
     } catch (error) {
       deptLogger.error("Error adding employee to department:", error);
@@ -298,6 +261,7 @@ export const useDepartmentMutations = () => {
   ) => {
     try {
       const result = await removeEmployeeFromDepartmentMutation({ variables });
+      invalidateMembership();
       return result.data?.removeEmployeeFromDepartment;
     } catch (error) {
       deptLogger.error("Error removing employee from department:", error);

@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/stores";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
-import StrategySelector from "./StrategySelector";
+
 import Image from "next/image";
 import type { Permission } from "@/lib/rbac/permissions";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores";
 import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
@@ -738,31 +738,36 @@ function CollapsibleCategory({
   open: sidebarOpen,
   onLinkClick,
   badgeCounts,
+  pathname,
+  currentSearch,
+  can,
+  userRole,
+  openSidebar,
 }: {
   category: NavCategory;
   open: boolean;
   onLinkClick?: () => void;
   badgeCounts?: Record<string, number>;
+  pathname: string;
+  currentSearch: string;
+  can: (permission: Permission) => boolean;
+  userRole?: string;
+  openSidebar: () => void;
 }) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { can } = usePermissions();
-  const { openSidebar } = useUIStore();
-  const user = useAuthStore((state) => state.user);
-
-  const isManagerRole = user?.role === "DIRECTOR" || user?.role === "MANAGER";
+  const searchParams = new URLSearchParams(currentSearch);
+  const isManagerRole = userRole === "DIRECTOR" || userRole === "MANAGER";
 
   // Filter links based on permissions
   const filteredLinks = category.links
     .filter((link) => {
       if (!can(link.permission)) return false;
       if (link.managerOnly && !isManagerRole) return false;
-      if (link.rolesOnly && !link.rolesOnly.includes(user?.role || "")) return false;
+      if (link.rolesOnly && !link.rolesOnly.includes(userRole || "")) return false;
       return true;
     })
     .map((link) =>
       link.href === "/dashboard/approvals" &&
-      (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN")
+      (userRole === "ADMIN" || userRole === "SUPER_ADMIN")
         ? { ...link, label: "Approvals" }
         : link,
     );
@@ -791,13 +796,7 @@ function CollapsibleCategory({
   );
 
   const [isExpanded, setIsExpanded] = useState(isCategoryActive);
-
-  // Sync expanded state with active state when category becomes active
-  useEffect(() => {
-    if (isCategoryActive) {
-      setIsExpanded(true);
-    }
-  }, [isCategoryActive]);
+  const categoryExpanded = isExpanded || isCategoryActive;
 
   if (filteredLinks.length === 0) return null;
 
@@ -824,7 +823,7 @@ function CollapsibleCategory({
         {sidebarOpen && (
           <>
             <span className="flex-1 text-left">{category.label}</span>
-            {isExpanded ? (
+            {categoryExpanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
               <ChevronRight className="h-4 w-4" />
@@ -833,7 +832,7 @@ function CollapsibleCategory({
         )}
       </button>
 
-      {sidebarOpen && isExpanded && (
+      {sidebarOpen && categoryExpanded && (
         <div className="mt-1 ml-4 pl-4 border-l border-gray-100 dark:border-gray-800 space-y-1">
           {filteredLinks.map((link) => (
             <Link
@@ -866,9 +865,11 @@ function CollapsibleCategory({
 
 export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const pathname = usePathname();
-  const { sidebarOpen, openSidebar } = useUIStore();
+  const currentSearch = useSearchParams().toString();
+  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const openSidebar = useUIStore((state) => state.openSidebar);
   const { can } = usePermissions();
-  const user = useAuthStore((state) => state.user);
+  const userRole = useAuthStore((state) => state.user?.role);
   const { count: pendingApprovalsCount } = usePendingApprovalsCount();
   const { count: flaggedKpiCount } = useFlaggedKpiCount();
   const { pendingCount: pendingTaskRequestCount } =
@@ -930,6 +931,11 @@ export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
             open={sidebarOpen}
             onLinkClick={onLinkClick}
             badgeCounts={badgeCounts}
+            pathname={pathname}
+            currentSearch={currentSearch}
+            can={can}
+            userRole={userRole}
+            openSidebar={openSidebar}
           />
         ))}
       </div>

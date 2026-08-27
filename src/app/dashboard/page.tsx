@@ -107,7 +107,8 @@ export default function DashboardPage() {
         !isLeadershipRole ||
         !selectionValidated ||
         !selectedPeriod?.strategicPeriodId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -121,7 +122,8 @@ export default function DashboardPage() {
         organizationId: user?.organizationId,
       },
       skip: !user?.organizationId || (!hasFullAccess && !isDirector),
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -131,7 +133,8 @@ export default function DashboardPage() {
       organizationId: user?.organizationId,
     },
     skip: !user?.organizationId || (!hasFullAccess && !isDirector),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
 

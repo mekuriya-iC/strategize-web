@@ -43,7 +43,8 @@ export function useTeamKpiWeightAchievement({
   }>(GET_TEAM_KPI_WEIGHT_ACHIEVEMENT, {
     variables: { departmentId, periodId },
     skip: skip || !departmentId || !periodId,
-    fetchPolicy: 'network-only', // Always fetch fresh data
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first', // Always fetch fresh data
   });
 
   return {

@@ -26,6 +26,7 @@ interface Task {
   createdAt: string;
   isMidWeekTask?: boolean;
   submissionStatus?: TaskSubmissionStatus;
+  logbookStatus?: string | null;
 }
 
 interface CheckInTableProps {

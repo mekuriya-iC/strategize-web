@@ -17,7 +17,8 @@ export const useKPIs = (variables: KpisQueryVariables = {}) => {
       limit: 10,
       ...variables,
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -35,7 +36,8 @@ export const useKPI = (variables: KpiQueryVariables) => {
     KpiQueryVariables
   >(GET_KPI, {
     variables,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     // Skip query if kpiId is empty or undefined
     skip: !variables.kpiId,
   });

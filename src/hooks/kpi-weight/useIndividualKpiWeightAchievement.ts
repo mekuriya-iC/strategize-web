@@ -37,7 +37,8 @@ export function useIndividualKpiWeightAchievement({
   }>(GET_INDIVIDUAL_KPI_WEIGHT_ACHIEVEMENT, {
     variables: { employeeId, periodId },
     skip: skip || !employeeId || !periodId,
-    fetchPolicy: 'network-only', // Always fetch fresh data
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first', // Always fetch fresh data
   });
 
   return {

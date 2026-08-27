@@ -55,7 +55,8 @@ export function useCorporateKpiContributions(
   }>(GET_CORPORATE_KPI_WITH_DIVISION_CONTRIBUTIONS, {
     variables: { organizationId, periodId },
     skip: skip || !organizationId || !periodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -77,7 +78,8 @@ export function useDivisionKpiContributions(
   }>(GET_DIVISION_KPI_WITH_DEPARTMENT_CONTRIBUTIONS, {
     variables: { divisionId, periodId },
     skip: skip || !divisionId || !periodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -99,7 +101,8 @@ export function useDepartmentKpiContributions(
   }>(GET_DEPARTMENT_KPI_WITH_EMPLOYEE_CONTRIBUTIONS, {
     variables: { departmentId, periodId },
     skip: skip || !departmentId || !periodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {

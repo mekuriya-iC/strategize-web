@@ -41,7 +41,8 @@ const DivisionDetailsPage = () => {
     GET_DIVISION_BASIC,
     {
       variables: { divisionId },
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 
@@ -57,7 +58,8 @@ const DivisionDetailsPage = () => {
       page: currentPage,
       limit: itemsPerPage,
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   // Query to get employees for manager selection

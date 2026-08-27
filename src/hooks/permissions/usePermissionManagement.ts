@@ -24,7 +24,8 @@ import {
 export const usePermissionDefinitions = (page = 1, limit = 50, search = '') => {
   const { data, loading, error, refetch } = useQuery(GET_PERMISSION_DEFINITIONS, {
     variables: { page, limit, search },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -40,7 +41,8 @@ export const usePermissionDefinitions = (page = 1, limit = 50, search = '') => {
 export const useRoles = (page = 1, limit = 50, search = '') => {
   const { data, loading, error, refetch } = useQuery(GET_ROLES, {
     variables: { page, limit, search: search || undefined },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   console.log('🔐 [useRoles] Query result:', {
@@ -64,7 +66,8 @@ export const useRole = (roleId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_ROLE, {
     variables: { roleId },
     skip: !roleId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -80,7 +83,8 @@ export const useRolePermissions = (roleId: string, page = 1, limit = 100) => {
   const { data, loading, error, refetch } = useQuery(GET_ROLE_PERMISSIONS, {
     variables: { roleId, page, limit },
     skip: !roleId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -96,7 +100,8 @@ export const useRolePermissions = (roleId: string, page = 1, limit = 100) => {
 export const useUserRoleAssignments = (userId?: string, roleId?: string, page = 1, limit = 50) => {
   const { data, loading, error, refetch } = useQuery(GET_USER_ROLE_ASSIGNMENTS, {
     variables: { userId, roleId, page, limit },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -112,7 +117,8 @@ export const useUserRoleAssignments = (userId?: string, roleId?: string, page = 
 export const useUserPermissionOverrides = (userId?: string, page = 1, limit = 50) => {
   const { data, loading, error, refetch } = useQuery(GET_USER_PERMISSION_OVERRIDES, {
     variables: { userId: userId || undefined, page, limit },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

@@ -21,6 +21,7 @@ import {
   GET_KPI_ASSIGNMENTS_DIVISION,
   GET_SHARED_KPI_PARTICIPANTS,
 } from '../queries/kpis';
+import { GET_KPI_ASSIGNMENT_BREAKDOWN } from '../queries/kpi-detail';
 import {
   GET_OBJECTIVES,
   GET_OBJECTIVE,
@@ -156,6 +157,19 @@ describe('KPI Queries', () => {
     expect(printed).toContain('progressStatus');
     expect(printed).toContain('reportingDate');
     expect(printed).toContain('reportedBy');
+  });
+
+  it('GET_KPI_ASSIGNMENT_BREAKDOWN queries all assignment levels by KPI', () => {
+    const printed = print(GET_KPI_ASSIGNMENT_BREAKDOWN);
+    expect(printed).toContain('query GetKpiAssignmentBreakdown');
+    expect(printed).toContain('$kpiId: ID!');
+    expect(printed).toContain('employeeAssignments: kpiAssignmentsEmployee');
+    expect(printed).toContain('departmentAssignments: kpiAssignmentsDepartment');
+    expect(printed).toContain('divisionAssignments: kpiAssignmentsDivision');
+    expect(printed).toContain('corporateAssignments: kpiAssignmentsCorporate');
+    expect(printed).toContain('kpiId: $kpiId');
+    expect(printed).toContain('parentWeightAllocation');
+    expect(printed).toContain('assignedBy');
   });
 
   it('GET_KPI_ASSIGNMENTS_EMPLOYEE query has correct structure', () => {

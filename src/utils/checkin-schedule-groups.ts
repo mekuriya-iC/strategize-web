@@ -12,7 +12,7 @@ export function isSchedulePreviewBlocker(disposition: ScheduleSessionDisposition
 
 export function schedulePreviewReason(session: SchedulePreviewSession): string {
   switch (session.disposition) {
-    case "COVERED_BY_LEGACY": return "An existing session fully covers this schedule week.";
+    case "COVERED_BY_LEGACY": return "An existing legacy session overlaps this week. It will remain unchanged, and no duplicate draft will be created.";
     case "PARTIAL_OVERLAP": return "An existing session overlaps only part of this schedule week.";
     case "CONFLICT": return "An existing session conflicts with this schedule week.";
     case "PERIOD_MISMATCH": return "The existing session belongs to a different strategic period.";

@@ -101,7 +101,8 @@ export const useAnalytics = (
     error: divisionsError,
   } = useQuery<{ divisions: PaginatedDivisions }>(GET_DIVISIONS, {
     variables: { page: 1, limit: 1000, organizationId }, // Get all divisions for accurate count
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !canAccessGlobalData, // Skip for managers
   });
@@ -112,7 +113,8 @@ export const useAnalytics = (
     error: departmentsError,
   } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS_ANALYTICS, {
     variables: { page: 1, limit: 1000, organizationId }, // Get all departments for accurate count
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !canAccessGlobalData, // Skip for managers
   });
@@ -125,7 +127,8 @@ export const useAnalytics = (
     error: employeesError,
   } = useQuery(GET_EMPLOYEES_COUNT, {
     variables: { page: 1, limit: 1 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !canAccessGlobalData, // Skip for managers
   });
@@ -142,7 +145,8 @@ export const useAnalytics = (
       assigneeId: objectivesAssigneeId,
       organizationId,
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady,
   });
@@ -155,7 +159,8 @@ export const useAnalytics = (
     error: kpisError,
   } = useQuery<{ kpis: PaginatedKpis }>(GET_KPIS, {
     variables: { page: 1, limit: 1000, organizationId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady || !!selectedUnit, // Skip when a specific unit is selected
   });
@@ -166,7 +171,8 @@ export const useAnalytics = (
     error: initiativesError,
   } = useQuery(GET_INITIATIVES, {
     variables: { page: 1, limit: 1000, organizationId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     skip: !contextReady,
   });
@@ -179,7 +185,8 @@ export const useAnalytics = (
   } = useQuery<{ division: Division }>(GET_DIVISION_SAFE, {
     variables: { divisionId: selectedUnit?.id },
     skip: !contextReady || !selectedUnit || selectedUnit.type !== "division",
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 
@@ -190,7 +197,8 @@ export const useAnalytics = (
   } = useQuery<{ department: Department }>(GET_DEPARTMENT_SAFE, {
     variables: { departmentId: selectedUnit?.id },
     skip: !contextReady || !selectedUnit || selectedUnit.type !== "department",
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 

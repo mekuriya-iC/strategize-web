@@ -51,7 +51,8 @@ const DivisionsPage = () => {
       limit: itemsPerPage,
       search: searchTerm || undefined,
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   // Fetch employees for director selection (DIRECTOR role for divisions)
@@ -76,7 +77,8 @@ const DivisionsPage = () => {
       page: 1,
       limit: 100, // Get enough departments for the dropdown
     },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 
@@ -301,7 +303,7 @@ const DivisionsPage = () => {
           <p className="text-red-600">
             Error loading divisions: {String(divisionsError)}
           </p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
+          <Button onClick={() => void refetchDivisions()} className="mt-4">
             Retry
           </Button>
         </div>

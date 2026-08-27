@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TASK_TYPE,
   TASK_TYPES,
+  getCheckoutStatusOptions,
+  getTaskEditMode,
   isKpiReadyForAchievementSubmission,
+  normalizeCheckoutStatus,
+  requiresLinkedKpi,
 } from "./task-form";
 
 describe("check-in task form defaults", () => {
@@ -38,6 +42,28 @@ describe("check-in task form defaults", () => {
         quarterPlans: [{ status: "APPROVED" }],
       }),
     ).toBe(false);
+  });
+
+  it("derives planning and checkout edit modes from submission status", () => {
+    expect(getTaskEditMode("DRAFT")).toBe("PLANNING");
+    expect(getTaskEditMode("PERSONAL_TODO")).toBe("PLANNING");
+    expect(getTaskEditMode("SUBMITTED")).toBe("CHECKOUT");
+    expect(getTaskEditMode(undefined)).toBe("CHECKOUT");
+  });
+
+  it("requires links for KPI outcomes and forces fulfilled outcomes to DONE", () => {
+    expect(requiresLinkedKpi("KPI_FULFILLED")).toBe(true);
+    expect(requiresLinkedKpi("KPI_UNMET")).toBe(true);
+    expect(requiresLinkedKpi("UNLINKED")).toBe(false);
+    expect(getCheckoutStatusOptions("KPI_FULFILLED")).toEqual([
+      { value: "DONE", label: "Done" },
+    ]);
+    expect(normalizeCheckoutStatus("KPI_FULFILLED", "POSTPONED")).toBe(
+      "DONE",
+    );
+    expect(normalizeCheckoutStatus("KPI_UNMET", "POSTPONED")).toBe(
+      "POSTPONED",
+    );
   });
 
   it("uses the fulfilled and unmet self-development API values", () => {

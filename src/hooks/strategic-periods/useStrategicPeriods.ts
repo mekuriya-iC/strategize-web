@@ -18,7 +18,8 @@ export const useStrategicPeriods = (
 ) => {
   const { data, loading, error, refetch } = useQuery(GET_STRATEGIC_PERIODS, {
     variables: { page, limit, strategicPlanId, organizationId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -39,7 +40,8 @@ export const useStrategicPeriod = (strategicPeriodId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_STRATEGIC_PERIOD, {
     variables: { strategicPeriodId },
     skip: !strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {

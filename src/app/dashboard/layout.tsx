@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { DepartmentSelectionProvider } from "@/context/DepartmentSelectionContext";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
@@ -9,47 +8,14 @@ import DepartmentSelectionPrompt from "@/components/departments/DepartmentSelect
 import ErrorBoundary, {
   SectionErrorBoundary,
 } from "@/components/ErrorBoundary";
-import { useUIStore, useAuthStore } from "@/stores";
-import { useQuery } from "@apollo/client";
-import { GET_ME } from "@/lib/graphql/queries/auth";
+import { useUIStore } from "@/stores";
 import { useAutoSelectStrategicPeriod } from "@/hooks/objectives/useAutoSelectStrategicPeriod";
 import { useObjectiveSetupGuard } from "@/hooks/objectives/useObjectiveSetupGuard";
 
-// Component to sync Apollo user data with Zustand store
-function AuthSync() {
-  const router = useRouter();
-  const { data, loading } = useQuery(GET_ME);
-  const { setUser, setLoading, setAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    setLoading(loading);
-    if (data?.me) {
-      console.log("🔍 User data:", {
-        email: data.me.email,
-        role: data.me.role,
-        isFirstLogin: data.me.isFirstLogin,
-        mustChangePassword: data.me.mustChangePassword,
-      });
-
-      setUser(data.me);
-      setAuthenticated(true);
-
-      // Redirect to onboarding if first login or must change password
-      if (data.me.isFirstLogin || data.me.mustChangePassword) {
-        console.log("🚀 Redirecting to onboarding...");
-        router.push("/onboarding");
-      } else {
-        console.log("✅ User has completed onboarding");
-      }
-    }
-  }, [data, loading, setUser, setLoading, setAuthenticated, router]);
-
-  return null;
-}
 
 // Component to initialize UI state
 function UIInitializer() {
-  const { initializeSidebar } = useUIStore();
+  const initializeSidebar = useUIStore((state) => state.initializeSidebar);
 
   useEffect(() => {
     initializeSidebar();
@@ -85,8 +51,6 @@ export default function DashboardLayout({
 }) {
   return (
     <ErrorBoundary>
-      {/* Sync Apollo user data to Zustand */}
-      <AuthSync />
       {/* Initialize UI state */}
       <UIInitializer />
       {/* Auto-select strategic period */}

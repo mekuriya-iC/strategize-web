@@ -32,7 +32,8 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
             organizationId,
         },
         skip: !shouldFetchDivisions || !organizationId,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
     });
 
     // Determine effective source level:
@@ -56,7 +57,8 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
         skip:
             (!shouldFetchDepartments && !shouldFetchPersonnel) ||
             !organizationId,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
     });
 
     // 3. Fetching Personnel
@@ -78,13 +80,15 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
     const { data: scopedDivisionData, loading: loadingScopedDivision } = useQuery(GET_DIVISION_SAFE, {
         variables: { divisionId: sourceObjective?.assigneeId },
         skip: !isDivisionSource,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
     });
 
     const { data: scopedDepartmentData, loading: loadingScopedDepartment } = useQuery(GET_DEPARTMENT_SAFE, {
         variables: { departmentId: sourceObjective?.assigneeId },
         skip: !isDepartmentSource,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
     });
 
     // C: Fetch direct reports of the division/department head
@@ -93,7 +97,8 @@ export function useAssignmentData(assigneeTypeOverride?: AssigneeType) {
     const { data: directReportsData, loading: loadingDirectReports } = useQuery(GET_DIRECT_REPORTS, {
         variables: { managerId: headUserId },
         skip: !shouldFetchPersonnel || !headUserId,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
     });
 
     // Compute final lists

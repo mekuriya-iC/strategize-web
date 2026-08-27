@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useLazyQuery, useApolloClient } from "@apollo/client";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { LOGIN_EMPLOYEE, CHANGE_PASSWORD } from "@/lib/graphql/mutations/auth";
 import { GET_ME } from "@/lib/graphql/queries/auth";
 import { LoginEmployeeInput, Employee } from "@/types/graphql";
@@ -11,7 +11,7 @@ import {
   getAccessToken,
   setAccessToken,
   removeAccessToken,
-  getRefreshToken,
+
   setRefreshToken,
   removeRefreshToken,
   isTokenExpired,
@@ -38,7 +38,6 @@ export const useAuth = () => {
   });
 
   const router = useRouter();
-  const pathname = usePathname();
   const apolloClient = useApolloClient();
   const [loginMutation] = useMutation(LOGIN_EMPLOYEE);
   const [changePasswordMutation] = useMutation(CHANGE_PASSWORD);
@@ -60,19 +59,23 @@ export const useAuth = () => {
     const checkAuth = async () => {
       if (typeof window !== "undefined") {
         const token = getAccessToken();
+        const authStore = useAuthStore.getState();
+        authStore.setLoading(true);
 
         if (token) {
           // Check if token is expired
           if (isTokenExpired(token)) {
             authLogger.warn("Token is expired, clearing session");
             removeAccessToken();
+            authStore.setUser(null);
+            authStore.setLoading(false);
             setAuthState({
               isAuthenticated: false,
               user: null,
               loading: false,
               tokenExpiresIn: null,
             });
-            if (pathname !== "/auth") {
+            if (window.location.pathname !== "/auth") {
               router.push("/auth?expired=true");
             }
             return;
@@ -91,23 +94,34 @@ export const useAuth = () => {
             });
 
             if (data?.me) {
+              authStore.setUser(data.me);
+              authStore.setLoading(false);
               setAuthState({
                 isAuthenticated: true,
                 user: data.me,
                 loading: false,
                 tokenExpiresIn: getTokenExpiryDisplay(token),
               });
+
+              if (
+                (data.me.isFirstLogin || data.me.mustChangePassword) &&
+                window.location.pathname !== "/onboarding"
+              ) {
+                router.push("/onboarding");
+              }
             } else {
               // Token is invalid on server side
               authLogger.warn("Token invalid on server, clearing session");
               removeAccessToken();
+              authStore.setUser(null);
+              authStore.setLoading(false);
               setAuthState({
                 isAuthenticated: false,
                 user: null,
                 loading: false,
                 tokenExpiresIn: null,
               });
-              if (pathname !== "/auth") {
+              if (window.location.pathname !== "/auth") {
                 router.push("/auth");
               }
             }
@@ -115,24 +129,28 @@ export const useAuth = () => {
             // Token is invalid or network error
             authLogger.error("Failed to fetch user data:", error);
             removeAccessToken();
+            authStore.setUser(null);
+            authStore.setLoading(false);
             setAuthState({
               isAuthenticated: false,
               user: null,
               loading: false,
               tokenExpiresIn: null,
             });
-            if (pathname !== "/auth") {
+            if (window.location.pathname !== "/auth") {
               router.push("/auth");
             }
           }
         } else {
+          authStore.setUser(null);
+          authStore.setLoading(false);
           setAuthState({
             isAuthenticated: false,
             user: null,
             loading: false,
             tokenExpiresIn: null,
           });
-          if (pathname !== "/auth") {
+          if (window.location.pathname !== "/auth") {
             router.push("/auth");
           }
         }
@@ -140,17 +158,17 @@ export const useAuth = () => {
     };
 
     checkAuth();
-  }, [getMeQuery, pathname, router]);
+  }, [getMeQuery, router]);
 
   // Setup token expiration checker
   useEffect(() => {
     if (authState.isAuthenticated) {
       // Check token expiry every minute
       const intervalId = setInterval(updateTokenExpiry, 60000);
-      updateTokenExpiry(); // Initial check
 
       // Setup automatic expiration checker
       const cleanupChecker = setupTokenExpirationChecker(() => {
+        useAuthStore.getState().logout();
         setAuthState({
           isAuthenticated: false,
           user: null,
@@ -166,7 +184,7 @@ export const useAuth = () => {
     }
   }, [authState.isAuthenticated, updateTokenExpiry]);
 
-  const login = async (input: LoginEmployeeInput) => {
+  const login = useCallback(async (input: LoginEmployeeInput) => {
     try {
       setAuthState((prev) => ({ ...prev, loading: true }));
 
@@ -228,7 +246,7 @@ export const useAuth = () => {
         isNetworkError,
       };
     }
-  };
+  }, [apolloClient, loginMutation]);
 
   const logout = useCallback(async () => {
     authLogger.info("User logging out");

@@ -45,7 +45,8 @@ export interface StrategicPillar {
 export const useStrategicPlans = (page = 1, limit = 20, search?: string) => {
   const { data, loading, error, refetch } = useQuery(GET_STRATEGIC_PLANS, {
     variables: { page, limit, search },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -61,7 +62,8 @@ export const useStrategicPlan = (strategicPlanId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_STRATEGIC_PLAN, {
     variables: { strategicPlanId },
     skip: !strategicPlanId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -75,7 +77,8 @@ export const useStrategicPlan = (strategicPlanId: string) => {
 export const useStrategicPillars = (strategicPlanId?: string, page = 1, limit = 50) => {
   const { data, loading, error, refetch } = useQuery(GET_STRATEGIC_PILLARS, {
     variables: { page, limit, strategicPlanId },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

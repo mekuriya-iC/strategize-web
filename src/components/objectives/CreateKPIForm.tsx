@@ -164,11 +164,21 @@ export default function CreateKPIForm({
     
     const isRateLike =
       formData.unitType === "PERCENT" || formData.unitType === "RATIO";
+    const isCountOrHour = 
+      formData.unitType === "COUNT" || formData.unitType === "HOUR";
+    
     if (isRateLike) {
+      // Rate/percent KPIs: all quarters must be > 0
       if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
         return false;
       }
+    } else if (isCountOrHour) {
+      // Count/hour KPIs: quarters can be 0, but at least the sum must equal annual
+      if (values.some((value) => !Number.isFinite(value) || value < 0)) {
+        return false;
+      }
     } else {
+      // Other KPIs: all quarters must be >= 0
       if (values.some((value) => !Number.isFinite(value) || value < 0)) {
         return false;
       }

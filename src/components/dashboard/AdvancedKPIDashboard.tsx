@@ -106,7 +106,8 @@ export default function AdvancedKPIDashboard() {
       periodId: selectedPeriod?.strategicPeriodId,
     },
     skip: !hasFullAccess || !selectedPeriod?.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   // Team Performance (Managers and Full Access)
@@ -118,7 +119,8 @@ export default function AdvancedKPIDashboard() {
       },
     },
     skip: (!hasFullAccess && !isManager) || !selectedPeriod?.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   // Personal Performance (All Users)
@@ -131,7 +133,8 @@ export default function AdvancedKPIDashboard() {
       },
     },
     skip: !selectedPeriod?.strategicPeriodId || !user?.employeeId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const corporateScorecard = corporateData?.realtimeCorporateScorecard;

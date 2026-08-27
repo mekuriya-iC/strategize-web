@@ -50,7 +50,8 @@ export const useFileAttachments = (variables: {
   const { data, loading, error, refetch } = useQuery(GET_FILE_ATTACHMENTS, {
     variables: { page, limit, ...rest },
     skip: !rest.relatedEntityId && !rest.relatedEntityType,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -66,7 +67,8 @@ export const useFileAttachment = (fileAttachmentId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_FILE_ATTACHMENT, {
     variables: { fileAttachmentId },
     skip: !fileAttachmentId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

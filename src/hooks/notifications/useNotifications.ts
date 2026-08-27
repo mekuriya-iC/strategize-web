@@ -26,7 +26,8 @@ export const useNotifications = (
 ) => {
   const { data, loading, error, refetch } = useQuery(GET_NOTIFICATIONS, {
     variables: { page, limit, recipientUserId, status },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
     pollInterval: 30000, // Poll every 30 seconds for new notifications
   });
 
@@ -43,7 +44,8 @@ export const useNotification = (notificationId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_NOTIFICATION, {
     variables: { notificationId },
     skip: !notificationId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -58,7 +60,8 @@ export const useUnreadCount = (recipientUserId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_UNREAD_COUNT, {
     variables: { recipientUserId },
     skip: !recipientUserId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
     pollInterval: 30000, // Poll every 30 seconds
   });
 

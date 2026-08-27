@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, ReactNode, useMemo } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { Employee } from "@/types/graphql";
 
@@ -18,8 +18,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const value = useMemo<AuthContextType>(
+    () => ({
+      isAuthenticated: auth.isAuthenticated,
+      user: auth.user,
+      loading: auth.loading,
+      tokenExpiresIn: auth.tokenExpiresIn,
+      login: auth.login,
+      logout: auth.logout,
+      getToken: auth.getToken,
+    }),
+    [
+      auth.isAuthenticated,
+      auth.user,
+      auth.loading,
+      auth.tokenExpiresIn,
+      auth.login,
+      auth.logout,
+      auth.getToken,
+    ]
+  );
 
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {

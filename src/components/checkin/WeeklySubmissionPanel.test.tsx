@@ -22,19 +22,24 @@ afterEach(cleanup);
 
 describe("weekly task submission", () => {
   it.each([
-    [5, false],
-    [6, true],
-    [10, true],
-    [11, false],
-  ])("validates a selection of %i tasks", (count, expected) => {
-    expect(canSubmitWeeklyTasks(count, 6, 10)).toBe(expected);
-  });
+    [5, 1, false],
+    [6, 0, false],
+    [6, 1, true],
+    [10, 1, true],
+    [11, 1, false],
+  ])(
+    "validates a selection of %i tasks with %i fulfilled KPI tasks",
+    (count, fulfilledCount, expected) => {
+      expect(canSubmitWeeklyTasks(count, fulfilledCount, 6, 10)).toBe(expected);
+    },
+  );
 
   it("shows pool capacity, status labels, and private personal-to-do guidance", () => {
     render(
       <WeeklySubmissionPanel
         summary={summary}
         selectedCount={6}
+        selectedKpiFulfilledCount={1}
         alreadySubmitted={false}
         onSubmit={vi.fn()}
       />,
@@ -46,6 +51,10 @@ describe("weekly task submission", () => {
     expect(screen.getByText("PERSONAL_TODO 2")).toBeTruthy();
     expect(
       screen.getByText(/Personal to-dos stay private and are visible only to you/i),
+    ).toBeTruthy();
+    expect(screen.getByText(/1 KPI_FULFILLED selected/i)).toBeTruthy();
+    expect(
+      screen.getByText(/linked logbook may remain Draft/i),
     ).toBeTruthy();
     expect(
       (screen.getByRole("button", {
@@ -59,6 +68,7 @@ describe("weekly task submission", () => {
       <WeeklySubmissionPanel
         summary={{ ...summary, draftCount: 0, submittedCount: 6 }}
         selectedCount={0}
+        selectedKpiFulfilledCount={0}
         alreadySubmitted
         onSubmit={vi.fn()}
       />,

@@ -17,12 +17,14 @@ export interface SubmissionStatusMeta {
 
 export function canSubmitWeeklyTasks(
   selectedCount: number,
+  selectedKpiFulfilledCount: number,
   minimumSubmissionCount = DEFAULT_MINIMUM_SUBMISSION_COUNT,
   maximumSubmissionCount = DEFAULT_MAXIMUM_SUBMISSION_COUNT,
 ): boolean {
   return (
     selectedCount >= minimumSubmissionCount &&
-    selectedCount <= maximumSubmissionCount
+    selectedCount <= maximumSubmissionCount &&
+    selectedKpiFulfilledCount >= 1
   );
 }
 

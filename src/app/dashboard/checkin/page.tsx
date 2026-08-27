@@ -19,6 +19,7 @@ import CreateSessionDialog from "@/components/checkin/CreateSessionDialog";
 import SessionListView from "@/components/checkin/SessionListView";
 import { TaskColorLegend } from "@/components/checkin/TaskColorLegend";
 import { WeeklySubmissionPanel } from "@/components/checkin/WeeklySubmissionPanel";
+import { ScheduleCalendar } from "@/components/checkin/ScheduleCalendar";
 import { canSubmitWeeklyTasks } from "@/components/checkin/weekly-submission";
 import {
   summarizeTaskTypes,
@@ -53,9 +54,14 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   getCheckinoutSessionWeekKey,
+  getLeadershipCheckinoutSessions,
   groupCheckinoutSessionsByWeek,
   type CheckinoutSessionLike,
 } from "@/utils/checkin-session-groups";
+import {
+  deduplicateCheckinoutSessions,
+  isClosedCheckinoutSession,
+} from "@/utils/checkin-session-history";
 
 // Helper function to map backend task to frontend format
 const mapTaskToFrontend = (task: any) => ({
@@ -81,12 +87,14 @@ const mapTaskToFrontend = (task: any) => ({
   isSelfDevComplete:
     task.taskLinkType === "SELF_DEVELOPMENT_FULFILLED",
   submissionStatus: task.submissionStatus,
+  logbookStatus: task.logbookStatus || null,
   submittedAt: task.submittedAt || null,
   submissionBatchId: task.submissionBatchId || null,
   isCollaborativeTask: task.isCollaborativeTask || false,
   collaborationRequestId: task.collaborationRequestId || null,
   createdAt: task.createdAt,
-  isMidWeekTask: false,
+  sessionId: task.session?.checkinoutSessionId || null,
+  isMidWeekTask: Boolean(task.isMidWeekTask),
   achievedDescription: task.achievedDescription || "",
   nextSteps: task.nextSteps || "",
 });
@@ -113,7 +121,8 @@ function EmployeeTaskCard({
       page: 1,
     },
     skip: !session.checkinoutSessionId,
-    fetchPolicy: "network-only", // Force network request, bypass cache
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     onCompleted: (data) => {
       console.log("📥 [EMPLOYEE CARD] Tasks query completed for session:", session.checkinoutSessionId);
       console.log("📥 [EMPLOYEE CARD] Fetched tasks count:", data?.checkinoutTasks?.items?.length || 0);
@@ -151,7 +160,9 @@ function EmployeeTaskCard({
   // - Employees can edit/delete only their own tasks
   // - Supervisors/session creators can view team tasks but cannot edit/delete them
   // (Backend also enforces this.)
-  const canEdit = isCurrentUser; // kept for readability if needed later
+  const sessionReadOnly =
+    Boolean(session.isLocked) || isClosedCheckinoutSession(session);
+  const canEdit = isCurrentUser && !sessionReadOnly;
 
   return (
     <div
@@ -232,23 +243,26 @@ function EmployeeTaskCard({
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Check if session is locked
-                  if (session.isLocked) {
-                    toast.error("This session is locked. No tasks can be added or edited.");
+                  if (sessionReadOnly) {
+                    toast.error(
+                      isClosedCheckinoutSession(session)
+                        ? "This session is closed. Tasks can no longer be changed."
+                        : "This session is locked. No tasks can be added or edited.",
+                    );
                     return;
                   }
                   onAddTask(session.checkinoutSessionId);
                 }}
-                disabled={session.isLocked}
+                disabled={sessionReadOnly}
                 className={cn(
                   "h-9 px-3 font-bold gap-2 rounded-lg border shadow-sm",
-                  session.isLocked
+                  sessionReadOnly
                     ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                     : "text-[#3838EC] hover:bg-[#3838EC]/10 border-[#3838EC]/20"
                 )}
               >
                 <PlusIcon className="w-4 h-4" />
-                {session.isLocked ? "Session Locked" : "Add My Task"}
+                {sessionReadOnly ? "Session Locked" : "Add My Task"}
               </Button>
             )}
           </div>
@@ -345,7 +359,7 @@ function EmployeeTaskCard({
                 }}
                 onEditTask={onEditTask}
                 filters={filters}
-                isEditable={isCurrentUser}
+                isEditable={canEdit}
               />
             )}
           </div>
@@ -382,7 +396,8 @@ export default function CheckInPage() {
           existing.totalKpiTasks === summary.totalKpiTasks &&
           existing.nonKpiTasks === summary.nonKpiTasks &&
           existing.kpiFulfilled === summary.kpiFulfilled &&
-          existing.kpiUnmet === summary.kpiUnmet
+          existing.kpiUnmet === summary.kpiUnmet &&
+          existing.overdueKpiFulfilled === summary.overdueKpiFulfilled
         ) {
           return prev;
         }
@@ -393,6 +408,7 @@ export default function CheckInPage() {
   );
 
   const handleEditTask = (task: any) => {
+    setTargetSessionId(task.sessionId || null);
     setEditingTask(task);
     setIsAddTaskOpen(true);
   };
@@ -407,6 +423,7 @@ export default function CheckInPage() {
   // Get current user
   const { data: userData } = useQuery(GET_ME);
   const currentUser = userData?.me;
+  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
 
   const [createMySession, { loading: creatingMySession }] = useMutation(
     CREATE_CHECKINOUT_SESSION,
@@ -440,6 +457,19 @@ export default function CheckInPage() {
     skip: !currentUser?.employeeId,
   });
 
+  // Super Admin needs the unscoped session set to view leadership sessions
+  // created by any supervisor, not only sessions where they are supervisor.
+  const {
+    data: allSessionsData,
+    loading: allSessionsLoading,
+    refetch: refetchAllSessions,
+  } = useQuery(GET_CHECKINOUT_SESSIONS, {
+    variables: { limit: 1000, page: 1 },
+    skip: !isSuperAdmin,
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+  });
+
   const employeeSessions = useMemo<CheckinoutSessionLike[]>(
     () => employeeData?.checkinoutSessions?.items || [],
     [employeeData],
@@ -448,28 +478,25 @@ export default function CheckInPage() {
     () => supervisorData?.checkinoutSessions?.items || [],
     [supervisorData],
   );
+  const organizationSessions = useMemo<CheckinoutSessionLike[]>(
+    () => allSessionsData?.checkinoutSessions?.items || [],
+    [allSessionsData],
+  );
+  const leadershipSessions = useMemo(
+    () => getLeadershipCheckinoutSessions(organizationSessions),
+    [organizationSessions],
+  );
 
-  // Combine all relevant sessions for the list view
-  const allSessions = useMemo(() => {
-    const byId = new Map<string, any>();
-    for (const session of employeeSessions) {
-      if (
-        session?.checkinoutSessionId &&
-        !byId.has(session.checkinoutSessionId)
-      ) {
-        byId.set(session.checkinoutSessionId, session);
-      }
-    }
-    for (const session of supervisedSessions) {
-      if (
-        session?.checkinoutSessionId &&
-        !byId.has(session.checkinoutSessionId)
-      ) {
-        byId.set(session.checkinoutSessionId, session);
-      }
-    }
-    return Array.from(byId.values());
-  }, [employeeSessions, supervisedSessions]);
+  // Combine all relevant sessions for the list and selected detail view.
+  const allSessions = useMemo(
+    () =>
+      deduplicateCheckinoutSessions([
+        ...employeeSessions,
+        ...supervisedSessions,
+        ...(isSuperAdmin ? organizationSessions : []),
+      ]),
+    [employeeSessions, isSuperAdmin, organizationSessions, supervisedSessions],
+  );
 
   // Current session logic
   const currentSession = useMemo(() => {
@@ -487,10 +514,11 @@ export default function CheckInPage() {
     if (!currentSession || !currentUser) return false;
     // A self-supervised session is still the employee's own detail view.
     return (
-      currentSession.supervisor?.employeeId === currentUser.employeeId &&
-      currentSession.employee?.employeeId !== currentUser.employeeId
+      currentSession.employee?.employeeId !== currentUser.employeeId &&
+      (isSuperAdmin ||
+        currentSession.supervisor?.employeeId === currentUser.employeeId)
     );
-  }, [currentSession, currentUser]);
+  }, [currentSession, currentUser, isSuperAdmin]);
 
   // Helper to normalize dates for comparison (ignoring time components)
   const normalizeDate = (dateStr: string) => {
@@ -505,9 +533,18 @@ export default function CheckInPage() {
   const teamSessions = useMemo(() => {
     if (!currentSession || !currentUser) return [];
 
-    // Check if current user is the supervisor of the current session
-    const isCurrentSessionSupervisor = currentSession.supervisor?.employeeId === currentUser.employeeId;
-    
+    const isCurrentSessionSupervisor =
+      currentSession.supervisor?.employeeId === currentUser.employeeId;
+
+    // Super Admin can inspect leadership groups created by any supervisor.
+    if (isSuperAdmin) {
+      const selectedWeekKey = getCheckinoutSessionWeekKey(currentSession);
+      return leadershipSessions.filter(
+        (candidate) =>
+          getCheckinoutSessionWeekKey(candidate) === selectedWeekKey,
+      );
+    }
+
     // If not the supervisor, only show own session (employee view)
     if (!isCurrentSessionSupervisor) {
       const myOwnSession = employeeSessions.find(
@@ -522,14 +559,31 @@ export default function CheckInPage() {
       (session: any) =>
         getCheckinoutSessionWeekKey(session) === selectedWeekKey,
     );
-  }, [supervisedSessions, employeeSessions, currentSession, currentUser]);
+  }, [
+    supervisedSessions,
+    employeeSessions,
+    currentSession,
+    currentUser,
+    isSuperAdmin,
+    leadershipSessions,
+  ]);
 
   const selectableSessionGroups = useMemo(
     () =>
       groupCheckinoutSessionsByWeek(
-        isManagerMode ? supervisedSessions : employeeSessions,
+        isManagerMode
+          ? isSuperAdmin
+            ? leadershipSessions
+            : supervisedSessions
+          : employeeSessions,
       ),
-    [employeeSessions, isManagerMode, supervisedSessions],
+    [
+      employeeSessions,
+      isManagerMode,
+      isSuperAdmin,
+      leadershipSessions,
+      supervisedSessions,
+    ],
   );
 
   useEffect(() => {
@@ -610,6 +664,7 @@ export default function CheckInPage() {
       
       const supervisorResult = await refetchSupervisorSessions();
       console.log("✅ [CHECKIN PAGE] Supervisor sessions refetched:", supervisorResult.data?.checkinoutSessions?.items?.length || 0);
+      if (isSuperAdmin) await refetchAllSessions();
     } catch (error) {
       console.error("❌ [CHECKIN PAGE] Error during refetchAll:", error);
     }
@@ -627,7 +682,8 @@ export default function CheckInPage() {
       page: 1,
     },
     skip: !currentWeekData?.id,
-    fetchPolicy: "network-only", // Force network request, bypass cache
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     onCompleted: (data) => {
       console.log("📥 [CHECKIN PAGE] Main tasks query completed");
       console.log("📥 [CHECKIN PAGE] Session ID:", currentWeekData?.id);
@@ -663,7 +719,8 @@ export default function CheckInPage() {
   } = useQuery(GET_TASK_POOL_SUMMARY, {
     variables: { sessionId: currentWeekData?.id },
     skip: !currentWeekData?.id || isManagerMode,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     onError: (error) => {
       toast.error(error.message || "Could not load the weekly task pool.");
     },
@@ -680,6 +737,10 @@ export default function CheckInPage() {
     ((poolSummary?.submittedCount ?? 0) > 0 ||
       tasks.some((task: any) => task.submissionStatus === "SUBMITTED"));
 
+  const sessionReadOnly =
+    Boolean(currentSession?.isLocked) ||
+    (currentSession ? isClosedCheckinoutSession(currentSession) : false);
+
   const validSelectedTaskIds = useMemo(() => {
     if (alreadySubmitted) return new Set<string>();
     const draftIds = new Set(
@@ -690,8 +751,18 @@ export default function CheckInPage() {
     return new Set([...selectedTaskIds].filter((taskId) => draftIds.has(taskId)));
   }, [alreadySubmitted, selectedTaskIds, tasks]);
 
+  const selectedKpiFulfilledCount = useMemo(
+    () =>
+      tasks.filter(
+        (task: any) =>
+          validSelectedTaskIds.has(task.id) &&
+          task.taskType === "KPI_FULFILLED",
+      ).length,
+    [tasks, validSelectedTaskIds],
+  );
+
   const handleTaskSelectionChange = (taskId: string, selected: boolean) => {
-    if (alreadySubmitted) return;
+    if (alreadySubmitted || sessionReadOnly) return;
     const task = tasks.find((candidate: any) => candidate.id === taskId);
     if (task?.submissionStatus !== "DRAFT") return;
 
@@ -714,9 +785,19 @@ export default function CheckInPage() {
     }
     if (
       alreadySubmitted ||
-      !canSubmitWeeklyTasks(validSelectedTaskIds.size, minimum, maximum)
+      sessionReadOnly ||
+      !canSubmitWeeklyTasks(
+        validSelectedTaskIds.size,
+        selectedKpiFulfilledCount,
+        minimum,
+        maximum,
+      )
     ) {
-      toast.error(`Select between ${minimum} and ${maximum} draft tasks.`);
+      toast.error(
+        sessionReadOnly
+          ? "This session is locked or closed and cannot be submitted."
+          : `Select between ${minimum} and ${maximum} draft tasks, including at least one KPI_FULFILLED task.`,
+      );
       return;
     }
 
@@ -808,6 +889,7 @@ export default function CheckInPage() {
     let nonKpiTasks = 0;
     let kpiFulfilled = 0;
     let kpiUnmet = 0;
+    let overdueKpiFulfilled = 0;
     for (const session of teamSessions) {
       const sessionId = session?.checkinoutSessionId;
       if (!sessionId) continue;
@@ -818,6 +900,7 @@ export default function CheckInPage() {
       nonKpiTasks += summary.nonKpiTasks;
       kpiFulfilled += summary.kpiFulfilled;
       kpiUnmet += summary.kpiUnmet;
+      overdueKpiFulfilled += summary.overdueKpiFulfilled;
     }
     return {
       totalTasks,
@@ -825,6 +908,7 @@ export default function CheckInPage() {
       nonKpiTasks,
       kpiFulfilled,
       kpiUnmet,
+      overdueKpiFulfilled,
       kpiFulfilledPercentage:
         totalKpiTasks > 0
           ? Math.round((kpiFulfilled / totalKpiTasks) * 100)
@@ -945,6 +1029,27 @@ export default function CheckInPage() {
   };
 
   const handleSelectSession = (sessionId: string) => {
+    const session = allSessions.find(
+      (candidate) => candidate.checkinoutSessionId === sessionId,
+    );
+    const today = new Date();
+    const todayKey = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
+    const isOtherEmployeesFutureDraft =
+      session?.employee?.employeeId !== currentUser?.employeeId &&
+      session?.overallStatus === "DRAFT" &&
+      Boolean(session.weekStartDate && session.weekStartDate.slice(0, 10) > todayKey);
+
+    if (isOtherEmployeesFutureDraft) {
+      toast.info(
+        "Future draft tasks are private to the employee until they are submitted.",
+      );
+      return;
+    }
+
     setSelectedTaskIds(new Set());
     setSelectedSessionId(sessionId);
     setView("detail");
@@ -960,6 +1065,10 @@ export default function CheckInPage() {
   if (view === "list") {
     return (
       <div className="h-full">
+        <ScheduleCalendar
+          currentUser={currentUser}
+          onSelectSession={handleSelectSession}
+        />
         <SessionListView
           currentUser={currentUser}
           onCreateSession={() => setIsCreateSessionOpen(true)}
@@ -1029,7 +1138,7 @@ export default function CheckInPage() {
         {isManagerMode && (
           <Button
             onClick={handleAddMyTaskClick}
-            disabled={creatingMySession}
+            disabled={creatingMySession || sessionReadOnly}
             className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white gap-2 shadow-sm"
           >
             <PlusIcon className="w-4 h-4" />
@@ -1062,7 +1171,7 @@ export default function CheckInPage() {
         <TaskColorLegend />
       </div>
 
-      {employeeLoading || supervisorLoading ? (
+      {employeeLoading || supervisorLoading || (isSuperAdmin && allSessionsLoading) ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-gray-500">Loading...</div>
         </div>
@@ -1138,9 +1247,15 @@ export default function CheckInPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between text-xs text-gray-400 font-medium">
+              <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between gap-2 text-xs text-gray-400 font-medium">
                 <span>{statistics.totalKpiTasks} KPI Tasks</span>
-                <span>{statistics.nonKpiTasks} Non-KPI Excluded</span>
+                {statistics.overdueKpiFulfilled > 0 ? (
+                  <span className="font-bold text-red-600">
+                    {statistics.overdueKpiFulfilled} achievement issue{statistics.overdueKpiFulfilled === 1 ? "" : "s"} — action required
+                  </span>
+                ) : (
+                  <span>{statistics.nonKpiTasks} Non-KPI Excluded</span>
+                )}
               </div>
             </div>
 
@@ -1183,7 +1298,9 @@ export default function CheckInPage() {
             <WeeklySubmissionPanel
               summary={poolSummary}
               selectedCount={validSelectedTaskIds.size}
+              selectedKpiFulfilledCount={selectedKpiFulfilledCount}
               alreadySubmitted={alreadySubmitted}
+              sessionReadOnly={sessionReadOnly}
               loading={poolSummaryLoading}
               submitting={submittingWeeklyTasks}
               onSubmit={handleWeeklySubmission}
@@ -1206,7 +1323,7 @@ export default function CheckInPage() {
                 <div className="flex items-center gap-3">
                   <Button
                     onClick={handleAddMyTaskClick}
-                    disabled={creatingMySession}
+                    disabled={creatingMySession || sessionReadOnly}
                     className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-4 h-9 rounded-lg flex items-center gap-2 shadow-sm"
                   >
                     <PlusIcon className="w-4 h-4" />
@@ -1346,6 +1463,7 @@ export default function CheckInPage() {
                   );
                   setIsAddTaskOpen(true);
                 }}
+                disabled={sessionReadOnly}
                 className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-6 py-2 rounded-lg flex items-center gap-2 shadow-lg"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -1383,6 +1501,7 @@ export default function CheckInPage() {
                         );
                         setIsAddTaskOpen(true);
                       }}
+                      disabled={sessionReadOnly}
                       className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-4 h-9 rounded-lg flex items-center gap-2 shadow-sm"
                     >
                       <PlusIcon className="w-4 h-4" />
@@ -1412,10 +1531,15 @@ export default function CheckInPage() {
                 createdDate={
                   new Date(
                     currentWeekDataWithTasks?.createdAt ||
-                      currentSession.weekStartDate,
+                      currentSession?.weekStartDate ||
+                      new Date().toISOString(),
                   )
                 }
-                endDate={new Date(currentSession.weekEndDate)}
+                endDate={
+                  currentSession?.weekEndDate
+                    ? new Date(currentSession.weekEndDate)
+                    : undefined
+                }
                 searchQuery={searchQuery}
                 onRefetch={() => {
                   console.log("🔄 [CHECKIN PAGE] onRefetch triggered from CheckInTable");
@@ -1426,8 +1550,8 @@ export default function CheckInPage() {
                 }}
                 onEditTask={handleEditTask}
                 filters={filters}
-                isEditable={true}
-                isSelectionEnabled={!alreadySubmitted}
+                isEditable={!sessionReadOnly}
+                isSelectionEnabled={!alreadySubmitted && !sessionReadOnly}
                 selectedTaskIds={validSelectedTaskIds}
                 onSelectionChange={handleTaskSelectionChange}
               />
@@ -1442,7 +1566,7 @@ export default function CheckInPage() {
                       );
                       setIsAddTaskOpen(true);
                     }}
-                    disabled={!canAddMidWeekTask}
+                    disabled={!canAddMidWeekTask || sessionReadOnly}
                     className="bg-white dark:bg-gray-800 border-2 border-dashed border-[#3838EC] text-[#3838EC] hover:bg-[#ECECFF] dark:hover:bg-[#3838EC]/10 px-6 py-2 rounded-lg flex items-center gap-2"
                   >
                     <PlusIcon className="w-4 h-4" />
@@ -1467,15 +1591,6 @@ export default function CheckInPage() {
           }
         }}
         onSuccess={() => {
-          console.log("🎯 [CHECKIN PAGE] Task mutation success callback triggered");
-          console.log("🔄 [CHECKIN PAGE] Calling refetchAll()...");
-          refetchAll();
-          console.log("🔄 [CHECKIN PAGE] Calling refetchTasks()...");
-          refetchTasks();
-          if (!isManagerMode) {
-            refetchPoolSummary();
-          }
-          console.log("✅ [CHECKIN PAGE] All refetch calls completed");
           setIsAddTaskOpen(false);
           setEditingTask(null);
           setTargetSessionId(null);

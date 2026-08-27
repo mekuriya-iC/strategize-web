@@ -66,7 +66,15 @@ export const CREATE_CHECKINOUT_TASK = gql`
       taskTitle
       taskLinkType
       linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+      }
       linkedInitiativeId
+      linkedInitiative {
+        initiativeId
+        title
+      }
       relatedToEmployeeId
       plannedDescription
       achievedDescription
@@ -85,8 +93,21 @@ export const CREATE_CHECKINOUT_TASK = gql`
       taskStartDate
       taskEndDate
       createdAt
+      updatedAt
+      approvedAt
+      autoRejectedAt
+      approvedBy {
+        employeeId
+        fullName
+      }
+      relatedTo {
+        employeeId
+        fullName
+      }
       session {
         checkinoutSessionId
+        weekStartDate
+        weekEndDate
       }
     }
   }
@@ -100,7 +121,15 @@ export const UPDATE_CHECKINOUT_TASK = gql`
       taskTitle
       taskLinkType
       linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+      }
       linkedInitiativeId
+      linkedInitiative {
+        initiativeId
+        title
+      }
       relatedToEmployeeId
       plannedDescription
       achievedDescription
@@ -118,7 +147,23 @@ export const UPDATE_CHECKINOUT_TASK = gql`
       collaborationRequestId
       taskStartDate
       taskEndDate
+      approvedAt
+      autoRejectedAt
+      createdAt
       updatedAt
+      approvedBy {
+        employeeId
+        fullName
+      }
+      relatedTo {
+        employeeId
+        fullName
+      }
+      session {
+        checkinoutSessionId
+        weekStartDate
+        weekEndDate
+      }
     }
   }
 `;

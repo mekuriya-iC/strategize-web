@@ -4,7 +4,8 @@ import { GET_EMPLOYEES, GET_EMPLOYEE, GET_DIRECT_REPORTS } from '@/lib/graphql/q
 export const useEmployees = (page = 1, limit = 10, search = '') => {
   const { data, loading, error, refetch } = useQuery(GET_EMPLOYEES, {
     variables: { page, limit, search },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -20,7 +21,8 @@ export const useEmployee = (employeeId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_EMPLOYEE, {
     variables: { employeeId },
     skip: !employeeId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -34,7 +36,8 @@ export const useEmployee = (employeeId: string) => {
 export const useDirectReports = (managerId?: string) => {
   const { data, loading, error, refetch } = useQuery(GET_DIRECT_REPORTS, {
     variables: { managerId },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

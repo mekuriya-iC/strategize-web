@@ -13,7 +13,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { EyeIcon, LockIcon, SendIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  EyeIcon,
+  LockIcon,
+  SendIcon,
+} from "lucide-react";
 import {
   canSubmitWeeklyTasks,
   WEEKLY_SUBMISSION_CONFIRMATION,
@@ -34,7 +40,9 @@ export interface TaskPoolSummary {
 interface WeeklySubmissionPanelProps {
   summary?: TaskPoolSummary;
   selectedCount: number;
+  selectedKpiFulfilledCount: number;
   alreadySubmitted: boolean;
+  sessionReadOnly?: boolean;
   loading?: boolean;
   submitting?: boolean;
   onSubmit: () => void | Promise<void>;
@@ -43,7 +51,9 @@ interface WeeklySubmissionPanelProps {
 export function WeeklySubmissionPanel({
   summary,
   selectedCount,
+  selectedKpiFulfilledCount,
   alreadySubmitted,
+  sessionReadOnly = false,
   loading = false,
   submitting = false,
   onSubmit,
@@ -52,13 +62,20 @@ export function WeeklySubmissionPanel({
   const maximum = summary?.maximumSubmissionCount ?? 10;
   const activeCount = summary?.activeCount ?? 0;
   const capacity = summary?.maximumActiveTaskCount ?? 15;
+  const countIsValid = selectedCount >= minimum && selectedCount <= maximum;
+  const hasKpiFulfilled = selectedKpiFulfilledCount >= 1;
   const selectionIsValid = canSubmitWeeklyTasks(
     selectedCount,
+    selectedKpiFulfilledCount,
     minimum,
     maximum,
   );
   const submitDisabled =
-    loading || submitting || alreadySubmitted || !selectionIsValid;
+    loading ||
+    submitting ||
+    alreadySubmitted ||
+    sessionReadOnly ||
+    !selectionIsValid;
 
   return (
     <section
@@ -97,9 +114,42 @@ export function WeeklySubmissionPanel({
         </div>
       </div>
 
+      <div className="mt-4 grid gap-2 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900/40">
+        <p className="font-semibold text-gray-900 dark:text-white">
+          Submission checklist
+        </p>
+        <p className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+          {countIsValid ? (
+            <CheckCircle2Icon className="h-4 w-4 text-green-600" aria-hidden="true" />
+          ) : (
+            <AlertCircleIcon className="h-4 w-4 text-amber-600" aria-hidden="true" />
+          )}
+          {selectedCount}/{minimum}–{maximum} draft tasks selected
+        </p>
+        <p className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+          {hasKpiFulfilled ? (
+            <CheckCircle2Icon className="h-4 w-4 text-green-600" aria-hidden="true" />
+          ) : (
+            <AlertCircleIcon className="h-4 w-4 text-amber-600" aria-hidden="true" />
+          )}
+          {selectedKpiFulfilledCount} KPI_FULFILLED selected (at least 1 required)
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          The linked logbook may remain Draft when you submit the weekly plan; it
+          does not need Monday submission or approval, but you must submit it by
+          session end.
+        </p>
+      </div>
+
       <div className="mt-4 flex flex-col gap-3 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/40 md:flex-row md:items-center md:justify-between">
         <div>
-          {alreadySubmitted ? (
+          {sessionReadOnly ? (
+            <p className="flex items-start gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <LockIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              This session is locked or closed. Weekly task submission is no
+              longer editable.
+            </p>
+          ) : alreadySubmitted ? (
             <p className="flex items-start gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <LockIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               This week is already submitted. Tasks added later are private
@@ -138,6 +188,10 @@ export function WeeklySubmissionPanel({
                 <span className="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
                   <EyeIcon className="h-4 w-4" aria-hidden="true" />
                   Your supervisor will see only the selected submitted tasks.
+                </span>
+                <span className="block">
+                  A KPI_FULFILLED task creates a Draft logbook achievement. The
+                  logbook can stay Draft now, but must be submitted by session end.
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>

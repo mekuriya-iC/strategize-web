@@ -16,6 +16,7 @@ import {
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
+import { removeCheckinTask } from "./checkin-cache";
 import {
   getTaskBorderStyle,
   getTaskCategory,
@@ -47,6 +48,8 @@ interface Task {
   createdAt: string;
   isMidWeekTask?: boolean;
   submissionStatus?: TaskSubmissionStatus;
+  logbookStatus?: string | null;
+  sessionId?: string | null;
 }
 
 interface CheckInTableCardProps {
@@ -81,16 +84,13 @@ const STATUS_COLORS: Record<string, string> = {
 export function CheckInTableCard({
   task,
   isEditable,
-  onRefetch,
   onEditTask,
   isSelectionEnabled = false,
   isSelected = false,
   onSelectionChange,
 }: CheckInTableCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK, {
-    refetchQueries: ["GetCheckinoutSessions", "GetCheckinoutTasks"],
-  });
+  const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK);
 
   // Get color configuration for this task type
   const taskColors = getTaskColors(task.taskType);
@@ -99,10 +99,26 @@ export function CheckInTableCard({
   const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
   const canSelect =
     isSelectionEnabled && task.submissionStatus === "DRAFT";
+  const isOverdueFulfilled =
+    task.taskType === "KPI_FULFILLED" &&
+    task.logbookStatus?.toUpperCase() === "OVERDUE";
+  const isRejectedFulfilled =
+    task.taskType === "KPI_FULFILLED" &&
+    task.logbookStatus?.toUpperCase() === "REJECTED";
 
   // Determine objective status based on task flags
   const getObjectiveStatus = () => {
-    if (task.taskType === "KPI_FULFILLED" || task.isKpiMet) {
+    if (isRejectedFulfilled) {
+      return {
+        label: "Achievement rejected",
+        color: "text-red-700 bg-red-50 dark:bg-red-900/20",
+      };
+    } else if (isOverdueFulfilled) {
+      return {
+        label: "Achievement overdue",
+        color: "text-red-700 bg-red-50 dark:bg-red-900/20",
+      };
+    } else if (task.taskType === "KPI_FULFILLED" || task.isKpiMet) {
       return {
         label: "KPI Fulfilled",
         color: "text-green-600 bg-green-50 dark:bg-green-900/20",
@@ -152,9 +168,13 @@ export function CheckInTableCard({
     try {
       await deleteCheckin({
         variables: { checkinoutTaskId: task.id },
+        update: (cache) => {
+          if (task.sessionId) {
+            removeCheckinTask(cache, task.sessionId, task.id);
+          }
+        },
       });
       toast.success("Task deleted successfully");
-      onRefetch();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete task");
       console.error(error);
@@ -252,6 +272,11 @@ export function CheckInTableCard({
             >
               {objectiveStatus.label}
             </span>
+            {isOverdueFulfilled && (
+              <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                Action required: logbook overdue
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <CalendarIcon className="w-4 h-4" />

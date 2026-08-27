@@ -58,7 +58,8 @@ export const useTeams = (variables: {
   const { page = 1, limit = 20, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_TEAMS, {
     variables: { page, limit, ...rest },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {
@@ -74,7 +75,8 @@ export const useTeam = (teamId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_TEAM, {
     variables: { teamId },
     skip: !teamId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   return {

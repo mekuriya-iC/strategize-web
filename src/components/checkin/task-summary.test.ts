@@ -18,6 +18,7 @@ describe("summarizeTaskTypes", () => {
       nonKpiTasks: 3,
       kpiFulfilled: 1,
       kpiUnmet: 1,
+      overdueKpiFulfilled: 0,
       kpiFulfilledPercentage: 50,
       kpiUnmetPercentage: 50,
     });
@@ -37,8 +38,29 @@ describe("summarizeTaskTypes", () => {
       nonKpiTasks: 5,
       kpiFulfilled: 4,
       kpiUnmet: 31,
+      overdueKpiFulfilled: 0,
       kpiFulfilledPercentage: 11,
       kpiUnmetPercentage: 89,
+    });
+  });
+
+  it("excludes overdue and rejected achievements from fulfilled counts", () => {
+    expect(
+      summarizeTaskTypes([
+        { taskType: "KPI_FULFILLED", logbookStatus: "DRAFT" },
+        { taskType: "KPI_FULFILLED", logbookStatus: "OVERDUE" },
+        { taskType: "KPI_FULFILLED", logbookStatus: "REJECTED" },
+        { taskType: "KPI_UNMET" },
+      ]),
+    ).toEqual({
+      totalTasks: 4,
+      totalKpiTasks: 4,
+      nonKpiTasks: 0,
+      kpiFulfilled: 1,
+      kpiUnmet: 1,
+      overdueKpiFulfilled: 2,
+      kpiFulfilledPercentage: 25,
+      kpiUnmetPercentage: 25,
     });
   });
 
@@ -54,6 +76,7 @@ describe("summarizeTaskTypes", () => {
       nonKpiTasks: 2,
       kpiFulfilled: 0,
       kpiUnmet: 0,
+      overdueKpiFulfilled: 0,
       kpiFulfilledPercentage: 0,
       kpiUnmetPercentage: 0,
     });

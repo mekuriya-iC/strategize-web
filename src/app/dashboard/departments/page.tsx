@@ -58,7 +58,8 @@ const DepartmentsPage = () => {
       limit: itemsPerPage,
       search: searchTerm || undefined,
     } as DepartmentsQueryVariables,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     skip: isManagement,
   });
 
@@ -71,7 +72,8 @@ const DepartmentsPage = () => {
   } = useQuery<{ division: any }>(GET_DIVISION_SAFE, {
     variables: { divisionId: scope?.managedDivisionIds[0] },
     skip: !guards.isDirector || !scope?.managedDivisionIds?.[0],
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const {
@@ -82,7 +84,8 @@ const DepartmentsPage = () => {
   } = useQuery<{ department: any }>(GET_DEPARTMENT_SAFE, {
     variables: { departmentId: scope?.managedDepartmentIds[0] },
     skip: !guards.isManager || !scope?.managedDepartmentIds?.[0],
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const { data: divisionsData } = useQuery<{ divisions: PaginatedDivisions }>(

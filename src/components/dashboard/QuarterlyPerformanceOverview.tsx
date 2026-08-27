@@ -147,7 +147,8 @@ export default function QuarterlyPerformanceOverview() {
       },
     },
     skip: !selectionValidated || !context?.annualPeriod.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 

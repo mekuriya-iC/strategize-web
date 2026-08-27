@@ -361,7 +361,8 @@ function errorMessage(error: unknown): string {
 export function useKpiFormulas(organizationId?: string) {
   const queryOptions = {
     skip: !organizationId,
-    fetchPolicy: "cache-and-network" as const,
+    fetchPolicy: "cache-first" as const,
+    nextFetchPolicy: "cache-first" as const,
     notifyOnNetworkStatusChange: true,
   };
 

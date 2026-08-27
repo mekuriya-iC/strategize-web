@@ -36,7 +36,8 @@ export const useStrategicPlansQuery = (variables = { page: 1, limit: 100, search
     GET_STRATEGIC_PLANS,
     {
       variables,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 

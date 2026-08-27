@@ -9,7 +9,10 @@ import {
   ASSIGN_OBJECTIVE,
   UPDATE_OBJECTIVE_STATUS,
 } from "@/lib/graphql/mutations/objectives";
-import { GET_OBJECTIVES, GET_OBJECTIVE } from "@/lib/graphql/queries/objectives";
+import {
+  evictDeletedEntity,
+  evictRootFields,
+} from "@/lib/graphql/cache-invalidation";
 import {
   CreateObjectiveMutationVariables,
   UpdateObjectiveMutationVariables,
@@ -21,88 +24,45 @@ import {
   UpdateObjectiveStatusMutationVariables,
 } from "@/types/graphql";
 import { objectiveLogger } from "@/lib/logger";
-import { invalidateAfterMutation } from "@/stores/cacheStore";
 
-const OBJECTIVES_REFETCH = [
-  { query: GET_OBJECTIVES, variables: { page: 1, limit: 1000 } },
-  "GetObjectives",
-];
 
 export const useObjectiveMutations = () => {
+  const invalidateLists = (cache: Parameters<typeof evictRootFields>[0]) =>
+    evictRootFields(cache, ["objectives", "objectivesForApproval"]);
+
   const [createObjective, { loading: createLoading, error: createError }] =
-    useMutation(CREATE_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: [...OBJECTIVES_REFETCH],
-    });
+    useMutation(CREATE_OBJECTIVE, { update: invalidateLists });
 
   const [updateObjective, { loading: updateLoading, error: updateError }] =
-    useMutation(UPDATE_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: (result) => {
-        const id = result.data?.updateObjective?.objectiveId;
-        const queries: Array<
-          | (typeof OBJECTIVES_REFETCH)[number]
-          | { query: typeof GET_OBJECTIVE; variables: { objectiveId: string } }
-        > = [...OBJECTIVES_REFETCH];
-        if (id) {
-          queries.push({ query: GET_OBJECTIVE, variables: { objectiveId: id } });
-        }
-        return queries;
-      },
-    });
+    useMutation(UPDATE_OBJECTIVE, { update: invalidateLists });
 
   const [deleteObjective, { loading: deleteLoading, error: deleteError }] =
     useMutation(DELETE_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-        invalidateAfterMutation.submission();
+      update: (cache, { data }, { variables }) => {
+        const objectiveId = variables?.objectiveId ?? data?.removeObjective?.objectiveId;
+        if (objectiveId) {
+          evictDeletedEntity(cache, ["objectives", "objectivesForApproval", "submissions", "kpis"], {
+            __typename: "Objective",
+            objectiveId,
+          });
+        }
       },
-      refetchQueries: [...OBJECTIVES_REFETCH],
     });
 
   const [approveObjective, { loading: approveLoading, error: approveError }] =
-    useMutation(APPROVE_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: [...OBJECTIVES_REFETCH],
-    });
+    useMutation(APPROVE_OBJECTIVE, { update: invalidateLists });
 
   const [rejectObjective, { loading: rejectLoading, error: rejectError }] =
-    useMutation(REJECT_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: [...OBJECTIVES_REFETCH],
-    });
+    useMutation(REJECT_OBJECTIVE, { update: invalidateLists });
 
   const [cascadeObjective, { loading: cascadeLoading, error: cascadeError }] =
-    useMutation(CASCADE_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: [...OBJECTIVES_REFETCH],
-    });
+    useMutation(CASCADE_OBJECTIVE, { update: invalidateLists });
 
   const [assignObjective, { loading: assignLoading, error: assignError }] =
-    useMutation(ASSIGN_OBJECTIVE, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: [...OBJECTIVES_REFETCH],
-    });
+    useMutation(ASSIGN_OBJECTIVE, { update: invalidateLists });
 
   const [updateObjectiveStatus, { loading: statusLoading, error: statusError }] =
-    useMutation(UPDATE_OBJECTIVE_STATUS, {
-      onCompleted: () => {
-        invalidateAfterMutation.objective();
-      },
-      refetchQueries: [...OBJECTIVES_REFETCH],
-    });
+    useMutation(UPDATE_OBJECTIVE_STATUS, { update: invalidateLists });
 
   const handleCreateObjective = async (
     variables: CreateObjectiveMutationVariables

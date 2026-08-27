@@ -24,7 +24,8 @@ export function usePendingTaskCollaborationCount(
       {
         skip,
         pollInterval,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
       },
     );
 

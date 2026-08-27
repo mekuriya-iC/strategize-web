@@ -106,7 +106,8 @@ function ReportsContent() {
       },
     },
     skip: !hasFullAccess || !selectedPeriod?.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   // Fetch corporate scorecard for KPI metrics
@@ -116,7 +117,8 @@ function ReportsContent() {
       periodId: selectedPeriod?.strategicPeriodId,
     },
     skip: !hasFullAccess || !selectedPeriod?.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const teamPerformance = summaryData?.unifiedTeamPerformance;

@@ -146,7 +146,8 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
         page: 1,
       },
       skip: !user?.employeeId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
       pollInterval: 60000, // Poll every 60 s for fresh data
     },
   );

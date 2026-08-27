@@ -108,7 +108,8 @@ export function useAssignmentDialog({
     GET_DIVISIONS,
     {
       variables: { page: 1, limit: 1000 },
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 
@@ -118,7 +119,8 @@ export function useAssignmentDialog({
     error: departmentsError,
   } = useQuery<{ departments: PaginatedDepartments }>(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     onError: (error) => {
       appLogger.error("Failed to load departments:", error);
     },

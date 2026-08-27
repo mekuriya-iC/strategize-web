@@ -30,7 +30,8 @@ export function useObjectiveSetupGuard() {
       limit: 1, // we only need to know if any exist
     },
     skip: !isAdmin || !selectedPeriod,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   useEffect(() => {

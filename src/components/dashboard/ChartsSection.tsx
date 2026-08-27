@@ -209,7 +209,8 @@ export default function ChartsSection() {
   const { data: scorecardData } = useQuery(scorecardQuery, {
     variables: scorecardVariables,
     skip: !selectedPeriod?.strategicPeriodId || (hasFullAccess ? !user?.organizationId : (isDirector ? !userDivisionId : (isManager ? !userDepartmentId : !user?.employeeId))),
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const scorecard =
@@ -234,7 +235,8 @@ export default function ChartsSection() {
       filters: teamFilters,
     },
     skip: !isLeadershipRole || !selectedPeriod?.strategicPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const chartData = useMemo(

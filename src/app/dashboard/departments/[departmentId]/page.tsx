@@ -23,7 +23,8 @@ const DepartmentDetailsPage = () => {
     error,
   } = useQuery<DepartmentData>(GET_DEPARTMENT, {
     variables: { departmentId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const department = departmentData?.department;

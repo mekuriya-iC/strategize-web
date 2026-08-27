@@ -46,13 +46,18 @@ import { cn } from "@/lib/utils";
 import {
   DEFAULT_TASK_TYPE,
   TASK_TYPES,
+  getCheckoutStatusOptions,
+  getTaskEditMode,
   isKpiReadyForAchievementSubmission,
+  normalizeCheckoutStatus,
+  requiresLinkedKpi,
   type TaskType,
 } from "./task-form";
 import {
   getTaskOverlapFeedback,
   validateTaskTimeRange,
 } from "./task-schedule-validation";
+import { upsertCheckinTask } from "./checkin-cache";
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -63,12 +68,6 @@ interface AddTaskDialogProps {
   session?: any; // Add session prop to check lock status
 }
 
-const CHECKOUT_STATUS = [
-  { value: "NOT_DONE", label: "Not Done" },
-  { value: "DONE", label: "Done" },
-  { value: "POSTPONED", label: "Postponed" },
-  { value: "CANCELLED", label: "Cancelled" },
-];
 
 type TimeValue = { hour: string; minute: string; period: "AM" | "PM" };
 
@@ -92,39 +91,56 @@ export function AddTaskDialog({
   session,
 }: AddTaskDialogProps) {
   const user = useAuthStore((state) => state.user);
+  const editMode = editingTask
+    ? getTaskEditMode(editingTask.submissionStatus)
+    : "PLANNING";
+  const isPlanningForm = !editingTask || editMode === "PLANNING";
+  const isCheckoutOnlyEdit = Boolean(editingTask) && editMode === "CHECKOUT";
+  const sessionReadOnly =
+    Boolean(session?.isLocked) ||
+    String(session?.overallStatus || "").toUpperCase() === "CLOSED";
 
-  // Check if session is locked
   useEffect(() => {
-    if (open && session?.isLocked && !editingTask) {
-      toast.error("This session is locked. No tasks can be added or edited.");
+    if (open && sessionReadOnly) {
+      toast.error(
+        String(session?.overallStatus || "").toUpperCase() === "CLOSED"
+          ? "This session is closed. Tasks can no longer be changed."
+          : "This session is locked. No tasks can be added or edited.",
+      );
       onOpenChange(false);
     }
-  }, [open, session, editingTask, onOpenChange]);
+  }, [open, onOpenChange, session?.overallStatus, sessionReadOnly]);
 
   // Mutations
   const [createTaskMutation, { loading: creating }] = useMutation(
     CREATE_CHECKINOUT_TASK,
     {
-      refetchQueries: [
-        "GetCheckinoutSessions",
-        "GetCheckinoutTasks",
-        "TaskPoolSummary",
-      ],
-      awaitRefetchQueries: true,
       errorPolicy: "none",
+      update: (cache, { data }) => {
+        const createdTask = data?.createCheckinoutTask;
+        const createdSessionId =
+          createdTask?.session?.checkinoutSessionId || sessionId;
+        if (createdTask && createdSessionId) {
+          upsertCheckinTask(cache, createdSessionId, createdTask);
+        }
+      },
     },
   );
 
   const [updateTaskMutation, { loading: updating }] = useMutation(
     UPDATE_CHECKINOUT_TASK,
     {
-      refetchQueries: [
-        "GetCheckinoutSessions",
-        "GetCheckinoutTasks",
-        "TaskPoolSummary",
-      ],
-      awaitRefetchQueries: true,
       errorPolicy: "none",
+      update: (cache, { data }) => {
+        const updatedTask = data?.updateCheckinoutTask;
+        const updatedSessionId =
+          updatedTask?.session?.checkinoutSessionId ||
+          editingTask?.sessionId ||
+          sessionId;
+        if (updatedTask && updatedSessionId) {
+          upsertCheckinTask(cache, updatedSessionId, updatedTask);
+        }
+      },
     },
   );
 
@@ -234,14 +250,27 @@ export function AddTaskDialog({
         period: endDateTime.getHours() >= 12 ? "PM" : "AM",
       });
 
-      setCheckoutStatus(editingTask.checkoutStatus || "NOT_DONE");
+      setCheckoutStatus(
+        normalizeCheckoutStatus(
+          editingTask.taskType,
+          editingTask.checkoutStatus,
+        ),
+      );
       setRemark(editingTask.remark || "");
-      setAttachmentLink(editingTask.evidenceUrl || "");
+      setAttachmentLink(editingTask.attachment || editingTask.evidenceUrl || "");
+      setIsMidWeekTask(Boolean(editingTask.isMidWeekTask));
     } else if (!open) {
       // Reset form when dialog closes
       resetForm();
     }
   }, [editingTask, open]);
+
+  const handleTaskTypeChange = (nextTaskType: TaskType) => {
+    setTaskType(nextTaskType);
+    setCheckoutStatus((currentStatus) =>
+      normalizeCheckoutStatus(nextTaskType, currentStatus),
+    );
+  };
 
   const handleStartDateChange = (date: Date | undefined) => {
     if (date) {
@@ -282,6 +311,11 @@ export function AddTaskDialog({
   };
 
   const handleSubmit = async () => {
+    if (sessionReadOnly) {
+      toast.error("This session is locked or closed. Tasks cannot be changed.");
+      return;
+    }
+
     console.log("🚀 [TASK CREATION] Starting task submission...");
     console.log("📋 [TASK CREATION] Session ID:", sessionId);
     console.log("📋 [TASK CREATION] Editing Task:", editingTask);
@@ -297,13 +331,13 @@ export function AddTaskDialog({
       'draft', 'compile', 'process', 'verify', 'confirm',
     ];
     
-    if (!task || !startDate || !endDate) {
+    if (isPlanningForm && (!task || !startDate || !endDate)) {
       console.error("❌ [TASK CREATION] Validation failed: Missing required fields");
       toast.error("Please fill in all required fields");
       return;
     }
 
-    if (!editingTask) {
+    if (isPlanningForm) {
       const words = task.trim().split(/\s+/);
       const firstWord = words[0].toLowerCase();
       if (!QUALIFYING_VERBS.includes(firstWord)) {
@@ -329,8 +363,18 @@ export function AddTaskDialog({
       }
     }
 
-    // Validate remark is required when editing
-    if (editingTask && (!remark || remark.trim().length === 0)) {
+    if (isPlanningForm && requiresLinkedKpi(taskType) && !linkedKpi) {
+      toast.error(
+        taskType === "KPI_FULFILLED"
+          ? "Select the KPI this achievement fulfills."
+          : "Select the KPI this unmet outcome relates to.",
+      );
+      return;
+    }
+
+    // Checkout-only edits require an outcome remark. Private planning edits use
+    // the same optional remark behavior as task creation.
+    if (isCheckoutOnlyEdit && (!remark || remark.trim().length === 0)) {
       console.error("❌ [TASK EDIT] Validation failed: Remark is required when editing");
       toast.error("Remark is required when updating task status");
       return;
@@ -351,21 +395,23 @@ export function AddTaskDialog({
 
     const taskStartDateTime = buildDateTime(startDate, startTime);
     const taskEndDateTime = buildDateTime(endDate, endTime);
-    const localScheduleError = validateTaskTimeRange(
-      taskStartDateTime,
-      taskEndDateTime,
-    );
-    if (localScheduleError) {
-      setScheduleError(localScheduleError);
-      toast.warning("Check the task schedule", {
-        description: localScheduleError,
-      });
-      return;
+    if (isPlanningForm) {
+      const localScheduleError = validateTaskTimeRange(
+        taskStartDateTime,
+        taskEndDateTime,
+      );
+      if (localScheduleError) {
+        setScheduleError(localScheduleError);
+        toast.warning("Check the task schedule", {
+          description: localScheduleError,
+        });
+        return;
+      }
+      setScheduleError(null);
     }
-    setScheduleError(null);
 
-    // Validate end date is within session range
-    if (session && !editingTask) {
+    // Draft and personal-to-do edits obey the same session date range as create.
+    if (session && isPlanningForm) {
       const rawSessionEnd = session.weekEndDate || session.endDate;
       const dateOnlyMatch =
         typeof rawSessionEnd === "string"
@@ -424,13 +470,17 @@ export function AddTaskDialog({
             ? linkedInitiative
             : null,
         relatedToEmployeeId: relatedTo || null,
-        collaborationRequestMessage: relatedTo
-          ? collaborationMessage.trim() || null
-          : null,
+        ...(isPlanningForm
+          ? {
+              collaborationRequestMessage: relatedTo
+                ? collaborationMessage.trim() || null
+                : null,
+            }
+          : {}),
         plannedDescription: description.trim(),
         taskStartDate: taskStartDateTime.toISOString(),
         taskEndDate: taskEndDateTime.toISOString(),
-        taskStatus: checkoutStatus || "NOT_DONE",
+        taskStatus: normalizeCheckoutStatus(taskType, checkoutStatus),
         evidenceUrl: attachmentLink.trim() || attachment?.name || null,
         challenges: remark.trim() || null,
         isMidWeekTask: isMidWeekTask,
@@ -440,16 +490,20 @@ export function AddTaskDialog({
 
       if (editingTask) {
         console.log("✏️ [TASK CREATION] Updating existing task:", editingTask.id);
-        const result = await updateTaskMutation({
-          variables: {
-            input: {
+        const updateInput = isPlanningForm
+          ? {
               checkinoutTaskId: editingTask.id,
-              taskStatus: checkoutStatus || "NOT_DONE",
+              ...taskData,
+            }
+          : {
+              checkinoutTaskId: editingTask.id,
+              taskStatus: normalizeCheckoutStatus(taskType, checkoutStatus),
               achievedDescription: remark.trim() || null,
               challenges: remark.trim() || null,
               evidenceUrl: attachmentLink.trim() || attachment?.name || null,
-            },
-          },
+            };
+        const result = await updateTaskMutation({
+          variables: { input: updateInput },
         });
         if (!result.data?.updateCheckinoutTask) {
           throw new Error("The server did not confirm the task update.");
@@ -511,12 +565,13 @@ export function AddTaskDialog({
           <DialogTitle className="text-xl font-semibold">
             {editingTask ? "Edit Task" : "Add a Task"}
           </DialogTitle>
-          {!editingTask && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              This task is saved privately as a draft. If this week was already
-              submitted, it is saved as a private personal to-do instead.
-            </p>
-          )}
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {isCheckoutOnlyEdit
+              ? "This submitted task is checkout-only. Planning details cannot be changed."
+              : editingTask
+                ? "This private task is still a planning form. All planning details can be updated."
+                : "This task is saved privately as a draft. If this week was already submitted, it is saved as a private personal to-do instead."}
+          </p>
         </DialogHeader>
 
         <div className="overflow-y-auto max-h-[80vh] px-6 py-6">
@@ -532,7 +587,9 @@ export function AddTaskDialog({
                     key={type.value}
                     className={cn(
                       "flex items-center gap-2",
-                      editingTask ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                      !isPlanningForm
+                        ? "cursor-not-allowed opacity-60"
+                        : "cursor-pointer"
                     )}
                   >
                     <input
@@ -540,8 +597,10 @@ export function AddTaskDialog({
                       name="taskType"
                       value={type.value}
                       checked={taskType === type.value}
-                      onChange={(e) => setTaskType(e.target.value as TaskType)}
-                      disabled={!!editingTask}
+                      onChange={(e) =>
+                        handleTaskTypeChange(e.target.value as TaskType)
+                      }
+                      disabled={!isPlanningForm}
                       className="w-4 h-4 text-[#3838EC] border-gray-300 focus:ring-[#3838EC] disabled:cursor-not-allowed"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -555,7 +614,7 @@ export function AddTaskDialog({
               {(taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET") && (
                 <div className="pt-2">
                   <Label className="text-xs text-gray-500 mb-1 block">
-                    Linked KPI
+                    Linked KPI <span className="text-red-500">*</span>
                   </Label>
                   <CheckboxSelect
                     options={
@@ -571,14 +630,22 @@ export function AddTaskDialog({
                     placeholder="Select Linked KPI"
                     searchable
                     searchPlaceholder="Search KPI..."
-                    disabled={!!editingTask}
+                    disabled={!isPlanningForm}
                   />
-                  {!editingTask && (
+                  {isPlanningForm && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Approved KPIs can be linked for weekly planning. Achievement
                       submission requires an approved quarterly plan.
                     </p>
                   )}
+                </div>
+              )}
+
+              {taskType === "KPI_FULFILLED" && (
+                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">
+                  KPI Fulfilled is always marked Done. Saving it creates a Draft
+                  logbook achievement that must be completed and submitted by
+                  session end.
                 </div>
               )}
 
@@ -600,7 +667,7 @@ export function AddTaskDialog({
                     placeholder="Select Linked Initiative"
                     searchable
                     searchPlaceholder="Search Initiative..."
-                    disabled={!!editingTask}
+                    disabled={!isPlanningForm}
                   />
                 </div>
               )}
@@ -621,10 +688,11 @@ export function AddTaskDialog({
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
                 required
-                disabled={!!editingTask}
+                disabled={!isPlanningForm}
                 className={cn(
                   "h-10 text-sm",
-                  editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                  !isPlanningForm &&
+                    "bg-gray-50 cursor-not-allowed opacity-60",
                 )}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -632,7 +700,7 @@ export function AddTaskDialog({
               </p>
 
               {/* Mid-Week Task Checkbox */}
-              {!editingTask && (
+              {isPlanningForm && (
                 <div className="flex items-center space-x-2 pt-2">
                   <Checkbox
                     id="midWeekTask"
@@ -663,10 +731,11 @@ export function AddTaskDialog({
                 onChange={(e) => setDescription(e.target.value)}
                 required
                 minLength={10}
-                disabled={!!editingTask}
+                disabled={!isPlanningForm}
                 className={cn(
                   "min-h-[100px] text-sm resize-none",
-                  editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                  !isPlanningForm &&
+                    "bg-gray-50 cursor-not-allowed opacity-60",
                 )}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -693,7 +762,7 @@ export function AddTaskDialog({
                 placeholder="Search a person..."
                 searchable
                 searchPlaceholder="Search employees..."
-                disabled={!!editingTask}
+                disabled={!isPlanningForm}
               />
               <p className="text-xs text-muted-foreground">
                 Selecting a person sends them a collaboration request. Their task
@@ -731,10 +800,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      disabled={!!editingTask}
+                      disabled={!isPlanningForm}
                       className={cn(
                         "flex-1 h-10 justify-start text-sm font-normal",
-                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                        !isPlanningForm &&
+                          "bg-gray-50 cursor-not-allowed opacity-60",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
@@ -769,10 +839,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      disabled={!!editingTask}
+                      disabled={!isPlanningForm}
                       className={cn(
                         "w-28 h-10 justify-start text-sm font-normal shrink-0",
-                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                        !isPlanningForm &&
+                          "bg-gray-50 cursor-not-allowed opacity-60",
                       )}
                     >
                       <ClockIcon className="mr-1.5 h-4 w-4 text-gray-500 shrink-0" />
@@ -815,10 +886,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      disabled={!!editingTask}
+                      disabled={!isPlanningForm}
                       className={cn(
                         "flex-1 h-10 justify-start text-sm font-normal",
-                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                        !isPlanningForm &&
+                          "bg-gray-50 cursor-not-allowed opacity-60",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
@@ -861,10 +933,11 @@ export function AddTaskDialog({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      disabled={!!editingTask}
+                      disabled={!isPlanningForm}
                       className={cn(
                         "w-28 h-10 justify-start text-sm font-normal shrink-0",
-                        editingTask && "bg-gray-50 cursor-not-allowed opacity-60"
+                        !isPlanningForm &&
+                          "bg-gray-50 cursor-not-allowed opacity-60",
                       )}
                     >
                       <ClockIcon className="mr-1.5 h-4 w-4 text-gray-500 shrink-0" />
@@ -1005,16 +1078,25 @@ export function AddTaskDialog({
                   Checkout Status
                 </Label>
                 <CheckboxSelect
-                  options={CHECKOUT_STATUS}
-                  value={checkoutStatus ? [checkoutStatus] : ["NOT_DONE"]}
+                  options={[...getCheckoutStatusOptions(taskType)]}
+                  value={[
+                    normalizeCheckoutStatus(taskType, checkoutStatus),
+                  ]}
                   onChange={(vals) =>
-                    setCheckoutStatus(vals[vals.length - 1] || "NOT_DONE")
+                    setCheckoutStatus(
+                      normalizeCheckoutStatus(
+                        taskType,
+                        vals[vals.length - 1],
+                      ),
+                    )
                   }
                   placeholder="Select checkout status"
+                  disabled={taskType === "KPI_FULFILLED"}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  When editing your task, you can change its status to Not Done,
-                  Done, Postponed, or Cancelled.
+                  {taskType === "KPI_FULFILLED"
+                    ? "KPI Fulfilled tasks must remain Done."
+                    : "Choose Not Done, Done, Postponed, or Cancelled."}
                 </p>
               </div>
             )}
@@ -1022,18 +1104,24 @@ export function AddTaskDialog({
             {/* Remark */}
             <div className="space-y-2 sm:col-span-2 lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Remark {editingTask && <span className="text-red-500">*</span>}
-                {!editingTask && <span className="text-gray-500">(Optional)</span>}
+                Remark {isCheckoutOnlyEdit && <span className="text-red-500">*</span>}
+                {!isCheckoutOnlyEdit && (
+                  <span className="text-gray-500">(Optional)</span>
+                )}
               </Label>
               <Textarea
-                placeholder={editingTask ? "Remark is required when editing task status..." : "Write remark..."}
+                placeholder={
+                  isCheckoutOnlyEdit
+                    ? "Remark is required when updating task status..."
+                    : "Write remark..."
+                }
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 className="min-h-[100px] text-sm resize-none"
               />
-              {editingTask && (
+              {isCheckoutOnlyEdit && (
                 <p className="text-xs text-red-500">
-                  ⚠️ Remark is mandatory when updating task status
+                  ⚠️ Remark is mandatory when updating a submitted task status
                 </p>
               )}
             </div>
@@ -1052,7 +1140,7 @@ export function AddTaskDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={mutationLoading}
+            disabled={mutationLoading || sessionReadOnly}
             className="sm:w-auto bg-[#3838EC] hover:bg-[#2d2dbd] text-white"
           >
             {mutationLoading

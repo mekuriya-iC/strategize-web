@@ -29,7 +29,8 @@ export function useOrgChart() {
   const { data, loading, error, refetch } = useQuery(GET_ORG_CHART, {
     variables: { organizationId },
     skip: !organizationId,
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'cache-first',
+    nextFetchPolicy: 'cache-first',
   });
 
   // API returns a flat array of root nodes; we take the first as the tree root

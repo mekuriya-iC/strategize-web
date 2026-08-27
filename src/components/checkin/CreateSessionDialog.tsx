@@ -84,7 +84,8 @@ export default function CreateSessionDialog({
         limit: 1000,
       },
       skip: currentUser?.role !== "ADMIN" || userLoading,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
   const {
@@ -94,7 +95,8 @@ export default function CreateSessionDialog({
     refetch: refetchSuperAdminCandidates,
   } = useQuery(GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES, {
     skip: !isSuperAdmin || userLoading || !open,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   // Get departments where current user is head (for managers)
@@ -103,7 +105,8 @@ export default function CreateSessionDialog({
     {
       variables: { page: 1, limit: 1000 },
       skip: isAdmin || userLoading, // Skip if admin (they use employees query) or still loading user
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -113,7 +116,8 @@ export default function CreateSessionDialog({
     {
       variables: { page: 1, limit: 1000 },
       skip: isAdmin || userLoading, // Skip if admin (they use employees query) or still loading user
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -127,7 +131,8 @@ export default function CreateSessionDialog({
         limit: 1000,
       },
       skip: !open || !safeCurrentUserId || userLoading, // Skip if dialog closed, no user ID, or still loading user
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -136,7 +141,8 @@ export default function CreateSessionDialog({
     GET_STRATEGIC_PERIODS,
     {
       variables: { page: 1, limit: 100 },
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 

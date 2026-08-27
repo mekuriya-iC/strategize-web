@@ -38,7 +38,8 @@ export const useCompetencies = (
 ) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCIES, {
     variables: { page, limit, search, organizationId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -54,7 +55,8 @@ export const useCompetency = (competencyId: string) => {
   const { data, loading, error, refetch } = useQuery(GET_COMPETENCY, {
     variables: { competencyId },
     skip: !competencyId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -72,7 +74,8 @@ export const useCoreCompetencies = (
 ) => {
   const { data, loading, error, refetch } = useQuery(GET_CORE_COMPETENCIES, {
     variables: { page, limit, organizationId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   return {
@@ -94,7 +97,8 @@ export const useCompetencyIndicators = (
     {
       variables: { competencyId, page, limit },
       skip: !competencyId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -117,7 +121,8 @@ export const usePositionCompetencies = (
     {
       variables: { positionId, page, limit },
       skip: !positionId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 

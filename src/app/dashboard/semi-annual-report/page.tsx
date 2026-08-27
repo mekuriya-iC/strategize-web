@@ -120,7 +120,8 @@ export default function SemiAnnualReportPage() {
         organizationId: user?.organizationId,
       },
       skip: !selectedPeriodId || !user?.organizationId || !hasFullAccess,
-      fetchPolicy: "network-only", // Always fetch fresh data
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first", // Always fetch fresh data
       onCompleted: (data) => {
         console.log('Divisions data received:', data);
         // Initialize division achievements from fetched data
@@ -192,7 +193,8 @@ export default function SemiAnnualReportPage() {
         organizationId: user?.organizationId,
       },
       skip: !selectedPeriodId || !user?.organizationId || !hasFullAccess,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 

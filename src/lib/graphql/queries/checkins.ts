@@ -42,11 +42,13 @@ export const GET_CHECKINOUT_SESSIONS = gql`
           fullName
           email
           title
+          role
         }
         supervisor {
           employeeId
           fullName
           email
+          role
         }
         strategicPeriod {
           strategicPeriodId

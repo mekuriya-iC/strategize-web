@@ -13,6 +13,7 @@ import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
 import { REMOVE_CHECKINOUT_SESSION, UPDATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 import {
+  getLeadershipCheckinoutSessions,
   groupCheckinoutSessionsByWeek,
   type CheckinoutSessionWeekGroup,
   type CheckinoutSessionLike,
@@ -47,6 +48,7 @@ export default function SessionListView({
     currentUser?.role,
   );
   const isAdminOrHR = ["ADMIN", "SUPER_ADMIN", "HR"].includes(currentUser?.role);
+  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
 
   // Query for team sessions (as supervisor)
   const {
@@ -60,7 +62,8 @@ export default function SessionListView({
       limit: 100,
     },
     skip: !isManager || !currentUser?.employeeId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     errorPolicy: "all", // Return partial data even if there are errors
   });
 
@@ -76,7 +79,8 @@ export default function SessionListView({
       limit: 100,
     },
     skip: !currentUser?.employeeId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     errorPolicy: "all", // Return partial data even if there are errors
   });
 
@@ -88,10 +92,11 @@ export default function SessionListView({
   } = useQuery(GET_CHECKINOUT_SESSIONS, {
     variables: {
       page: 1,
-      limit: 100,
+      limit: 1000,
     },
     skip: !isAdminOrHR,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     errorPolicy: "all", // Return partial data even if there are errors
   });
 
@@ -199,9 +204,16 @@ export default function SessionListView({
       isHistoricalCheckinoutSession(session, today),
     );
   }, [allSessions, isAdminOrHR, ownSessions, teamSessions, today]);
+  const activeLeadershipSessions = useMemo(
+    () => getLeadershipCheckinoutSessions(activeAllSessions),
+    [activeAllSessions],
+  );
+  const visibleTeamSessions = isSuperAdmin
+    ? activeLeadershipSessions
+    : activeTeamSessions;
   const teamWeekGroups = useMemo(
-    () => groupCheckinoutSessionsByWeek(activeTeamSessions),
-    [activeTeamSessions],
+    () => groupCheckinoutSessionsByWeek(visibleTeamSessions),
+    [visibleTeamSessions],
   );
   const historyWeekGroups = useMemo(
     () => groupCheckinoutSessionsByWeek(historicalScopedSessions),
@@ -412,7 +424,7 @@ export default function SessionListView({
                 </p>
               )}
               <p className="text-sm text-gray-600">
-                Supervisor:{" "}
+                Session creator / supervisor:{" "}
                 <span className="font-medium">{supervisorName}</span>
               </p>
             </div>
@@ -529,7 +541,7 @@ export default function SessionListView({
                 )}
               </div>
               <p className="text-sm text-gray-600">
-                Supervisor:{" "}
+                Session creator / supervisor:{" "}
                 <span className="font-medium">
                   {session.supervisor?.fullName || "Unknown Supervisor"}
                 </span>
@@ -860,7 +872,7 @@ export default function SessionListView({
 
         {/* My Team Tab */}
         <TabsContent value="my-team" className="mt-6">
-          {teamLoading ? (
+          {(isSuperAdmin ? allLoading : teamLoading) ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>

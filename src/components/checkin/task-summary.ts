@@ -1,5 +1,6 @@
 export interface TaskSummaryInput {
   taskType?: string | null;
+  logbookStatus?: string | null;
 }
 
 export interface TaskTypeSummary {
@@ -8,6 +9,7 @@ export interface TaskTypeSummary {
   nonKpiTasks: number;
   kpiFulfilled: number;
   kpiUnmet: number;
+  overdueKpiFulfilled: number;
   kpiFulfilledPercentage: number;
   kpiUnmetPercentage: number;
 }
@@ -16,13 +18,19 @@ export function summarizeTaskTypes(
   tasks: readonly TaskSummaryInput[],
 ): TaskTypeSummary {
   const totalTasks = tasks.length;
-  const kpiFulfilled = tasks.filter(
+  const kpiFulfilledTasks = tasks.filter(
     (task) => task.taskType === "KPI_FULFILLED",
+  );
+  const overdueKpiFulfilled = kpiFulfilledTasks.filter((task) =>
+    ["OVERDUE", "REJECTED"].includes(
+      task.logbookStatus?.toUpperCase() || "",
+    ),
   ).length;
+  const kpiFulfilled = kpiFulfilledTasks.length - overdueKpiFulfilled;
   const kpiUnmet = tasks.filter(
     (task) => task.taskType === "KPI_UNMET",
   ).length;
-  const totalKpiTasks = kpiFulfilled + kpiUnmet;
+  const totalKpiTasks = kpiFulfilledTasks.length + kpiUnmet;
   const nonKpiTasks = totalTasks - totalKpiTasks;
 
   return {
@@ -31,6 +39,7 @@ export function summarizeTaskTypes(
     nonKpiTasks,
     kpiFulfilled,
     kpiUnmet,
+    overdueKpiFulfilled,
     kpiFulfilledPercentage:
       totalKpiTasks > 0
         ? Math.round((kpiFulfilled / totalKpiTasks) * 100)

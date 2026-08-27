@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useRouter } from "next/navigation";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import AnalyticsSummary from "@/components/dashboard/AnalyticsSummary";
@@ -69,7 +69,6 @@ const GET_DEPARTMENTS_QUERY = gql`
 `;
 
 export default function DashboardPage() {
-  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const { selectedPeriod, selectionValidated } = useStrategicPeriodStore();
 
@@ -83,6 +82,9 @@ export default function DashboardPage() {
   const isDirector = user?.role === "DIRECTOR";
   const isManager = user?.role === "MANAGER" || user?.role === "COORDINATOR";
   const isLeadershipRole = hasFullAccess || isDirector || isManager;
+  const organizationId = user?.organizationId;
+  const canLoadOrganizationHeatMap =
+    Boolean(organizationId) && (hasFullAccess || isDirector);
 
   // Fetch team performance for health metrics
   let teamFilters: any = {
@@ -114,30 +116,6 @@ export default function DashboardPage() {
 
 
 
-  // Fetch divisions with departments for heat map
-  const { data: divisionsData, loading: divisionsLoading } = useQuery(
-    GET_DIVISIONS_WITH_PERFORMANCE,
-    {
-      variables: {
-        organizationId: user?.organizationId,
-      },
-      skip: !user?.organizationId || (!hasFullAccess && !isDirector),
-      fetchPolicy: "cache-first",
-      nextFetchPolicy: "cache-first",
-    },
-  );
-
-  // Fetch all departments
-  const { data: departmentsData } = useQuery(GET_DEPARTMENTS_QUERY, {
-    variables: {
-      organizationId: user?.organizationId,
-    },
-    skip: !user?.organizationId || (!hasFullAccess && !isDirector),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-  });
-
-
 
   const teamPerformance = teamData?.unifiedTeamPerformance;
 
@@ -150,67 +128,6 @@ export default function DashboardPage() {
       100
     : 0;
 
-
-
-  // Build heat map data from REAL divisions and departments
-  const rawHeatMapData =
-    divisionsData?.divisions?.items.map((division: any) => {
-      // Get all team members for this division (by checking if any of their departments belong to this division)
-      const divisionMembers =
-        teamPerformance?.results?.filter((r: any) =>
-          r.employee.departments?.some(
-            (dept: any) => dept.division?.divisionId === division.divisionId,
-          ),
-        ) || [];
-
-      const divisionAvgScore = divisionMembers.length
-        ? divisionMembers.reduce(
-            (sum: number, r: any) => sum + r.overallPercentage,
-            0,
-          ) / divisionMembers.length
-        : 0;
-
-      // Get departments for this division from the departments query
-      const divisionDepartments =
-        departmentsData?.departments?.items?.filter(
-          (dept: any) => dept.division?.divisionId === division.divisionId,
-        ) || [];
-
-      const departments = divisionDepartments.map((dept: any) => {
-        const deptMembers =
-          teamPerformance?.results?.filter((r: any) =>
-            r.employee.departments?.some(
-              (d: any) => d.departmentId === dept.departmentId,
-            ),
-          ) || [];
-
-        const deptAvgScore = deptMembers.length
-          ? deptMembers.reduce(
-              (sum: number, r: any) => sum + r.overallPercentage,
-              0,
-            ) / deptMembers.length
-          : 0;
-
-        return {
-          departmentId: dept.departmentId,
-          name: dept.name,
-          averageScore: deptAvgScore,
-          employeeCount: deptMembers.length,
-        };
-      });
-
-      return {
-        divisionId: division.divisionId,
-        name: division.name,
-        averageScore: divisionAvgScore,
-        departments,
-      };
-    }) || [];
-
-  const heatMapData =
-    isDirector && userDivisionId
-      ? rawHeatMapData.filter((d: any) => d.divisionId === userDivisionId)
-      : rawHeatMapData;
 
 
 
@@ -251,30 +168,124 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {(hasFullAccess || isDirector) && (
-        <details className="group rounded-xl border bg-card shadow-sm">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
-            <div>
-              <p>Department comparison</p>
-              <p className="mt-0.5 text-sm font-normal text-muted-foreground">
-                Compare unified performance across departments in your authorized scope.
-              </p>
-            </div>
-            <span className="text-sm text-muted-foreground transition-transform group-open:rotate-180">
-              ▾
-            </span>
-          </summary>
-          <div className="border-t p-5">
-            <DepartmentHeatMap
-              divisions={heatMapData}
-              loading={divisionsLoading || teamLoading}
-              onDepartmentClick={(departmentId) =>
-                router.push(`/dashboard/departments/${departmentId}`)
-              }
-            />
-          </div>
-        </details>
+      {canLoadOrganizationHeatMap && organizationId && (
+        <OrganizationDepartmentComparison
+          organizationId={organizationId}
+          teamPerformance={teamPerformance}
+          teamLoading={teamLoading}
+          divisionId={isDirector ? userDivisionId : undefined}
+        />
       )}
     </div>
+  );
+}
+
+function OrganizationDepartmentComparison({
+  organizationId,
+  teamPerformance,
+  teamLoading,
+  divisionId,
+}: {
+  organizationId: string;
+  teamPerformance: any;
+  teamLoading: boolean;
+  divisionId?: string;
+}) {
+  const router = useRouter();
+  const { data: divisionsData, loading: divisionsLoading } = useQuery(
+    GET_DIVISIONS_WITH_PERFORMANCE,
+    {
+      variables: { organizationId },
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
+    },
+  );
+  const { data: departmentsData, loading: departmentsLoading } = useQuery(
+    GET_DEPARTMENTS_QUERY,
+    {
+      variables: { organizationId },
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
+    },
+  );
+
+  const rawHeatMapData =
+    divisionsData?.divisions?.items.map((division: any) => {
+      const divisionMembers =
+        teamPerformance?.results?.filter((result: any) =>
+          result.employee.departments?.some(
+            (department: any) =>
+              department.division?.divisionId === division.divisionId,
+          ),
+        ) || [];
+      const divisionAverageScore = divisionMembers.length
+        ? divisionMembers.reduce(
+            (sum: number, result: any) => sum + result.overallPercentage,
+            0,
+          ) / divisionMembers.length
+        : 0;
+      const divisionDepartments =
+        departmentsData?.departments?.items?.filter(
+          (department: any) =>
+            department.division?.divisionId === division.divisionId,
+        ) || [];
+
+      return {
+        divisionId: division.divisionId,
+        name: division.name,
+        averageScore: divisionAverageScore,
+        departments: divisionDepartments.map((department: any) => {
+          const departmentMembers =
+            teamPerformance?.results?.filter((result: any) =>
+              result.employee.departments?.some(
+                (candidate: any) =>
+                  candidate.departmentId === department.departmentId,
+              ),
+            ) || [];
+          const averageScore = departmentMembers.length
+            ? departmentMembers.reduce(
+                (sum: number, result: any) => sum + result.overallPercentage,
+                0,
+              ) / departmentMembers.length
+            : 0;
+
+          return {
+            departmentId: department.departmentId,
+            name: department.name,
+            averageScore,
+            employeeCount: departmentMembers.length,
+          };
+        }),
+      };
+    }) || [];
+  const heatMapData = divisionId
+    ? rawHeatMapData.filter(
+        (division: any) => division.divisionId === divisionId,
+      )
+    : rawHeatMapData;
+
+  return (
+    <details className="group rounded-xl border bg-card shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
+        <div>
+          <p>Department comparison</p>
+          <p className="mt-0.5 text-sm font-normal text-muted-foreground">
+            Compare unified performance across departments in your authorized scope.
+          </p>
+        </div>
+        <span className="text-sm text-muted-foreground transition-transform group-open:rotate-180">
+          ▾
+        </span>
+      </summary>
+      <div className="border-t p-5">
+        <DepartmentHeatMap
+          divisions={heatMapData}
+          loading={divisionsLoading || departmentsLoading || teamLoading}
+          onDepartmentClick={(departmentId) =>
+            router.push(`/dashboard/departments/${departmentId}`)
+          }
+        />
+      </div>
+    </details>
   );
 }

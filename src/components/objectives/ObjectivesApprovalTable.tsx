@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect, useSyncExternalStore } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import React from "react";
@@ -34,16 +34,15 @@ import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
-import { Building2 } from "lucide-react";
 
-const subscribeToClient = () => () => {};
 
 export default function ObjectivesApprovalTable() {
-  const mounted = useSyncExternalStore(
-    subscribeToClient,
-    () => true,
-    () => false,
-  );
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   if (!mounted) {
     return (

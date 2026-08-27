@@ -138,6 +138,7 @@ export const GET_KPI = gql`
   query GetKpi($kpiId: ID!) {
     kpi(kpiId: $kpiId) {
       kpiId
+      organizationId
       name
       description
       kpiType
@@ -253,6 +254,14 @@ export const GET_KPI = gql`
         status
         calculatedAt
         finalizedAt
+      }
+      latestUpdate {
+        kpiUpdateId
+        achievedValue
+        progressPercentage
+        progressStatus
+        reportingDate
+        notes
       }
     }
   }
@@ -476,6 +485,7 @@ export const GET_KPI_UPDATES = gql`
     }
   }
 `;
+
 
 // Get KPI assignments for an employee
 // Backend: kpiAssignmentsEmployee(userId: ID, kpiId: ID, strategicPeriodId: ID, page, limit)

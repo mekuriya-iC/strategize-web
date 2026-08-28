@@ -9,7 +9,7 @@ interface AuthContextType {
   user: Employee | null;
   loading: boolean;
   tokenExpiresIn: string | null;
-  login: (input: { email: string; password: string }) => Promise<any>;
+  login: (input: { email: string; password: string }) => Promise<unknown>;
   logout: () => void;
   getToken: () => string | undefined;
 }
@@ -17,7 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
+  const auth = useAuth({ bootstrap: true });
   const value = useMemo<AuthContextType>(
     () => ({
       isAuthenticated: auth.isAuthenticated,

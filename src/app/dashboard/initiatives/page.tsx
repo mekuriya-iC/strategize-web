@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useInitiatives } from "@/hooks/initiatives/useInitiatives";
 import { useQuery } from "@apollo/client";
 import { GET_OBJECTIVES } from "@/lib/graphql/queries/objectives";
@@ -15,32 +15,56 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Search, Rocket } from "lucide-react";
+import { useAuthStore } from "@/stores";
+import { usePermissions } from "@/hooks/permissions/usePermissions";
+import {
+  canCreateInitiativeForObjective,
+  type InitiativeObjectiveChoice,
+} from "@/lib/initiatives/scope";
 
 export default function InitiativesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [showCreate, setShowCreate] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const organizationId = user?.organizationId;
+  const { scope, guards, isLoading: permissionsLoading } = usePermissions();
 
   const { initiatives, loading } = useInitiatives({
     page: 1,
     limit: 100,
     search: search || undefined,
     status: statusFilter || undefined,
+    organizationId,
+    skip: !organizationId,
   });
 
   // Fetch objectives for the create dialog
   const { data: objData } = useQuery(GET_OBJECTIVES, {
-    variables: { page: 1, limit: 500 },
+    variables: { page: 1, limit: 500, organizationId },
+    skip: !organizationId || permissionsLoading,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
   });
 
-  const objectives = (objData?.objectives?.items || []).map(
-    (o: { objectiveId: string; title: string }) => ({
-      objectiveId: o.objectiveId,
-      title: o.title,
-    })
-  );
+  const objectives = useMemo(() => {
+    const candidates = (objData?.objectives?.items || []) as InitiativeObjectiveChoice[];
+    return candidates.filter((objective) =>
+      canCreateInitiativeForObjective(objective, {
+        isAdmin: guards.isAdmin || guards.isSuperAdmin,
+        employeeId: user?.employeeId,
+        managedDivisionIds: scope?.managedDivisionIds || [],
+        managedDepartmentIds: scope?.managedDepartmentIds || [],
+      })
+    );
+  }, [
+    objData,
+    guards.isAdmin,
+    guards.isSuperAdmin,
+    user?.employeeId,
+    scope?.managedDivisionIds,
+    scope?.managedDepartmentIds,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -61,7 +85,10 @@ export default function InitiativesPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
+        <Button
+          onClick={() => setShowCreate(true)}
+          disabled={!organizationId || permissionsLoading}
+        >
           <Plus className="mr-1.5 h-4 w-4" /> New Initiative
         </Button>
       </div>

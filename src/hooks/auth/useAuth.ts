@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useMutation, useLazyQuery, useApolloClient } from "@apollo/client";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useMutation, useApolloClient } from "@apollo/client";
 import { useRouter } from "next/navigation";
 import { LOGIN_EMPLOYEE, CHANGE_PASSWORD } from "@/lib/graphql/mutations/auth";
 import { GET_ME } from "@/lib/graphql/queries/auth";
-import { LoginEmployeeInput, Employee } from "@/types/graphql";
+import { LoginEmployeeInput } from "@/types/graphql";
 import { authLogger } from "@/lib/logger";
 import {
   getAccessToken,
@@ -22,40 +22,38 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { useStrategicPeriodStore } from "@/stores/strategicPeriodStore";
 
-interface AuthState {
-  isAuthenticated: boolean;
-  user: Employee | null;
-  loading: boolean;
-  tokenExpiresIn: string | null;
+interface UseAuthOptions {
+  bootstrap?: boolean;
 }
 
-export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>({
-    isAuthenticated: false,
-    user: null,
-    loading: true,
-    tokenExpiresIn: null,
-  });
+export const useAuth = ({ bootstrap = false }: UseAuthOptions = {}) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.isLoading);
+  const [tokenExpiresIn, setTokenExpiresIn] = useState<string | null>(null);
+  const bootstrapStarted = useRef(false);
 
   const router = useRouter();
   const apolloClient = useApolloClient();
   const [loginMutation] = useMutation(LOGIN_EMPLOYEE);
   const [changePasswordMutation] = useMutation(CHANGE_PASSWORD);
-  const [getMeQuery] = useLazyQuery(GET_ME);
 
   // Update token expiry display periodically
   const updateTokenExpiry = useCallback(() => {
     const token = getAccessToken();
     if (token && !isTokenExpired(token)) {
       const expiryDisplay = getTokenExpiryDisplay(token);
-      setAuthState((prev) => ({ ...prev, tokenExpiresIn: expiryDisplay }));
+      setTokenExpiresIn(expiryDisplay);
     } else {
-      setAuthState((prev) => ({ ...prev, tokenExpiresIn: null }));
+      setTokenExpiresIn(null);
     }
   }, []);
 
   // Check for existing token and load user data
   useEffect(() => {
+    if (!bootstrap || bootstrapStarted.current) return;
+    bootstrapStarted.current = true;
+
     const checkAuth = async () => {
       if (typeof window !== "undefined") {
         const token = getAccessToken();
@@ -69,12 +67,7 @@ export const useAuth = () => {
             removeAccessToken();
             authStore.setUser(null);
             authStore.setLoading(false);
-            setAuthState({
-              isAuthenticated: false,
-              user: null,
-              loading: false,
-              tokenExpiresIn: null,
-            });
+            setTokenExpiresIn(null);
             if (window.location.pathname !== "/auth") {
               router.push("/auth?expired=true");
             }
@@ -89,19 +82,15 @@ export const useAuth = () => {
 
           try {
             // Token exists and is valid, fetch current user data
-            const { data } = await getMeQuery({
+            const { data } = await apolloClient.query({
+              query: GET_ME,
               fetchPolicy: "network-only",
             });
 
             if (data?.me) {
               authStore.setUser(data.me);
               authStore.setLoading(false);
-              setAuthState({
-                isAuthenticated: true,
-                user: data.me,
-                loading: false,
-                tokenExpiresIn: getTokenExpiryDisplay(token),
-              });
+              setTokenExpiresIn(getTokenExpiryDisplay(token));
 
               if (
                 (data.me.isFirstLogin || data.me.mustChangePassword) &&
@@ -115,12 +104,7 @@ export const useAuth = () => {
               removeAccessToken();
               authStore.setUser(null);
               authStore.setLoading(false);
-              setAuthState({
-                isAuthenticated: false,
-                user: null,
-                loading: false,
-                tokenExpiresIn: null,
-              });
+              setTokenExpiresIn(null);
               if (window.location.pathname !== "/auth") {
                 router.push("/auth");
               }
@@ -131,12 +115,7 @@ export const useAuth = () => {
             removeAccessToken();
             authStore.setUser(null);
             authStore.setLoading(false);
-            setAuthState({
-              isAuthenticated: false,
-              user: null,
-              loading: false,
-              tokenExpiresIn: null,
-            });
+            setTokenExpiresIn(null);
             if (window.location.pathname !== "/auth") {
               router.push("/auth");
             }
@@ -144,12 +123,7 @@ export const useAuth = () => {
         } else {
           authStore.setUser(null);
           authStore.setLoading(false);
-          setAuthState({
-            isAuthenticated: false,
-            user: null,
-            loading: false,
-            tokenExpiresIn: null,
-          });
+          setTokenExpiresIn(null);
           if (window.location.pathname !== "/auth") {
             router.push("/auth");
           }
@@ -157,24 +131,19 @@ export const useAuth = () => {
       }
     };
 
-    checkAuth();
-  }, [getMeQuery, router]);
+    void checkAuth();
+  }, [apolloClient, bootstrap, router]);
 
   // Setup token expiration checker
   useEffect(() => {
-    if (authState.isAuthenticated) {
+    if (bootstrap && isAuthenticated) {
       // Check token expiry every minute
       const intervalId = setInterval(updateTokenExpiry, 60000);
 
       // Setup automatic expiration checker
       const cleanupChecker = setupTokenExpirationChecker(() => {
         useAuthStore.getState().logout();
-        setAuthState({
-          isAuthenticated: false,
-          user: null,
-          loading: false,
-          tokenExpiresIn: null,
-        });
+        setTokenExpiresIn(null);
       });
 
       return () => {
@@ -182,11 +151,11 @@ export const useAuth = () => {
         cleanupChecker();
       };
     }
-  }, [authState.isAuthenticated, updateTokenExpiry]);
+  }, [bootstrap, isAuthenticated, updateTokenExpiry]);
 
   const login = useCallback(async (input: LoginEmployeeInput) => {
     try {
-      setAuthState((prev) => ({ ...prev, loading: true }));
+      useAuthStore.getState().setLoading(true);
 
       const { data } = await loginMutation({
         variables: { input },
@@ -206,15 +175,8 @@ export const useAuth = () => {
 
         const employee = data.loginEmployee.employee;
 
-        // Set user data from login response
-        setAuthState({
-          isAuthenticated: true,
-          user: employee,
-          loading: false,
-          tokenExpiresIn: getTokenExpiryDisplay(token),
-        });
-
         useAuthStore.getState().login(employee, token);
+        setTokenExpiresIn(getTokenExpiryDisplay(token));
 
         // Refetch active queries with the new session (objectives list, me, etc.)
         await apolloClient.resetStore();
@@ -222,11 +184,11 @@ export const useAuth = () => {
         authLogger.info("Login successful");
         return { success: true, user: data.loginEmployee.employee };
       } else {
-        setAuthState((prev) => ({ ...prev, loading: false }));
+        useAuthStore.getState().setLoading(false);
         return { success: false, error: "No access token received" };
       }
     } catch (error: unknown) {
-      setAuthState((prev) => ({ ...prev, loading: false }));
+      useAuthStore.getState().setLoading(false);
       authLogger.error("Login error:", error);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -265,12 +227,7 @@ export const useAuth = () => {
       sessionStorage.setItem("intentionalLogout", "true");
     }
 
-    setAuthState({
-      isAuthenticated: false,
-      user: null,
-      loading: false,
-      tokenExpiresIn: null,
-    });
+    setTokenExpiresIn(null);
 
     try {
       await apolloClient.clearStore();
@@ -314,7 +271,10 @@ export const useAuth = () => {
   };
 
   return {
-    ...authState,
+    isAuthenticated,
+    user,
+    loading,
+    tokenExpiresIn,
     login,
     logout,
     getToken,

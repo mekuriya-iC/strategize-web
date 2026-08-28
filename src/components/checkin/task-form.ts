@@ -58,6 +58,20 @@ export function requiresLinkedKpi(taskType: TaskType): boolean {
   return taskType === "KPI_FULFILLED" || taskType === "KPI_UNMET";
 }
 
+export function requiresCheckoutEvidence(
+  taskType: TaskType,
+  status?: string | null,
+): boolean {
+  if (status !== "DONE") return false;
+
+  return (
+    taskType === "KPI_UNMET" ||
+    taskType === "INITIATIVE_UNMET" ||
+    taskType === "SELF_DEVELOPMENT_UNMET" ||
+    taskType === "INITIATIVE_FULFILLED"
+  );
+}
+
 export function isKpiReadyForAchievementSubmission(
   kpi: TaskKpiPlanningOption,
 ): boolean {

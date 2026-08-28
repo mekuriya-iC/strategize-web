@@ -12,7 +12,16 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Calendar, User, Clock, Target, BarChart3, CalendarDays } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  Clock,
+  Target,
+  BarChart3,
+  CalendarDays,
+  Building2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface InitiativeDetailPageProps {
@@ -93,6 +102,16 @@ export default function InitiativeDetailPage({ params }: InitiativeDetailPagePro
                   <span>{initiative.owner.fullName}</span>
                 </div>
               )}
+              <div className="flex items-center gap-1.5">
+                <Building2 className="h-4 w-4" />
+                <span>
+                  {initiative.scopeType === "ORGANIZATION"
+                    ? "Organization scope"
+                    : `${initiative.scopeType.charAt(0)}${initiative.scopeType
+                        .slice(1)
+                        .toLowerCase()} scope`}
+                </span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4" />
                 <span>{formatDate(initiative.startDate)} — {formatDate(initiative.dueDate)}</span>

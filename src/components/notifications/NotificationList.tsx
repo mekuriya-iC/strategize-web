@@ -11,9 +11,11 @@ import {
   Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import type { Notification } from '@/types/notification';
 
 interface NotificationListProps {
-  notifications: any[];
+  notifications: Notification[];
   onMarkAsRead: (notificationId: string) => void;
   onClose: () => void;
 }
@@ -75,7 +77,9 @@ export function NotificationList({
   onMarkAsRead,
   onClose,
 }: NotificationListProps) {
-  const handleNotificationClick = (notification: any) => {
+  const router = useRouter();
+
+  const handleNotificationClick = (notification: Notification) => {
     // Mark as read
     if (notification.status === 'UNREAD') {
       onMarkAsRead(notification.notificationId);
@@ -107,13 +111,13 @@ export function NotificationList({
       }
 
       onClose();
-      window.location.href = url;
+      router.push(url);
     }
   };
 
   return (
     <div className="divide-y">
-      {notifications.map((notification: any) => (
+      {notifications.map((notification) => (
         <div
           key={notification.notificationId}
           onClick={() => handleNotificationClick(notification)}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { getOrganizationId } from "@/lib/constants/organization";
 import { type Activity, useInitiativeMutations } from "@/hooks/initiatives/useInitiatives";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +47,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore } from "@/stores";
+import { toast } from "sonner";
 import {
   MoreHorizontal,
   Pencil,
@@ -107,11 +107,15 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title) return;
+    if (!user?.organizationId) {
+      toast.error("Cannot create an activity without an authenticated organization.");
+      return;
+    }
     try {
       await createActivity({
         ...form,
         initiativeId,
-        organizationId: getOrganizationId(),
+        organizationId: user.organizationId,
         startDate: form.startDate || undefined,
         dueDate: form.dueDate || undefined,
       });
@@ -139,7 +143,7 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
   const handleDelete = async () => {
     if (!deleteActivity) return;
     try {
-      await removeActivity(deleteActivity.activityId, initiativeId);
+      await removeActivity(deleteActivity.activityId);
       setDeleteActivity(null);
     } catch { /* handled */ }
   };
@@ -296,7 +300,10 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { resetForm(); setShowCreate(false); }}>Cancel</Button>
-              <Button type="submit" disabled={mutLoading.createActivity || !form.title}>
+              <Button
+                type="submit"
+                disabled={mutLoading.createActivity || !user?.organizationId || !form.title}
+              >
                 {mutLoading.createActivity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Add Activity
               </Button>

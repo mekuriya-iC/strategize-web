@@ -15,6 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { NotificationList } from './NotificationList';
 import { useAuthContext } from '@/providers/AuthProvider';
+import Link from 'next/link';
+import type { Notification } from '@/types/notification';
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -34,8 +36,13 @@ export function NotificationBell() {
   const [updateNotification] = useMutation(UPDATE_NOTIFICATION);
 
   // Filter out notifications with null recipients
-  const notifications = (data?.notifications?.items || []).filter(
-    (n: any) => n.recipient != null
+  const notifications = (
+    (data?.notifications?.items || []) as Array<
+      Notification & { recipient: Notification['recipient'] | null }
+    >
+  ).filter(
+    (notification): notification is Notification =>
+      notification.recipient != null
   );
   const unreadCount = notifications.length;
 
@@ -58,11 +65,11 @@ export function NotificationBell() {
   const handleMarkAllAsRead = async () => {
     try {
       await Promise.all(
-        notifications.map((notif: any) =>
+        notifications.map((notification) =>
           updateNotification({
             variables: {
               updateNotificationInput: {
-                notificationId: notif.notificationId,
+                notificationId: notification.notificationId,
                 readAt: new Date().toISOString(),
               },
             },
@@ -129,15 +136,16 @@ export function NotificationBell() {
         </ScrollArea>
         <div className="p-2 border-t">
           <Button
+            asChild
             variant="ghost"
             className="w-full text-sm text-indigo-600 hover:text-indigo-700"
-            onClick={() => {
-              setOpen(false);
-              // Navigate to notifications page
-              window.location.href = '/dashboard/notifications';
-            }}
           >
-            View all notifications
+            <Link
+              href="/dashboard/notifications"
+              onClick={() => setOpen(false)}
+            >
+              View all notifications
+            </Link>
           </Button>
         </div>
       </PopoverContent>

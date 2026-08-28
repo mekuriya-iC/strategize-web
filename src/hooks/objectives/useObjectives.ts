@@ -11,7 +11,6 @@ import {
   GetObjectiveResponse,
 } from "@/types/graphql";
 import { useCacheStore } from "@/stores/cacheStore";
-import { useAuthStore } from "@/stores/authStore";
 
 export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
   const queryVariables = {
@@ -30,24 +29,19 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  const objectivesInvalidatedAt = useCacheStore(
-    (state) => state.invalidationTimestamps.objectives
+  const objectivesRefetchPending = useCacheStore((state) =>
+    state.pendingRefetches.has("objectives")
   );
   const markRefetched = useCacheStore((state) => state.markRefetched);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const userId = useAuthStore((state) => state.user?.employeeId);
 
   useEffect(() => {
-    if (objectivesInvalidatedAt > 0) {
-      refetch().finally(() => markRefetched("objectives"));
-    }
-  }, [objectivesInvalidatedAt, refetch, markRefetched]);
+    if (!objectivesRefetchPending) return;
 
-  useEffect(() => {
-    if (isAuthenticated && userId) {
-      refetch();
-    }
-  }, [isAuthenticated, userId, refetch]);
+    void refetch().then(
+      () => markRefetched("objectives"),
+      () => undefined,
+    );
+  }, [objectivesRefetchPending, refetch, markRefetched]);
 
   return {
     objectives: data?.objectives?.items || [],

@@ -23,6 +23,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
+import {
+  canReviewLogbookOwner,
+  type LogbookReviewDepartment as ReviewDepartment,
+  type LogbookReviewUser as ReviewEmployee,
+} from "@/lib/logbook/review-hierarchy";
 
 /**
  * Logbook Approvals Page
@@ -47,20 +52,6 @@ const GET_LOGBOOK_REVIEW_DEPARTMENTS = gql`
   }
 `;
 
-type ReviewDepartment = {
-  departmentId?: string;
-  head?: { employeeId?: string | null } | null;
-  division?: {
-    divisionId?: string;
-    head?: { employeeId?: string | null } | null;
-  } | null;
-};
-
-type ReviewEmployee = {
-  employeeId?: string;
-  role?: string | null;
-  departments?: ReviewDepartment[] | null;
-};
 
 type ReviewLogbookEntry = {
   logbookEntryId: string;
@@ -73,58 +64,8 @@ type ReviewLogbookEntry = {
     | null;
 };
 
-const MANAGEMENT_ROLES = new Set([
-  "MANAGER",
-  "DIRECTOR",
-  "ADMIN",
-  "SUPER_ADMIN",
-]);
-
 const normalizeStatus = (status?: string | null) =>
   String(status || "").toUpperCase();
-
-const canReviewEntry = (
-  entry: ReviewLogbookEntry,
-  currentUser: ReviewEmployee | null | undefined,
-  departments: ReviewDepartment[] = [],
-) => {
-  const owner = entry?.owner;
-  if (!owner || !currentUser || owner.employeeId === currentUser.employeeId) {
-    return false;
-  }
-
-  const currentUserRole = String(currentUser.role || "").toUpperCase();
-  const ownerRole = String(owner.role || "").toUpperCase();
-
-  // CEO/Super Admin/Admin approve division manager/director logbooks.
-  if (["SUPER_ADMIN", "ADMIN"].includes(currentUserRole)) {
-    return ownerRole === "DIRECTOR";
-  }
-
-  // Division manager/director approves department managers heading departments under their division.
-  if (currentUserRole === "DIRECTOR") {
-    return (
-      ownerRole === "MANAGER" &&
-      departments.some(
-        (department) =>
-          department.head?.employeeId === owner.employeeId &&
-          department.division?.head?.employeeId === currentUser.employeeId,
-      )
-    );
-  }
-
-  // Department manager approves non-management employees in departments they head.
-  if (currentUserRole === "MANAGER") {
-    return (
-      !MANAGEMENT_ROLES.has(ownerRole) &&
-      owner.departments?.some(
-        (department) => department.head?.employeeId === currentUser.employeeId,
-      )
-    );
-  }
-
-  return false;
-};
 
 export default function LogbookApprovalsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,9 +88,11 @@ export default function LogbookApprovalsPage() {
   const { data, loading, refetch } = useQuery(GET_LOGBOOK_ENTRIES, {
     variables: {
       entryStatus: statusFilter !== "ALL" ? statusFilter : undefined,
+      approverUserId: currentUser?.employeeId,
       limit: 100,
       page: 1,
     },
+    skip: !currentUser?.employeeId,
   });
 
   const entries = useMemo<ReviewLogbookEntry[]>(
@@ -160,7 +103,7 @@ export default function LogbookApprovalsPage() {
   const approvableEntries = useMemo(
     () =>
       entries.filter((entry) =>
-        canReviewEntry(entry, currentUser, departments),
+        canReviewLogbookOwner(entry.owner, currentUser, departments),
       ),
     [entries, currentUser, departments],
   );

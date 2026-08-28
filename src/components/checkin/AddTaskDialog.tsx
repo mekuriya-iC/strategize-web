@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
   CREATE_CHECKINOUT_TASK,
@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { showErrorToast, showSuccessToast } from "@/utils/error-handling";
+import { uploadFile } from "@/utils/fileUpload";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
@@ -50,6 +51,7 @@ import {
   getTaskEditMode,
   isKpiReadyForAchievementSubmission,
   normalizeCheckoutStatus,
+  requiresCheckoutEvidence,
   requiresLinkedKpi,
   type TaskType,
 } from "./task-form";
@@ -185,11 +187,17 @@ export function AddTaskDialog({
   });
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [uploadedEvidenceUrl, setUploadedEvidenceUrl] = useState("");
   const [attachmentLink, setAttachmentLink] = useState("");
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const [evidenceUploadError, setEvidenceUploadError] = useState<string | null>(
+    null,
+  );
   const [remark, setRemark] = useState("");
   const [isMidWeekTask, setIsMidWeekTask] = useState(false);
   const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const evidenceUploadRequestId = useRef(0);
 
   // ✅ Track popover open states separately so they don't conflict
   const [startDateOpen, setStartDateOpen] = useState(false);
@@ -198,6 +206,7 @@ export function AddTaskDialog({
   const [endTimeOpen, setEndTimeOpen] = useState(false);
 
   function resetForm() {
+    evidenceUploadRequestId.current += 1;
     const newToday = new Date();
     setTaskType(DEFAULT_TASK_TYPE);
     setTask("");
@@ -212,7 +221,10 @@ export function AddTaskDialog({
     setEndTime({ hour: "08", minute: "00", period: "AM" });
     setCheckoutStatus("");
     setAttachment(null);
+    setUploadedEvidenceUrl("");
     setAttachmentLink("");
+    setUploadingEvidence(false);
+    setEvidenceUploadError(null);
     setRemark("");
     setIsMidWeekTask(false);
     setScheduleError(null);
@@ -257,7 +269,10 @@ export function AddTaskDialog({
         ),
       );
       setRemark(editingTask.remark || "");
-      setAttachmentLink(editingTask.attachment || editingTask.evidenceUrl || "");
+      setAttachment(null);
+      setUploadedEvidenceUrl("");
+      setAttachmentLink(editingTask.evidenceUrl || editingTask.attachment || "");
+      setEvidenceUploadError(null);
       setIsMidWeekTask(Boolean(editingTask.isMidWeekTask));
     } else if (!open) {
       // Reset form when dialog closes
@@ -310,9 +325,54 @@ export function AddTaskDialog({
     }
   };
 
+  const handleEvidenceFileSelect = async (file: File) => {
+    const requestId = evidenceUploadRequestId.current + 1;
+    evidenceUploadRequestId.current = requestId;
+    setAttachment(file);
+    setUploadedEvidenceUrl("");
+    setAttachmentLink("");
+    setEvidenceUploadError(null);
+    setUploadingEvidence(true);
+
+    try {
+      const uploadResult = await uploadFile(file);
+      if (!uploadResult.url) {
+        throw new Error("The upload completed without returning a file URL.");
+      }
+      if (evidenceUploadRequestId.current === requestId) {
+        setUploadedEvidenceUrl(uploadResult.url);
+      }
+    } catch (error) {
+      if (evidenceUploadRequestId.current === requestId) {
+        const message =
+          error instanceof Error ? error.message : "Evidence upload failed.";
+        setEvidenceUploadError(message);
+        toast.error("Evidence upload failed", { description: message });
+      }
+    } finally {
+      if (evidenceUploadRequestId.current === requestId) {
+        setUploadingEvidence(false);
+      }
+    }
+  };
+
+  const normalizedCheckoutStatus = normalizeCheckoutStatus(
+    taskType,
+    checkoutStatus,
+  );
+  const checkoutEvidenceRequired = requiresCheckoutEvidence(
+    taskType,
+    normalizedCheckoutStatus,
+  );
+
   const handleSubmit = async () => {
     if (sessionReadOnly) {
       toast.error("This session is locked or closed. Tasks cannot be changed.");
+      return;
+    }
+
+    if (uploadingEvidence) {
+      toast.error("Wait for the evidence upload to finish before saving.");
       return;
     }
 
@@ -369,6 +429,13 @@ export function AddTaskDialog({
           ? "Select the KPI this achievement fulfills."
           : "Select the KPI this unmet outcome relates to.",
       );
+      return;
+    }
+
+    const isInitiativeTask =
+      taskType === "INITIATIVE_FULFILLED" || taskType === "INITIATIVE_UNMET";
+    if (isPlanningForm && isInitiativeTask && !linkedInitiative) {
+      toast.error("Select the initiative this task relates to.");
       return;
     }
 
@@ -438,20 +505,29 @@ export function AddTaskDialog({
       }
     }
 
-    // Validation for unmet tasks being marked as done
+    const evidenceUrl = attachmentLink.trim() || uploadedEvidenceUrl;
+    if (
+      requiresCheckoutEvidence(taskType, normalizedCheckoutStatus) &&
+      !evidenceUrl
+    ) {
+      console.error(
+        "❌ [TASK CREATION] Validation failed: Checkout evidence is required",
+      );
+      toast.error("Evidence is required for this completed task.");
+      return;
+    }
+
     const isUnmetTask = [
       "KPI_UNMET",
       "INITIATIVE_UNMET",
       "SELF_DEVELOPMENT_UNMET",
     ].includes(taskType);
-    if (checkoutStatus === "DONE" && isUnmetTask) {
-      if ((!attachment && !attachmentLink.trim()) || !remark.trim()) {
-        console.error("❌ [TASK CREATION] Validation failed: Unmet task marked as done without attachment/remark");
-        toast.error(
-          "Attachment/Link and remark are required when marking unmet tasks as done",
-        );
-        return;
-      }
+    if (normalizedCheckoutStatus === "DONE" && isUnmetTask && !remark.trim()) {
+      console.error(
+        "❌ [TASK CREATION] Validation failed: Completed unmet task has no remark",
+      );
+      toast.error("A remark is required when marking an unmet task as done.");
+      return;
     }
 
     try {
@@ -480,8 +556,8 @@ export function AddTaskDialog({
         plannedDescription: description.trim(),
         taskStartDate: taskStartDateTime.toISOString(),
         taskEndDate: taskEndDateTime.toISOString(),
-        taskStatus: normalizeCheckoutStatus(taskType, checkoutStatus),
-        evidenceUrl: attachmentLink.trim() || attachment?.name || null,
+        taskStatus: normalizedCheckoutStatus,
+        evidenceUrl: evidenceUrl || null,
         challenges: remark.trim() || null,
         isMidWeekTask: isMidWeekTask,
       };
@@ -497,10 +573,10 @@ export function AddTaskDialog({
             }
           : {
               checkinoutTaskId: editingTask.id,
-              taskStatus: normalizeCheckoutStatus(taskType, checkoutStatus),
+              taskStatus: normalizedCheckoutStatus,
               achievedDescription: remark.trim() || null,
               challenges: remark.trim() || null,
-              evidenceUrl: attachmentLink.trim() || attachment?.name || null,
+              evidenceUrl: evidenceUrl || null,
             };
         const result = await updateTaskMutation({
           variables: { input: updateInput },
@@ -653,7 +729,7 @@ export function AddTaskDialog({
                 taskType === "INITIATIVE_UNMET") && (
                 <div className="pt-2">
                   <Label className="text-xs text-gray-500 mb-1 block">
-                    Linked Initiative
+                    Linked Initiative <span className="text-red-500">*</span>
                   </Label>
                   <CheckboxSelect
                     options={
@@ -984,7 +1060,12 @@ export function AddTaskDialog({
             {/* Attachment */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Attachment (Optional)
+                {checkoutEvidenceRequired ? "Evidence" : "Attachment"}{" "}
+                {checkoutEvidenceRequired ? (
+                  <span className="text-red-500">*</span>
+                ) : (
+                  <span className="text-gray-500">(Optional)</span>
+                )}
               </Label>
               
               {/* File Upload */}
@@ -994,24 +1075,27 @@ export function AddTaskDialog({
                   "flex flex-col items-center justify-center gap-2 p-4 rounded-lg cursor-pointer transition-colors",
                   "border-2 border-dashed border-gray-300 dark:border-gray-600",
                   "hover:border-[#3838EC] hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
+                  uploadingEvidence && "cursor-not-allowed opacity-60",
                 )}
               >
                 <input
                   id="file-upload"
                   type="file"
                   className="hidden"
+                  disabled={uploadingEvidence}
                   onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setAttachment(e.target.files[0]);
-                      setAttachmentLink(""); // Clear link when file is selected
-                    }
+                    const file = e.target.files?.[0];
+                    if (file) void handleEvidenceFileSelect(file);
+                    e.target.value = "";
                   }}
                 />
                 <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                   <UploadIcon className="w-5 h-5 text-gray-400" />
                 </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Click or drag here to upload
+                  {uploadingEvidence
+                    ? "Uploading evidence..."
+                    : "Click or drag here to upload"}
                 </span>
               </label>
               
@@ -1019,15 +1103,32 @@ export function AddTaskDialog({
                 <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
                   <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">
                     {attachment.name}
+                    {uploadingEvidence
+                      ? " — uploading"
+                      : uploadedEvidenceUrl
+                        ? " — uploaded"
+                        : ""}
                   </span>
                   <button
                     type="button"
-                    onClick={() => setAttachment(null)}
-                    className="text-red-400 hover:text-red-600 shrink-0"
+                    disabled={uploadingEvidence}
+                    onClick={() => {
+                      evidenceUploadRequestId.current += 1;
+                      setAttachment(null);
+                      setUploadedEvidenceUrl("");
+                      setEvidenceUploadError(null);
+                    }}
+                    className="text-red-400 hover:text-red-600 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <XIcon className="w-4 h-4" />
                   </button>
                 </div>
+              )}
+
+              {evidenceUploadError && (
+                <p role="alert" className="text-xs text-red-500">
+                  {evidenceUploadError} Select the file again to retry.
+                </p>
               )}
               
               {/* Or divider */}
@@ -1045,10 +1146,14 @@ export function AddTaskDialog({
                     type="url"
                     placeholder="Paste Google Drive link or any file URL..."
                     value={attachmentLink}
+                    disabled={uploadingEvidence}
                     onChange={(e) => {
                       setAttachmentLink(e.target.value);
                       if (e.target.value.trim()) {
-                        setAttachment(null); // Clear file when link is entered
+                        evidenceUploadRequestId.current += 1;
+                        setAttachment(null);
+                        setUploadedEvidenceUrl("");
+                        setEvidenceUploadError(null);
                       }
                     }}
                     className={cn(
@@ -1140,10 +1245,12 @@ export function AddTaskDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={mutationLoading || sessionReadOnly}
+            disabled={mutationLoading || uploadingEvidence || sessionReadOnly}
             className="sm:w-auto bg-[#3838EC] hover:bg-[#2d2dbd] text-white"
           >
-            {mutationLoading
+            {uploadingEvidence
+              ? "Uploading evidence..."
+              : mutationLoading
               ? editingTask
                 ? "Updating..."
                 : "Saving privately..."

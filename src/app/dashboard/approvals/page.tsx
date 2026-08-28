@@ -46,6 +46,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  canReviewLogbookOwner,
+  type LogbookReviewDepartment as ReviewDepartment,
+  type LogbookReviewUser as ReviewUser,
+} from "@/lib/logbook/review-hierarchy";
+import {
   getOrderedLogbookFormulaSources,
   isLogbookFormulaCalculationType,
   logbookFormulaSourceName,
@@ -75,20 +80,6 @@ const GET_LOGBOOK_REVIEW_DEPARTMENTS = gql`
   }
 `;
 
-type ReviewDepartment = {
-  departmentId?: string;
-  head?: { employeeId?: string | null } | null;
-  division?: {
-    divisionId?: string;
-    head?: { employeeId?: string | null } | null;
-  } | null;
-};
-
-type ReviewUser = {
-  employeeId?: string;
-  role?: string | null;
-  departments?: ReviewDepartment[] | null;
-};
 
 type LogbookReviewEntry = {
   logbookEntryId: string;
@@ -129,54 +120,8 @@ type LogbookReviewEntry = {
   approvedBy?: { employeeId?: string; fullName?: string | null } | null;
 };
 
-const MANAGEMENT_ROLES = new Set([
-  "MANAGER",
-  "DIRECTOR",
-  "ADMIN",
-  "SUPER_ADMIN",
-]);
 const normalizeStatus = (status?: string | null) =>
   String(status || "").toUpperCase();
-
-const canReviewLogbookEntry = (
-  entry: LogbookReviewEntry,
-  currentUser: ReviewUser | null | undefined,
-  departments: ReviewDepartment[] = [],
-) => {
-  const owner = entry?.owner;
-  if (!owner || !currentUser || owner.employeeId === currentUser.employeeId) {
-    return false;
-  }
-
-  const currentUserRole = String(currentUser.role || "").toUpperCase();
-  const ownerRole = String(owner.role || "").toUpperCase();
-
-  if (["SUPER_ADMIN", "ADMIN"].includes(currentUserRole)) {
-    return ownerRole === "DIRECTOR";
-  }
-
-  if (currentUserRole === "DIRECTOR") {
-    return (
-      ownerRole === "MANAGER" &&
-      departments.some(
-        (department) =>
-          department.head?.employeeId === owner.employeeId &&
-          department.division?.head?.employeeId === currentUser.employeeId,
-      )
-    );
-  }
-
-  if (currentUserRole === "MANAGER") {
-    return (
-      !MANAGEMENT_ROLES.has(ownerRole) &&
-      owner.departments?.some(
-        (department) => department.head?.employeeId === currentUser.employeeId,
-      )
-    );
-  }
-
-  return false;
-};
 
 export default function ApprovalsPage() {
   const router = useRouter();
@@ -261,7 +206,7 @@ export default function ApprovalsPage() {
   const logbookEntries = useMemo(
     () =>
       rawLogbookEntries.filter((entry) =>
-        canReviewLogbookEntry(entry, user, reviewDepartments),
+        canReviewLogbookOwner(entry.owner, user, reviewDepartments),
       ),
     [rawLogbookEntries, user, reviewDepartments],
   );

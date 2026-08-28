@@ -79,6 +79,7 @@ export default function InitiativeTable({ initiatives, loading }: InitiativeTabl
             <TableRow className="bg-gray-50 dark:bg-gray-900/50">
               <TableHead className="font-semibold">Title</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="font-semibold">Scope</TableHead>
               <TableHead className="font-semibold">Progress</TableHead>
               <TableHead className="font-semibold">Owner</TableHead>
               <TableHead className="font-semibold">Timeline</TableHead>
@@ -106,6 +107,14 @@ export default function InitiativeTable({ initiatives, loading }: InitiativeTabl
                 </TableCell>
                 <TableCell>
                   <InitiativeStatusBadge status={initiative.status} />
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {initiative.scopeType === "ORGANIZATION"
+                      ? "Organization"
+                      : initiative.scopeType.charAt(0) +
+                        initiative.scopeType.slice(1).toLowerCase()}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2 min-w-[120px]">

@@ -12,6 +12,8 @@ export const CREATE_INITIATIVE = gql`
       initiativeId
       title
       description
+      scopeType
+      scopeId
       status
       completionPercentage
       startDate
@@ -36,6 +38,8 @@ export const UPDATE_INITIATIVE = gql`
       initiativeId
       title
       description
+      scopeType
+      scopeId
       status
       completionPercentage
       startDate
@@ -55,6 +59,8 @@ export const REMOVE_INITIATIVE = gql`
     removeInitiative(initiativeId: $initiativeId) {
       initiativeId
       title
+      scopeType
+      scopeId
       isDeleted
     }
   }
@@ -76,6 +82,8 @@ export const CREATE_ACTIVITY = gql`
       initiative {
         initiativeId
         title
+        scopeType
+        scopeId
       }
       assignedTo {
         employeeId
@@ -105,6 +113,8 @@ export const UPDATE_ACTIVITY = gql`
       initiative {
         initiativeId
         title
+        scopeType
+        scopeId
       }
       assignedTo {
         employeeId

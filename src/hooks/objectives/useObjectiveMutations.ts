@@ -93,7 +93,7 @@ export const useObjectiveMutations = () => {
   ) => {
     try {
       const result = await deleteObjective({ variables });
-      return result.data?.deleteObjective;
+      return result.data?.removeObjective;
     } catch (error) {
       objectiveLogger.error("Error deleting objective:", error);
       throw error;

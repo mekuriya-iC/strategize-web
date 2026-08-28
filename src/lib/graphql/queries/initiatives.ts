@@ -27,6 +27,8 @@ export const GET_INITIATIVES = gql`
         initiativeId
         title
         description
+        scopeType
+        scopeId
         status
         completionPercentage
         startDate
@@ -64,6 +66,8 @@ export const GET_INITIATIVE = gql`
       initiativeId
       title
       description
+      scopeType
+      scopeId
       status
       completionPercentage
       startDate
@@ -128,6 +132,8 @@ export const GET_ACTIVITIES = gql`
         initiative {
           initiativeId
           title
+          scopeType
+          scopeId
         }
         assignedTo {
           employeeId
@@ -170,6 +176,8 @@ export const GET_ACTIVITY = gql`
       initiative {
         initiativeId
         title
+        scopeType
+        scopeId
       }
       assignedTo {
         employeeId

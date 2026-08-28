@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { getOrganizationId } from "@/lib/constants/organization";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +23,16 @@ import {
 import { useInitiativeMutations } from "@/hooks/initiatives/useInitiatives";
 import { useAuthStore } from "@/stores";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  deriveInitiativeScope,
+  type InitiativeObjectiveChoice,
+} from "@/lib/initiatives/scope";
 
 interface CreateInitiativeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  objectives?: { objectiveId: string; title: string }[];
+  objectives?: InitiativeObjectiveChoice[];
 }
 
 export default function CreateInitiativeDialog({
@@ -52,10 +56,24 @@ export default function CreateInitiativeDialog({
     e.preventDefault();
     if (!form.title || !form.strategicObjectiveId) return;
 
+    const organizationId = user?.organizationId;
+    const objective = objectives.find(
+      (candidate) => candidate.objectiveId === form.strategicObjectiveId
+    );
+    const initiativeScope = objective && organizationId
+      ? deriveInitiativeScope(objective, organizationId)
+      : null;
+
+    if (!organizationId || !objective || !initiativeScope) {
+      toast.error("Unable to determine initiative scope from the selected objective.");
+      return;
+    }
+
     try {
       await createInitiative({
         ...form,
-        organizationId: getOrganizationId(),
+        ...initiativeScope,
+        organizationId,
         ownerUserId: user?.employeeId,
         startDate: form.startDate || undefined,
         dueDate: form.dueDate || undefined,
@@ -116,6 +134,11 @@ export default function CreateInitiativeDialog({
                 ))}
               </SelectContent>
             </Select>
+            {!objectives.length && (
+              <p className="text-sm text-muted-foreground">
+                No objectives are available within your managed scope.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -160,7 +183,15 @@ export default function CreateInitiativeDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading.create || !form.title || !form.strategicObjectiveId}>
+            <Button
+              type="submit"
+              disabled={
+                loading.create ||
+                !user?.organizationId ||
+                !form.title ||
+                !form.strategicObjectiveId
+              }
+            >
               {loading.create && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Initiative
             </Button>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@apollo/client';
+import { useQuery, useMutation, type ApolloCache } from '@apollo/client';
 import { toast } from 'sonner';
 import {
   GET_INITIATIVES,
@@ -6,6 +6,7 @@ import {
   GET_ACTIVITIES,
   GET_ACTIVITY,
 } from '@/lib/graphql/queries/initiatives';
+import type { InitiativeScopeType } from '@/lib/initiatives/scope';
 import {
   CREATE_INITIATIVE,
   UPDATE_INITIATIVE,
@@ -29,6 +30,8 @@ export interface Initiative {
   initiativeId: string;
   title: string;
   description?: string;
+  scopeType: InitiativeScopeType;
+  scopeId: string;
   status: 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
   completionPercentage: number;
   startDate?: string;
@@ -70,6 +73,8 @@ export interface Activity {
   initiative: {
     initiativeId: string;
     title: string;
+    scopeType: InitiativeScopeType;
+    scopeId: string;
   };
   assignedTo?: InitiativeOwner;
   createdBy: {
@@ -96,10 +101,12 @@ export const useInitiatives = (variables: {
   organizationId?: string;
   strategicObjectiveId?: string;
   status?: string;
+  skip?: boolean;
 } = {}) => {
-  const { page = 1, limit = 20, ...rest } = variables;
+  const { page = 1, limit = 20, skip = false, ...rest } = variables;
   const { data, loading, error, refetch } = useQuery(GET_INITIATIVES, {
     variables: { page, limit, ...rest },
+    skip,
     fetchPolicy: 'cache-first',
     nextFetchPolicy: 'cache-first',
   });
@@ -171,6 +178,10 @@ export const useActivity = (activityId: string) => {
 
 // ===================== MUTATION HOOKS =====================
 
+const invalidateQueryField = (cache: ApolloCache<unknown>, fieldName: string) => {
+  cache.evict({ id: 'ROOT_QUERY', fieldName });
+};
+
 export const useInitiativeMutations = () => {
   const [createInitiativeMutation, { loading: createLoading }] = useMutation(CREATE_INITIATIVE, {
     onCompleted: (data) => {
@@ -181,8 +192,7 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to create initiative', { description: error.message });
     },
-    refetchQueries: 'active',
-    awaitRefetchQueries: true,
+    update: (cache) => invalidateQueryField(cache, 'initiatives'),
   });
 
   const [updateInitiativeMutation, { loading: updateLoading }] = useMutation(UPDATE_INITIATIVE, {
@@ -194,8 +204,10 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to update initiative', { description: error.message });
     },
-    refetchQueries: 'active',
-    awaitRefetchQueries: true,
+    update: (cache) => {
+      invalidateQueryField(cache, 'initiatives');
+      invalidateQueryField(cache, 'initiative');
+    },
   });
 
   const [removeInitiativeMutation, { loading: removeLoading }] = useMutation(REMOVE_INITIATIVE, {
@@ -207,8 +219,10 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to delete initiative', { description: error.message });
     },
-    refetchQueries: 'active',
-    awaitRefetchQueries: true,
+    update: (cache) => {
+      invalidateQueryField(cache, 'initiatives');
+      invalidateQueryField(cache, 'initiative');
+    },
   });
 
   // Activity mutations
@@ -221,6 +235,7 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to create activity', { description: error.message });
     },
+    update: (cache) => invalidateQueryField(cache, 'activities'),
   });
 
   const [updateActivityMutation, { loading: updateActivityLoading }] = useMutation(UPDATE_ACTIVITY, {
@@ -229,6 +244,10 @@ export const useInitiativeMutations = () => {
     },
     onError: (error) => {
       toast.error('Failed to update activity', { description: error.message });
+    },
+    update: (cache) => {
+      invalidateQueryField(cache, 'activities');
+      invalidateQueryField(cache, 'activity');
     },
   });
 
@@ -239,6 +258,10 @@ export const useInitiativeMutations = () => {
     onError: (error) => {
       toast.error('Failed to delete activity', { description: error.message });
     },
+    update: (cache) => {
+      invalidateQueryField(cache, 'activities');
+      invalidateQueryField(cache, 'activity');
+    },
   });
 
   return {
@@ -248,6 +271,8 @@ export const useInitiativeMutations = () => {
       description?: string;
       organizationId: string;
       strategicObjectiveId: string;
+      scopeType: InitiativeScopeType;
+      scopeId: string;
       ownerUserId?: string;
       startDate?: string;
       dueDate?: string;
@@ -270,6 +295,8 @@ export const useInitiativeMutations = () => {
       completionPercentage?: number;
       strategicObjectiveId?: string;
       organizationId?: string;
+      scopeType?: InitiativeScopeType;
+      scopeId?: string;
     }) => {
       const result = await updateInitiativeMutation({
         variables: { updateInitiativeInput: input },
@@ -299,9 +326,6 @@ export const useInitiativeMutations = () => {
     }) => {
       const result = await createActivityMutation({
         variables: { createActivityInput: input },
-        refetchQueries: [
-          { query: GET_ACTIVITIES, variables: { page: 1, limit: 50, initiativeId: input.initiativeId } },
-        ],
       });
       return result.data?.createActivity;
     },
@@ -321,19 +345,13 @@ export const useInitiativeMutations = () => {
     }) => {
       const result = await updateActivityMutation({
         variables: { updateActivityInput: input },
-        refetchQueries: input.initiativeId
-          ? [{ query: GET_ACTIVITIES, variables: { page: 1, limit: 50, initiativeId: input.initiativeId } }]
-          : [],
       });
       return result.data?.updateActivity;
     },
 
-    removeActivity: async (activityId: string, initiativeId?: string) => {
+    removeActivity: async (activityId: string) => {
       const result = await removeActivityMutation({
         variables: { activityId },
-        refetchQueries: initiativeId
-          ? [{ query: GET_ACTIVITIES, variables: { page: 1, limit: 50, initiativeId } }]
-          : [],
       });
       return result.data?.removeActivity;
     },

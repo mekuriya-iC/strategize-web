@@ -6,6 +6,7 @@ import {
   getTaskEditMode,
   isKpiReadyForAchievementSubmission,
   normalizeCheckoutStatus,
+  requiresCheckoutEvidence,
   requiresLinkedKpi,
 } from "./task-form";
 
@@ -64,6 +65,25 @@ describe("check-in task form defaults", () => {
     expect(normalizeCheckoutStatus("KPI_UNMET", "POSTPONED")).toBe(
       "POSTPONED",
     );
+  });
+
+  it("requires checkout evidence for done unmet and initiative fulfilled tasks", () => {
+    expect(requiresCheckoutEvidence("KPI_UNMET", "DONE")).toBe(true);
+    expect(requiresCheckoutEvidence("INITIATIVE_UNMET", "DONE")).toBe(true);
+    expect(requiresCheckoutEvidence("SELF_DEVELOPMENT_UNMET", "DONE")).toBe(
+      true,
+    );
+    expect(requiresCheckoutEvidence("INITIATIVE_FULFILLED", "DONE")).toBe(
+      true,
+    );
+    expect(requiresCheckoutEvidence("KPI_UNMET", "NOT_DONE")).toBe(false);
+    expect(requiresCheckoutEvidence("INITIATIVE_FULFILLED", "POSTPONED")).toBe(
+      false,
+    );
+    expect(requiresCheckoutEvidence("KPI_FULFILLED", "DONE")).toBe(false);
+    expect(
+      requiresCheckoutEvidence("SELF_DEVELOPMENT_FULFILLED", "DONE"),
+    ).toBe(false);
   });
 
   it("uses the fulfilled and unmet self-development API values", () => {

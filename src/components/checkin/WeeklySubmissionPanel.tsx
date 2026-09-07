@@ -29,6 +29,10 @@ export interface TaskPoolSummary {
   sessionId: string;
   draftCount: number;
   submittedCount: number;
+  pendingApprovalCount: number;
+  approvedCount: number;
+  approvedInitialCount: number;
+  initialWeeklyApprovalCompliant: boolean;
   personalTodoCount: number;
   activeCount: number;
   remainingCapacity: number;
@@ -96,8 +100,8 @@ export function WeeklySubmissionPanel({
             </Badge>
           </div>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Select {minimum}–{maximum} draft tasks for this week’s supervisor
-            submission.
+            Select {minimum}–{maximum} draft tasks for supervisor approval. Pending
+            tasks are not official until approved.
           </p>
         </div>
 
@@ -105,11 +109,25 @@ export function WeeklySubmissionPanel({
           <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
             DRAFT {summary?.draftCount ?? 0}
           </Badge>
+          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+            PENDING {summary?.pendingApprovalCount ?? 0}
+          </Badge>
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-            SUBMITTED {summary?.submittedCount ?? 0}
+            APPROVED {summary?.approvedCount ?? summary?.submittedCount ?? 0}
           </Badge>
           <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
             PERSONAL_TODO {summary?.personalTodoCount ?? 0}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={
+              summary?.initialWeeklyApprovalCompliant
+                ? "border-green-500 text-green-700 dark:text-green-300"
+                : ""
+            }
+          >
+            INITIAL APPROVED {summary?.approvedInitialCount ?? 0} ·{" "}
+            {summary?.initialWeeklyApprovalCompliant ? "COMPLIANT" : "PENDING COMPLIANCE"}
           </Badge>
         </div>
       </div>
@@ -152,8 +170,9 @@ export function WeeklySubmissionPanel({
           ) : alreadySubmitted ? (
             <p className="flex items-start gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <LockIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              This week is already submitted. Tasks added later are private
-              personal to-dos and cannot be submitted this week.
+              The initial weekly batch was submitted for approval. Rejected tasks
+              return to DRAFT and can be edited and resubmitted; new midweek drafts
+              can also be submitted explicitly without changing initial compliance.
             </p>
           ) : (
             <>
@@ -187,7 +206,7 @@ export function WeeklySubmissionPanel({
                 <span className="block">{WEEKLY_SUBMISSION_CONFIRMATION}</span>
                 <span className="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
                   <EyeIcon className="h-4 w-4" aria-hidden="true" />
-                  Your supervisor will see only the selected submitted tasks.
+                  Your supervisor will see the selected tasks in their pending approval queue.
                 </span>
                 <span className="block">
                   A KPI_FULFILLED task creates a Draft logbook achievement. The

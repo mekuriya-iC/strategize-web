@@ -36,6 +36,10 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         effectiveTarget
         actual
         averageAchievementRate
+        weightedAchievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
         annualContribution
         carryOut
         finalCount
@@ -51,6 +55,10 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         effectiveTarget
         actual
         averageAchievementRate
+        weightedAchievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
         annualContribution
         carryOut
         finalCount
@@ -68,17 +76,48 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         effectiveTarget
         actual
         averageAchievementRate
+        weightedAchievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
         annualContribution
         carryOut
         finalCount
         provisionalCount
         pendingResultCount
       }
+      kpiRollups {
+        kpiId
+        kpiName
+        objectiveId
+        objectiveTitle
+        objectiveWeight
+        cascadeType
+        parentKpiId
+        measurementUnit
+        unitType
+        customUnitLabel
+        quarterlyAggregationMethod
+        annualTarget
+        weight
+        target
+        actual
+        achievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
+        planCount
+        resultCount
+      }
       rows {
         kpiQuarterPlanId
         kpiId
         kpiName
+        objectiveId
         objectiveTitle
+        objectiveWeight
+        cascadeType
+        parentKpiId
         level
         entityId
         entityName
@@ -97,6 +136,8 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         customUnitLabel
         annualTarget
         weight
+        quarterlyAggregationMethod
+        plannedContributionWeight
         quarterNumber
         timeline
         originalTarget

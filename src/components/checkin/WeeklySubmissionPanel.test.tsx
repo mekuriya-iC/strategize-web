@@ -10,6 +10,10 @@ const summary = {
   sessionId: "session-1",
   draftCount: 7,
   submittedCount: 0,
+  pendingApprovalCount: 0,
+  approvedCount: 0,
+  approvedInitialCount: 0,
+  initialWeeklyApprovalCompliant: false,
   personalTodoCount: 2,
   activeCount: 9,
   remainingCapacity: 6,
@@ -47,7 +51,8 @@ describe("weekly task submission", () => {
 
     expect(screen.getByText("9/15")).toBeTruthy();
     expect(screen.getByText("DRAFT 7")).toBeTruthy();
-    expect(screen.getByText("SUBMITTED 0")).toBeTruthy();
+    expect(screen.getByText("PENDING 0")).toBeTruthy();
+    expect(screen.getByText("APPROVED 0")).toBeTruthy();
     expect(screen.getByText("PERSONAL_TODO 2")).toBeTruthy();
     expect(
       screen.getByText(/Personal to-dos stay private and are visible only to you/i),
@@ -66,7 +71,12 @@ describe("weekly task submission", () => {
   it("disables resubmission and explains that later tasks remain private", () => {
     render(
       <WeeklySubmissionPanel
-        summary={{ ...summary, draftCount: 0, submittedCount: 6 }}
+        summary={{
+          ...summary,
+          draftCount: 0,
+          pendingApprovalCount: 6,
+          approvedInitialCount: 0,
+        }}
         selectedCount={0}
         selectedKpiFulfilledCount={0}
         alreadySubmitted
@@ -75,7 +85,7 @@ describe("weekly task submission", () => {
     );
 
     expect(
-      screen.getByText(/Tasks added later are private personal to-dos/i),
+      screen.getByText(/Rejected tasks return to DRAFT/i),
     ).toBeTruthy();
     expect(
       (screen.getByRole("button", {
@@ -89,9 +99,13 @@ describe("weekly task submission", () => {
       label: "DRAFT",
       description: "Private until you submit it",
     });
-    expect(getSubmissionStatusMeta("SUBMITTED")).toMatchObject({
-      label: "SUBMITTED",
-      description: "Visible to your supervisor",
+    expect(getSubmissionStatusMeta("PENDING_APPROVAL")).toMatchObject({
+      label: "PENDING APPROVAL",
+      description: "Awaiting supervisor review — not yet official",
+    });
+    expect(getSubmissionStatusMeta("APPROVED")).toMatchObject({
+      label: "APPROVED",
+      description: "Approved and included in the official task list",
     });
     expect(getSubmissionStatusMeta("PERSONAL_TODO")).toMatchObject({
       label: "PERSONAL_TODO",

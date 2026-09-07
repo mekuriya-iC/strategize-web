@@ -68,6 +68,7 @@ interface AddTaskDialogProps {
   sessionId?: string;
   editingTask?: any;
   session?: any; // Add session prop to check lock status
+  initialIsMidWeek?: boolean;
 }
 
 
@@ -91,6 +92,7 @@ export function AddTaskDialog({
   sessionId,
   editingTask,
   session,
+  initialIsMidWeek = false,
 }: AddTaskDialogProps) {
   const user = useAuthStore((state) => state.user);
   const editMode = editingTask
@@ -123,7 +125,10 @@ export function AddTaskDialog({
         const createdSessionId =
           createdTask?.session?.checkinoutSessionId || sessionId;
         if (createdTask && createdSessionId) {
-          upsertCheckinTask(cache, createdSessionId, createdTask);
+          upsertCheckinTask(cache, createdSessionId, {
+            ...createdTask,
+            planningReviewHistory: createdTask.planningReviewHistory || [],
+          });
         }
       },
     },
@@ -194,7 +199,7 @@ export function AddTaskDialog({
     null,
   );
   const [remark, setRemark] = useState("");
-  const [isMidWeekTask, setIsMidWeekTask] = useState(false);
+  const [isMidWeekTask, setIsMidWeekTask] = useState(initialIsMidWeek);
   const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const evidenceUploadRequestId = useRef(0);
@@ -226,7 +231,7 @@ export function AddTaskDialog({
     setUploadingEvidence(false);
     setEvidenceUploadError(null);
     setRemark("");
-    setIsMidWeekTask(false);
+    setIsMidWeekTask(initialIsMidWeek);
     setScheduleError(null);
   }
 
@@ -278,7 +283,7 @@ export function AddTaskDialog({
       // Reset form when dialog closes
       resetForm();
     }
-  }, [editingTask, open]);
+  }, [editingTask, initialIsMidWeek, open]);
 
   const handleTaskTypeChange = (nextTaskType: TaskType) => {
     setTaskType(nextTaskType);
@@ -608,7 +613,9 @@ export function AddTaskDialog({
         showSuccessToast(
           submissionStatus === "PERSONAL_TODO"
             ? "Task saved as a private personal to-do"
-            : "Task saved privately as a draft",
+            : isMidWeekTask
+              ? "Midweek task saved as a draft. Submit it for planning approval from the task list."
+              : "Task saved privately as a draft",
         );
       }
 
@@ -642,11 +649,13 @@ export function AddTaskDialog({
             {editingTask ? "Edit Task" : "Add a Task"}
           </DialogTitle>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {isCheckoutOnlyEdit
-              ? "This submitted task is checkout-only. Planning details cannot be changed."
-              : editingTask
-                ? "This private task is still a planning form. All planning details can be updated."
-                : "This task is saved privately as a draft. If this week was already submitted, it is saved as a private personal to-do instead."}
+            {editingTask?.submissionStatus === "PENDING_APPROVAL"
+              ? "This plan is awaiting supervisor approval and cannot be edited."
+              : isCheckoutOnlyEdit
+                ? "This approved task is checkout-only. Planning details cannot be changed."
+                : editingTask
+                  ? "This draft is fully editable and can be resubmitted for planning approval."
+                  : "This task is saved privately as a draft. Midweek drafts can be submitted explicitly for approval from the task list."}
           </p>
         </DialogHeader>
 

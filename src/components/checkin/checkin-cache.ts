@@ -122,7 +122,55 @@ export function removeCheckinTask(
   invalidateCheckinDerivedFields(cache, sessionId);
 }
 
-function invalidateCheckinDerivedFields(
+export function removePendingPlanningApproval(
+  cache: ApolloCache<unknown>,
+  sessionId: string,
+  taskId: string,
+) {
+  cache.modify({
+    id: "ROOT_QUERY",
+    fields: {
+      pendingTaskPlanningApprovals(existingRefs: readonly unknown[] = [], { readField }) {
+        return existingRefs.filter(
+          (taskRef) => readField("checkinoutTaskId", taskRef) !== taskId,
+        );
+      },
+    },
+  });
+  invalidateCheckinDerivedFields(cache, sessionId);
+}
+
+/** Removes a task from the exact visible session page without evicting its normalized entity. */
+export function removeCheckinTaskFromPage(
+  cache: ApolloCache<unknown>,
+  sessionId: string,
+  taskId: string,
+) {
+  const variables = taskVariables(sessionId);
+  const existing = cache.readQuery<CheckinoutTasksData>({
+    query: GET_CHECKINOUT_TASKS,
+    variables,
+  });
+  if (!existing?.checkinoutTasks) return;
+  const items = existing.checkinoutTasks.items.filter(
+    (task) => task.checkinoutTaskId !== taskId,
+  );
+  if (items.length === existing.checkinoutTasks.items.length) return;
+  cache.writeQuery({
+    query: GET_CHECKINOUT_TASKS,
+    variables,
+    data: {
+      checkinoutTasks: {
+        ...existing.checkinoutTasks,
+        items,
+        meta: adjustMeta(existing.checkinoutTasks.meta, -1),
+      },
+    },
+  });
+  invalidateCheckinDerivedFields(cache, sessionId);
+}
+
+export function invalidateCheckinDerivedFields(
   cache: ApolloCache<unknown>,
   sessionId: string,
 ) {

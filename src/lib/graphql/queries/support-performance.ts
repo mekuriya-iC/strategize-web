@@ -14,15 +14,31 @@ export const GET_SUPPORT_PERFORMANCE_REPORT = gql`
         pendingApproval
         ready
       }
+      sourceSummaries {
+        sourceCorporateKpiId
+        sourceCorporateKpiName
+        sourceCorporateObjectiveId
+        sourceCorporateObjectiveTitle
+        localKpiCount
+        resultCount
+        planCount
+        plannedContributionWeight
+        achievedContributionWeight
+        achievementRate
+        resultCoverageRate
+      }
       rows {
         objectiveSupportSourceId
         sourceCorporateKpiId
         sourceCorporateKpiName
+        sourceCorporateObjectiveId
+        sourceCorporateObjectiveTitle
         unitType
         unitId
         unitName
         supportObjectiveId
         supportObjectiveTitle
+        expectedImpact
         localKpiId
         localKpiName
         readinessStatus
@@ -33,9 +49,11 @@ export const GET_SUPPORT_PERFORMANCE_REPORT = gql`
           actual
           achievement
           contribution
+          plannedContributionWeight
           resultStatus
         }
         annualContribution
+        plannedContributionWeight
         annualAchievement
       }
       totalItems

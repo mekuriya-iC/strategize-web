@@ -60,7 +60,7 @@ export function buildOrganizationPerformanceItems(
   return rollups
     .filter((rollup) => rollup.level === level)
     .map((rollup) => {
-      const achievement = toPercent(rollup.averageAchievementRate);
+      const achievement = toPercent(rollup.weightedAchievementRate);
 
       return {
         id: rollup.entityId,
@@ -101,7 +101,13 @@ export function buildOrganizationComparison(
     "summary" | "rollups" | "availableFilters"
   >,
 ): OrganizationComparison {
-  const corporateAchievement = toPercent(report.summary.averageAchievementRate);
+  const corporateSummary = report.rollups.find(
+    (rollup) => rollup.level === "CORPORATE",
+  );
+  const corporateAchievement = toPercent(
+    corporateSummary?.weightedAchievementRate ??
+      report.summary.weightedAchievementRate,
+  );
 
   const withDelta = (
     item: OrganizationPerformanceItem,

@@ -9,6 +9,7 @@ import {
 } from "@/lib/graphql/queries/checkins";
 import {
   CREATE_CHECKINOUT_SESSION,
+  SUBMIT_TASK_FOR_PLANNING_APPROVAL,
   SUBMIT_WEEKLY_TASKS,
 } from "@/lib/graphql/mutations/checkins";
 import { GET_ME } from "@/lib/graphql/queries/auth";
@@ -20,7 +21,12 @@ import SessionListView from "@/components/checkin/SessionListView";
 import { TaskColorLegend } from "@/components/checkin/TaskColorLegend";
 import { WeeklySubmissionPanel } from "@/components/checkin/WeeklySubmissionPanel";
 import { ScheduleCalendar } from "@/components/checkin/ScheduleCalendar";
-import { canSubmitWeeklyTasks } from "@/components/checkin/weekly-submission";
+import { TaskPlanningApprovalQueue } from "@/components/checkin/TaskPlanningApprovalQueue";
+import {
+  canSubmitWeeklyTasks,
+  isOfficialTaskStatus,
+} from "@/components/checkin/weekly-submission";
+import { upsertCheckinTask } from "@/components/checkin/checkin-cache";
 import {
   summarizeTaskTypes,
   type TaskTypeSummary,
@@ -87,6 +93,8 @@ const mapTaskToFrontend = (task: any) => ({
   isSelfDevComplete:
     task.taskLinkType === "SELF_DEVELOPMENT_FULFILLED",
   submissionStatus: task.submissionStatus,
+  planningRevision: task.planningRevision ?? 0,
+  planningReviewHistory: task.planningReviewHistory || [],
   logbookStatus: task.logbookStatus || null,
   submittedAt: task.submittedAt || null,
   submissionBatchId: task.submissionBatchId || null,
@@ -97,6 +105,11 @@ const mapTaskToFrontend = (task: any) => ({
   isMidWeekTask: Boolean(task.isMidWeekTask),
   achievedDescription: task.achievedDescription || "",
   nextSteps: task.nextSteps || "",
+  carryoverRootTaskId: task.carryoverRootTaskId || null,
+  carryoverPredecessorTaskId: task.carryoverPredecessorTaskId || null,
+  carryoverGeneration: task.carryoverGeneration ?? 0,
+  isCarryoverOverdue: Boolean(task.isCarryoverOverdue),
+  carryoverEscalatedAt: task.carryoverEscalatedAt || null,
 });
 
 function EmployeeTaskCard({
@@ -139,10 +152,17 @@ function EmployeeTaskCard({
     return items
       .filter(
         (task: any) =>
-          task.session?.checkinoutSessionId === session.checkinoutSessionId,
+          task.session?.checkinoutSessionId === session.checkinoutSessionId &&
+          (session.employee?.employeeId === currentUser?.employeeId ||
+            isOfficialTaskStatus(task.submissionStatus)),
       )
       .map(mapTaskToFrontend);
-  }, [tasksData, session.checkinoutSessionId]);
+  }, [
+    currentUser?.employeeId,
+    session.employee?.employeeId,
+    session.checkinoutSessionId,
+    tasksData,
+  ]);
 
   useEffect(() => {
     if (!onTasksSummary || !session?.checkinoutSessionId) return;
@@ -319,6 +339,14 @@ function EmployeeTaskCard({
             )}
           </div>
 
+          <TaskPlanningApprovalQueue
+            sessionId={session.checkinoutSessionId}
+            canReview={
+              !isCurrentUser &&
+              (isManagerOfThisEmployee || currentUser?.role === "SUPER_ADMIN")
+            }
+          />
+
           <div className="p-0 overflow-x-auto">
             {tasksLoading ? (
               <div className="p-12 text-center">
@@ -376,6 +404,7 @@ export default function CheckInPage() {
   );
   const [targetSessionId, setTargetSessionId] = useState<string | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [addAsMidWeekTask, setAddAsMidWeekTask] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -408,6 +437,7 @@ export default function CheckInPage() {
   );
 
   const handleEditTask = (task: any) => {
+    setAddAsMidWeekTask(false);
     setTargetSessionId(task.sessionId || null);
     setEditingTask(task);
     setIsAddTaskOpen(true);
@@ -730,12 +760,22 @@ export default function CheckInPage() {
     SUBMIT_WEEKLY_TASKS,
     { errorPolicy: "none" },
   );
+  const [submitTaskForApproval, { loading: submittingSingleTask }] = useMutation(
+    SUBMIT_TASK_FOR_PLANNING_APPROVAL,
+    {
+      errorPolicy: "none",
+      update: (cache, { data }) => {
+        const task = data?.submitTaskForPlanningApproval;
+        const taskSessionId = task?.session?.checkinoutSessionId;
+        if (task && taskSessionId) upsertCheckinTask(cache, taskSessionId, task);
+      },
+    },
+  );
 
   const poolSummary = poolSummaryData?.taskPoolSummary;
   const alreadySubmitted =
     !isManagerMode &&
-    ((poolSummary?.submittedCount ?? 0) > 0 ||
-      tasks.some((task: any) => task.submissionStatus === "SUBMITTED"));
+    tasks.some((task: any) => Boolean(task.submissionBatchId));
 
   const sessionReadOnly =
     Boolean(currentSession?.isLocked) ||
@@ -820,10 +860,26 @@ export default function CheckInPage() {
       const submittedCount =
         result.data.submitWeeklyTasks.submittedTaskCount;
       toast.success(
-        `${submittedCount} weekly tasks submitted. Your supervisor can now see them.`,
+        `${submittedCount} weekly tasks sent for supervisor approval. They are pending and not yet official.`, 
       );
     } catch (error: any) {
       toast.error(error?.message || "Weekly task submission failed. Try again.");
+    }
+  };
+
+  const handleSingleTaskSubmission = async (taskId: string) => {
+    const task = tasks.find((candidate: any) => candidate.id === taskId);
+    if (!task || task.submissionStatus !== "DRAFT" || sessionReadOnly) return;
+    try {
+      const result = await submitTaskForApproval({ variables: { taskId } });
+      if (!result.data?.submitTaskForPlanningApproval) {
+        throw new Error("The server did not confirm the planning submission.");
+      }
+      toast.success(
+        `Task submitted for planning approval (revision ${result.data.submitTaskForPlanningApproval.planningRevision}).`,
+      );
+    } catch (error: any) {
+      toast.error(error?.message || "Could not submit task for planning approval.");
     }
   };
 
@@ -929,6 +985,7 @@ export default function CheckInPage() {
       toast.error("Could not determine the session for this task.");
       return;
     }
+    setAddAsMidWeekTask(false);
     setTargetSessionId(sessionId);
     setIsAddTaskOpen(true);
   };
@@ -1458,6 +1515,7 @@ export default function CheckInPage() {
 
               <Button
                 onClick={() => {
+                  setAddAsMidWeekTask(false);
                   setTargetSessionId(
                     currentSession?.checkinoutSessionId || null,
                   );
@@ -1496,6 +1554,7 @@ export default function CheckInPage() {
                     </div>
                     <Button
                       onClick={() => {
+                        setAddAsMidWeekTask(false);
                         setTargetSessionId(
                           currentSession?.checkinoutSessionId || null,
                         );
@@ -1554,6 +1613,8 @@ export default function CheckInPage() {
                 isSelectionEnabled={!alreadySubmitted && !sessionReadOnly}
                 selectedTaskIds={validSelectedTaskIds}
                 onSelectionChange={handleTaskSelectionChange}
+                onSubmitForApproval={handleSingleTaskSubmission}
+                submittingTaskForApproval={submittingSingleTask}
               />
 
               {/* Add Mid Week Task Button */}
@@ -1561,6 +1622,7 @@ export default function CheckInPage() {
                 <div className="mt-4 flex justify-center">
                   <Button
                     onClick={() => {
+                      setAddAsMidWeekTask(true);
                       setTargetSessionId(
                         currentSession?.checkinoutSessionId || null,
                       );
@@ -1581,6 +1643,7 @@ export default function CheckInPage() {
 
       {/* Add Task Dialog */}
       <AddTaskDialog
+        key={`${targetSessionId || "none"}-${editingTask?.id || "new"}-${addAsMidWeekTask ? "midweek" : "standard"}`}
         open={isAddTaskOpen}
         onOpenChange={(open) => {
           console.log("🔔 [CHECKIN PAGE] AddTaskDialog open state changed:", open);
@@ -1598,6 +1661,7 @@ export default function CheckInPage() {
         sessionId={targetSessionId || undefined}
         editingTask={editingTask}
         session={allSessions.find((s: any) => s.checkinoutSessionId === targetSessionId)}
+        initialIsMidWeek={addAsMidWeekTask}
       />
 
       {/* Filter Dialog */}

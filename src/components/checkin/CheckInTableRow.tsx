@@ -3,14 +3,23 @@
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon, FileIcon, LockIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  FileIcon,
+  LockIcon,
+  PencilIcon,
+  SendIcon,
+  TrashIcon,
+} from "lucide-react";
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 import { getTaskColors, getTaskCategory } from "@/utils/task-colors";
 import { removeCheckinTask } from "./checkin-cache";
 import {
+  getLatestPlanningRejection,
   getSubmissionStatusMeta,
+  type TaskPlanningReview,
   type TaskSubmissionStatus,
 } from "./weekly-submission";
 
@@ -37,6 +46,11 @@ interface Task {
   submissionStatus?: TaskSubmissionStatus;
   logbookStatus?: string | null;
   sessionId?: string | null;
+  planningRevision?: number;
+  planningReviewHistory?: TaskPlanningReview[];
+  carryoverGeneration?: number;
+  isCarryoverOverdue?: boolean;
+  carryoverEscalatedAt?: string | null;
 }
 
 interface CheckInTableRowProps {
@@ -47,6 +61,8 @@ interface CheckInTableRowProps {
   isSelectionEnabled?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (taskId: string, selected: boolean) => void;
+  onSubmitForApproval?: (taskId: string) => void | Promise<void>;
+  submittingTaskForApproval?: boolean;
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -75,6 +91,8 @@ export function CheckInTableRow({
   isSelectionEnabled = false,
   isSelected = false,
   onSelectionChange,
+  onSubmitForApproval,
+  submittingTaskForApproval = false,
 }: CheckInTableRowProps) {
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK);
 
@@ -84,6 +102,11 @@ export function CheckInTableRow({
   const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
   const canSelect =
     isSelectionEnabled && task.submissionStatus === "DRAFT";
+  const latestRejection = getLatestPlanningRejection(task.planningReviewHistory);
+  const canSubmitIndividually =
+    task.submissionStatus === "DRAFT" &&
+    (Boolean(task.isMidWeekTask) || Boolean(latestRejection));
+  const planningIsLocked = task.submissionStatus === "PENDING_APPROVAL";
   const isOverdueFulfilled =
     task.taskType === "KPI_FULFILLED" &&
     task.logbookStatus?.toUpperCase() === "OVERDUE";
@@ -217,6 +240,24 @@ export function CheckInTableRow({
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {submissionStatus.description}
               </span>
+              {(task.planningRevision ?? 0) > 0 && (
+                <Badge variant="outline">Revision {task.planningRevision}</Badge>
+              )}
+              {(task.carryoverGeneration ?? 0) > 0 && (
+                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                  Carryover Week {Math.min((task.carryoverGeneration ?? 0) + 1, 2)} of 2
+                </Badge>
+              )}
+              {(task.isCarryoverOverdue || task.carryoverEscalatedAt) && (
+                <Badge className="gap-1 bg-red-600 text-white">
+                  <AlertTriangleIcon className="h-3 w-3" /> Critical carryover overdue
+                </Badge>
+              )}
+              {latestRejection && task.submissionStatus === "DRAFT" && (
+                <span className="basis-full text-xs font-medium text-red-700 dark:text-red-300">
+                  Revision {latestRejection.revision} rejected: {latestRejection.rejectionReason}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -328,11 +369,23 @@ export function CheckInTableRow({
         <div className="flex items-center gap-2 min-h-9">
           {isEditable ? (
             <>
+              {canSubmitIndividually && onSubmitForApproval && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSubmitForApproval(task.id)}
+                  disabled={submittingTaskForApproval || loading}
+                  className="gap-1 border-blue-600 text-blue-700 hover:bg-blue-50"
+                  title="Submit this revised or midweek draft for planning approval"
+                >
+                  <SendIcon className="w-4 h-4" /> Submit
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleEdit}
-                disabled={loading}
+                disabled={loading || planningIsLocked}
                 className="text-[#3838EC] hover:text-[#2d2dbd] hover:bg-[#ECECFF]"
               >
                 <PencilIcon className="w-4 h-4" />
@@ -341,7 +394,12 @@ export function CheckInTableRow({
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
-                disabled={loading}
+                disabled={
+                  loading ||
+                  planningIsLocked ||
+                  task.submissionStatus === "APPROVED" ||
+                  task.submissionStatus === "SUBMITTED"
+                }
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 <TrashIcon className="w-4 h-4" />

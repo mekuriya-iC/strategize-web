@@ -12,6 +12,8 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   CalendarIcon,
+  AlertTriangleIcon,
+  SendIcon,
 } from "lucide-react";
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
@@ -23,7 +25,9 @@ import {
   getTaskColors,
 } from "@/utils/task-colors";
 import {
+  getLatestPlanningRejection,
   getSubmissionStatusMeta,
+  type TaskPlanningReview,
   type TaskSubmissionStatus,
 } from "./weekly-submission";
 
@@ -50,6 +54,11 @@ interface Task {
   submissionStatus?: TaskSubmissionStatus;
   logbookStatus?: string | null;
   sessionId?: string | null;
+  planningRevision?: number;
+  planningReviewHistory?: TaskPlanningReview[];
+  carryoverGeneration?: number;
+  isCarryoverOverdue?: boolean;
+  carryoverEscalatedAt?: string | null;
 }
 
 interface CheckInTableCardProps {
@@ -60,6 +69,8 @@ interface CheckInTableCardProps {
   isSelectionEnabled?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (taskId: string, selected: boolean) => void;
+  onSubmitForApproval?: (taskId: string) => void | Promise<void>;
+  submittingTaskForApproval?: boolean;
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -88,6 +99,8 @@ export function CheckInTableCard({
   isSelectionEnabled = false,
   isSelected = false,
   onSelectionChange,
+  onSubmitForApproval,
+  submittingTaskForApproval = false,
 }: CheckInTableCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK);
@@ -99,6 +112,11 @@ export function CheckInTableCard({
   const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
   const canSelect =
     isSelectionEnabled && task.submissionStatus === "DRAFT";
+  const latestRejection = getLatestPlanningRejection(task.planningReviewHistory);
+  const canSubmitIndividually =
+    task.submissionStatus === "DRAFT" &&
+    (Boolean(task.isMidWeekTask) || Boolean(latestRejection));
+  const planningIsLocked = task.submissionStatus === "PENDING_APPROVAL";
   const isOverdueFulfilled =
     task.taskType === "KPI_FULFILLED" &&
     task.logbookStatus?.toUpperCase() === "OVERDUE";
@@ -238,6 +256,24 @@ export function CheckInTableCard({
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {submissionStatus.description}
               </span>
+              {(task.planningRevision ?? 0) > 0 && (
+                <Badge variant="outline">Revision {task.planningRevision}</Badge>
+              )}
+              {(task.carryoverGeneration ?? 0) > 0 && (
+                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                  Carryover Week {Math.min((task.carryoverGeneration ?? 0) + 1, 2)} of 2
+                </Badge>
+              )}
+              {(task.isCarryoverOverdue || task.carryoverEscalatedAt) && (
+                <Badge className="gap-1 bg-red-600 text-white">
+                  <AlertTriangleIcon className="h-3 w-3" /> Critical carryover overdue
+                </Badge>
+              )}
+              {latestRejection && task.submissionStatus === "DRAFT" && (
+                <p className="basis-full text-xs font-medium text-red-700 dark:text-red-300">
+                  Revision {latestRejection.revision} rejected: {latestRejection.rejectionReason}
+                </p>
+              )}
             </div>
             {task.linkedKpiName || task.linkedInitiativeName ? (
               <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -383,12 +419,23 @@ export function CheckInTableCard({
 
           {/* Actions */}
           {isEditable ? (
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {canSubmitIndividually && onSubmitForApproval && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSubmitForApproval(task.id)}
+                  disabled={submittingTaskForApproval || loading}
+                  className="flex-1 gap-2 border-blue-600 text-blue-700 hover:bg-blue-50"
+                >
+                  <SendIcon className="w-4 h-4" /> Submit for approval
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleEdit}
-                disabled={loading}
+                disabled={loading || planningIsLocked}
                 className="flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
               >
                 <PencilIcon className="w-4 h-4 mr-2" />
@@ -398,7 +445,12 @@ export function CheckInTableCard({
                 variant="outline"
                 size="sm"
                 onClick={handleDelete}
-                disabled={loading}
+                disabled={
+                  loading ||
+                  planningIsLocked ||
+                  task.submissionStatus === "APPROVED" ||
+                  task.submissionStatus === "SUBMITTED"
+                }
                 className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
               >
                 <TrashIcon className="w-4 h-4 mr-2" />

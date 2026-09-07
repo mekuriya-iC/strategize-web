@@ -1,12 +1,18 @@
 import { print } from "graphql";
 import { describe, expect, it } from "vitest";
 import {
+  APPROVE_TASK_PLANNING,
   CREATE_CHECKINOUT_TASK,
+  REJECT_TASK_PLANNING,
+  REVIEW_TASK_PLANNING_BATCH,
+  SUBMIT_TASK_FOR_PLANNING_APPROVAL,
   SUBMIT_WEEKLY_TASKS,
 } from "../mutations/checkins";
 import {
   GET_CHECKINOUT_TASKS,
+  GET_PENDING_TASK_PLANNING_APPROVALS,
   GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES,
+  GET_TASK_PLANNING_REVIEW_HISTORY,
   GET_TASK_POOL_SUMMARY,
 } from "../queries/checkins";
 
@@ -21,9 +27,20 @@ describe("check-in draft pool GraphQL operations", () => {
       "submissionBatchId",
       "isCollaborativeTask",
       "collaborationRequestId",
+      "planningRevision",
+      "planningReviewHistory",
+      "carryoverRootTaskId",
+      "carryoverPredecessorTaskId",
+      "carryoverGeneration",
+      "isCarryoverOverdue",
+      "carryoverEscalatedAt",
     ]) {
       expect(taskQuery).toContain(field);
-      expect(createMutation).toContain(field);
+      // A newly-created draft has no review rows yet; requesting the non-null
+      // relation on the create payload would make an otherwise valid create fail.
+      if (field !== "planningReviewHistory") {
+        expect(createMutation).toContain(field);
+      }
     }
   });
 
@@ -33,6 +50,10 @@ describe("check-in draft pool GraphQL operations", () => {
     for (const field of [
       "draftCount",
       "submittedCount",
+      "pendingApprovalCount",
+      "approvedCount",
+      "approvedInitialCount",
+      "initialWeeklyApprovalCompliant",
       "personalTodoCount",
       "activeCount",
       "remainingCapacity",
@@ -51,6 +72,27 @@ describe("check-in draft pool GraphQL operations", () => {
     expect(query).toContain("managerId");
     expect(query).toContain("role");
     expect(query).toContain("status");
+  });
+
+  it("defines planning approval queries and mutations", () => {
+    expect(print(GET_PENDING_TASK_PLANNING_APPROVALS)).toContain(
+      "pendingTaskPlanningApprovals(sessionId: $sessionId)",
+    );
+    expect(print(GET_TASK_PLANNING_REVIEW_HISTORY)).toContain(
+      "taskPlanningReviewHistory(taskId: $taskId)",
+    );
+    expect(print(SUBMIT_TASK_FOR_PLANNING_APPROVAL)).toContain(
+      "submitTaskForPlanningApproval(taskId: $taskId)",
+    );
+    expect(print(APPROVE_TASK_PLANNING)).toContain(
+      "approveTaskPlanning(taskId: $taskId)",
+    );
+    expect(print(REJECT_TASK_PLANNING)).toContain(
+      "rejectTaskPlanning(taskId: $taskId, reason: $reason)",
+    );
+    expect(print(REVIEW_TASK_PLANNING_BATCH)).toContain(
+      "reviewTaskPlanningBatch(reviews: $reviews)",
+    );
   });
 
   it("submits selected task ids and requests the batch result", () => {

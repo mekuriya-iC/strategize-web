@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { UPDATE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
-import { GET_LOGBOOK_FORMULA_FOR_CONTEXT } from "@/lib/graphql/queries/logbook";
+import {
+  GET_LOGBOOK_ENTRY,
+  GET_LOGBOOK_FORMULA_FOR_CONTEXT,
+} from "@/lib/graphql/queries/logbook";
 import { getAccessToken } from "@/lib/auth-utils";
 import { toast } from "sonner";
 import {
@@ -150,13 +153,30 @@ export function SubmitApprovalDialog({
     item.description || item.activity || "",
   );
   const [remark, setRemark] = useState(item.outcome || "");
-  const isFormulaKpi = isLogbookFormulaCalculationType(
-    item.linkedKpi?.calculationType,
+  const { data: currentEntryData, loading: currentEntryLoading } = useQuery(
+    GET_LOGBOOK_ENTRY,
+    {
+      variables: { logbookEntryId: item.id },
+      skip: !open || !item.id,
+      // Submission readiness must reflect the server's current plan link, not
+      // a possibly stale entry cached before a KPI plan was approved.
+      fetchPolicy: "network-only",
+      nextFetchPolicy: "cache-first",
+    },
   );
-  const contextKpiId = item.linkedKpiId ?? item.linkedKpi?.kpiId ?? "";
+  const currentEntry = currentEntryData?.logbookEntry;
+  const isFormulaKpi = isLogbookFormulaCalculationType(
+    currentEntry?.linkedKpi?.calculationType ?? item.linkedKpi?.calculationType,
+  );
+  const contextKpiId =
+    currentEntry?.linkedKpiId ??
+    currentEntry?.linkedKpi?.kpiId ??
+    item.linkedKpiId ??
+    item.linkedKpi?.kpiId ??
+    "";
   const quarterPlanSubmissionBlock = getQuarterPlanSubmissionBlock(
     contextKpiId,
-    item.quarterPlan,
+    currentEntryLoading ? null : (currentEntry?.quarterPlan ?? item.quarterPlan),
   );
   const { data: formulaData, loading: formulaLoading } = useQuery<
     LogbookFormulaForContextQueryData,
@@ -264,6 +284,11 @@ export function SubmitApprovalDialog({
   });
 
   const handleSubmit = async () => {
+    if (currentEntryLoading) {
+      toast.info("Checking current KPI quarter-plan approval…");
+      return;
+    }
+
     if (quarterPlanSubmissionBlock) {
       toast.warning(quarterPlanSubmissionBlock.title, {
         description: quarterPlanSubmissionBlock.description,
@@ -847,11 +872,14 @@ export function SubmitApprovalDialog({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
+              currentEntryLoading ||
               !hasRecordedKpiResult ||
               Boolean(quarterPlanSubmissionBlock)
             }
             title={
-              quarterPlanSubmissionBlock?.title ||
+              (currentEntryLoading
+                ? "Checking KPI quarter-plan approval"
+                : quarterPlanSubmissionBlock?.title) ||
               (hasRecordedKpiResult
                 ? undefined
                 : "Enter the KPI achievement before submitting")

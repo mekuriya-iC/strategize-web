@@ -130,7 +130,11 @@ export function removePendingPlanningApproval(
   cache.modify({
     id: "ROOT_QUERY",
     fields: {
-      pendingTaskPlanningApprovals(existingRefs: readonly unknown[] = [], { readField }) {
+      pendingTaskPlanningApprovals(existingRefs, { readField }) {
+        // Handle both array and Reference types
+        if (!existingRefs || !Array.isArray(existingRefs)) {
+          return existingRefs;
+        }
         return existingRefs.filter(
           (taskRef) => readField("checkinoutTaskId", taskRef) !== taskId,
         );

@@ -24,7 +24,8 @@ export const STATUS_LABELS: Record<TaskCollaborationRequestStatus, string> = {
 
 export const TASK_STATE_LABELS: Record<TaskSubmissionStatus, string> = {
   DRAFT: "Private draft",
-  SUBMITTED: "Submitted",
+  PENDING_APPROVAL: "Pending approval",
+  APPROVED: "Approved",
   PERSONAL_TODO: "Personal to-do",
 };
 

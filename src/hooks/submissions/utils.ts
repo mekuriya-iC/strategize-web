@@ -104,6 +104,18 @@ export const getDepartmentIdFromSubmission = (
     }
   }
 
+  // A manager's directly-created KPI has no explicit assignee. The API routes
+  // it to the DEPARTMENT queue for the division director, so use the creator's
+  // department to place it in the correct division approval inbox.
+  if (
+    submission.type === "KPI" &&
+    submission.level === "DEPARTMENT" &&
+    !submission.kpi?.assigneeType &&
+    submission.submittedBy?.departments?.length
+  ) {
+    return submission.submittedBy.departments[0].departmentId;
+  }
+
   return null;
 }
 
@@ -345,4 +357,3 @@ export const calculatePaginationMeta = (
   totalItems,
   totalPages: Math.ceil(totalItems / limit),
 });
-

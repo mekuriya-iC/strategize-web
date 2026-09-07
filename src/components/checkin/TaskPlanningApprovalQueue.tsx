@@ -140,6 +140,38 @@ export function TaskPlanningApprovalQueue({
                     <p className="font-semibold text-lg text-gray-900 dark:text-gray-100">{task.taskTitle}</p>
                     <Badge variant="outline" className="text-xs">Revision {task.planningRevision}</Badge>
                     {task.isMidWeekTask && <Badge variant="secondary" className="text-xs">Midweek</Badge>}
+                    
+                    {/* Task Type Badge */}
+                    {task.taskLinkType === "KPI_FULFILLED" && (
+                      <Badge className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700">
+                        KPI Fulfilled
+                      </Badge>
+                    )}
+                    {task.taskLinkType === "KPI_UNMET" && (
+                      <Badge className="text-xs bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700">
+                        KPI Unmet
+                      </Badge>
+                    )}
+                    {task.taskLinkType === "INITIATIVE_FULFILLED" && (
+                      <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-700">
+                        Initiative Fulfilled
+                      </Badge>
+                    )}
+                    {task.taskLinkType === "INITIATIVE_UNMET" && (
+                      <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700">
+                        Initiative Unmet
+                      </Badge>
+                    )}
+                    {task.taskLinkType === "SELF_DEVELOPMENT_FULFILLED" && (
+                      <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700">
+                        Self Development
+                      </Badge>
+                    )}
+                    {!task.taskLinkType && (
+                      <Badge variant="outline" className="text-xs">
+                        Unlinked
+                      </Badge>
+                    )}
                   </div>
                   
                   {/* Employee who submitted */}

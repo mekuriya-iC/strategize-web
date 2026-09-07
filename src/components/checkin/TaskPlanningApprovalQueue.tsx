@@ -29,10 +29,18 @@ import {
 interface PendingPlanningTask {
   checkinoutTaskId: string;
   taskTitle: string;
+  taskLinkType?: string | null;
   plannedDescription?: string | null;
   planningRevision: number;
   isMidWeekTask?: boolean;
   submittedAt?: string | null;
+  taskStartDate?: string | null;
+  taskEndDate?: string | null;
+  linkedKpi?: { kpiId: string; name: string } | null;
+  linkedInitiative?: { initiativeId: string; title: string } | null;
+  session?: {
+    employee?: { employeeId: string; fullName: string } | null;
+  } | null;
 }
 
 const errorMessage = (error: unknown, fallback: string) =>
@@ -123,42 +131,92 @@ export function TaskPlanningApprovalQueue({
       </div>
       <div className="space-y-2">
         {tasks.map((task) => (
-          <div key={task.checkinoutTaskId} className="rounded-lg border bg-background p-3 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium">{task.taskTitle}</p>
-                  <Badge variant="outline">Revision {task.planningRevision}</Badge>
-                  {task.isMidWeekTask && <Badge variant="secondary">Midweek</Badge>}
+          <div key={task.checkinoutTaskId} className="rounded-lg border bg-background p-4 shadow-sm">
+            <div className="flex flex-col gap-3">
+              {/* Header with title and badges */}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <p className="font-semibold text-lg text-gray-900 dark:text-gray-100">{task.taskTitle}</p>
+                    <Badge variant="outline" className="text-xs">Revision {task.planningRevision}</Badge>
+                    {task.isMidWeekTask && <Badge variant="secondary" className="text-xs">Midweek</Badge>}
+                  </div>
+                  
+                  {/* Employee who submitted */}
+                  {task.session?.employee && (
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                      📤 Submitted by: <span className="font-semibold text-gray-900 dark:text-gray-100">{task.session.employee.fullName}</span>
+                    </p>
+                  )}
+                  
+                  {/* Description */}
+                  {task.plannedDescription && (
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 leading-relaxed">{task.plannedDescription}</p>
+                  )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{task.plannedDescription}</p>
-                {task.submittedAt && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Submitted {format(new Date(task.submittedAt), "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                )}
+                
+                {/* Action buttons */}
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    size="sm"
+                    className="gap-1 bg-green-600 text-white hover:bg-green-700"
+                    disabled={approving || rejecting}
+                    onClick={() => handleApprove(task.checkinoutTaskId)}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1"
+                    disabled={approving || rejecting}
+                    onClick={() => {
+                      setRejectingTask(task);
+                      setReason("");
+                    }}
+                  >
+                    <XCircle className="h-4 w-4" /> Reject
+                  </Button>
+                </div>
               </div>
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  size="sm"
-                  className="gap-1 bg-green-600 text-white hover:bg-green-700"
-                  disabled={approving || rejecting}
-                  onClick={() => handleApprove(task.checkinoutTaskId)}
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="gap-1"
-                  disabled={approving || rejecting}
-                  onClick={() => {
-                    setRejectingTask(task);
-                    setReason("");
-                  }}
-                >
-                  <XCircle className="h-4 w-4" /> Reject
-                </Button>
+              
+              {/* Task details grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
+                {/* Linked KPI or Initiative */}
+                {task.linkedKpi ? (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 min-w-[80px]">Linked KPI:</span>
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{task.linkedKpi.name}</span>
+                  </div>
+                ) : task.linkedInitiative ? (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 min-w-[80px]">Initiative:</span>
+                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">{task.linkedInitiative.title}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 min-w-[80px]">Type:</span>
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Unlinked Task</span>
+                  </div>
+                )}
+                
+                {/* Task dates */}
+                {task.taskStartDate && task.taskEndDate && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 min-w-[80px]">Schedule:</span>
+                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                      {format(new Date(task.taskStartDate), "MMM d, h:mm a")} - {format(new Date(task.taskEndDate), "h:mm a")}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Submission time */}
+                {task.submittedAt && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 min-w-[80px]">Submitted:</span>
+                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">{format(new Date(task.submittedAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

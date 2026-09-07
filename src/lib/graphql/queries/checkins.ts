@@ -296,6 +296,16 @@ export const GET_PENDING_TASK_PLANNING_APPROVALS = gql`
       isMidWeekTask
       taskStartDate
       taskEndDate
+      linkedKpiId
+      linkedKpi {
+        kpiId
+        name
+      }
+      linkedInitiativeId
+      linkedInitiative {
+        initiativeId
+        title
+      }
       carryoverRootTaskId
       carryoverPredecessorTaskId
       carryoverGeneration

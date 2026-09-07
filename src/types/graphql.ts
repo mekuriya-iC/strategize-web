@@ -590,6 +590,7 @@ export type KpiCalculationType =
 export type KpiCarryPolicy = "ADDITIVE" | "NONE";
 export type KpiQuarterReportScope =
   "SELF" | "DEPARTMENT" | "DIVISION" | "ORGANIZATION";
+export type ObjectiveCascadeType = "TARGET_ALLOCATION" | "SUPPORT";
 
 export interface KpiQuarterReportFilterOption {
   id: string;
@@ -606,6 +607,10 @@ export interface KpiQuarterReportSummary {
   effectiveTarget: number;
   actual: number;
   averageAchievementRate: number;
+  weightedAchievementRate: number;
+  plannedContributionWeight: number;
+  achievedContributionWeight: number;
+  resultCoverageRate: number;
   annualContribution: number;
   carryOut: number;
   finalCount: number;
@@ -623,11 +628,39 @@ export interface KpiQuarterReportRollup extends KpiQuarterReportSummary {
   entityName: string;
 }
 
+export interface KpiQuarterReportKpiRollup {
+  kpiId: string;
+  kpiName: string;
+  objectiveId?: string | null;
+  objectiveTitle?: string | null;
+  objectiveWeight?: number | null;
+  cascadeType?: ObjectiveCascadeType | null;
+  parentKpiId?: string | null;
+  measurementUnit: KpiMeasurementUnit;
+  unitType?: KpiUnitType | null;
+  customUnitLabel?: string | null;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod | null;
+  annualTarget: number;
+  weight: number;
+  target: number;
+  actual?: number | null;
+  achievementRate: number;
+  plannedContributionWeight: number;
+  achievedContributionWeight: number;
+  resultCoverageRate: number;
+  planCount: number;
+  resultCount: number;
+}
+
 export interface KpiQuarterReportRow {
   kpiQuarterPlanId: string;
   kpiId: string;
   kpiName: string;
+  objectiveId?: string | null;
   objectiveTitle?: string | null;
+  objectiveWeight?: number | null;
+  cascadeType?: ObjectiveCascadeType | null;
+  parentKpiId?: string | null;
   level: ScorecardLevel;
   entityId: string;
   entityName: string;
@@ -646,6 +679,8 @@ export interface KpiQuarterReportRow {
   customUnitLabel?: string | null;
   annualTarget: number;
   weight: number;
+  quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod | null;
+  plannedContributionWeight: number;
   quarterNumber: number;
   timeline: string;
   originalTarget: number;
@@ -706,6 +741,7 @@ export interface KpiQuarterPerformanceReport {
   summary: KpiQuarterReportSummary;
   quarterSummaries: KpiQuarterReportQuarterSummary[];
   rollups: KpiQuarterReportRollup[];
+  kpiRollups: KpiQuarterReportKpiRollup[];
   rows: KpiQuarterReportRow[];
   totalItems: number;
   currentPage: number;

@@ -165,6 +165,18 @@ export const GET_CHECKINOUT_TASKS = gql`
         logbookStatus
         submissionStatus
         submittedAt
+        planningRevision
+        planningReviewHistory {
+          planningReviewId
+          revision
+          decision
+          rejectionReason
+          isInitialWeeklySelection
+          submittedAt
+          reviewedAt
+          submittedBy { employeeId fullName }
+          reviewedBy { employeeId fullName }
+        }
         submissionBatchId
         isCollaborativeTask
         collaborationRequestId
@@ -172,6 +184,11 @@ export const GET_CHECKINOUT_TASKS = gql`
         taskEndDate
         approvedAt
         autoRejectedAt
+        carryoverRootTaskId
+        carryoverPredecessorTaskId
+        carryoverGeneration
+        isCarryoverOverdue
+        carryoverEscalatedAt
         createdAt
         updatedAt
         approvedBy {
@@ -227,6 +244,18 @@ export const GET_CHECKINOUT_TASK = gql`
       logbookStatus
       submissionStatus
       submittedAt
+      planningRevision
+      planningReviewHistory {
+        planningReviewId
+        revision
+        decision
+        rejectionReason
+        isInitialWeeklySelection
+        submittedAt
+        reviewedAt
+        submittedBy { employeeId fullName }
+        reviewedBy { employeeId fullName }
+      }
       submissionBatchId
       isCollaborativeTask
       collaborationRequestId
@@ -234,6 +263,11 @@ export const GET_CHECKINOUT_TASK = gql`
       taskEndDate
       approvedAt
       autoRejectedAt
+      carryoverRootTaskId
+      carryoverPredecessorTaskId
+      carryoverGeneration
+      isCarryoverOverdue
+      carryoverEscalatedAt
       createdAt
       updatedAt
       approvedBy {
@@ -248,12 +282,75 @@ export const GET_CHECKINOUT_TASK = gql`
   }
 `;
 
+export const GET_PENDING_TASK_PLANNING_APPROVALS = gql`
+  query PendingTaskPlanningApprovals($sessionId: ID) {
+    pendingTaskPlanningApprovals(sessionId: $sessionId) {
+      checkinoutTaskId
+      taskTitle
+      taskLinkType
+      plannedDescription
+      taskStatus
+      submissionStatus
+      submittedAt
+      planningRevision
+      isMidWeekTask
+      taskStartDate
+      taskEndDate
+      carryoverRootTaskId
+      carryoverPredecessorTaskId
+      carryoverGeneration
+      isCarryoverOverdue
+      carryoverEscalatedAt
+      relatedTo { employeeId fullName }
+      session {
+        checkinoutSessionId
+        weekStartDate
+        weekEndDate
+        employee { employeeId fullName }
+      }
+      planningReviewHistory {
+        planningReviewId
+        revision
+        decision
+        rejectionReason
+        isInitialWeeklySelection
+        submittedAt
+        reviewedAt
+        submittedBy { employeeId fullName }
+        reviewedBy { employeeId fullName }
+      }
+    }
+  }
+`;
+
+export const GET_TASK_PLANNING_REVIEW_HISTORY = gql`
+  query TaskPlanningReviewHistory($taskId: ID!) {
+    taskPlanningReviewHistory(taskId: $taskId) {
+      planningReviewId
+      taskId
+      revision
+      decision
+      rejectionReason
+      isInitialWeeklySelection
+      submittedAt
+      reviewedAt
+      createdAt
+      submittedBy { employeeId fullName }
+      reviewedBy { employeeId fullName }
+    }
+  }
+`;
+
 export const GET_TASK_POOL_SUMMARY = gql`
   query TaskPoolSummary($sessionId: ID!) {
     taskPoolSummary(sessionId: $sessionId) {
       sessionId
       draftCount
       submittedCount
+      pendingApprovalCount
+      approvedCount
+      approvedInitialCount
+      initialWeeklyApprovalCompliant
       personalTodoCount
       activeCount
       remainingCapacity

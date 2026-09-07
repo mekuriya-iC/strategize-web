@@ -8,24 +8,32 @@ import type { KpiQuarterReportRollup } from "@/types/graphql";
 
 const makeRollup = (
   overrides: Partial<KpiQuarterReportRollup>,
-): KpiQuarterReportRollup => ({
-  level: "DIVISION",
-  entityId: "unit-1",
-  entityName: "Unit",
-  rowCount: 4,
-  kpiCount: 2,
-  originalTarget: 100,
-  carryIn: 0,
-  effectiveTarget: 100,
-  actual: 80,
-  averageAchievementRate: 0.8,
-  annualContribution: 20,
-  carryOut: 0,
-  finalCount: 2,
-  provisionalCount: 0,
-  pendingResultCount: 0,
-  ...overrides,
-});
+): KpiQuarterReportRollup => {
+  const achievement = overrides.averageAchievementRate ?? 0.8;
+  return {
+    level: "DIVISION",
+    entityId: "unit-1",
+    entityName: "Unit",
+    rowCount: 4,
+    kpiCount: 2,
+    originalTarget: 100,
+    carryIn: 0,
+    effectiveTarget: 100,
+    actual: 80,
+    averageAchievementRate: achievement,
+    weightedAchievementRate:
+      overrides.weightedAchievementRate ?? achievement,
+    plannedContributionWeight: 25,
+    achievedContributionWeight: 20,
+    resultCoverageRate: 1,
+    annualContribution: 20,
+    carryOut: 0,
+    finalCount: 2,
+    provisionalCount: 0,
+    pendingResultCount: 0,
+    ...overrides,
+  };
+};
 
 describe("isDashboardAnalyticsContextReady", () => {
   const readyContext = {
@@ -133,6 +141,10 @@ describe("buildOrganizationComparison", () => {
         effectiveTarget: 100,
         actual: 85,
         averageAchievementRate: 0.85,
+        weightedAchievementRate: 0.85,
+        plannedContributionWeight: 100,
+        achievedContributionWeight: 85,
+        resultCoverageRate: 0.9,
         annualContribution: 85,
         carryOut: 0,
         finalCount: 4,

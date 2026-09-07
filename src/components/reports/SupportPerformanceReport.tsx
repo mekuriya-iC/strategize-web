@@ -37,7 +37,7 @@ function QuarterOutcome({ outcome }: { outcome?: SupportQuarterOutcome }) {
   return (
     <div className="min-w-32 space-y-1 text-xs">
       <p><span className="text-muted-foreground">Actual:</span> {number(outcome.actual)}</p>
-      <p><span className="text-muted-foreground">Achievement:</span> {number(outcome.achievement)}%</p>
+      <p><span className="text-muted-foreground">Achievement:</span> {number(outcome.achievement * 100)}%</p>
       <Badge variant={outcome.resultStatus === "FINAL" ? "default" : "secondary"} className="text-[10px]">
         {outcome.resultStatus || "Calculated"}
       </Badge>

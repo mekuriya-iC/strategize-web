@@ -3,7 +3,10 @@
 import { useMemo } from "react";
 import { CheckInTableRow } from "./CheckInTableRow";
 import { CheckInTableCard } from "./CheckInTableCard";
-import type { TaskSubmissionStatus } from "./weekly-submission";
+import type {
+  TaskPlanningReview,
+  TaskSubmissionStatus,
+} from "./weekly-submission";
 
 interface Task {
   id: string;
@@ -27,6 +30,12 @@ interface Task {
   isMidWeekTask?: boolean;
   submissionStatus?: TaskSubmissionStatus;
   logbookStatus?: string | null;
+  planningRevision?: number;
+  planningReviewHistory?: TaskPlanningReview[];
+  carryoverGeneration?: number;
+  isCarryoverOverdue?: boolean;
+  carryoverEscalatedAt?: string | null;
+  sessionId?: string | null;
 }
 
 interface CheckInTableProps {
@@ -40,6 +49,8 @@ interface CheckInTableProps {
   isSelectionEnabled?: boolean;
   selectedTaskIds?: ReadonlySet<string>;
   onSelectionChange?: (taskId: string, selected: boolean) => void;
+  onSubmitForApproval?: (taskId: string) => void | Promise<void>;
+  submittingTaskForApproval?: boolean;
   filters?: {
     objective: string;
     startDate: Date | undefined;
@@ -61,6 +72,8 @@ export function CheckInTable({
   isSelectionEnabled = false,
   selectedTaskIds = new Set<string>(),
   onSelectionChange,
+  onSubmitForApproval,
+  submittingTaskForApproval = false,
 }: CheckInTableProps) {
   void createdDate;
   void endDate;
@@ -189,6 +202,8 @@ export function CheckInTable({
                   isSelectionEnabled={isSelectionEnabled}
                   isSelected={selectedTaskIds.has(task.id)}
                   onSelectionChange={onSelectionChange}
+                  onSubmitForApproval={onSubmitForApproval}
+                  submittingTaskForApproval={submittingTaskForApproval}
                 />
               ))}
             </tbody>
@@ -208,6 +223,8 @@ export function CheckInTable({
             isSelectionEnabled={isSelectionEnabled}
             isSelected={selectedTaskIds.has(task.id)}
             onSelectionChange={onSelectionChange}
+            onSubmitForApproval={onSubmitForApproval}
+            submittingTaskForApproval={submittingTaskForApproval}
           />
         ))}
       </div>

@@ -2,11 +2,13 @@ import { InMemoryCache } from "@apollo/client";
 import { describe, expect, it } from "vitest";
 import {
   GET_CHECKINOUT_TASKS,
+  GET_PENDING_TASK_PLANNING_APPROVALS,
   GET_TASK_POOL_SUMMARY,
 } from "@/lib/graphql/queries/checkins";
 import {
   CHECKIN_TASKS_PAGE,
   removeCheckinTask,
+  removePendingPlanningApproval,
   upsertCheckinTask,
 } from "./checkin-cache";
 
@@ -30,6 +32,8 @@ const task = (id: string, sessionId: string, title = id) => ({
   logbookStatus: null,
   submissionStatus: "DRAFT",
   submittedAt: null,
+  planningRevision: 0,
+  planningReviewHistory: [],
   submissionBatchId: null,
   isCollaborativeTask: false,
   collaborationRequestId: null,
@@ -37,6 +41,11 @@ const task = (id: string, sessionId: string, title = id) => ({
   taskEndDate: "2026-08-24T08:00:00.000Z",
   approvedAt: null,
   autoRejectedAt: null,
+  carryoverRootTaskId: null,
+  carryoverPredecessorTaskId: null,
+  carryoverGeneration: 0,
+  isCarryoverOverdue: false,
+  carryoverEscalatedAt: null,
   createdAt: "2026-08-24T06:00:00.000Z",
   updatedAt: "2026-08-24T06:00:00.000Z",
   approvedBy: null,
@@ -115,6 +124,43 @@ describe("check-in cache updates", () => {
     expect(updated.checkinoutTasks.meta.totalItems).toBe(1);
   });
 
+  it("removes only the reviewed task from the targeted pending approval queue", () => {
+    const cache = new InMemoryCache();
+    const pendingTask = (id: string) => ({
+      ...task(id, "session-a"),
+      submissionStatus: "PENDING_APPROVAL",
+      planningRevision: 1,
+      submittedAt: "2026-08-24T09:00:00.000Z",
+      session: {
+        ...task(id, "session-a").session,
+        employee: {
+          __typename: "Employee",
+          employeeId: "employee-a",
+          fullName: "Employee A",
+        },
+      },
+    });
+    cache.writeQuery({
+      query: GET_PENDING_TASK_PLANNING_APPROVALS,
+      variables: { sessionId: "session-a" },
+      data: {
+        pendingTaskPlanningApprovals: [pendingTask("one"), pendingTask("two")],
+      },
+    });
+
+    removePendingPlanningApproval(cache, "session-a", "one");
+
+    const updated = cache.readQuery<{
+      pendingTaskPlanningApprovals: Array<{ checkinoutTaskId: string }>;
+    }>({
+      query: GET_PENDING_TASK_PLANNING_APPROVALS,
+      variables: { sessionId: "session-a" },
+    });
+    expect(
+      updated?.pendingTaskPlanningApprovals.map((item) => item.checkinoutTaskId),
+    ).toEqual(["two"]);
+  });
+
   it("removes from the exact page and evicts that session's pool summary", () => {
     const cache = new InMemoryCache();
     seedTasks(cache, "session-a", [task("one", "session-a")]);
@@ -127,6 +173,10 @@ describe("check-in cache updates", () => {
           sessionId: "session-a",
           draftCount: 1,
           submittedCount: 0,
+          pendingApprovalCount: 0,
+          approvedCount: 0,
+          approvedInitialCount: 0,
+          initialWeeklyApprovalCompliant: false,
           personalTodoCount: 0,
           activeCount: 1,
           remainingCapacity: 9,

@@ -1617,6 +1617,17 @@ export default function CheckInPage() {
                 submittingTaskForApproval={submittingSingleTask}
               />
 
+              {/* Task Planning Approval Queue for Supervisors */}
+              <TaskPlanningApprovalQueue
+                sessionId={currentSession?.checkinoutSessionId || ""}
+                canReview={Boolean(
+                  currentUser?.employeeId && 
+                  (isSuperAdmin || 
+                   currentUser?.role === "ADMIN" || 
+                   (currentSession?.supervisor?.employeeId === currentUser?.employeeId))
+                )}
+              />
+
               {/* Add Mid Week Task Button */}
               {showMidWeekButton && (
                 <div className="mt-4 flex justify-center">

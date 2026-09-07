@@ -7,7 +7,7 @@ export type TaskCollaborationRequestStatus =
   | "CANCELLED"
   | "EXPIRED";
 
-export type TaskSubmissionStatus = "DRAFT" | "SUBMITTED" | "PERSONAL_TODO";
+export type TaskSubmissionStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "PERSONAL_TODO";
 
 export interface TaskCollaborationEmployee {
   employeeId: string;

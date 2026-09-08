@@ -35,6 +35,13 @@ describe("KPI formula GraphQL shapes", () => {
     expect(printed).toContain("calculationStatus");
   });
 
+  it("selects the objective cache key for formula KPI references", () => {
+    const printed = print(GET_KPI_FORMULA_DEFINITIONS);
+    expect(printed).toMatch(
+      /fragment KpiFormulaKpiFields on Kpi[\s\S]*objective\s*\{[\s\S]*objectiveId/,
+    );
+  });
+
   it("selects independently persisted quarter expression-term plans", () => {
     const printed = print(GET_KPI_FORMULA_QUARTER_PLANS);
     expect(printed).toContain("expressionTermPlans {");

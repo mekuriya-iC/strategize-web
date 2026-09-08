@@ -136,6 +136,7 @@ export default function UpdateKPIForm({
     async (e: React.FormEvent) => {
       e.preventDefault();
       try {
+        await formulaPlanningRef.current?.validate();
         await handleSubmit(async () => {
           await formulaPlanningRef.current?.save();
         });

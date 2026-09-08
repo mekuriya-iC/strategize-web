@@ -148,6 +148,30 @@ const apolloClient = new ApolloClient({
       CheckinoutScheduleWeekCoverage: {
         keyFields: ["scheduleWeekCoverageId"],
       },
+      // Paginated types - merge strategy for lists
+      PaginatedObjectives: {
+        keyFields: [],
+        merge(existing, incoming) {
+          return incoming; // Replace with new data
+        },
+      },
+      PaginatedKpis: {
+        keyFields: [],
+        merge(existing, incoming) {
+          return incoming;
+        },
+      },
+      // KPI quarter plans - proper array merge
+      Kpi: {
+        keyFields: ["kpiId"],
+        fields: {
+          quarterPlans: {
+            merge(existing = [], incoming = []) {
+              return incoming; // Replace with fresh data from server
+            },
+          },
+        },
+      },
       // Query fields intentionally use Apollo's default keyArgs behavior. Every
       // pagination and filter argument is part of the cache key, so pages and
       // filtered variants cannot overwrite one another.

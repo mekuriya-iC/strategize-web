@@ -128,6 +128,24 @@ interface SetFormulaComponentInputsVariables {
   };
 }
 
+export function formulaPlanningLoadState({
+  enabled,
+  organizationId,
+  kpiId,
+  annualPeriodId,
+}: {
+  enabled: boolean;
+  organizationId?: string;
+  kpiId: string;
+  annualPeriodId?: string;
+}) {
+  const canLoadFormula = Boolean(enabled && organizationId && kpiId);
+  return {
+    canLoadFormula,
+    canLoadPlans: Boolean(canLoadFormula && annualPeriodId),
+  };
+}
+
 export function useKpiFormulaQuarterPlanning({
   organizationId,
   kpiId,
@@ -139,7 +157,12 @@ export function useKpiFormulaQuarterPlanning({
   annualPeriodId?: string;
   enabled: boolean;
 }) {
-  const canLoad = Boolean(enabled && organizationId && kpiId && annualPeriodId);
+  const { canLoadFormula, canLoadPlans } = formulaPlanningLoadState({
+    enabled,
+    organizationId,
+    kpiId,
+    annualPeriodId,
+  });
   const formulaQuery = useQuery<
     FormulaDefinitionsData,
     { organizationId: string; page: number; limit: number; kpiId: string }
@@ -150,8 +173,8 @@ export function useKpiFormulaQuarterPlanning({
       limit: 20,
       kpiId,
     },
-    skip: !canLoad,
-    fetchPolicy: "cache-first",
+    skip: !canLoadFormula,
+    fetchPolicy: "cache-and-network",
     nextFetchPolicy: "cache-first",
   });
   const plansQuery = useQuery<
@@ -163,8 +186,8 @@ export function useKpiFormulaQuarterPlanning({
       kpiId,
       annualPeriodId,
     },
-    skip: !canLoad,
-    fetchPolicy: "cache-first",
+    skip: !canLoadPlans,
+    fetchPolicy: "cache-and-network",
     nextFetchPolicy: "cache-first",
   });
   const [setMetricInputsMutation, metricMutationState] = useMutation<
@@ -191,6 +214,16 @@ export function useKpiFormulaQuarterPlanning({
       ),
     [plansQuery.data],
   );
+
+  const refetchFormula = useCallback(async () => {
+    if (!canLoadFormula) return null;
+    const result = await formulaQuery.refetch();
+    return (
+      result.data?.kpiFormulaDefinitions.items.find(
+        (formula) => formula.status === "APPROVED",
+      ) ?? null
+    );
+  }, [canLoadFormula, formulaQuery]);
 
   const saveMetricInputs = useCallback(
     async (inputs: FormulaQuarterMetricInput[]) => {
@@ -239,7 +272,7 @@ export function useKpiFormulaQuarterPlanning({
   return {
     approvedFormula,
     plans,
-    loading: formulaQuery.loading || plansQuery.loading,
+    loading: formulaQuery.loading || (canLoadPlans && plansQuery.loading),
     saving: metricMutationState.loading || componentMutationState.loading,
     error:
       formulaQuery.error ??
@@ -248,6 +281,7 @@ export function useKpiFormulaQuarterPlanning({
       componentMutationState.error,
     saveMetricInputs,
     saveComponentInputs,
+    refetchFormula,
   };
 }
 

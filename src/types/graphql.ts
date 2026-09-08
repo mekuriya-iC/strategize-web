@@ -751,6 +751,7 @@ export interface KpiQuarterPerformanceReport {
 
 export interface Kpi {
   kpiId: string;
+  organizationId?: string;
   name: string;
   baseline: number; // Float in GraphQL schema
   weight: number; // Float in GraphQL schema - accepts decimal values

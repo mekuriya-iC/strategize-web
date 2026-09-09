@@ -131,7 +131,6 @@ const apolloClient = new ApolloClient({
       Objective: { keyFields: ["objectiveId"] },
       Initiative: { keyFields: ["initiativeId"] },
       Activity: { keyFields: ["activityId"] },
-      Kpi: { keyFields: ["kpiId"] },
       Submission: { keyFields: ["submissionId"] },
       Position: { keyFields: ["positionId"] },
       Team: { keyFields: ["teamId"] },
@@ -166,7 +165,8 @@ const apolloClient = new ApolloClient({
         keyFields: ["kpiId"],
         fields: {
           quarterPlans: {
-            merge(existing = [], incoming = []) {
+            merge(_existing = [], incoming = []) {
+              void _existing;
               return incoming; // Replace with fresh data from server
             },
           },

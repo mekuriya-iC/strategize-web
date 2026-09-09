@@ -3,6 +3,7 @@ import type { StrategicPeriod } from "@/types/graphql";
 import {
   findActiveOrCurrentQuarter,
   findCurrentPeriod,
+  findReportingQuarterForAnnual,
   formatAnnualTimeline,
   getAnnualPeriods,
   getPeriodsForAnnualTimeline,
@@ -70,5 +71,25 @@ describe("strategic period date context", () => {
     expect(
       currentQuarter && getQuarterLabelForPeriod(currentQuarter, periods),
     ).toBe("Q3");
+  });
+
+  it("selects the date-containing quarter for an annual dashboard", () => {
+    expect(
+      findReportingQuarterForAnnual(
+        annual,
+        quarters,
+        new Date(2026, 7, 4),
+      )?.strategicPeriodId,
+    ).toBe("q3");
+  });
+
+  it("falls back to the most recently completed quarter", () => {
+    expect(
+      findReportingQuarterForAnnual(
+        annual,
+        quarters,
+        new Date(2027, 0, 15),
+      )?.strategicPeriodId,
+    ).toBe("q4");
   });
 });

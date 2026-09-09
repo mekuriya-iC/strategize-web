@@ -10,6 +10,9 @@ import type {
 import {
   buildCorporateObjectives,
   buildSupportPerformance,
+  calculateDashboardPace,
+  performanceTrafficStatus,
+  quarterProgressRate,
   summaryAchievement,
 } from "./performanceDashboard";
 
@@ -44,6 +47,7 @@ const corporateKpi: KpiQuarterReportKpiRollup = {
   unitType: "CURRENCY",
   customUnitLabel: null,
   quarterlyAggregationMethod: "SUM",
+  calculationType: "MANUAL_VALUE",
   annualTarget: 100,
   weight: 25,
   target: 50,
@@ -127,5 +131,79 @@ describe("performance dashboard calculations", () => {
         achievedWeight: 8,
       }),
     ]);
+  });
+
+  it("compares cumulative KPIs with elapsed-quarter pace", () => {
+    expect(
+      calculateDashboardPace(
+        [
+          {
+            ...corporateKpi,
+            plannedContributionWeight: 10,
+            achievedContributionWeight: 4.5,
+          },
+        ],
+        0.5,
+      ),
+    ).toMatchObject({ achievement: 45, pace: 90, status: "AMBER" });
+  });
+
+  it("does not time-prorate average and rate KPIs", () => {
+    const pace = calculateDashboardPace(
+      [
+        {
+          ...corporateKpi,
+          quarterlyAggregationMethod: "AVERAGE",
+          plannedContributionWeight: 10,
+          achievedContributionWeight: 8,
+        },
+      ],
+      0.5,
+    );
+    expect(pace).toMatchObject({ achievement: 80, pace: 80, status: "AMBER" });
+  });
+
+  it("does not time-prorate formula KPIs even when their annual rollup is additive", () => {
+    const pace = calculateDashboardPace(
+      [
+        {
+          ...corporateKpi,
+          calculationType: "SCALAR_FORMULA",
+          plannedContributionWeight: 10,
+          achievedContributionWeight: 4.5,
+        },
+      ],
+      0.5,
+    );
+    expect(pace).toMatchObject({ achievement: 45, pace: 45, status: "RED" });
+  });
+
+  it("uses a neutral state when no calculated result exists", () => {
+    expect(
+      calculateDashboardPace([
+        {
+          ...corporateKpi,
+          resultCount: 0,
+          achievedContributionWeight: 0,
+        },
+      ]).status,
+    ).toBe("NO_DATA");
+    expect(performanceTrafficStatus(79.99)).toBe("RED");
+    expect(performanceTrafficStatus(100)).toBe("GREEN");
+  });
+
+  it("calculates deterministic quarter progress", () => {
+    expect(
+      quarterProgressRate(
+        { startDate: "2026-07-01", endDate: "2026-09-30" },
+        new Date("2026-07-01T00:00:00"),
+      ),
+    ).toBe(0);
+    expect(
+      quarterProgressRate(
+        { startDate: "2026-07-01", endDate: "2026-09-30" },
+        new Date("2026-10-01T00:00:00"),
+      ),
+    ).toBe(1);
   });
 });

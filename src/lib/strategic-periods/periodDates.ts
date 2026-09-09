@@ -165,3 +165,27 @@ export const findActiveOrCurrentQuarter = (
     quarters.find((period) => period.status?.toLowerCase() === "active")
   );
 };
+
+export const findReportingQuarterForAnnual = (
+  annualPeriod: StrategicPeriod,
+  periods: StrategicPeriod[],
+  referenceDate: Date = new Date(),
+): StrategicPeriod | undefined => {
+  const quarters = sortPeriodsByStartDate(
+    periods.filter(
+      (period) =>
+        isQuarterlyPeriod(period) && isPeriodInsidePeriod(period, annualPeriod),
+    ),
+  );
+  const current = findCurrentPeriod(quarters, referenceDate);
+  if (current) return current;
+
+  const completed = quarters.filter(
+    (period) => getPeriodTimeStatus(period, referenceDate) === "past",
+  );
+  return (
+    completed.at(-1) ??
+    quarters.find((period) => period.status?.toLowerCase() === "active") ??
+    quarters[0]
+  );
+};

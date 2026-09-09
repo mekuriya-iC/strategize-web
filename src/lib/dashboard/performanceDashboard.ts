@@ -49,7 +49,83 @@ export interface DashboardSupportPerformance {
   }>;
 }
 
+export type PerformanceTrafficStatus = "GREEN" | "AMBER" | "RED" | "NO_DATA";
+
+export interface DashboardPace {
+  achievement: number;
+  pace: number | null;
+  status: PerformanceTrafficStatus;
+  plannedWeight: number;
+  achievedWeight: number;
+  expectedWeight: number;
+  resultCoverage: number;
+}
+
 const number = (value: number | null | undefined) => Number(value ?? 0);
+
+export function performanceTrafficStatus(
+  pace: number | null,
+): PerformanceTrafficStatus {
+  if (pace == null || !Number.isFinite(pace)) return "NO_DATA";
+  if (pace >= 100) return "GREEN";
+  if (pace >= 80) return "AMBER";
+  return "RED";
+}
+
+export function quarterProgressRate(
+  period: { startDate: string; endDate: string } | undefined,
+  referenceDate: Date = new Date(),
+): number {
+  if (!period) return 1;
+  const start = new Date(`${period.startDate.split("T")[0]}T00:00:00`);
+  const end = new Date(`${period.endDate.split("T")[0]}T23:59:59.999`);
+  const now = referenceDate.getTime();
+  if (now <= start.getTime()) return 0;
+  if (now >= end.getTime()) return 1;
+  return (now - start.getTime()) / (end.getTime() - start.getTime());
+}
+
+export function calculateDashboardPace(
+  rollups: KpiQuarterReportKpiRollup[],
+  activeQuarterProgress = 1,
+): DashboardPace {
+  const plannedWeight = rollups.reduce(
+    (sum, item) => sum + number(item.plannedContributionWeight),
+    0,
+  );
+  const achievedWeight = rollups.reduce(
+    (sum, item) => sum + number(item.achievedContributionWeight),
+    0,
+  );
+  const planCount = rollups.reduce((sum, item) => sum + item.planCount, 0);
+  const resultCount = rollups.reduce((sum, item) => sum + item.resultCount, 0);
+  const progress = Math.min(Math.max(activeQuarterProgress, 0), 1);
+  const expectedWeight = rollups.reduce((sum, item) => {
+    // Only plain additive KPIs have a meaningful linear intra-quarter pace.
+    // Formula/rate KPIs use their exact approved result without time-prorating.
+    const expectedFraction =
+      item.calculationType === "MANUAL_VALUE" &&
+      item.quarterlyAggregationMethod === "SUM"
+        ? progress
+        : 1;
+    return sum + number(item.plannedContributionWeight) * expectedFraction;
+  }, 0);
+  const achievement =
+    plannedWeight > 0 ? (achievedWeight / plannedWeight) * 100 : 0;
+  const pace =
+    resultCount > 0 && expectedWeight > 0
+      ? (achievedWeight / expectedWeight) * 100
+      : null;
+  return {
+    achievement,
+    pace,
+    status: performanceTrafficStatus(pace),
+    plannedWeight,
+    achievedWeight,
+    expectedWeight,
+    resultCoverage: planCount > 0 ? (resultCount / planCount) * 100 : 0,
+  };
+}
 
 export function summaryAchievement(
   summary: KpiQuarterReportSummary | undefined,

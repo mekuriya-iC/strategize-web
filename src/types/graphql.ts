@@ -640,6 +640,7 @@ export interface KpiQuarterReportKpiRollup {
   unitType?: KpiUnitType | null;
   customUnitLabel?: string | null;
   quarterlyAggregationMethod?: KpiQuarterlyAggregationMethod | null;
+  calculationType: KpiCalculationType;
   annualTarget: number;
   weight: number;
   target: number;
@@ -650,6 +651,27 @@ export interface KpiQuarterReportKpiRollup {
   resultCoverageRate: number;
   planCount: number;
   resultCount: number;
+}
+
+export interface KpiQuarterReportKpiQuarterRollup
+  extends KpiQuarterReportKpiRollup {
+  quarterNumber: number;
+}
+
+export interface KpiQuarterReportEntityQuarterRollup
+  extends KpiQuarterReportRollup {
+  quarterNumber: number;
+}
+
+export interface KpiQuarterReportEntityKpiRollup
+  extends KpiQuarterReportKpiQuarterRollup {
+  level: ScorecardLevel;
+  entityId: string;
+  entityName: string;
+  divisionId?: string | null;
+  divisionName?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
 }
 
 export interface KpiQuarterReportRow {
@@ -742,6 +764,9 @@ export interface KpiQuarterPerformanceReport {
   quarterSummaries: KpiQuarterReportQuarterSummary[];
   rollups: KpiQuarterReportRollup[];
   kpiRollups: KpiQuarterReportKpiRollup[];
+  entityQuarterRollups: KpiQuarterReportEntityQuarterRollup[];
+  kpiQuarterRollups: KpiQuarterReportKpiQuarterRollup[];
+  entityKpiRollups: KpiQuarterReportEntityKpiRollup[];
   rows: KpiQuarterReportRow[];
   totalItems: number;
   currentPage: number;
@@ -751,6 +776,7 @@ export interface KpiQuarterPerformanceReport {
 
 export interface Kpi {
   kpiId: string;
+  organizationId?: string;
   name: string;
   baseline: number; // Float in GraphQL schema
   weight: number; // Float in GraphQL schema - accepts decimal values

@@ -98,6 +98,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         unitType
         customUnitLabel
         quarterlyAggregationMethod
+        calculationType
         annualTarget
         weight
         target
@@ -108,6 +109,85 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         resultCoverageRate
         planCount
         resultCount
+      }
+      entityQuarterRollups {
+        quarterNumber
+        level
+        entityId
+        entityName
+        rowCount
+        kpiCount
+        originalTarget
+        carryIn
+        effectiveTarget
+        actual
+        averageAchievementRate
+        weightedAchievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
+        annualContribution
+        carryOut
+        finalCount
+        provisionalCount
+        pendingResultCount
+      }
+      kpiQuarterRollups {
+        quarterNumber
+        kpiId
+        kpiName
+        objectiveId
+        objectiveTitle
+        objectiveWeight
+        cascadeType
+        parentKpiId
+        measurementUnit
+        unitType
+        customUnitLabel
+        quarterlyAggregationMethod
+        calculationType
+        annualTarget
+        weight
+        target
+        actual
+        achievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
+        planCount
+        resultCount
+      }
+      entityKpiRollups {
+        quarterNumber
+        kpiId
+        kpiName
+        objectiveId
+        objectiveTitle
+        objectiveWeight
+        cascadeType
+        parentKpiId
+        measurementUnit
+        unitType
+        customUnitLabel
+        quarterlyAggregationMethod
+        calculationType
+        annualTarget
+        weight
+        target
+        actual
+        achievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
+        planCount
+        resultCount
+        level
+        entityId
+        entityName
+        divisionId
+        divisionName
+        departmentId
+        departmentName
       }
       rows {
         kpiQuarterPlanId

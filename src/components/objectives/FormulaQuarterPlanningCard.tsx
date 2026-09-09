@@ -6,6 +6,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { AlertCircle, CheckCircle2, Loader2, LockKeyhole } from "lucide-react";
@@ -33,7 +34,6 @@ import {
   buildExpressionTermMetricInputs,
   type ExpressionTermInputsByQuarter,
 } from "@/components/kpi-formulas/formulaQuarterPlanning";
-import { useAuthStore } from "@/stores";
 
 interface QuarterInputState {
   numerator: string;
@@ -49,6 +49,7 @@ type InputsByQuarter = Record<number, QuarterInputState>;
 type ComponentInputsByQuarter = Record<number, Record<string, string>>;
 
 export interface FormulaQuarterPlanningCardHandle {
+  validate: () => Promise<void>;
   save: () => Promise<void>;
 }
 
@@ -239,7 +240,7 @@ export const FormulaQuarterPlanningCard = forwardRef<
     kpi.calculationType === "RATIO_FORMULA" ||
     kpi.calculationType === "SCALAR_FORMULA" ||
     kpi.calculationType === "WEIGHTED_INDEX";
-  const organizationId = useAuthStore((state) => state.user?.organizationId);
+  const organizationId = kpi.organizationId;
   const {
     approvedFormula,
     plans,
@@ -248,6 +249,7 @@ export const FormulaQuarterPlanningCard = forwardRef<
     error,
     saveMetricInputs,
     saveComponentInputs,
+    refetchFormula,
   } = useKpiFormulaQuarterPlanning({
     organizationId,
     kpiId: kpi.kpiId,
@@ -259,6 +261,7 @@ export const FormulaQuarterPlanningCard = forwardRef<
     useState<ComponentInputsByQuarter>(emptyComponentInputs);
   const [expressionTermInputs, setExpressionTermInputs] =
     useState<ExpressionTermInputsByQuarter>(emptyExpressionTermInputs);
+  const validatedFormulaIdRef = useRef<string | null>(null);
   const plansByQuarter = useMemo(() => planByQuarter(plans), [plans]);
   const orderedComponents = useMemo(
     () =>
@@ -394,16 +397,44 @@ export const FormulaQuarterPlanningCard = forwardRef<
     ? formulaSourceLabel(approvedFormula, "denominator")
     : null;
 
+  const validate = useCallback(async () => {
+    if (!isFormulaKpi || !canEdit || planningLocked) return;
+    if (!organizationId) {
+      throw new Error("This KPI is missing its organization context.");
+    }
+    if (!annualPeriodId) {
+      throw new Error("This KPI is missing its strategic period.");
+    }
+    const currentFormula = await refetchFormula();
+    if (!currentFormula) {
+      throw new Error("This formula KPI has no approved formula definition.");
+    }
+    if (!approvedFormula || approvedFormula.id !== currentFormula.id) {
+      throw new Error(
+        "The approved formula changed while this KPI was open. Review the refreshed formula and try again.",
+      );
+    }
+    validatedFormulaIdRef.current = currentFormula.id;
+  }, [
+    annualPeriodId,
+    approvedFormula,
+    canEdit,
+    isFormulaKpi,
+    organizationId,
+    planningLocked,
+    refetchFormula,
+  ]);
+
   const save = useCallback(async () => {
     if (!isFormulaKpi || !canEdit || planningLocked) return;
-    if (loading) {
-      throw new Error("Formula configuration is still loading. Please try again.");
-    }
-    if (!approvedFormula) {
+    if (validatedFormulaIdRef.current !== approvedFormula?.id) await validate();
+    const currentFormula = approvedFormula;
+    validatedFormulaIdRef.current = null;
+    if (!currentFormula) {
       throw new Error("This formula KPI has no approved formula definition.");
     }
 
-    if (approvedFormula.calculationType === "WEIGHTED_INDEX") {
+    if (currentFormula.calculationType === "WEIGHTED_INDEX") {
       const metricComponents = orderedComponents.filter(
         (component) => component.sourceType === "METRIC",
       );
@@ -421,8 +452,8 @@ export const FormulaQuarterPlanningCard = forwardRef<
     }
 
     if (
-      approvedFormula.calculationType !== "RATIO_FORMULA" &&
-      approvedFormula.calculationType !== "SCALAR_FORMULA"
+      currentFormula.calculationType !== "RATIO_FORMULA" &&
+      currentFormula.calculationType !== "SCALAR_FORMULA"
     ) {
       throw new Error("The approved formula type is not supported for planning.");
     }
@@ -464,16 +495,16 @@ export const FormulaQuarterPlanningCard = forwardRef<
     hasExpressionTermPlanning,
     inputs,
     isFormulaKpi,
-    loading,
     orderedComponents,
     numeratorHasMetric,
     denominatorHasMetric,
     planningLocked,
     saveComponentInputs,
     saveMetricInputs,
+    validate,
   ]);
 
-  useImperativeHandle(ref, () => ({ save }), [save]);
+  useImperativeHandle(ref, () => ({ save, validate }), [save, validate]);
 
   if (!isFormulaKpi) return null;
 
@@ -482,6 +513,42 @@ export const FormulaQuarterPlanningCard = forwardRef<
       <div className="flex items-center gap-2 rounded-lg border p-4 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading formula planning…
+      </div>
+    );
+  }
+
+  if (!organizationId) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="flex items-center gap-2 font-medium">
+          <AlertCircle className="h-4 w-4" />
+          KPI organization required
+        </div>
+        <p className="mt-1">This KPI is missing its organization context.</p>
+      </div>
+    );
+  }
+
+  if (!annualPeriodId) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="flex items-center gap-2 font-medium">
+          <AlertCircle className="h-4 w-4" />
+          Strategic period required
+        </div>
+        <p className="mt-1">This KPI is not linked to an annual strategic period.</p>
+      </div>
+    );
+  }
+
+  if (error && !approvedFormula) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="flex items-center gap-2 font-medium">
+          <AlertCircle className="h-4 w-4" />
+          Formula configuration could not be loaded
+        </div>
+        <p className="mt-1">{error.message}</p>
       </div>
     );
   }

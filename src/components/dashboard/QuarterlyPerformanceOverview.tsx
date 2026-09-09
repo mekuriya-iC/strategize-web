@@ -10,6 +10,7 @@ import { GET_KPI_QUARTER_PERFORMANCE_REPORT } from "@/lib/graphql/queries/quarte
 import { GET_SUPPORT_PERFORMANCE_REPORT } from "@/lib/graphql/queries/support-performance";
 import {
   findEnclosingAnnualPeriod,
+  findReportingQuarterForAnnual,
   getQuarterLabelForPeriod,
   isQuarterlyPeriod,
 } from "@/lib/strategic-periods/periodDates";
@@ -65,9 +66,13 @@ export default function QuarterlyPerformanceOverview() {
     const annualPeriod = findEnclosingAnnualPeriod(selectedPeriod, strategicPeriods);
     if (!annualPeriod) return null;
 
-    const parsedQuarter = isQuarterlyPeriod(selectedPeriod)
+    const reportingPeriod = isQuarterlyPeriod(selectedPeriod)
+      ? selectedPeriod
+      : findReportingQuarterForAnnual(annualPeriod, strategicPeriods);
+
+    const parsedQuarter = reportingPeriod
       ? Number(
-          getQuarterLabelForPeriod(selectedPeriod, strategicPeriods).replace(
+          getQuarterLabelForPeriod(reportingPeriod, strategicPeriods).replace(
             "Q",
             "",
           ),
@@ -76,6 +81,7 @@ export default function QuarterlyPerformanceOverview() {
 
     return {
       annualPeriod,
+      reportingPeriod,
       quarterNumber:
         parsedQuarter && parsedQuarter >= 1 && parsedQuarter <= 4
           ? parsedQuarter
@@ -190,6 +196,7 @@ export default function QuarterlyPerformanceOverview() {
         hierarchyReport={hierarchyReport}
         supportReport={supportData?.supportPerformanceReport}
         selectedQuarter={context.quarterNumber}
+        selectedQuarterPeriod={context.reportingPeriod}
         scopeLabel={scopeLabels[primaryReport.scope] || "Performance"}
       />
     </div>

@@ -28,6 +28,7 @@ const KPI_FORMULA_KPI_FIELDS = gql`
     assigneeId
     isActive
     objective {
+      objectiveId
       type
       assigneeType
       assigneeId

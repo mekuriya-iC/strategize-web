@@ -153,7 +153,12 @@ export function SubmitApprovalDialog({
     item.description || item.activity || "",
   );
   const [remark, setRemark] = useState(item.outcome || "");
-  const { data: currentEntryData, loading: currentEntryLoading } = useQuery(
+  const {
+    data: currentEntryData,
+    loading: currentEntryLoading,
+    error: currentEntryError,
+    refetch: refreshCurrentEntry,
+  } = useQuery(
     GET_LOGBOOK_ENTRY,
     {
       variables: { logbookEntryId: item.id },
@@ -161,34 +166,49 @@ export function SubmitApprovalDialog({
       // Submission readiness must reflect the server's current plan link, not
       // a possibly stale entry cached before a KPI plan was approved.
       fetchPolicy: "network-only",
-      nextFetchPolicy: "cache-first",
+      notifyOnNetworkStatusChange: true,
     },
   );
   const currentEntry = currentEntryData?.logbookEntry;
+  const readinessUnavailable = Boolean(currentEntryError) || !currentEntry;
+  const recordedEntry: Partial<FrontendLogbookItem> = currentEntry ?? item;
   const isFormulaKpi = isLogbookFormulaCalculationType(
-    currentEntry?.linkedKpi?.calculationType ?? item.linkedKpi?.calculationType,
+    recordedEntry.linkedKpi?.calculationType,
   );
   const contextKpiId =
-    currentEntry?.linkedKpiId ??
-    currentEntry?.linkedKpi?.kpiId ??
-    item.linkedKpiId ??
-    item.linkedKpi?.kpiId ??
+    recordedEntry.linkedKpiId ??
+    recordedEntry.linkedKpi?.kpiId ??
     "";
   const quarterPlanSubmissionBlock = getQuarterPlanSubmissionBlock(
     contextKpiId,
-    currentEntryLoading ? null : (currentEntry?.quarterPlan ?? item.quarterPlan),
+    currentEntryLoading || readinessUnavailable ? null : currentEntry.quarterPlan,
   );
-  const { data: formulaData, loading: formulaLoading } = useQuery<
+  const {
+    data: formulaData,
+    loading: formulaLoading,
+    error: formulaError,
+    refetch: refreshFormula,
+  } = useQuery<
     LogbookFormulaForContextQueryData,
     LogbookFormulaForContextQueryVariables
   >(GET_LOGBOOK_FORMULA_FOR_CONTEXT, {
     variables: {
       organizationId: currentUser?.organizationId ?? "",
       kpiId: contextKpiId,
-      entryDate: item.entryDate.slice(0, 10),
+      entryDate: (currentEntry?.entryDate ?? item.entryDate).slice(0, 10),
+      strategicPeriodId:
+        currentEntry?.strategicPeriod?.strategicPeriodId ??
+        item.strategicPeriodId ??
+        undefined,
     },
     skip:
-      !open || !isFormulaKpi || !contextKpiId || !currentUser?.organizationId,
+      !open ||
+      currentEntryLoading ||
+      readinessUnavailable ||
+      !isFormulaKpi ||
+      !contextKpiId ||
+      !currentUser?.organizationId,
+    fetchPolicy: "network-only",
   });
   const formulaSources = getOrderedLogbookFormulaSources(
     formulaData?.logbookFormulaForContext,
@@ -264,26 +284,36 @@ export function SubmitApprovalDialog({
   const formulaMetricSources = formulaSources.filter(
     (source) => source.sourceType === "METRIC",
   );
-  const hasRecordedKpiResult = !item.linkedKpiId
+  const hasRecordedKpiResult = !contextKpiId
     ? true
     : isFormulaKpi
       ? !formulaLoading &&
+        !formulaError &&
+        Boolean(formulaData?.logbookFormulaForContext) &&
         (formulaMetricSources.length === 0 ||
           formulaMetricSources.every((source) =>
-            (item.metricObservations || []).some(
+            (recordedEntry.metricObservations || []).some(
               (observation) =>
                 observation.metricDefinitionId === source.metricDefinitionId &&
                 String(observation.value).trim() !== "",
             ),
           ))
-      : item.kpiAchievedValue != null ||
-        Boolean(item.kpiActualNumeratorExact || item.kpiActualRateExact);
+      : recordedEntry.kpiAchievedValue != null ||
+        Boolean(
+          recordedEntry.kpiActualNumeratorExact || recordedEntry.kpiActualRateExact,
+        );
 
   const [updateLogbookEntry] = useMutation(UPDATE_LOGBOOK_ENTRY, {
     refetchQueries: ["GetLogbookEntries"],
   });
 
   const handleSubmit = async () => {
+    if (readinessUnavailable) {
+      toast.error(
+        "Unable to verify this entry's quarter plan. Retry loading before submitting.",
+      );
+      return;
+    }
     if (currentEntryLoading) {
       toast.info("Checking current KPI quarter-plan approval…");
       return;
@@ -558,7 +588,21 @@ export function SubmitApprovalDialog({
             </div>
           </div>
 
-          {quarterPlanSubmissionBlock && (
+          {!currentEntryLoading && readinessUnavailable && (
+            <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
+              <p>Unable to verify this entry’s quarter plan.</p>
+              <p className="mt-1 text-sm">{currentEntryError?.message || "The entry could not be loaded."}</p>
+              <Button variant="outline" className="mt-2" onClick={() => void refreshCurrentEntry().catch(() => undefined)}>Retry</Button>
+            </div>
+          )}
+          {!currentEntryLoading && !readinessUnavailable && isFormulaKpi && formulaError && (
+            <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
+              <p>Unable to load the formula for this entry’s quarter.</p>
+              <p className="mt-1 text-sm">{formulaError.message}</p>
+              <Button variant="outline" className="mt-2" onClick={() => void refreshFormula().catch(() => undefined)}>Retry formula</Button>
+            </div>
+          )}
+          {!currentEntryLoading && !readinessUnavailable && quarterPlanSubmissionBlock && (
             <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
@@ -569,8 +613,8 @@ export function SubmitApprovalDialog({
                   {quarterPlanSubmissionBlock.description}
                 </p>
                 <p className="mt-2 text-xs text-amber-700">
-                  Your weekly task remains submitted and visible to your supervisor.
-                  Only this KPI achievement approval is waiting for the quarterly plan.
+                  This check does not change your weekly task’s submission status.
+                  This KPI achievement is waiting for the quarterly plan.
                 </p>
               </div>
             </div>
@@ -662,7 +706,7 @@ export function SubmitApprovalDialog({
               <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
                 <div>
                   <Label className="text-sm font-medium text-indigo-950">
-                    {item.linkedKpi?.calculationType === "WEIGHTED_INDEX"
+                    {recordedEntry.linkedKpi?.calculationType === "WEIGHTED_INDEX"
                       ? "Weighted-index sources"
                       : "Formula sources"}
                   </Label>
@@ -682,7 +726,7 @@ export function SubmitApprovalDialog({
                     {formulaSources.map((source) => {
                       const observation =
                         source.sourceType === "METRIC"
-                          ? (item.metricObservations || []).find(
+                          ? (recordedEntry.metricObservations || []).find(
                               (candidate) =>
                                 candidate.metricDefinitionId ===
                                 source.metricDefinitionId,
@@ -750,7 +794,7 @@ export function SubmitApprovalDialog({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {(item.metricObservations || []).map((observation) => (
+                    {(recordedEntry.metricObservations || []).map((observation) => (
                       <div
                         key={observation.id}
                         className="flex items-center justify-between gap-4 rounded border bg-white px-3 py-2"
@@ -804,30 +848,30 @@ export function SubmitApprovalDialog({
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   KPI result submitted with this entry
                 </Label>
-                {item.kpiActualNumeratorExact || item.kpiActualBasisExact ? (
+                {recordedEntry.kpiActualNumeratorExact || recordedEntry.kpiActualBasisExact ? (
                   <div className="grid gap-3 text-sm sm:grid-cols-3">
                     <div>
                       <p className="text-xs text-gray-500">Numerator</p>
                       <p className="font-mono font-medium">
-                        {item.kpiActualNumeratorExact ?? "Derived by server"}
+                        {recordedEntry.kpiActualNumeratorExact ?? "Derived by server"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Denominator</p>
                       <p className="font-mono font-medium">
-                        {item.kpiActualBasisExact ?? "Resolved by server"}
+                        {recordedEntry.kpiActualBasisExact ?? "Resolved by server"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Result</p>
                       <p className="font-mono font-medium">
-                        {item.kpiActualRateExact ?? "Derived by server"}
+                        {recordedEntry.kpiActualRateExact ?? "Derived by server"}
                       </p>
                     </div>
                   </div>
                 ) : hasRecordedKpiResult ? (
                   <p className="font-medium text-gray-900">
-                    {item.kpiAchievedValue}
+                    {recordedEntry.kpiAchievedValue}
                   </p>
                 ) : (
                   <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3">
@@ -873,6 +917,7 @@ export function SubmitApprovalDialog({
             disabled={
               isSubmitting ||
               currentEntryLoading ||
+              readinessUnavailable ||
               !hasRecordedKpiResult ||
               Boolean(quarterPlanSubmissionBlock)
             }

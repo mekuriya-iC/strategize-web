@@ -111,6 +111,7 @@ export interface LogbookFormulaForContextQueryData {
 }
 
 export interface LogbookFormulaForContextQueryVariables {
+  strategicPeriodId?: string;
   organizationId: string;
   kpiId: string;
   entryDate: string;
@@ -175,6 +176,7 @@ export interface KpiResultEntryContextQueryData {
 }
 
 export interface KpiResultEntryContextQueryVariables {
+  strategicPeriodId?: string;
   kpiId: string;
   entryDate: string;
 }

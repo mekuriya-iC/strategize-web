@@ -145,11 +145,13 @@ export const GET_LOGBOOK_FORMULA_FOR_CONTEXT = gql`
     $organizationId: ID!
     $kpiId: ID!
     $entryDate: String!
+    $strategicPeriodId: ID
   ) {
     logbookFormulaForContext(
       organizationId: $organizationId
       kpiId: $kpiId
       entryDate: $entryDate
+      strategicPeriodId: $strategicPeriodId
     ) {
       ...LogbookFormulaContextFields
     }
@@ -157,8 +159,8 @@ export const GET_LOGBOOK_FORMULA_FOR_CONTEXT = gql`
 `;
 
 export const GET_KPI_RESULT_ENTRY_CONTEXT = gql`
-  query GetKpiResultEntryContext($kpiId: ID!, $entryDate: String!) {
-    kpiResultEntryContext(kpiId: $kpiId, entryDate: $entryDate) {
+  query GetKpiResultEntryContext($kpiId: ID!, $entryDate: String!, $strategicPeriodId: ID) {
+    kpiResultEntryContext(kpiId: $kpiId, entryDate: $entryDate, strategicPeriodId: $strategicPeriodId) {
       quarterPlanId
       quarterNumber
       actualBasisSource

@@ -1,5 +1,7 @@
 "use client";
 
+import { getLogbookPeriodFields } from "./logbook-entry-period";
+
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
@@ -184,6 +186,9 @@ export function LogbookEntryDialog({
     (editingEntry?.linkedKpi?.kpiId === linkedKpiId
       ? editingEntry.linkedKpi
       : null);
+  const contextPeriodId = editingEntry
+    ? editingEntry.strategicPeriodId || undefined
+    : selectedPeriod?.strategicPeriodId;
   const isFormulaKpi = isLogbookFormulaCalculationType(
     selectedKpi?.calculationType,
   );
@@ -198,6 +203,7 @@ export function LogbookEntryDialog({
     variables: {
       kpiId: linkedKpiId,
       entryDate: format(entryDate, "yyyy-MM-dd"),
+      strategicPeriodId: contextPeriodId,
     },
     skip: !open || !linkedKpiId || !isBasisDrivenKpi,
     fetchPolicy: "cache-and-network",
@@ -227,6 +233,7 @@ export function LogbookEntryDialog({
       organizationId: currentUser?.organizationId ?? "",
       kpiId: linkedKpiId,
       entryDate: format(entryDate, "yyyy-MM-dd"),
+      strategicPeriodId: contextPeriodId,
     },
     skip:
       !open || !isFormulaKpi || !linkedKpiId || !currentUser?.organizationId,
@@ -368,7 +375,10 @@ export function LogbookEntryDialog({
       return;
     }
 
-    if (!currentUser?.organizationId || !selectedPeriod?.strategicPeriodId) {
+    if (
+      !currentUser?.organizationId ||
+      (!editingEntry && !selectedPeriod?.strategicPeriodId)
+    ) {
       toast.error(
         "Please select a strategic period before adding a logbook entry",
       );
@@ -438,7 +448,10 @@ export function LogbookEntryDialog({
 
       const entryData: Record<string, unknown> = {
         organizationId: currentUser.organizationId,
-        strategicPeriodId: selectedPeriod.strategicPeriodId,
+        ...getLogbookPeriodFields(
+          Boolean(editingEntry),
+          selectedPeriod?.strategicPeriodId,
+        ),
         activityDescription: activity.trim(),
         evidenceDescription: description.trim() || null,
         decisionsMade: outcome.trim() || null,

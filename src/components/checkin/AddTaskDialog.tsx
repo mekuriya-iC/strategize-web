@@ -365,7 +365,9 @@ export function AddTaskDialog({
     taskType,
     checkoutStatus,
   );
-  const checkoutEvidenceRequired = requiresCheckoutEvidence(
+  
+  // Evidence is only required during checkout (not during planning/creation)
+  const checkoutEvidenceRequired = !isPlanningForm && requiresCheckoutEvidence(
     taskType,
     normalizedCheckoutStatus,
   );
@@ -511,12 +513,15 @@ export function AddTaskDialog({
     }
 
     const evidenceUrl = attachmentLink.trim() || uploadedEvidenceUrl;
+    
+    // Evidence is only required during CHECKOUT (not during initial task creation)
     if (
+      !isPlanningForm && // Only check during checkout/edit mode
       requiresCheckoutEvidence(taskType, normalizedCheckoutStatus) &&
       !evidenceUrl
     ) {
       console.error(
-        "❌ [TASK CREATION] Validation failed: Checkout evidence is required",
+        "❌ [TASK CHECKOUT] Validation failed: Checkout evidence is required",
       );
       toast.error("Evidence is required for this completed task.");
       return;

@@ -23,10 +23,44 @@ export const CHECKOUT_STATUS_OPTIONS: ReadonlyArray<CheckoutStatusOption> = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
-export function getTaskEditMode(submissionStatus?: string | null): TaskEditMode {
-  return submissionStatus === "DRAFT" || submissionStatus === "PERSONAL_TODO"
+export function getTaskEditMode(
+  submissionStatus?: string | null,
+): TaskEditMode {
+  const status = submissionStatus?.trim().toUpperCase();
+  return status === "DRAFT" || status === "PERSONAL_TODO"
     ? "PLANNING"
     : "CHECKOUT";
+}
+
+export function getPlanningCollaborationFields(
+  editingTask: { relatedToEmployeeId?: string | null } | null | undefined,
+  collaboratorId: string,
+  message: string,
+) {
+  if (
+    editingTask &&
+    (editingTask.relatedToEmployeeId || "") === collaboratorId
+  ) {
+    return {};
+  }
+  return {
+    relatedToEmployeeId: collaboratorId || null,
+    ...(collaboratorId
+      ? { collaborationRequestMessage: message.trim() || null }
+      : {}),
+  };
+}
+
+export function getStatusAfterTaskTypeChange(
+  previousType: TaskType,
+  nextType: TaskType,
+  currentStatus?: string | null,
+): CheckoutStatusOption["value"] {
+  // DONE is mandatory for KPI Fulfilled, not an explicit completion decision
+  // for a different type selected during planning.
+  if (previousType === "KPI_FULFILLED" && nextType !== previousType)
+    return "NOT_DONE";
+  return normalizeCheckoutStatus(nextType, currentStatus);
 }
 
 export function getCheckoutStatusOptions(

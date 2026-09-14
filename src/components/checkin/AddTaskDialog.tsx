@@ -49,6 +49,8 @@ import {
   TASK_TYPES,
   getCheckoutStatusOptions,
   getTaskEditMode,
+  getPlanningCollaborationFields,
+  getStatusAfterTaskTypeChange,
   isKpiReadyForAchievementSubmission,
   normalizeCheckoutStatus,
   requiresCheckoutEvidence,
@@ -242,6 +244,7 @@ export function AddTaskDialog({
       setTask(editingTask.task);
       setDescription(editingTask.description || "");
       setRelatedTo(editingTask.relatedToEmployeeId || "");
+      setCollaborationMessage("");
       setLinkedKpi(editingTask.linkedKpiId || "");
       setLinkedInitiative(editingTask.linkedInitiativeId || "");
 
@@ -273,7 +276,7 @@ export function AddTaskDialog({
           editingTask.checkoutStatus,
         ),
       );
-      setRemark(editingTask.remark || "");
+      setRemark(editingTask.remark || editingTask.achievedDescription || "");
       setAttachment(null);
       setUploadedEvidenceUrl("");
       setAttachmentLink(editingTask.evidenceUrl || editingTask.attachment || "");
@@ -286,9 +289,10 @@ export function AddTaskDialog({
   }, [editingTask, initialIsMidWeek, open]);
 
   const handleTaskTypeChange = (nextTaskType: TaskType) => {
+    if (!isPlanningForm) return;
     setTaskType(nextTaskType);
     setCheckoutStatus((currentStatus) =>
-      normalizeCheckoutStatus(nextTaskType, currentStatus),
+      getStatusAfterTaskTypeChange(taskType, nextTaskType, currentStatus),
     );
   };
 
@@ -555,13 +559,8 @@ export function AddTaskDialog({
           linkedInitiative
             ? linkedInitiative
             : null,
-        relatedToEmployeeId: relatedTo || null,
         ...(isPlanningForm
-          ? {
-              collaborationRequestMessage: relatedTo
-                ? collaborationMessage.trim() || null
-                : null,
-            }
+          ? getPlanningCollaborationFields(editingTask, relatedTo, collaborationMessage)
           : {}),
         plannedDescription: description.trim(),
         taskStartDate: taskStartDateTime.toISOString(),
@@ -569,6 +568,7 @@ export function AddTaskDialog({
         taskStatus: normalizedCheckoutStatus,
         evidenceUrl: evidenceUrl || null,
         challenges: remark.trim() || null,
+        achievedDescription: remark.trim() || null,
         isMidWeekTask: isMidWeekTask,
       };
 

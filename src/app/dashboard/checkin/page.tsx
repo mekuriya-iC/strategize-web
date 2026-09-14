@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { useQuery, useMutation } from "@apollo/client";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
+import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   GET_CHECKINOUT_SESSIONS,
   GET_CHECKINOUT_TASKS,
+  GET_CHECKINOUT_TASK,
   GET_TASK_POOL_SUMMARY,
 } from "@/lib/graphql/queries/checkins";
 import {
@@ -398,6 +399,8 @@ function EmployeeTaskCard({
 }
 
 export default function CheckInPage() {
+  const apolloClient = useApolloClient();
+  const loadingTaskEditor = useRef(false);
   const [view, setView] = useState<"list" | "detail">("list");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
@@ -436,11 +439,33 @@ export default function CheckInPage() {
     [],
   );
 
-  const handleEditTask = (task: any) => {
-    setAddAsMidWeekTask(false);
-    setTargetSessionId(task.sessionId || null);
-    setEditingTask(task);
-    setIsAddTaskOpen(true);
+  const handleEditTask = async (task: any) => {
+    if (loadingTaskEditor.current) return;
+    loadingTaskEditor.current = true;
+    try {
+      // A supervisor may have returned this task to draft since the list loaded.
+      // Open using authoritative planning status, not the stale row snapshot.
+      const { data } = await apolloClient.query({
+        query: GET_CHECKINOUT_TASK,
+        variables: { checkinoutTaskId: task.id },
+        fetchPolicy: "network-only",
+        errorPolicy: "none",
+      });
+      const freshTask = data?.checkinoutTask;
+      if (!freshTask) throw new Error("The task could not be loaded. Please retry.");
+      if (freshTask.submissionStatus === "PENDING_APPROVAL") {
+        toast.error("This task is awaiting planning approval and cannot be edited yet.");
+        return;
+      }
+      setAddAsMidWeekTask(false);
+      setTargetSessionId(task.sessionId || null);
+      setEditingTask({ ...mapTaskToFrontend(freshTask), sessionId: task.sessionId });
+      setIsAddTaskOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load the task for editing.");
+    } finally {
+      loadingTaskEditor.current = false;
+    }
   };
   const [filters, setFilters] = useState<FilterState>({
     objective: "",

@@ -1,5 +1,24 @@
 import { gql } from "@apollo/client";
 
+export const GET_TASK_CORPORATE_BASELINE = gql`
+  query TaskCorporateBaseline($filters: KpiQuarterReportFiltersInput!) {
+    kpiQuarterPerformanceReport(filters: $filters) {
+      annualStrategicPeriodName
+      scope
+      summary {
+        kpiCount
+        weightedAchievementRate
+        plannedContributionWeight
+        achievedContributionWeight
+        resultCoverageRate
+        pendingResultCount
+        finalCount
+        provisionalCount
+      }
+    }
+  }
+`;
+
 const TASK_COMPLETION_ANALYTICS_RESULT_FIELDS = gql`
   fragment TaskCompletionAnalyticsResultFields on TaskCompletionAnalyticsResult {
     summary {
@@ -8,6 +27,31 @@ const TASK_COMPLETION_ANALYTICS_RESULT_FIELDS = gql`
       periodEnd
       employeeCount
       periodCount
+      totalTasks
+      completedTasks
+      notDoneTasks
+      postponedTasks
+      cancelledTasks
+      completionRate
+      status
+    }
+    availableFilters {
+      employees {
+        id
+        name
+      }
+      departments {
+        id
+        name
+      }
+      divisions {
+        id
+        name
+      }
+    }
+    series {
+      periodStart
+      periodEnd
       totalTasks
       completedTasks
       notDoneTasks

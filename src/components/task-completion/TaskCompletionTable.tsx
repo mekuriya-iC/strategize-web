@@ -19,6 +19,7 @@ import {
 import { TaskCompletionStatusBadge } from "./TaskCompletionStatusBadge";
 import type {
   TaskCompletionAnalyticsResult,
+  TaskCompletionAvailableFilters,
   TaskCompletionAnalyticsRow,
   TaskCompletionView,
 } from "./types";
@@ -60,12 +61,14 @@ export function TaskCompletionTable({
         <Table>
           <TableHeader>
             <TableRow>
-              {view === "team" && <TableHead className="pl-6">Employee</TableHead>}
+              {view === "team" && (
+                <TableHead className="pl-6">Employee</TableHead>
+              )}
               <TableHead className={view === "personal" ? "pl-6" : undefined}>
                 Period
               </TableHead>
-              {view === "team" && <TableHead>Scope IDs</TableHead>}
-              <TableHead className="text-right">Submitted</TableHead>
+              {view === "team" && <TableHead>Organization units</TableHead>}
+              <TableHead className="text-right">Approved</TableHead>
               <TableHead className="text-right">Completed</TableHead>
               <TableHead className="text-right">Not done</TableHead>
               <TableHead className="text-right">Postponed</TableHead>
@@ -92,6 +95,7 @@ export function TaskCompletionTable({
                   key={`${row.employeeId}-${row.periodStart}-${row.periodEnd}`}
                   row={row}
                   view={view}
+                  availableFilters={result?.availableFilters}
                 />
               ))
             )}
@@ -141,9 +145,11 @@ export function TaskCompletionTable({
 function TaskCompletionRow({
   row,
   view,
+  availableFilters,
 }: {
   row: TaskCompletionAnalyticsRow;
   view: TaskCompletionView;
+  availableFilters?: TaskCompletionAvailableFilters;
 }) {
   const noData = row.status === "NO_DATA";
 
@@ -152,20 +158,32 @@ function TaskCompletionRow({
       {view === "team" && (
         <TableCell className="max-w-64 pl-6 whitespace-normal">
           <div className="font-medium">{row.employeeName}</div>
-          <div className="text-xs text-muted-foreground">{row.title || "No title"}</div>
+          <div className="text-xs text-muted-foreground">
+            {row.title || "No title"}
+          </div>
           <div className="text-xs text-muted-foreground">{row.email}</div>
         </TableCell>
       )}
       <TableCell className={view === "personal" ? "pl-6" : undefined}>
-        <span className="font-medium">{formatCalendarDate(row.periodStart)}</span>
+        <span className="font-medium">
+          {formatCalendarDate(row.periodStart)}
+        </span>
         <span className="block text-xs text-muted-foreground">
           to {formatCalendarDate(row.periodEnd)}
         </span>
       </TableCell>
       {view === "team" && (
         <TableCell className="max-w-64 whitespace-normal text-xs text-muted-foreground">
-          <ScopeIds label="Departments" ids={row.departmentIds} />
-          <ScopeIds label="Divisions" ids={row.divisionIds} />
+          <ScopeIds
+            label="Departments"
+            ids={row.departmentIds}
+            options={availableFilters?.departments}
+          />
+          <ScopeIds
+            label="Divisions"
+            ids={row.divisionIds}
+            options={availableFilters?.divisions}
+          />
         </TableCell>
       )}
       <NumericCell value={row.totalTasks} />
@@ -191,11 +209,27 @@ function NumericCell({ value }: { value: number }) {
   );
 }
 
-function ScopeIds({ label, ids }: { label: string; ids: string[] }) {
+function ScopeIds({
+  label,
+  ids,
+  options,
+}: {
+  label: string;
+  ids: string[];
+  options?: { id: string; name: string }[];
+}) {
   return (
     <div title={ids.join(", ")}>
       <span className="font-medium text-foreground">{label}:</span>{" "}
-      {ids.length > 0 ? ids.join(", ") : "—"}
+      {ids.length > 0
+        ? ids
+            .map(
+              (id) =>
+                options?.find((item) => item.id === id)?.name ??
+                "Unavailable unit",
+            )
+            .join(", ")
+        : "Not assigned"}
     </div>
   );
 }

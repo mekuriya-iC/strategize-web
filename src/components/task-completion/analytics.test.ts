@@ -30,10 +30,7 @@ describe("task completion status presentation", () => {
 describe("task completion query variables", () => {
   it("builds personal variables without hierarchy-only filters", () => {
     const filters = {
-      ...createDefaultTaskCompletionFilters(
-        "MONTHLY",
-        new Date(2026, 7, 17),
-      ),
+      ...createDefaultTaskCompletionFilters("MONTHLY", new Date(2026, 7, 17)),
       strategicPeriodId: "  strategic-period-1  ",
       status: "GOOD" as const,
       employeeId: "employee-1",
@@ -57,10 +54,7 @@ describe("task completion query variables", () => {
 
   it("adds trimmed hierarchy filters and omits blank IDs", () => {
     const filters = {
-      ...createDefaultTaskCompletionFilters(
-        "WEEKLY",
-        new Date(2026, 7, 17),
-      ),
+      ...createDefaultTaskCompletionFilters("WEEKLY", new Date(2026, 7, 17)),
       employeeId: " employee-1 ",
       departmentId: "   ",
       divisionId: "division-1",

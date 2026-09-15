@@ -1,0 +1,30 @@
+.dashboard {
+  --muted-foreground: #586478;
+  min-width: 0;
+}
+
+:global(.dark) .dashboard {
+  --muted-foreground: #a9b4c7;
+}
+
+.sections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  height: auto;
+  gap: 4px;
+}
+
+.sections button {
+  min-width: 0;
+  height: auto;
+  white-space: normal;
+  font-size: 13px;
+}
+
+@media (min-width: 640px) {
+  .sections {
+    display: inline-flex;
+    width: fit-content;
+  }
+}

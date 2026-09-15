@@ -24,7 +24,7 @@ export function TaskCompletionSummary({
 
   const cards = [
     {
-      title: "Submitted tasks",
+      title: "Approved official tasks",
       value: summary.totalTasks.toLocaleString(),
       detail: "Official tasks included",
       icon: ClipboardList,
@@ -32,7 +32,7 @@ export function TaskCompletionSummary({
     {
       title: "Completed",
       value: summary.completedTasks.toLocaleString(),
-      detail: "Submitted tasks completed",
+      detail: "Current outcome: done",
       icon: CircleCheckBig,
     },
     {
@@ -44,34 +44,43 @@ export function TaskCompletionSummary({
   ];
 
   return (
-    <section className="space-y-4" aria-labelledby="task-completion-summary-title">
+    <section
+      className="space-y-4"
+      aria-labelledby="task-completion-summary-title"
+    >
       <div className="sr-only" id="task-completion-summary-title">
         Task completion summary
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {cards.map(({ title, value, detail, icon: Icon }) => (
-          <Card key={title} className="gap-3 py-5">
-            <CardHeader className="flex-row items-center justify-between gap-3">
+          <Card
+            key={title}
+            className="gap-3 border-primary/15 bg-gradient-to-br from-primary/5 to-card py-5"
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2 px-4">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {title}
               </CardTitle>
-              <Icon className="size-5 text-muted-foreground" aria-hidden="true" />
+              <Icon className="size-5 text-primary" aria-hidden="true" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums">{value}</div>
+            <CardContent className="px-4">
+              <div className="text-2xl font-bold tabular-nums sm:text-3xl">{value}</div>
               <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
             </CardContent>
           </Card>
         ))}
 
         <Card className="gap-3 py-5">
-          <CardHeader className="flex-row items-center justify-between gap-3">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 px-4">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Status
             </CardTitle>
-            <Activity className="size-5 text-muted-foreground" aria-hidden="true" />
+            <Activity
+              className="size-5 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4">
             <TaskCompletionStatusBadge status={summary.status} />
             <p className="mt-3 text-xs text-muted-foreground">
               {teamView
@@ -84,14 +93,14 @@ export function TaskCompletionSummary({
 
       <Card className="gap-4 py-5">
         <CardHeader>
-          <CardTitle className="text-base">Submitted task components</CardTitle>
+          <CardTitle className="text-base">Outcome breakdown</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Only submitted official tasks count in these analytics. Draft or
-            unsubmitted work is not included.
+            Approved official tasks only. Pending approval, rejected and draft
+            work is excluded.
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <ComponentCount
               label="Completed"
               value={summary.completedTasks}
@@ -134,7 +143,9 @@ function ComponentCount({
         <Icon className="size-4" aria-hidden="true" />
         {label}
       </div>
-      <span className="font-semibold tabular-nums">{value.toLocaleString()}</span>
+      <span className="font-semibold tabular-nums">
+        {value.toLocaleString()}
+      </span>
     </div>
   );
 }

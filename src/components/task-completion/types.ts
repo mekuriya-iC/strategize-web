@@ -78,6 +78,27 @@ export interface TaskCompletionAnalyticsResult {
   summary: TaskCompletionAnalyticsSummary;
   rows: TaskCompletionAnalyticsRow[];
   pageInfo: TaskCompletionPageInfo;
+  series: TaskCompletionPeriodRow[];
+  availableFilters: TaskCompletionAvailableFilters;
+}
+
+export type TaskCompletionPeriodRow = Pick<
+  TaskCompletionAnalyticsRow,
+  | "periodStart"
+  | "periodEnd"
+  | "totalTasks"
+  | "completedTasks"
+  | "notDoneTasks"
+  | "postponedTasks"
+  | "cancelledTasks"
+  | "completionRate"
+  | "status"
+>;
+
+export interface TaskCompletionAvailableFilters {
+  employees: { id: string; name: string }[];
+  departments: { id: string; name: string }[];
+  divisions: { id: string; name: string }[];
 }
 
 export interface PersonalTaskCompletionAnalyticsData {

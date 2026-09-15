@@ -1,325 +1,224 @@
 "use client";
 
-import { RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { getDefaultTaskCompletionDateRange } from "./analytics";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
 import type {
   TaskCompletionAnalyticsFilters,
-  TaskCompletionPeriodType,
-  TaskCompletionSortDirection,
-  TaskCompletionSortField,
-  TaskCompletionStatus,
+  TaskCompletionAvailableFilters,
   TaskCompletionView,
 } from "./types";
 
-interface TaskCompletionFiltersProps {
-  view: TaskCompletionView;
-  filters: TaskCompletionAnalyticsFilters;
-  dateRangeError: string | null;
-  loading: boolean;
-  onChange: (filters: TaskCompletionAnalyticsFilters) => void;
-  onApply: () => void;
-  onReset: () => void;
-}
-
-const statuses: Array<{ value: TaskCompletionStatus; label: string }> = [
-  { value: "EXCELLENT", label: "Excellent" },
-  { value: "GOOD", label: "Good" },
-  { value: "WATCH", label: "Watch" },
-  { value: "LOW", label: "Low" },
-  { value: "CRITICAL", label: "Critical" },
-  { value: "NO_DATA", label: "No data" },
-];
-
-const sortFields: Array<{ value: TaskCompletionSortField; label: string }> = [
-  { value: "PERIOD_START", label: "Period start" },
-  { value: "EMPLOYEE_NAME", label: "Employee name" },
-  { value: "COMPLETION_RATE", label: "Completion rate" },
-  { value: "TOTAL_TASKS", label: "Submitted tasks" },
-  { value: "COMPLETED_TASKS", label: "Completed tasks" },
-  { value: "STATUS", label: "Status" },
-];
+const selectClass =
+  "h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary";
 
 export function TaskCompletionFilters({
   view,
   filters,
+  availableFilters,
   dateRangeError,
   loading,
   onChange,
   onApply,
   onReset,
-}: TaskCompletionFiltersProps) {
-  const update = (patch: Partial<TaskCompletionAnalyticsFilters>) => {
+}: {
+  view: TaskCompletionView;
+  filters: TaskCompletionAnalyticsFilters;
+  availableFilters?: TaskCompletionAvailableFilters;
+  dateRangeError: string | null;
+  loading: boolean;
+  onChange: (filters: TaskCompletionAnalyticsFilters) => void;
+  onApply: () => void;
+  onReset: () => void;
+}) {
+  const { strategicPeriods } = useActiveStrategicPlanPeriods();
+  const update = (patch: Partial<TaskCompletionAnalyticsFilters>) =>
     onChange({ ...filters, ...patch, page: 1 });
-  };
-
-  const changePeriodType = (periodType: TaskCompletionPeriodType) => {
-    update({
-      periodType,
-      ...getDefaultTaskCompletionDateRange(periodType),
-    });
-  };
-
   return (
-    <Card>
-      <CardHeader className="border-b">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Analytics filters</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Dates are inclusive calendar dates.
-            </p>
-          </div>
-          {view === "team" && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="size-4" aria-hidden="true" />
-              Reporting scope is enforced by the server
-            </div>
-          )}
+    <form
+      className="rounded-2xl border bg-card p-4 sm:p-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onApply();
+      }}
+      aria-label="Analytics filters"
+    >
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="space-y-1.5 text-xs font-medium">
+          Planning period
+          <select
+            className={selectClass}
+            value={filters.strategicPeriodId ?? ""}
+            onChange={(event) => {
+              const period = strategicPeriods.find(
+                (p) => p.strategicPeriodId === event.target.value,
+              );
+              update({
+                strategicPeriodId: period?.strategicPeriodId,
+                ...(period
+                  ? {
+                      startDate: period.startDate.slice(0, 10),
+                      endDate: period.endDate.slice(0, 10),
+                    }
+                  : {}),
+              });
+            }}
+          >
+            <option value="">All plans · selected dates</option>
+            {strategicPeriods.map((p) => (
+              <option key={p.strategicPeriodId} value={p.strategicPeriodId}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1.5 text-xs font-medium">
+          Group by
+          <select
+            className={selectClass}
+            value={filters.periodType}
+            onChange={(e) =>
+              update({
+                periodType: e.target
+                  .value as TaskCompletionAnalyticsFilters["periodType"],
+              })
+            }
+          >
+            <option value="WEEKLY">Week</option>
+            <option value="DAILY">Day</option>
+            <option value="MONTHLY">Month</option>
+          </select>
+        </label>
+        <label className="space-y-1.5 text-xs font-medium">
+          From (inclusive)
+          <Input
+            required
+            type="date"
+            value={filters.startDate}
+            onChange={(e) => update({ startDate: e.target.value })}
+            aria-invalid={!!dateRangeError}
+          />
+        </label>
+        <label className="space-y-1.5 text-xs font-medium">
+          To (inclusive)
+          <Input
+            required
+            type="date"
+            value={filters.endDate}
+            onChange={(e) => update({ endDate: e.target.value })}
+            aria-invalid={!!dateRangeError}
+          />
+        </label>
+      </div>
+      <details className="mt-4">
+        <summary className="cursor-pointer text-sm font-medium text-primary">
+          Refine scope, status & sorting
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {view === "team" &&
+            (
+              [
+                ["employeeId", "employees", "Employee"],
+                ["departmentId", "departments", "Department"],
+                ["divisionId", "divisions", "Division"],
+              ] as const
+            ).map(([field, options, label]) => (
+              <label key={field} className="space-y-1.5 text-xs font-medium">
+                {label}
+                <select
+                  className={selectClass}
+                  value={filters[field] ?? ""}
+                  onChange={(e) =>
+                    update({ [field]: e.target.value || undefined })
+                  }
+                >
+                  <option value="">All in my authorized scope</option>
+                  {(availableFilters?.[options] ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          <label className="space-y-1.5 text-xs font-medium">
+            Completion status
+            <select
+              className={selectClass}
+              value={filters.status ?? ""}
+              onChange={(e) =>
+                update({
+                  status:
+                    (e.target
+                      .value as TaskCompletionAnalyticsFilters["status"]) ||
+                    undefined,
+                })
+              }
+            >
+              <option value="">All statuses</option>
+              {["EXCELLENT", "GOOD", "WATCH", "LOW", "CRITICAL", "NO_DATA"].map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {value.replace("_", " ")}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+          <label className="space-y-1.5 text-xs font-medium">
+            Sort detail by
+            <select
+              className={selectClass}
+              value={filters.sortBy}
+              onChange={(e) =>
+                update({
+                  sortBy: e.target
+                    .value as TaskCompletionAnalyticsFilters["sortBy"],
+                })
+              }
+            >
+              <option value="PERIOD_START">Period start</option>
+              <option value="EMPLOYEE_NAME">Employee name</option>
+              <option value="COMPLETION_RATE">Completion rate</option>
+              <option value="TOTAL_TASKS">Task volume</option>
+              <option value="COMPLETED_TASKS">Completed</option>
+              <option value="STATUS">Status</option>
+            </select>
+          </label>
+          <label className="space-y-1.5 text-xs font-medium">
+            Order
+            <select
+              className={selectClass}
+              value={filters.sortDirection}
+              onChange={(e) =>
+                update({
+                  sortDirection: e.target
+                    .value as TaskCompletionAnalyticsFilters["sortDirection"],
+                })
+              }
+            >
+              <option value="ASC">Ascending</option>
+              <option value="DESC">Descending</option>
+            </select>
+          </label>
         </div>
-      </CardHeader>
-      <CardContent>
-        <form
-          className="space-y-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onApply();
-          }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-period-type">Period type</Label>
-              <Select
-                value={filters.periodType}
-                onValueChange={(value) =>
-                  changePeriodType(value as TaskCompletionPeriodType)
-                }
-              >
-                <SelectTrigger
-                  id="task-completion-period-type"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DAILY">Daily</SelectItem>
-                  <SelectItem value="WEEKLY">Weekly</SelectItem>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-start-date">Start date</Label>
-              <Input
-                id="task-completion-start-date"
-                type="date"
-                required
-                aria-invalid={!!dateRangeError}
-                value={filters.startDate}
-                onChange={(event) => update({ startDate: event.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-end-date">End date</Label>
-              <Input
-                id="task-completion-end-date"
-                type="date"
-                required
-                aria-invalid={!!dateRangeError}
-                value={filters.endDate}
-                onChange={(event) => update({ endDate: event.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-status">Completion status</Label>
-              <Select
-                value={filters.status ?? "ALL"}
-                onValueChange={(value) =>
-                  update({
-                    status:
-                      value === "ALL"
-                        ? undefined
-                        : (value as TaskCompletionStatus),
-                  })
-                }
-              >
-                <SelectTrigger id="task-completion-status" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All statuses</SelectItem>
-                  {statuses.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-strategic-period">
-                Strategic period ID <span className="font-normal">(optional)</span>
-              </Label>
-              <Input
-                id="task-completion-strategic-period"
-                placeholder="Strategic period ID"
-                value={filters.strategicPeriodId ?? ""}
-                onChange={(event) =>
-                  update({ strategicPeriodId: event.target.value })
-                }
-              />
-            </div>
-
-            {view === "team" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="task-completion-employee">
-                    Employee ID <span className="font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="task-completion-employee"
-                    placeholder="Employee ID"
-                    value={filters.employeeId ?? ""}
-                    onChange={(event) =>
-                      update({ employeeId: event.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="task-completion-department">
-                    Department ID <span className="font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="task-completion-department"
-                    placeholder="Department ID"
-                    value={filters.departmentId ?? ""}
-                    onChange={(event) =>
-                      update({ departmentId: event.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="task-completion-division">
-                    Division ID <span className="font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="task-completion-division"
-                    placeholder="Division ID"
-                    value={filters.divisionId ?? ""}
-                    onChange={(event) =>
-                      update({ divisionId: event.target.value })
-                    }
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-sort">Sort by</Label>
-              <Select
-                value={filters.sortBy}
-                onValueChange={(value) =>
-                  update({ sortBy: value as TaskCompletionSortField })
-                }
-              >
-                <SelectTrigger id="task-completion-sort" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortFields.map((field) => (
-                    <SelectItem key={field.value} value={field.value}>
-                      {field.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-completion-sort-direction">Sort order</Label>
-              <Select
-                value={filters.sortDirection}
-                onValueChange={(value) =>
-                  update({
-                    sortDirection: value as TaskCompletionSortDirection,
-                  })
-                }
-              >
-                <SelectTrigger
-                  id="task-completion-sort-direction"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ASC">Ascending</SelectItem>
-                  <SelectItem value="DESC">Descending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {view === "team" && (
-            <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/40">
-              <Checkbox
-                id="task-completion-critical-only"
-                checked={filters.status === "CRITICAL"}
-                onCheckedChange={(checked) =>
-                  update({
-                    status:
-                      checked === true
-                        ? "CRITICAL"
-                        : filters.status === "CRITICAL"
-                          ? undefined
-                          : filters.status,
-                  })
-                }
-              />
-              <Label
-                htmlFor="task-completion-critical-only"
-                className="cursor-pointer text-red-950 dark:text-red-200"
-              >
-                Critical only
-              </Label>
-              <span className="text-xs text-red-800 dark:text-red-300">
-                Show rows below 40% completion.
-              </span>
-            </div>
-          )}
-
-          {dateRangeError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {dateRangeError}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="submit" disabled={!!dateRangeError || loading}>
-              <Search aria-hidden="true" />
-              {loading ? "Loading…" : "Apply filters"}
-            </Button>
-            <Button type="button" variant="outline" onClick={onReset}>
-              <RotateCcw aria-hidden="true" />
-              Reset
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      </details>
+      {dateRangeError && (
+        <p className="mt-3 text-sm text-destructive" role="alert">
+          {dateRangeError}
+        </p>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Button type="submit" size="sm" disabled={!!dateRangeError || loading}>
+          {loading ? "Loading…" : "Apply filters"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onReset}>
+          Reset to recent weeks
+        </Button>
+        <span className="text-xs text-muted-foreground sm:ml-auto">
+          Scope enforced by the server · grouped by task due date
+        </span>
+      </div>
+    </form>
   );
 }

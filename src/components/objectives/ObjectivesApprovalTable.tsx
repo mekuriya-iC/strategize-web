@@ -25,6 +25,7 @@ import {
 } from "@/lib/graphql/queries/submissions";
 import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import { isPersonalObjectiveAssignment } from "@/lib/objectives/personalObjectiveScope";
 import {
   kpiSubmissionsQueryVariables,
   objectiveSubmissionsQueryVariables,
@@ -268,6 +269,9 @@ function ObjectivesApprovalTableContent() {
   // Build names lookup map
   const unitNames = useMemo(() => {
     const map: Record<string, string> = {};
+    // Employees cannot fetch the admin-only directory, but their own name is
+    // already available. An assigned personal objective is not "Unassigned".
+    if (userEmployeeId) map[userEmployeeId] = user?.fullName || "You";
     divisionsData?.divisions?.items?.forEach((d: any) => {
       map[d.divisionId] = d.name;
     });
@@ -278,7 +282,13 @@ function ObjectivesApprovalTableContent() {
       map[e.employeeId] = e.fullName;
     });
     return map;
-  }, [divisionsData, departmentsData, employeesData]);
+  }, [
+    divisionsData,
+    departmentsData,
+    employeesData,
+    userEmployeeId,
+    user?.fullName,
+  ]);
 
   // Build rejection reasons maps for Objectives and KPIs
   const { objectiveRejectionReasons, kpiRejectionReasons } = useMemo(() => {
@@ -422,20 +432,9 @@ function ObjectivesApprovalTableContent() {
     // First, handle role-based scope filtering with strict hierarchical alignment
     if (isEmployee) {
       console.log("🔍 [ObjectivesFilter] Applying EMPLOYEE filter");
-      filtered = filtered.filter((obj) => {
-        // Show objectives explicitly assigned to this employee
-        if (obj.assigneeType === "PERSONNEL") {
-          return obj.assigneeId === userEmployeeId;
-        }
-        // Show parent department objectives for context (no assigneeType means corporate or top-level)
-        if (
-          obj.assigneeType === "DEPARTMENT" ||
-          (!obj.assigneeType && !obj.assigneeId)
-        ) {
-          return !obj.parent;
-        }
-        return false;
-      });
+      filtered = filtered.filter((obj) =>
+        isPersonalObjectiveAssignment(obj, userEmployeeId),
+      );
     } else if (isManager) {
       console.log("🔍 [ObjectivesFilter] Applying MANAGER filter", {
         managedDepartmentIds: managedDepartmentIds,
@@ -717,7 +716,12 @@ function ObjectivesApprovalTableContent() {
   // Sort objectives by order field
   const sortedObjectives = useMemo(() => {
     // If we have an optimistic order, use it
-    if (orderedObjectives) return orderedObjectives;
+    if (orderedObjectives) {
+      const visibleIds = new Set(
+        filteredObjectives.map((obj) => obj.objectiveId),
+      );
+      return orderedObjectives.filter((obj) => visibleIds.has(obj.objectiveId));
+    }
 
     // Otherwise, sort the filtered objectives by their order field
     return [...filteredObjectives].sort((a, b) => {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth-utils";
 import { apolloLogger } from "@/lib/logger";
 import { isExpectedGraphqlBusinessError } from "@/lib/graphql/error-classification";
+import { paginatedResultPolicies } from "@/lib/graphql/paginatedResultPolicies";
 
 const httpLink = createHttpLink({
   // Browser requests stay on the current web origin. The Next.js route proxies
@@ -147,19 +148,7 @@ const apolloClient = new ApolloClient({
       CheckinoutScheduleWeekCoverage: {
         keyFields: ["scheduleWeekCoverageId"],
       },
-      // Paginated types - merge strategy for lists
-      PaginatedObjectives: {
-        keyFields: [],
-        merge(existing, incoming) {
-          return incoming; // Replace with new data
-        },
-      },
-      PaginatedKpis: {
-        keyFields: [],
-        merge(existing, incoming) {
-          return incoming;
-        },
-      },
+      ...paginatedResultPolicies,
       // KPI quarter plans - proper array merge
       Kpi: {
         keyFields: ["kpiId"],

@@ -59,7 +59,7 @@ export function QuarterPerformanceCell({
   }
 
   return (
-    <div className="grid min-w-105 grid-cols-4 gap-2">
+    <div className="grid min-w-[16rem] grid-cols-2 gap-2 sm:min-w-[20rem] sm:grid-cols-4">
       {[1, 2, 3, 4].map((quarter) => {
         const plan = plans.find((item) => item.quarterNumber === quarter);
         const result = results.find(

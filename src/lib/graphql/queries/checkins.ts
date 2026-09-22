@@ -291,6 +291,7 @@ export const GET_PENDING_TASK_PLANNING_APPROVALS = gql`
       plannedDescription
       taskStatus
       submissionStatus
+      createdAt
       submittedAt
       planningRevision
       isMidWeekTask

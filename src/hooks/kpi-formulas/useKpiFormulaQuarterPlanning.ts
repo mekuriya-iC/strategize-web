@@ -174,7 +174,7 @@ export function useKpiFormulaQuarterPlanning({
       kpiId,
     },
     skip: !canLoadFormula,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
   });
   const plansQuery = useQuery<
@@ -187,7 +187,7 @@ export function useKpiFormulaQuarterPlanning({
       annualPeriodId,
     },
     skip: !canLoadPlans,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
   });
   const [setMetricInputsMutation, metricMutationState] = useMutation<

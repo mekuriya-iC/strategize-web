@@ -4,18 +4,17 @@ import { useQuery } from "@apollo/client";
 import { GET_KPI_UPDATES } from "@/lib/graphql/queries/kpis";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   TrendingDown,
   Minus,
   CheckCircle2,
   Clock,
-  ExternalLink,
   Calendar,
   User,
 } from "lucide-react";
 import { format } from "date-fns";
+import { AttachmentTrigger } from "@/components/files/AttachmentTrigger";
 
 interface KpiProgressHistoryProps {
   kpiId: string;
@@ -227,15 +226,11 @@ export default function KpiProgressHistory({
 
                     {update.evidenceUrl && (
                       <div className="mt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => window.open(update.evidenceUrl, "_blank")}
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          View Evidence
-                        </Button>
+                        <AttachmentTrigger
+                          url={update.evidenceUrl}
+                          name="View Evidence"
+                          variant="button"
+                        />
                       </div>
                     )}
 

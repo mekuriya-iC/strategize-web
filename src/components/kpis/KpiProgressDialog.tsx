@@ -100,7 +100,7 @@ export default function KpiProgressDialog({
       entryDate: formData.reportingDate,
     },
     skip: !open || !isBasisDriven || !formData.reportingDate,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
   const resultEntryContext = resultContextData?.kpiResultEntryContext;
   const actualBasisSource =

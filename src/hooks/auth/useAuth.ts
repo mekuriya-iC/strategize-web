@@ -81,10 +81,12 @@ export const useAuth = ({ bootstrap = false }: UseAuthOptions = {}) => {
           }
 
           try {
-            // Token exists and is valid, fetch current user data
+            // Prefer persisted auth store / Apollo cache on bootstrap; only
+            // force network when we have no known user yet.
+            const existingUser = authStore.user;
             const { data } = await apolloClient.query({
               query: GET_ME,
-              fetchPolicy: "network-only",
+              fetchPolicy: existingUser ? "cache-first" : "network-only",
             });
 
             if (data?.me) {
@@ -231,6 +233,9 @@ export const useAuth = ({ bootstrap = false }: UseAuthOptions = {}) => {
 
     try {
       await apolloClient.clearStore();
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("strategize-apollo-cache");
+      }
     } catch (error) {
       authLogger.warn("Apollo clearStore during logout", error);
     }

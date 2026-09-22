@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { TaskCompletionStatusBadge } from "./TaskCompletionStatusBadge";
 import type {
   TaskCompletionAnalyticsResult,
@@ -37,13 +42,74 @@ export function TaskCompletionTable({
   loading,
   onPageChange,
 }: TaskCompletionTableProps) {
-  if (loading && !result) {
-    return <TaskCompletionTableSkeleton />;
-  }
-
   const rows = result?.rows ?? [];
   const pageInfo = result?.pageInfo;
   const periodLabel = result?.summary.periodType.toLowerCase() ?? "period";
+
+  const columns = useMemo(() => {
+    const defs = [
+      {
+        id: "period",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.periodStart,
+      },
+      {
+        id: "approved",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.totalTasks,
+      },
+      {
+        id: "completed",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.completedTasks,
+      },
+      {
+        id: "notDone",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.notDoneTasks,
+      },
+      {
+        id: "postponed",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.postponedTasks,
+      },
+      {
+        id: "cancelled",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.cancelledTasks,
+      },
+      {
+        id: "rate",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.completionRate,
+      },
+      {
+        id: "status",
+        accessor: (row: TaskCompletionAnalyticsRow) => row.status,
+        filterFn: (row: TaskCompletionAnalyticsRow, value: string) =>
+          row.status === value,
+      },
+    ];
+
+    if (view === "team") {
+      return [
+        {
+          id: "employee",
+          accessor: (row: TaskCompletionAnalyticsRow) => row.employeeName,
+        },
+        {
+          id: "orgUnits",
+          accessor: (row: TaskCompletionAnalyticsRow) =>
+            [...row.departmentIds, ...row.divisionIds].join(" "),
+        },
+        ...defs,
+      ];
+    }
+
+    return defs;
+  }, [view]);
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows,
+    columns,
+  });
+
+  if (loading && !result) {
+    return <TaskCompletionTableSkeleton />;
+  }
 
   return (
     <Card className="gap-0 overflow-hidden py-0">
@@ -62,23 +128,95 @@ export function TaskCompletionTable({
           <TableHeader>
             <TableRow>
               {view === "team" && (
-                <TableHead className="pl-6">Employee</TableHead>
+                <TableHead className="pl-6">
+                  <SortableFilterableHeader
+                    label="Employee"
+                    {...getHeaderProps("employee")}
+                  />
+                </TableHead>
               )}
               <TableHead className={view === "personal" ? "pl-6" : undefined}>
-                Period
+                <SortableFilterableHeader
+                  label="Period"
+                  filterable={false}
+                  {...getHeaderProps("period")}
+                />
               </TableHead>
-              {view === "team" && <TableHead>Organization units</TableHead>}
-              <TableHead className="text-right">Approved</TableHead>
-              <TableHead className="text-right">Completed</TableHead>
-              <TableHead className="text-right">Not done</TableHead>
-              <TableHead className="text-right">Postponed</TableHead>
-              <TableHead className="text-right">Cancelled</TableHead>
-              <TableHead className="text-right">Rate</TableHead>
-              <TableHead className="pr-6">Status</TableHead>
+              {view === "team" && (
+                <TableHead>
+                  <SortableFilterableHeader
+                    label="Organization units"
+                    {...getHeaderProps("orgUnits")}
+                  />
+                </TableHead>
+              )}
+              <TableHead className="text-right">
+                <SortableFilterableHeader
+                  label="Approved"
+                  align="right"
+                  filterable={false}
+                  {...getHeaderProps("approved")}
+                />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortableFilterableHeader
+                  label="Completed"
+                  align="right"
+                  filterable={false}
+                  {...getHeaderProps("completed")}
+                />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortableFilterableHeader
+                  label="Not done"
+                  align="right"
+                  filterable={false}
+                  {...getHeaderProps("notDone")}
+                />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortableFilterableHeader
+                  label="Postponed"
+                  align="right"
+                  filterable={false}
+                  {...getHeaderProps("postponed")}
+                />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortableFilterableHeader
+                  label="Cancelled"
+                  align="right"
+                  filterable={false}
+                  {...getHeaderProps("cancelled")}
+                />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortableFilterableHeader
+                  label="Rate"
+                  align="right"
+                  filterable={false}
+                  {...getHeaderProps("rate")}
+                />
+              </TableHead>
+              <TableHead className="pr-6">
+                <SortableFilterableHeader
+                  label="Status"
+                  filterType="select"
+                  filterOptions={[
+                    { value: "EXCELLENT", label: "Excellent" },
+                    { value: "GOOD", label: "Good" },
+                    { value: "WATCH", label: "Watch" },
+                    { value: "LOW", label: "Low" },
+                    { value: "CRITICAL", label: "Critical" },
+                    { value: "NO_DATA", label: "No data" },
+                  ]}
+                  {...getHeaderProps("status")}
+                />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {processedRows.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={view === "team" ? 10 : 8}
@@ -90,7 +228,7 @@ export function TaskCompletionTable({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row) => (
+              processedRows.map((row) => (
                 <TaskCompletionRow
                   key={`${row.employeeId}-${row.periodStart}-${row.periodEnd}`}
                   row={row}

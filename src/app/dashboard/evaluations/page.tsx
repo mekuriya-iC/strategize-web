@@ -75,7 +75,7 @@ function EvaluationsContent() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="bg-white border-b border-gray-200 w-full justify-start rounded-none h-auto p-0">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-gray-200 bg-white p-0">
           <TabsTrigger
             value="overview"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 px-4 py-3"

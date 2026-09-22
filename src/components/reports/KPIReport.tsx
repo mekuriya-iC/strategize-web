@@ -52,7 +52,7 @@ export default function KPIReport({ onExport }: KPIReportProps) {
 
   const { data: kpisData, loading } = useQuery(GET_KPIS, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const rawKpis = kpisData?.kpis?.items || [];

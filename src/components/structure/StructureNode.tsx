@@ -37,20 +37,20 @@ export default function StructureNode({
       {/* Node Card */}
       <div className="relative group">
         <div
-          className={`rounded-lg px-6 py-3 min-w-[160px] text-center shadow-md transition-all hover:shadow-lg ${
+          className={`min-w-[132px] rounded-lg px-4 py-2.5 text-center shadow-md transition-all hover:shadow-lg sm:min-w-[160px] sm:px-6 sm:py-3 ${
             isSelected ? "ring-2 ring-primary ring-offset-2" : ""
           }`}
           style={{ backgroundColor: color }}
         >
-          <div className="text-white font-medium text-sm">{name}</div>
+          <div className="text-sm font-medium text-white">{name}</div>
           {subtitle && (
-            <div className="text-white/80 text-xs mt-1 flex items-center justify-center gap-1">
+            <div className="mt-1 flex items-center justify-center gap-1 text-xs text-white/80">
               <span>{subtitle}</span>
             </div>
           )}
 
-          {/* Action Buttons - Show on Hover */}
-          <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+          {/* Action buttons: always visible on touch; hover on fine pointers */}
+          <div className="absolute -right-2 -top-2 flex gap-1 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
             {onDuplicate && (
               <button
                 className="h-6 w-6 rounded-full bg-white shadow-md hover:bg-gray-100 flex items-center justify-center transition-colors"

@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,8 @@ import {
   TableHead,
   TableHeader,
 } from "@/components/ui/table";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { Objective } from "@/components/features/objectives/ObjectiveTable";
 import { Kpi } from "@/types/graphql";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
@@ -67,10 +71,46 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
   loading = false,
   error,
 }) => {
+  const columns = useMemo(
+    () => [
+      {
+        id: "level",
+        accessor: (obj: Objective) => obj.type || "",
+        filterFn: (obj: Objective, value: string) =>
+          (obj.type || "") === value,
+      },
+      {
+        id: "submitBy",
+        accessor: (obj: Objective) => obj.createdBy?.fullName || "N/A",
+      },
+      {
+        id: "name",
+        accessor: (obj: Objective) => obj.name || obj.title || "",
+      },
+      {
+        id: "kpiCount",
+        accessor: (obj: Objective) =>
+          kpis.filter((kpi) => kpi.objective?.objectiveId === obj.objectiveId)
+            .length,
+      },
+      {
+        id: "status",
+        accessor: (obj: Objective) => obj.status,
+        filterFn: (obj: Objective, value: string) => obj.status === value,
+      },
+    ],
+    [kpis],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: objectives,
+    columns,
+  });
+
   // Calculate if all objectives are selected
   const allSelected =
-    objectives.length > 0 &&
-    objectives.every((obj) => selected.includes(obj.objectiveId));
+    processedRows.length > 0 &&
+    processedRows.every((obj) => selected.includes(obj.objectiveId));
 
   // Helper function to get KPIs for a specific objective
   const getKPIsForObjective = (objectiveId: string) => {
@@ -121,16 +161,36 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
               />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Objective Level
+              <SortableFilterableHeader
+                label="Objective Level"
+                filterType="select"
+                filterOptions={[
+                  { value: "CORPORATE", label: "Corporate" },
+                  { value: "DIVISION", label: "Division" },
+                  { value: "DEPARTMENT", label: "Department" },
+                  { value: "PERSONNEL", label: "Personnel" },
+                ]}
+                {...getHeaderProps("level")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Submit By
+              <SortableFilterableHeader
+                label="Submit By"
+                {...getHeaderProps("submitBy")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Objective Name
+              <SortableFilterableHeader
+                label="Objective Name"
+                {...getHeaderProps("name")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              KPI
+              <SortableFilterableHeader
+                label="KPI"
+                filterable={false}
+                {...getHeaderProps("kpiCount")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Linked KPI
@@ -139,7 +199,17 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
               Weight
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
+              <SortableFilterableHeader
+                label="Status"
+                filterType="select"
+                filterOptions={[
+                  { value: "NOT_SUBMITTED", label: "Not Submitted" },
+                  { value: "PENDING", label: "Pending" },
+                  { value: "APPROVED", label: "Approved" },
+                  { value: "REJECTED", label: "Rejected" },
+                ]}
+                {...getHeaderProps("status")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
@@ -148,7 +218,7 @@ const ApprovalTable: React.FC<ApprovalTableProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {objectives.map((obj, idx) => {
+          {processedRows.map((obj, idx) => {
             const objectiveKPIs = getKPIsForObjective(obj.objectiveId);
             const areAllKPIsApproved =
               objectiveKPIs.length > 0 &&

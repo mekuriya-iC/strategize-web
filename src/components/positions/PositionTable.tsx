@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import React from "react";
 import { getOrganizationId } from "@/lib/constants/organization";
 import { type Position, usePositionMutations } from "@/hooks/positions/usePositions";
@@ -43,6 +43,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/stores";
 import { MoreHorizontal, Pencil, Trash2, Eye, Briefcase, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface PositionTableProps {
   positions: Position[];
@@ -112,6 +114,26 @@ export default function PositionTable({ positions, loading }: PositionTableProps
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  const columns = useMemo(
+    () => [
+      { id: "title", accessor: (pos: Position) => pos.title },
+      { id: "grade", accessor: (pos: Position) => pos.grade ?? "" },
+      { id: "description", accessor: (pos: Position) => pos.description ?? "" },
+      {
+        id: "createdAt",
+        accessor: (pos: Position) => pos.createdAt,
+        compare: (a: Position, b: Position) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: positions,
+    columns,
+  });
 
   const PositionForm = ({
     onSubmit,
@@ -227,18 +249,33 @@ export default function PositionTable({ positions, loading }: PositionTableProps
         </div>
       ) : (
         <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <Table>
+          <Table stickyFirstColumn>
             <TableHeader>
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                <TableHead className="font-semibold">Title</TableHead>
-                <TableHead className="font-semibold">Grade</TableHead>
-                <TableHead className="font-semibold">Description</TableHead>
-                <TableHead className="font-semibold">Created</TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader label="Title" {...getHeaderProps("title")} />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader label="Grade" {...getHeaderProps("grade")} />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Description"
+                    {...getHeaderProps("description")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Created"
+                    filterable={false}
+                    {...getHeaderProps("createdAt")}
+                  />
+                </TableHead>
                 <TableHead className="font-semibold w-[50px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {positions.map((pos) => (
+              {processedRows.map((pos) => (
                 <TableRow
                   key={pos.positionId}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors"
@@ -272,7 +309,7 @@ export default function PositionTable({ positions, loading }: PositionTableProps
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 min-h-9 min-w-9 touch-manipulation">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

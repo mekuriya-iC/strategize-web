@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { type Activity, useInitiativeMutations } from "@/hooks/initiatives/useInitiatives";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +60,8 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface ActivityTableProps {
   activities: Activity[];
@@ -98,6 +100,31 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
     milestone: false,
     notes: "",
     status: "NOT_DONE",
+  });
+
+  const columns = useMemo(
+    () => [
+      { id: "title", accessor: (row: Activity) => row.title },
+      {
+        id: "status",
+        accessor: (row: Activity) => row.status,
+        filterFn: (row: Activity, value: string) => row.status === value,
+      },
+      {
+        id: "assignedTo",
+        accessor: (row: Activity) => row.assignedTo?.fullName || "Unassigned",
+      },
+      {
+        id: "timeline",
+        accessor: (row: Activity) => row.startDate ?? row.dueDate ?? "",
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: activities,
+    columns,
   });
 
   const resetForm = () => {
@@ -191,15 +218,40 @@ export default function ActivityTable({ activities, initiativeId, loading }: Act
             <TableHeader>
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                 <TableHead className="font-semibold w-[40px]" />
-                <TableHead className="font-semibold">Activity</TableHead>
-                <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Assigned To</TableHead>
-                <TableHead className="font-semibold">Timeline</TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader label="Activity" {...getHeaderProps("title")} />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Status"
+                    filterType="select"
+                    filterOptions={[
+                      { value: "NOT_DONE", label: "Not Done" },
+                      { value: "DONE", label: "Done" },
+                      { value: "POSTPONED", label: "Postponed" },
+                      { value: "CANCELLED", label: "Cancelled" },
+                    ]}
+                    {...getHeaderProps("status")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Assigned To"
+                    {...getHeaderProps("assignedTo")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Timeline"
+                    filterable={false}
+                    {...getHeaderProps("timeline")}
+                  />
+                </TableHead>
                 <TableHead className="w-[50px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {activities.map((activity) => (
+              {processedRows.map((activity) => (
                 <TableRow key={activity.activityId} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
                   <TableCell className="text-center">
                     {activity.milestone ? (

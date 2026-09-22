@@ -1,4 +1,4 @@
-import { useQuery } from "@apollo/client";
+import { NetworkStatus, useQuery } from "@apollo/client";
 import { GET_KPIS, GET_KPI } from "@/lib/graphql/queries/kpis";
 import {
   KpisQueryVariables,
@@ -8,7 +8,7 @@ import {
 } from "@/types/graphql";
 
 export const useKPIs = (variables: KpisQueryVariables = {}) => {
-  const { data, loading, error, refetch } = useQuery<
+  const { data, loading, error, refetch, networkStatus } = useQuery<
     GetKpisResponse,
     KpisQueryVariables
   >(GET_KPIS, {
@@ -19,32 +19,37 @@ export const useKPIs = (variables: KpisQueryVariables = {}) => {
     },
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: true,
+    returnPartialData: true,
   });
+
+  const hasCachedData = Boolean(data?.kpis?.items?.length);
 
   return {
     kpis: data?.kpis?.items || [],
     meta: data?.kpis?.meta,
-    loading,
+    loading: loading && !hasCachedData && networkStatus === NetworkStatus.loading,
     error,
     refetch,
   };
 };
 
 export const useKPI = (variables: KpiQueryVariables) => {
-  const { data, loading, error, refetch } = useQuery<
+  const { data, loading, error, refetch, networkStatus } = useQuery<
     GetKpiResponse,
     KpiQueryVariables
   >(GET_KPI, {
     variables,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
-    // Skip query if kpiId is empty or undefined
     skip: !variables.kpiId,
+    notifyOnNetworkStatusChange: true,
+    returnPartialData: true,
   });
 
   return {
     kpi: data?.kpi,
-    loading,
+    loading: loading && !data?.kpi && networkStatus === NetworkStatus.loading,
     error,
     refetch,
   };

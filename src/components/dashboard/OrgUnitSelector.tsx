@@ -30,14 +30,18 @@ export default function OrgUnitSelector() {
     GET_DIVISIONS,
     {
       skip: !needsOrgUnitSelection,
-      variables: { page: 1, limit: 1000 }, // Fetch all
+      variables: { page: 1, limit: 1000 },
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
   const { data: departmentsData, loading: departmentsLoading } = useQuery(
     GET_DEPARTMENTS,
     {
       skip: !needsOrgUnitSelection,
-      variables: { page: 1, limit: 1000 }, // Fetch all
+      variables: { page: 1, limit: 1000 },
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 

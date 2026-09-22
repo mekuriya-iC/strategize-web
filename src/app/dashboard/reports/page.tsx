@@ -156,22 +156,44 @@ function ReportsContent() {
   const avgCompetency = componentAverages?.count ? componentAverages.competency / componentAverages.count : 0;
   const avgActivity = componentAverages?.count ? componentAverages.activity / componentAverages.count : 0;
 
-  // Determine default tab based on role (memoized to prevent infinite loops)
+  // Normalize deep-link tab ids from the sidebar (e.g. my-submissions → submissions)
   const defaultTabValue = useMemo(() => {
-    const paramTab = searchParams.get("tab");
+    const raw = searchParams.get("tab");
+    const paramTab =
+      raw === "my-submissions" ? "submissions" : raw;
     if (paramTab) return paramTab;
-    
+
     if (hasFullAccess) return "kpi-performance";
     if (isManager) return "performance";
     return "individual";
   }, [searchParams, hasFullAccess, isManager]);
 
   const [activeTab, setActiveTab] = useState<string>(defaultTabValue);
+  // Keep visited tab panels mounted so Apollo queries do not cold-restart
+  // and show Loading on every tab switch.
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(
+    () => new Set([defaultTabValue]),
+  );
 
-  // Update tab when search params or role changes
   useEffect(() => {
     setActiveTab(defaultTabValue);
+    setVisitedTabs((prev) => {
+      if (prev.has(defaultTabValue)) return prev;
+      const next = new Set(prev);
+      next.add(defaultTabValue);
+      return next;
+    });
   }, [defaultTabValue]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setVisitedTabs((prev) => {
+      if (prev.has(value)) return prev;
+      const next = new Set(prev);
+      next.add(value);
+      return next;
+    });
+  };
 
   const handleExport = (data: any, reportName: string) => {
     try {
@@ -432,10 +454,10 @@ function ReportsContent() {
       {activeTab && (
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           className="space-y-6"
         >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
+        <TabsList className="w-full lg:w-auto">
           {/* KPI Performance - Full access only */}
           {hasFullAccess && (
             <TabsTrigger value="kpi-performance" className="gap-2">
@@ -484,8 +506,14 @@ function ReportsContent() {
         </TabsList>
 
         {/* KPI Performance Analytics (Full Access Only) */}
-        {hasFullAccess && (
-          <TabsContent value="kpi-performance" className="space-y-6">
+        {hasFullAccess && visitedTabs.has("kpi-performance") && (
+          <TabsContent
+            value="kpi-performance"
+            forceMount
+            className={
+              activeTab === "kpi-performance" ? "space-y-6" : "hidden"
+            }
+          >
             <KPIPerformanceAnalytics
               onExport={(data) => handleExport(data, "kpi-performance-analytics")}
             />
@@ -493,41 +521,71 @@ function ReportsContent() {
         )}
 
         {/* Quarterly KPI Performance (All Users - Server Scoped) */}
-        <TabsContent value="quarterly" className="space-y-6">
-          <QuarterlyPerformanceReport
-            key={selectedPeriod?.strategicPeriodId ?? "no-period"}
-          />
-        </TabsContent>
+        {visitedTabs.has("quarterly") && (
+          <TabsContent
+            value="quarterly"
+            forceMount
+            className={activeTab === "quarterly" ? "space-y-6" : "hidden"}
+          >
+            <QuarterlyPerformanceReport
+              key={selectedPeriod?.strategicPeriodId ?? "no-period"}
+            />
+          </TabsContent>
+        )}
 
         {/* Support Performance (All Users - Server Scoped) */}
-        <TabsContent value="support" className="space-y-6">
-          <SupportPerformanceReport
-            key={selectedPeriod?.strategicPeriodId ?? "no-period"}
-          />
-        </TabsContent>
+        {visitedTabs.has("support") && (
+          <TabsContent
+            value="support"
+            forceMount
+            className={activeTab === "support" ? "space-y-6" : "hidden"}
+          >
+            <SupportPerformanceReport
+              key={selectedPeriod?.strategicPeriodId ?? "no-period"}
+            />
+          </TabsContent>
+        )}
 
         {/* Unified Performance (All Users - Role-Based) */}
-        <TabsContent value="performance" className="space-y-6">
-          <UnifiedPerformanceReport
-            viewMode={isManager ? "team" : "personal"}
-            onExport={(data) => handleExport(data, "unified-performance-report")}
-          />
-        </TabsContent>
+        {visitedTabs.has("performance") && (
+          <TabsContent
+            value="performance"
+            forceMount
+            className={activeTab === "performance" ? "space-y-6" : "hidden"}
+          >
+            <UnifiedPerformanceReport
+              viewMode={isManager ? "team" : "personal"}
+              onExport={(data) => handleExport(data, "unified-performance-report")}
+            />
+          </TabsContent>
+        )}
 
         {/* Individual Performance View (All Users) */}
-        <TabsContent value="individual" className="space-y-6">
-          <UnifiedPerformanceReport
-            viewMode="personal"
-            onExport={(data) => handleExport(data, "individual-performance-report")}
-          />
-        </TabsContent>
+        {visitedTabs.has("individual") && (
+          <TabsContent
+            value="individual"
+            forceMount
+            className={activeTab === "individual" ? "space-y-6" : "hidden"}
+          >
+            <UnifiedPerformanceReport
+              viewMode="personal"
+              onExport={(data) => handleExport(data, "individual-performance-report")}
+            />
+          </TabsContent>
+        )}
 
         {/* My Submissions (All Users) */}
-        <TabsContent value="submissions" className="space-y-6">
-          <MySubmissionsReport
-            onExport={(data) => handleExport(data, "my-submissions-report")}
-          />
-        </TabsContent>
+        {visitedTabs.has("submissions") && (
+          <TabsContent
+            value="submissions"
+            forceMount
+            className={activeTab === "submissions" ? "space-y-6" : "hidden"}
+          >
+            <MySubmissionsReport
+              onExport={(data) => handleExport(data, "my-submissions-report")}
+            />
+          </TabsContent>
+        )}
       </Tabs>
       )}
     </div>

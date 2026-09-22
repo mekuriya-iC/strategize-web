@@ -8,6 +8,7 @@ const GRAPHQL_ENDPOINT =
 
 export async function POST(request: NextRequest) {
   try {
+    // Supports single operations and Apollo BatchHttpLink arrays.
     const body = await request.json();
     const authHeader = request.headers.get('authorization');
 

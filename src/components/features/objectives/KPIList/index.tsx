@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Table, TableBody, TableCell } from "@/components/ui/table";
+import React, { useState, useEffect, useMemo } from "react";
+import { Table, TableBody } from "@/components/ui/table";
 import { Kpi, Objective } from "@/types/graphql";
 import { useKPIListLogic } from "./useKPIListLogic";
 import KPITableHeader from "./KPITableHeader";
@@ -23,6 +23,8 @@ import {
 } from "@dnd-kit/sortable";
 import { useKPIsOrder } from "@/hooks/objectives/useKPIsOrder";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
+import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 
 interface KPIListProps {
   kpis: Kpi[];
@@ -82,6 +84,58 @@ const KPIList: React.FC<KPIListProps> = ({
 
   const { columnHeaders, showReasonColumn } = useKPIListLogic(kpis);
 
+  const columns = useMemo(
+    () => [
+      {
+        id: "firstColumn",
+        accessor: (kpi: Kpi) =>
+          kpi.parent?.name?.trim() || (kpi.name || "").trim(),
+      },
+      {
+        id: "secondColumn",
+        accessor: (kpi: Kpi) => {
+          if (usesAnnualOnlyKpiTargets(kpi.objective) && !kpi.parent) {
+            return "N/A";
+          }
+          return (kpi.name || "").trim();
+        },
+      },
+      {
+        id: "baseline",
+        accessor: (kpi: Kpi) => kpi.baseline ?? "",
+      },
+      {
+        id: "weight",
+        accessor: (kpi: Kpi) => kpi.weight ?? 0,
+      },
+      {
+        id: "targets",
+        accessor: (kpi: Kpi) => kpi.targets?.length ?? 0,
+      },
+      {
+        id: "mode",
+        accessor: (kpi: Kpi) => kpi.kpiMode || "AGGREGATED",
+        filterFn: (kpi: Kpi, value: string) =>
+          (kpi.kpiMode || "AGGREGATED") === value,
+      },
+      {
+        id: "status",
+        accessor: (kpi: Kpi) => kpi.status,
+        filterFn: (kpi: Kpi, value: string) => kpi.status === value,
+      },
+      {
+        id: "reason",
+        accessor: (kpi: Kpi) => kpiRejectionReasons?.[kpi.kpiId] ?? "",
+      },
+    ],
+    [kpiRejectionReasons],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: kpis,
+    columns,
+  });
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -117,7 +171,7 @@ const KPIList: React.FC<KPIListProps> = ({
         }));
         await saveOrder(updates);
         onRefresh();
-      } catch (error) {
+      } catch {
         setKpis(kpis); // Revert on error
       }
     }
@@ -125,8 +179,8 @@ const KPIList: React.FC<KPIListProps> = ({
 
   const allSelected =
     showBulkActions &&
-    kpis.length > 0 &&
-    kpis.every((k) => selected.includes(k.kpiId));
+    processedRows.length > 0 &&
+    processedRows.every((k) => selected.includes(k.kpiId));
 
   if (kpis.length === 0) {
     return (
@@ -168,13 +222,14 @@ const KPIList: React.FC<KPIListProps> = ({
             columnHeaders={columnHeaders}
             showReasonColumn={showReasonColumn}
             enableSorting={canReorder}
+            getHeaderProps={getHeaderProps}
           />
           <TableBody>
             <SortableContext
-              items={kpis.map((k) => k.kpiId)}
+              items={processedRows.map((k) => k.kpiId)}
               strategy={verticalListSortingStrategy}
             >
-              {kpis.map((kpi, idx) => (
+              {processedRows.map((kpi, idx) => (
                 <KPITableRow
                   key={kpi.kpiId}
                   kpi={kpi}

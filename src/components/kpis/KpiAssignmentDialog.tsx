@@ -140,7 +140,7 @@ export default function KpiAssignmentDialog({
   const { data: liveKpiData, loading: liveKpiLoading } = useQuery(GET_KPI, {
     variables: { kpiId: kpi.kpiId },
     skip: !open || !kpi.kpiId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const liveKpi = liveKpiData?.kpi;

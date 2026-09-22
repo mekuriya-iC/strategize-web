@@ -170,9 +170,11 @@ export function WeeklySubmissionPanel({
           ) : alreadySubmitted ? (
             <p className="flex items-start gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <LockIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              The initial weekly batch was submitted for approval. Rejected tasks
-              return to DRAFT and can be edited and resubmitted; new midweek drafts
-              can also be submitted explicitly without changing initial compliance.
+              The initial weekly batch (6–10 tasks) was submitted. Any leftover{" "}
+              <span className="font-semibold">PERSONAL_TODO</span> rows now have{" "}
+              <span className="font-semibold">Submit</span> (up to 3 additional).
+              You can also add midweek drafts and submit those the same way —
+              the weekly bulk submit stays locked for this week.
             </p>
           ) : (
             <>

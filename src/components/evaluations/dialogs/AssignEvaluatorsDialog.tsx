@@ -68,7 +68,7 @@ export default function AssignEvaluatorsDialog({
     GET_EMPLOYEES,
     {
       variables: { page: 1, limit: 1000, search: searchQuery },
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
     },
   );
 
@@ -86,7 +86,7 @@ export default function AssignEvaluatorsDialog({
     {
       variables: { evaluateeUserId: selectedEmployeeId },
       skip: !selectedEmployeeId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
     },
   );
 

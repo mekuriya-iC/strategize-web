@@ -206,7 +206,7 @@ export default function CycleStatusTabs({
       onValueChange={(value) => setActiveStatusTab(value as EvaluationCycleStatus)}
       className="space-y-6"
     >
-      <TabsList className="bg-white p-1 border border-gray-200 rounded-lg">
+      <TabsList className="w-full rounded-lg border border-gray-200 bg-white p-1">
         <TabsTrigger
           value={EvaluationCycleStatus.ACTIVE}
           className="data-[state=active]:bg-green-50 data-[state=active]:text-green-700 gap-2"

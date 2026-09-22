@@ -154,6 +154,7 @@ export function usePermissions(): UsePermissionsResult {
       variables: { page: 1, limit: 1000 },
       skip: !user || !isManagementLevel(role),
       fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 
@@ -163,6 +164,7 @@ export function usePermissions(): UsePermissionsResult {
       variables: { page: 1, limit: 1000 },
       skip: !user || !isManagementLevel(role),
       fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     }
   );
 

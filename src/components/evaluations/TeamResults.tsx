@@ -71,7 +71,7 @@ export default function TeamResults() {
         evaluationCycleId: activeCycle.evaluationCycleId,
         evaluateeUserId: employeeId,
       },
-      fetchPolicy: "network-only",
+      fetchPolicy: "cache-first",
     });
 
     const assessments =
@@ -89,7 +89,7 @@ export default function TeamResults() {
         evaluationCycleId: activeCycle.evaluationCycleId,
         evaluateeUserId: employeeId,
       },
-      fetchPolicy: "network-only",
+      fetchPolicy: "cache-first",
     });
 
     const weights = new Map<string, number>();
@@ -111,7 +111,7 @@ export default function TeamResults() {
           page: 1,
           limit: 1000,
         },
-        fetchPolicy: "network-only",
+        fetchPolicy: "cache-first",
       });
 
       const responses = responsesData?.assessmentResponses?.items || [];

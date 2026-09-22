@@ -16,9 +16,9 @@ import { apolloLogger } from "@/lib/logger";
 import { isExpectedGraphqlBusinessError } from "@/lib/graphql/error-classification";
 import { paginatedResultPolicies } from "@/lib/graphql/paginatedResultPolicies";
 
+// Browser requests stay on the current web origin. The Next.js route proxies
+// them to the API, avoiding stale LAN addresses and browser CORS preflights.
 const httpLink = createHttpLink({
-  // Browser requests stay on the current web origin. The Next.js route proxies
-  // them to the API, avoiding stale LAN addresses and browser CORS preflights.
   uri: "/api/graphql",
 });
 

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { useEvaluationCycles } from "@/hooks/evaluations/useEvaluationCycles";
 import { EvaluationCycleStatus } from "@/types/evaluation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useApolloClient } from "@apollo/client";
 import {
   GET_COMPETENCY_ASSESSMENTS,
@@ -13,6 +13,8 @@ import {
 } from "@/lib/graphql/queries/evaluations";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { Download, Users, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +39,17 @@ interface EmployeeSummary {
   total360Score: number;
   completedAssessments: number;
   totalAssessments: number;
+}
+
+function getSummaryStatus(summary: EmployeeSummary): string {
+  if (
+    summary.completedAssessments === summary.totalAssessments &&
+    summary.totalAssessments > 0
+  ) {
+    return "Complete";
+  }
+  if (summary.completedAssessments > 0) return "In Progress";
+  return "Not Started";
 }
 
 export default function Employee360SummaryTable() {
@@ -105,7 +118,7 @@ export default function Employee360SummaryTable() {
           evaluationCycleId: activeCycle?.evaluationCycleId,
           evaluateeUserId: employee.employeeId,
         },
-        fetchPolicy: "network-only",
+        fetchPolicy: "cache-first",
       });
 
       const assessments = assessmentsData?.competencyAssessments?.items || [];
@@ -130,7 +143,7 @@ export default function Employee360SummaryTable() {
             page: 1,
             limit: 1000,
           },
-          fetchPolicy: "network-only",
+          fetchPolicy: "cache-first",
         });
 
         const responses = data?.assessmentResponses?.items || [];
@@ -304,6 +317,41 @@ export default function Employee360SummaryTable() {
     return "text-red-600 font-semibold";
   };
 
+  const columns = useMemo(
+    () => [
+      { id: "fullName", accessor: (s: EmployeeSummary) => s.fullName },
+      { id: "title", accessor: (s: EmployeeSummary) => s.title },
+      {
+        id: "organizationalUnit",
+        accessor: (s: EmployeeSummary) => s.organizationalUnit,
+      },
+      { id: "selfScore", accessor: (s: EmployeeSummary) => s.selfWeighted },
+      { id: "peerScore", accessor: (s: EmployeeSummary) => s.peerWeighted },
+      {
+        id: "supervisorScore",
+        accessor: (s: EmployeeSummary) => s.supervisorWeighted,
+      },
+      {
+        id: "subordinateScore",
+        accessor: (s: EmployeeSummary) => s.subordinateWeighted,
+      },
+      { id: "total360Score", accessor: (s: EmployeeSummary) => s.total360Score },
+      {
+        id: "status",
+        accessor: (s: EmployeeSummary) => getSummaryStatus(s),
+        filterFn: (s: EmployeeSummary, value: string) =>
+          getSummaryStatus(s) === value,
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: summaries,
+    columns,
+    initialSort: { key: "total360Score", direction: "desc" },
+  });
+
   return (
     <div className="space-y-4">
       <Card>
@@ -336,56 +384,128 @@ export default function Employee360SummaryTable() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold">Employee</TableHead>
-                  <TableHead className="font-semibold">Title</TableHead>
-                  <TableHead className="font-semibold">Department/Division</TableHead>
+                  <TableHead className="font-semibold">
+                    <SortableFilterableHeader
+                      label="Employee"
+                      {...getHeaderProps("fullName")}
+                    />
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <SortableFilterableHeader
+                      label="Title"
+                      {...getHeaderProps("title")}
+                    />
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <SortableFilterableHeader
+                      label="Department/Division"
+                      {...getHeaderProps("organizationalUnit")}
+                    />
+                  </TableHead>
                   <TableHead className="text-center font-semibold bg-blue-50">
-                    Self
-                    <br />
-                    <span className="text-xs font-normal text-gray-500">
-                      Score / Weight / Wtd
-                    </span>
+                    <SortableFilterableHeader
+                      label={
+                        <>
+                          Self
+                          <br />
+                          <span className="text-xs font-normal text-gray-500">
+                            Score / Weight / Wtd
+                          </span>
+                        </>
+                      }
+                      align="center"
+                      filterable={false}
+                      {...getHeaderProps("selfScore")}
+                    />
                   </TableHead>
                   <TableHead className="text-center font-semibold bg-purple-50">
-                    Peer
-                    <br />
-                    <span className="text-xs font-normal text-gray-500">
-                      Score / Weight / Wtd
-                    </span>
+                    <SortableFilterableHeader
+                      label={
+                        <>
+                          Peer
+                          <br />
+                          <span className="text-xs font-normal text-gray-500">
+                            Score / Weight / Wtd
+                          </span>
+                        </>
+                      }
+                      align="center"
+                      filterable={false}
+                      {...getHeaderProps("peerScore")}
+                    />
                   </TableHead>
                   <TableHead className="text-center font-semibold bg-green-50">
-                    Supervisor
-                    <br />
-                    <span className="text-xs font-normal text-gray-500">
-                      Score / Weight / Wtd
-                    </span>
+                    <SortableFilterableHeader
+                      label={
+                        <>
+                          Supervisor
+                          <br />
+                          <span className="text-xs font-normal text-gray-500">
+                            Score / Weight / Wtd
+                          </span>
+                        </>
+                      }
+                      align="center"
+                      filterable={false}
+                      {...getHeaderProps("supervisorScore")}
+                    />
                   </TableHead>
                   <TableHead className="text-center font-semibold bg-amber-50">
-                    Subordinate
-                    <br />
-                    <span className="text-xs font-normal text-gray-500">
-                      Score / Weight / Wtd
-                    </span>
+                    <SortableFilterableHeader
+                      label={
+                        <>
+                          Subordinate
+                          <br />
+                          <span className="text-xs font-normal text-gray-500">
+                            Score / Weight / Wtd
+                          </span>
+                        </>
+                      }
+                      align="center"
+                      filterable={false}
+                      {...getHeaderProps("subordinateScore")}
+                    />
                   </TableHead>
                   <TableHead className="text-center font-semibold bg-indigo-50">
-                    Total 360
-                    <br />
-                    <span className="text-xs font-normal text-gray-500">
-                      out of {totalEvaluationWeight}%
-                    </span>
+                    <SortableFilterableHeader
+                      label={
+                        <>
+                          Total 360
+                          <br />
+                          <span className="text-xs font-normal text-gray-500">
+                            out of {totalEvaluationWeight}%
+                          </span>
+                        </>
+                      }
+                      align="center"
+                      filterable={false}
+                      {...getHeaderProps("total360Score")}
+                    />
                   </TableHead>
-                  <TableHead className="text-center font-semibold">Status</TableHead>
+                  <TableHead className="text-center font-semibold">
+                    <SortableFilterableHeader
+                      label="Status"
+                      align="center"
+                      filterType="select"
+                      filterOptions={[
+                        { value: "Complete", label: "Complete" },
+                        { value: "In Progress", label: "In Progress" },
+                        { value: "Not Started", label: "Not Started" },
+                      ]}
+                      {...getHeaderProps("status")}
+                    />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {summaries.length === 0 ? (
+                {processedRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-12 text-gray-500">
                       No evaluation data available
                     </TableCell>
                   </TableRow>
                 ) : (
-                  summaries.map((summary) => (
+                  processedRows.map((summary) => (
                     <TableRow key={summary.employeeId} className="hover:bg-gray-50">
                       <TableCell className="font-medium">{summary.fullName}</TableCell>
                       <TableCell className="text-sm text-gray-600">

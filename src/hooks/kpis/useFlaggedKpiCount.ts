@@ -27,13 +27,17 @@ export function useFlaggedKpiCount() {
 
   // Fetch personal flagged KPI count
   const { data: myData, loading: myLoading } = useQuery(GET_MY_FLAGGED_KPI_COUNT, {
-    pollInterval: 60000, // Refresh every minute
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    pollInterval: 120_000,
     skip: !user,
   });
 
   // Fetch team flagged KPI count (for supervisors/managers)
   const { data: teamData, loading: teamLoading } = useQuery(GET_TEAM_FLAGGED_KPI_COUNT, {
-    pollInterval: 60000,
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    pollInterval: 120_000,
     skip: !user || !canViewTeam,
   });
 

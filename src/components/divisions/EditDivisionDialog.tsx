@@ -60,7 +60,7 @@ const EditDivisionDialog: React.FC<EditDivisionDialogProps> = ({
   >(GET_DIVISION_BASIC, {
     variables: { divisionId: String(division.id) },
     skip: !open, // Only run query when dialog is open
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Form state

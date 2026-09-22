@@ -49,7 +49,7 @@ export function SupportAssignmentForm({
 
   const queryOptions = {
     variables: { page, limit: PAGE_LIMIT },
-    fetchPolicy: "cache-and-network" as const,
+    fetchPolicy: "cache-first" as const,
   };
   const { data: divisionsData, loading: divisionsLoading, error: divisionsError } = useQuery<{ divisions: AssigneePage }>(
     GET_DIVISIONS,
@@ -123,7 +123,7 @@ export function SupportAssignmentForm({
       <div className="space-y-3">
         <Label>Assignee type</Label>
         <Tabs value={assigneeType} onValueChange={changeAssigneeType}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="w-full [&>button]:flex-1">
             <TabsTrigger value="DIVISION" className="gap-2">
               <Building2 className="h-4 w-4" /> Division
             </TabsTrigger>

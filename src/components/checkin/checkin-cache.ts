@@ -64,7 +64,7 @@ export function upsertCheckinTask(
     );
     const items = [...existing.checkinoutTasks.items];
     if (index >= 0) items[index] = task;
-    else items.unshift(task);
+    else items.push(task);
 
     cache.writeQuery<CheckinoutTasksData>({
       query: GET_CHECKINOUT_TASKS,

@@ -130,7 +130,7 @@ export function ManagerKpiDashboard({
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="w-full">
               <TabsTrigger value="all">
                 All ({stats.totalKpis})
               </TabsTrigger>

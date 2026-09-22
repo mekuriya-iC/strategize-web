@@ -117,7 +117,7 @@ export function EmployeePerformanceDetail({
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="kpi">KPI Performance</TabsTrigger>
             <TabsTrigger value="competency">360° Evaluation</TabsTrigger>

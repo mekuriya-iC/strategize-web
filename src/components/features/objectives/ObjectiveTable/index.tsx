@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -8,13 +8,14 @@ import {
 } from "@dnd-kit/sortable";
 import { Table, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Objective, Kpi } from "@/types/graphql";
 export type { Objective };
 import { useObjectiveTableLogic } from "./useObjectiveTableLogic";
 import ObjectiveTableHeader from "./ObjectiveTableHeader";
 import ObjectiveTableRow from "./ObjectiveTableRow";
 import ExpandedKPIs from "./ExpandedKPIs";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
+import { usesAnnualOnlyKpiTargets } from "@/lib/objectives/kpiWeightScope";
 
 interface ObjectiveTableProps {
   objectives: Objective[];
@@ -71,7 +72,6 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
     enableSorting = false,
     onOrderChange,
     sortConfig = null,
-    onSort,
     groupBy = "none",
     unitNames = {},
     startIndex = 0,
@@ -79,8 +79,59 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
     emptyDescription = "Change your filters or add a new objective.",
   } = props;
 
+  const columns = useMemo(
+    () => [
+      {
+        id: "name",
+        accessor: (obj: Objective) => {
+          if (obj.parent) {
+            return (obj.parent.title || obj.parent.name || "").trim();
+          }
+          return (obj.title || obj.name || "").trim();
+        },
+      },
+      {
+        id: "levelColumn",
+        accessor: (obj: Objective) => {
+          if (usesAnnualOnlyKpiTargets(obj)) return "N/A";
+          if (obj.type === "PERSONNEL") {
+            return (
+              unitNames[obj.assigneeId || ""] ||
+              (obj.title || obj.name || "").trim()
+            );
+          }
+          return (obj.title || obj.name || "").trim();
+        },
+      },
+      {
+        id: "progress",
+        accessor: (obj: Objective) =>
+          kpis.filter((k) => k.objective?.objectiveId === obj.objectiveId)
+            .length,
+      },
+      {
+        id: "status",
+        accessor: (obj: Objective) => obj.status,
+        filterFn: (obj: Objective, value: string) => obj.status === value,
+      },
+      {
+        id: "createdAt",
+        accessor: (obj: Objective) =>
+          obj.createdAt ? new Date(obj.createdAt) : null,
+      },
+    ],
+    [kpis, unitNames],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: objectives,
+    columns,
+    initialSort: sortConfig
+      ? { key: sortConfig.key, direction: sortConfig.direction }
+      : { key: "createdAt", direction: "desc" },
+  });
+
   const {
-    sortedObjectives,
     groupedObjectives,
     groupKeys,
     columnHeaders,
@@ -91,15 +142,14 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
     handleDragEnd,
     objectiveIds,
     activeObjective,
-    isSaving,
   } = useObjectiveTableLogic({
-    objectives,
+    objectives: processedRows,
     allObjectives,
     kpis,
     groupBy,
     enableSorting,
     onOrderChange,
-    sortConfig,
+    sortConfig: null,
     startIndex,
   });
 
@@ -165,9 +215,8 @@ const ObjectiveTable: React.FC<ObjectiveTableProps> = (props) => {
         allSelected={allSelected}
         showLevelSpecificColumn={columnHeaders.showSecondColumn}
         columnHeaders={columnHeaders}
-        sortConfig={sortConfig}
-        onSort={onSort}
         enableSorting={enableSorting}
+        getHeaderProps={getHeaderProps}
       />
       <TableBody>
         {groupBy === "none" && objectives.length > 0 && (

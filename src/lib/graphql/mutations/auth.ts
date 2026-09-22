@@ -13,6 +13,7 @@ export const LOGIN_EMPLOYEE = gql`
       refreshToken
       employee {
         employeeId
+        organizationId
         fullName
         email
         role

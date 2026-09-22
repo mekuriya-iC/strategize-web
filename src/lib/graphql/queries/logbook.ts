@@ -304,6 +304,34 @@ export const GET_LOGBOOK_ENTRIES = gql`
   }
 `;
 
+/**
+ * Minimal fields for sidebar/topbar pending-approval badges.
+ */
+export const GET_LOGBOOK_PENDING_BADGE = gql`
+  query GetLogbookPendingBadge(
+    $entryStatus: LogbookEntryStatus
+    $limit: Int!
+    $page: Int!
+  ) {
+    logbookEntries(
+      entryStatus: $entryStatus
+      limit: $limit
+      page: $page
+    ) {
+      items {
+        logbookEntryId
+        entryStatus
+        owner {
+          employeeId
+        }
+      }
+      meta {
+        totalItems
+      }
+    }
+  }
+`;
+
 // Get single logbook entry
 export const GET_LOGBOOK_ENTRY = gql`
   query GetLogbookEntry($logbookEntryId: ID!) {

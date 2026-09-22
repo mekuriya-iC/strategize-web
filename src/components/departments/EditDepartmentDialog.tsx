@@ -68,7 +68,7 @@ const EditDepartmentDialog: React.FC<EditDepartmentDialogProps> = ({
   >(GET_DEPARTMENT, {
     variables: { departmentId: String(department.id) },
     skip: !open, // Only run query when dialog is open
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Initialize form with department data when dialog opens

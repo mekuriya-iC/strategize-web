@@ -6,6 +6,8 @@ import { AlertTriangle, CheckCircle2, Loader2, Network, ShieldCheck } from "luci
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { GET_SUPPORT_PERFORMANCE_REPORT } from "@/lib/graphql/queries/support-performance";
 import { useStrategicPeriodStore } from "@/stores";
 import type { SupportPerformanceReportData, SupportPerformanceRow, SupportQuarterOutcome } from "@/types/support-performance";
@@ -46,6 +48,61 @@ function QuarterOutcome({ outcome }: { outcome?: SupportQuarterOutcome }) {
   );
 }
 
+function SupportUnitTable({ rows }: { rows: SupportPerformanceRow[] }) {
+  const columns = useMemo(
+    () => [
+      {
+        id: "localKpi",
+        accessor: (row: SupportPerformanceRow) =>
+          row.localKpiName || "No local KPI yet",
+      },
+      {
+        id: "annual",
+        accessor: (row: SupportPerformanceRow) => row.annualContribution ?? -1,
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows,
+    columns,
+  });
+
+  return (
+    <Table stickyFirstColumn>
+      <TableHeader>
+        <TableRow>
+          <TableHead>
+            <SortableFilterableHeader
+              label="Local KPI"
+              {...getHeaderProps("localKpi")}
+            />
+          </TableHead>
+          {[1, 2, 3, 4].map((q) => (
+            <TableHead key={q}>Q{q}</TableHead>
+          ))}
+          <TableHead>
+            <SortableFilterableHeader
+              label="Annual contribution"
+              filterable={false}
+              {...getHeaderProps("annual")}
+            />
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {processedRows.map((row) => (
+          <SupportRow
+            key={`${row.objectiveSupportSourceId}-${row.localKpiId ?? "unplanned"}`}
+            row={row}
+          />
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 export default function SupportPerformanceReport() {
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
   const isAnnual = !selectedPeriod?.periodType || selectedPeriod.periodType.toLowerCase() === "annual";
@@ -54,7 +111,7 @@ export default function SupportPerformanceReport() {
     {
       variables: { filters: { annualStrategicPeriodId: selectedPeriod?.strategicPeriodId } },
       skip: !selectedPeriod?.strategicPeriodId || !isAnnual,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
       notifyOnNetworkStatusChange: true,
     },
   );
@@ -113,11 +170,8 @@ export default function SupportPerformanceReport() {
               {[...corporate.units.entries()].map(([unitId, unit]) => (
                 <div key={unitId} className="border-t">
                   <div className="px-4 py-2 text-sm"><span className="text-muted-foreground">Supported by unit:</span> <span className="font-medium">{unit.name}</span></div>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader><TableRow><TableHead>Local KPI</TableHead>{[1,2,3,4].map((q) => <TableHead key={q}>Q{q}</TableHead>)}<TableHead>Annual contribution</TableHead></TableRow></TableHeader>
-                      <TableBody>{unit.rows.map((row) => <SupportRow key={`${row.objectiveSupportSourceId}-${row.localKpiId ?? "unplanned"}`} row={row} />)}</TableBody>
-                    </Table>
+                  <div>
+                    <SupportUnitTable rows={unit.rows} />
                   </div>
                 </div>
               ))}

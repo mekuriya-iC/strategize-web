@@ -120,7 +120,8 @@ function TaskCompletionDashboardContent() {
   >(GET_PERSONAL_TASK_COMPLETION_ANALYTICS, {
     variables: personalVariables,
     skip: !queryReady || visibleView !== "personal",
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 
@@ -130,7 +131,8 @@ function TaskCompletionDashboardContent() {
   >(GET_HIERARCHY_TASK_COMPLETION_ANALYTICS, {
     variables: hierarchyVariables,
     skip: !queryReady || visibleView !== "team",
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 

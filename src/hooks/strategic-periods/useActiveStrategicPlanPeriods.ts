@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useStrategicPeriods } from "@/hooks/objectives/useStrategicPeriods";
 import { useStrategicPlansQuery } from "@/hooks/strategic-plans/useStrategicPlans";
 import { useAuthStore } from "@/stores";
@@ -44,7 +44,12 @@ export function useActiveStrategicPlanPeriods() {
     strategicPlans,
     loading: plansLoading,
     error: plansError,
-  } = useStrategicPlansQuery({ page: 1, limit: 1000, search: "" });
+    refetch: refetchPlans,
+  } = useStrategicPlansQuery(
+    { page: 1, limit: 100, search: "" },
+    // Keep the selected plan aligned with the DB (soft-deletes / activation flips).
+    { fetchPolicy: "cache-and-network" },
+  );
 
   const activeStrategicPlan = useMemo(
     () =>
@@ -68,18 +73,27 @@ export function useActiveStrategicPlanPeriods() {
     { skip: shouldSkipPeriods },
   );
 
+  const hasCachedPeriods = periodsQuery.strategicPeriods.length > 0;
+  // Keep showing cached periods while background refetches run so the header
+  // does not flash "Loading..." on navigation / tab changes.
   const contextReady =
     Boolean(organizationId) &&
     !plansLoading &&
-    (!activeStrategicPlan || !periodsQuery.loading);
+    (!activeStrategicPlan || !periodsQuery.loading || hasCachedPeriods);
+
+  const refetchPeriods = periodsQuery.refetch;
+  const refetch = useCallback(async () => {
+    await Promise.all([refetchPlans(), refetchPeriods()]);
+  }, [refetchPlans, refetchPeriods]);
 
   return {
     activeStrategicPlan,
-    strategicPeriods:
-      contextReady && activeStrategicPlan ? periodsQuery.strategicPeriods : [],
+    strategicPeriods: activeStrategicPlan
+      ? periodsQuery.strategicPeriods
+      : [],
     loading: !contextReady,
     error: plansError ?? periodsQuery.error,
-    refetch: periodsQuery.refetch,
+    refetch,
     contextReady,
   };
 }

@@ -13,7 +13,7 @@ import {
   ArrowRight,
   RefreshCw,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   GET_CASCADE_MAPPINGS_BY_PERIOD,
@@ -24,6 +24,7 @@ import {
   CREATE_CASCADE_MAPPING,
   DELETE_CASCADE_MAPPING,
 } from "@/lib/graphql/mutations/kpi-scorecard";
+import { stickyFirstColumnTableClassName } from "@/components/ui/table";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import { GET_KPIS } from "@/lib/graphql/queries/kpis";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
@@ -57,6 +58,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface CascadeMapping {
   kpiCascadeMappingId: string;
@@ -121,11 +124,43 @@ export default function CascadeMappingManager() {
   } = useQuery(GET_CASCADE_MAPPINGS_BY_PERIOD, {
     variables: { periodId: selectedPeriodId },
     skip: !selectedPeriodId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const mappings: CascadeMapping[] =
     mappingsData?.cascadeMappingsByPeriod || [];
+
+  const mappingColumns = useMemo(
+    () => [
+      {
+        id: "source",
+        accessor: (row: CascadeMapping) => row.sourceKpi.name,
+      },
+      {
+        id: "target",
+        accessor: (row: CascadeMapping) => row.targetKpi.name,
+      },
+      {
+        id: "status",
+        accessor: (row: CascadeMapping) =>
+          row.isActive ? "Active" : "Inactive",
+        filterFn: (row: CascadeMapping, value: string) =>
+          (row.isActive ? "Active" : "Inactive") === value,
+      },
+      {
+        id: "createdAt",
+        accessor: (row: CascadeMapping) => new Date(row.createdAt),
+      },
+    ],
+    [],
+  );
+
+  const { processedRows: processedMappings, getHeaderProps: getMappingHeaderProps } =
+    useTableColumnControls({
+      rows: mappings,
+      columns: mappingColumns,
+    });
 
   // Fetch KPIs for dropdowns
   const { data: kpisData } = useQuery(GET_KPIS, {
@@ -683,20 +718,48 @@ export default function CascadeMappingManager() {
             <CardTitle>Cascade Mappings ({mappings.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+              <table className={`w-full min-w-[640px] ${stickyFirstColumnTableClassName}`}>
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Source</th>
+                    <th className="text-left p-3 font-medium">
+                      <SortableFilterableHeader
+                        label="Source"
+                        {...getMappingHeaderProps("source")}
+                      />
+                    </th>
                     <th className="text-center p-3 font-medium w-16"></th>
-                    <th className="text-left p-3 font-medium">Target</th>
-                    <th className="text-center p-3 font-medium">Status</th>
-                    <th className="text-center p-3 font-medium">Created</th>
+                    <th className="text-left p-3 font-medium">
+                      <SortableFilterableHeader
+                        label="Target"
+                        {...getMappingHeaderProps("target")}
+                      />
+                    </th>
+                    <th className="text-center p-3 font-medium">
+                      <SortableFilterableHeader
+                        label="Status"
+                        align="center"
+                        filterType="select"
+                        filterOptions={[
+                          { value: "Active", label: "Active" },
+                          { value: "Inactive", label: "Inactive" },
+                        ]}
+                        {...getMappingHeaderProps("status")}
+                      />
+                    </th>
+                    <th className="text-center p-3 font-medium">
+                      <SortableFilterableHeader
+                        label="Created"
+                        align="center"
+                        filterable={false}
+                        {...getMappingHeaderProps("createdAt")}
+                      />
+                    </th>
                     <th className="text-center p-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {mappings.map((mapping) => (
+                  {processedMappings.map((mapping) => (
                     <tr
                       key={mapping.kpiCascadeMappingId}
                       className="border-b hover:bg-muted/50"

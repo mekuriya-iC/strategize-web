@@ -1,19 +1,23 @@
 /**
  * Submission Queries Hook
- * Handles fetching submissions across all objective types
+ * Handles fetching submissions across objective types relevant to the approver.
  */
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client";
 import {
   GET_PENDING_SUBMISSIONS,
   GET_KPI_SUBMISSIONS,
 } from "@/lib/graphql/queries/submissions";
+import type { ObjectiveType } from "@/types/graphql";
 import type { MinimalSubmission, ApproverRole } from "./types";
 import { deduplicateSubmissions } from "./utils";
 import {
   kpiSubmissionsQueryVariables,
   objectiveSubmissionsQueryVariables,
+  inboundLevelsForApprover,
+  outboundLevelsForTracking,
+  DEFAULT_LIMIT,
 } from "./submissionQueryVariables";
 
 interface UseSubmissionQueriesOptions {
@@ -21,6 +25,8 @@ interface UseSubmissionQueriesOptions {
   approverRole: ApproverRole;
   /** When false, returns all statuses (for "my submissions" tracking). Default true. */
   pendingOnly?: boolean;
+  /** Page size. Defaults to 1000 for approval tables. */
+  limit?: number;
 }
 
 interface SubmissionQueriesResult {
@@ -57,144 +63,136 @@ function mapSubmissionItems(
   }));
 }
 
-function pendingOnlyStatus(items: MinimalSubmission[]): MinimalSubmission[] {
-  return items.filter((s) => s.status === "PENDING");
-}
-
 function collectSubmissionItems(
   ...sources: Array<MinimalSubmission[] | undefined>
 ): MinimalSubmission[] {
   return sources.flatMap((items) => items ?? []);
 }
 
+function useLevelSubmissionQuery(
+  level: ObjectiveType,
+  enabledLevels: ObjectiveType[],
+  shouldFetch: boolean,
+  pendingOnly: boolean,
+  limit: number,
+  submissionType: "OBJECTIVE" | "KPI",
+) {
+  const query =
+    submissionType === "OBJECTIVE" ? GET_PENDING_SUBMISSIONS : GET_KPI_SUBMISSIONS;
+  const buildVars =
+    submissionType === "OBJECTIVE"
+      ? objectiveSubmissionsQueryVariables
+      : kpiSubmissionsQueryVariables;
+
+  return useQuery(query, {
+    variables: buildVars(level, {
+      limit,
+      status: pendingOnly ? "PENDING" : undefined,
+    }),
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    skip: !shouldFetch || !enabledLevels.includes(level),
+  });
+}
+
 /**
- * Hook to fetch submissions across all objective types
+ * Hook to fetch submissions across objective types relevant to the current role.
  */
 export const useSubmissionQueries = ({
   shouldFetch,
   approverRole,
   pendingOnly = true,
+  limit = DEFAULT_LIMIT,
 }: UseSubmissionQueriesOptions): SubmissionQueriesResult => {
-  const isCorporate = approverRole === "CORPORATE";
+  const enabledLevels = useMemo(
+    () =>
+      pendingOnly
+        ? inboundLevelsForApprover(approverRole)
+        : outboundLevelsForTracking(),
+    [approverRole, pendingOnly],
+  );
 
-  // For My Submissions (pendingOnly = false), we want to fetch across all levels
-  // to find everything the user has submitted.
-  const shouldFetchAllLevels = !pendingOnly || isCorporate;
+  const corporateObj = useLevelSubmissionQuery(
+    "CORPORATE",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "OBJECTIVE",
+  );
+  const divisionObj = useLevelSubmissionQuery(
+    "DIVISION",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "OBJECTIVE",
+  );
+  const departmentObj = useLevelSubmissionQuery(
+    "DEPARTMENT",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "OBJECTIVE",
+  );
+  const personnelObj = useLevelSubmissionQuery(
+    "PERSONNEL",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "OBJECTIVE",
+  );
 
-  const {
-    data: corporateObjData,
-    loading: corporateObjLoading,
-    refetch: corporateObjRefetch,
-  } = useQuery(GET_PENDING_SUBMISSIONS, {
-    variables: objectiveSubmissionsQueryVariables("CORPORATE"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch || !shouldFetchAllLevels,
-  });
+  const corporateKpi = useLevelSubmissionQuery(
+    "CORPORATE",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "KPI",
+  );
+  const divisionKpi = useLevelSubmissionQuery(
+    "DIVISION",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "KPI",
+  );
+  const departmentKpi = useLevelSubmissionQuery(
+    "DEPARTMENT",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "KPI",
+  );
+  const personnelKpi = useLevelSubmissionQuery(
+    "PERSONNEL",
+    enabledLevels,
+    shouldFetch,
+    pendingOnly,
+    limit,
+    "KPI",
+  );
 
-  const {
-    data: divisionObjData,
-    loading: divisionObjLoading,
-    refetch: divisionObjRefetch,
-  } = useQuery(GET_PENDING_SUBMISSIONS, {
-    variables: objectiveSubmissionsQueryVariables("DIVISION"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch,
-  });
-
-  const {
-    data: departmentObjData,
-    loading: departmentObjLoading,
-    refetch: departmentObjRefetch,
-  } = useQuery(GET_PENDING_SUBMISSIONS, {
-    variables: objectiveSubmissionsQueryVariables("DEPARTMENT"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch,
-  });
-
-  const {
-    data: personnelObjData,
-    loading: personnelObjLoading,
-    refetch: personnelObjRefetch,
-  } = useQuery(GET_PENDING_SUBMISSIONS, {
-    variables: objectiveSubmissionsQueryVariables("PERSONNEL"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch,
-  });
-
-  const {
-    data: corporateKpiData,
-    loading: corporateKpiLoading,
-    refetch: corporateKpiRefetch,
-  } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: kpiSubmissionsQueryVariables("CORPORATE"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch || !shouldFetchAllLevels,
-  });
-
-  const {
-    data: divisionKpiData,
-    loading: divisionKpiLoading,
-    refetch: divisionKpiRefetch,
-  } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: kpiSubmissionsQueryVariables("DIVISION"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch,
-  });
-
-  const {
-    data: departmentKpiData,
-    loading: departmentKpiLoading,
-    refetch: departmentKpiRefetch,
-  } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: kpiSubmissionsQueryVariables("DEPARTMENT"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch,
-  });
-
-  const {
-    data: personnelKpiData,
-    loading: personnelKpiLoading,
-    refetch: personnelKpiRefetch,
-  } = useQuery(GET_KPI_SUBMISSIONS, {
-    variables: kpiSubmissionsQueryVariables("PERSONNEL"),
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
-    skip: !shouldFetch,
-  });
-
-  const applyStatusFilter = (items: MinimalSubmission[]) =>
-    pendingOnly ? pendingOnlyStatus(items) : items;
-
-  const objectiveSubmissions = applyStatusFilter(
-    mapSubmissionItems(
-      collectSubmissionItems(
-        corporateObjData?.submissions?.items as MinimalSubmission[] | undefined,
-        divisionObjData?.submissions?.items as MinimalSubmission[] | undefined,
-        departmentObjData?.submissions?.items as
-          | MinimalSubmission[]
-          | undefined,
-        personnelObjData?.submissions?.items as MinimalSubmission[] | undefined,
-      ),
+  const objectiveSubmissions = mapSubmissionItems(
+    collectSubmissionItems(
+      corporateObj.data?.submissions?.items as MinimalSubmission[] | undefined,
+      divisionObj.data?.submissions?.items as MinimalSubmission[] | undefined,
+      departmentObj.data?.submissions?.items as MinimalSubmission[] | undefined,
+      personnelObj.data?.submissions?.items as MinimalSubmission[] | undefined,
     ),
   );
 
-  const kpiSubmissions = applyStatusFilter(
-    mapSubmissionItems(
-      collectSubmissionItems(
-        corporateKpiData?.submissions?.items as MinimalSubmission[] | undefined,
-        divisionKpiData?.submissions?.items as MinimalSubmission[] | undefined,
-        departmentKpiData?.submissions?.items as
-          | MinimalSubmission[]
-          | undefined,
-        personnelKpiData?.submissions?.items as MinimalSubmission[] | undefined,
-      ),
+  const kpiSubmissions = mapSubmissionItems(
+    collectSubmissionItems(
+      corporateKpi.data?.submissions?.items as MinimalSubmission[] | undefined,
+      divisionKpi.data?.submissions?.items as MinimalSubmission[] | undefined,
+      departmentKpi.data?.submissions?.items as MinimalSubmission[] | undefined,
+      personnelKpi.data?.submissions?.items as MinimalSubmission[] | undefined,
     ),
   );
 
@@ -204,35 +202,35 @@ export const useSubmissionQueries = ({
   ]);
 
   const loading =
-    corporateObjLoading ||
-    divisionObjLoading ||
-    departmentObjLoading ||
-    personnelObjLoading ||
-    corporateKpiLoading ||
-    divisionKpiLoading ||
-    departmentKpiLoading ||
-    personnelKpiLoading;
+    corporateObj.loading ||
+    divisionObj.loading ||
+    departmentObj.loading ||
+    personnelObj.loading ||
+    corporateKpi.loading ||
+    divisionKpi.loading ||
+    departmentKpi.loading ||
+    personnelKpi.loading;
 
   const refetch = useCallback(async () => {
     await Promise.all([
-      corporateObjRefetch(),
-      divisionObjRefetch(),
-      departmentObjRefetch(),
-      personnelObjRefetch(),
-      corporateKpiRefetch(),
-      divisionKpiRefetch(),
-      departmentKpiRefetch(),
-      personnelKpiRefetch(),
+      corporateObj.refetch(),
+      divisionObj.refetch(),
+      departmentObj.refetch(),
+      personnelObj.refetch(),
+      corporateKpi.refetch(),
+      divisionKpi.refetch(),
+      departmentKpi.refetch(),
+      personnelKpi.refetch(),
     ]);
   }, [
-    corporateObjRefetch,
-    divisionObjRefetch,
-    departmentObjRefetch,
-    personnelObjRefetch,
-    corporateKpiRefetch,
-    divisionKpiRefetch,
-    departmentKpiRefetch,
-    personnelKpiRefetch,
+    corporateObj.refetch,
+    divisionObj.refetch,
+    departmentObj.refetch,
+    personnelObj.refetch,
+    corporateKpi.refetch,
+    divisionKpi.refetch,
+    departmentKpi.refetch,
+    personnelKpi.refetch,
   ]);
 
   return {

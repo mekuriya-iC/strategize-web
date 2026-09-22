@@ -11,7 +11,7 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_REALTIME_INDIVIDUAL_SCORECARD } from "@/lib/graphql/queries/kpi-scorecard";
 import { GET_KPI_ASSIGNMENTS_EMPLOYEE } from "@/lib/graphql/queries/kpis";
@@ -28,7 +28,10 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { KpiModeBadge } from "@/components/kpis/KpiModeBadge";
 import { QuarterPerformanceCell } from "./QuarterPerformanceCell";
+import { stickyFirstColumnTableClassName } from "@/components/ui/table";
 import type { KpiQuarterPlan, KpiQuarterResult } from "@/types/graphql";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -120,7 +123,8 @@ export default function IndividualScorecard({
         capFinalScore,
       },
       skip: !selectedEmployeeId || !selectedPeriodId,
-      fetchPolicy: "network-only", // Always fetch fresh data
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
     },
   );
 
@@ -142,6 +146,36 @@ export default function IndividualScorecard({
 
   // Create a map of kpiId to assignment for quick lookup
   const assignmentMap = new Map(assignments.map((a: any) => [a.kpi.kpiId, a]));
+
+  const scorecardColumns = useMemo(
+    () => [
+      { id: "name", accessor: (row: KpiScore) => row.kpi.name },
+      {
+        id: "level",
+        accessor: (row: KpiScore) => row.level,
+        filterFn: (row: KpiScore, value: string) => row.level === value,
+      },
+      {
+        id: "mode",
+        accessor: (row: KpiScore) => row.kpi.kpiMode || "",
+        filterFn: (row: KpiScore, value: string) =>
+          (row.kpi.kpiMode || "") === value,
+      },
+      { id: "actual", accessor: (row: KpiScore) => row.actualValue },
+      { id: "target", accessor: (row: KpiScore) => row.targetValue },
+      { id: "achievement", accessor: (row: KpiScore) => row.achievementRate },
+      { id: "weight", accessor: (row: KpiScore) => row.weight },
+      { id: "cap", accessor: (row: KpiScore) => row.cap },
+      { id: "score", accessor: (row: KpiScore) => row.score },
+    ],
+    [],
+  );
+
+  const { processedRows: kpiScoreRows, getHeaderProps } =
+    useTableColumnControls({
+      rows: scorecard?.kpiScores ?? [],
+      columns: scorecardColumns,
+    });
 
   const getAchievementColor = (rate: number): string => {
     if (rate >= 1.0) return "text-green-600";
@@ -189,16 +223,16 @@ export default function IndividualScorecard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             Individual KPI Scorecard
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Track your KPI performance and achievements
           </p>
         </div>
-        <TrendingUp className="h-8 w-8 text-primary" />
+        <TrendingUp className="hidden h-8 w-8 shrink-0 text-primary sm:block" />
       </div>
 
       {/* Filters */}
@@ -385,31 +419,93 @@ export default function IndividualScorecard({
               <CardTitle>KPI Performance Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+                <table className={`w-full min-w-[720px] ${stickyFirstColumnTableClassName}`}>
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-3 font-medium">KPI Name</th>
-                      <th className="text-center p-3 font-medium">Level</th>
-                      <th className="text-center p-3 font-medium">Mode</th>
+                      <th className="text-left p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="KPI Name"
+                          {...getHeaderProps("name")}
+                        />
+                      </th>
+                      <th className="text-center p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="Level"
+                          align="center"
+                          {...getHeaderProps("level")}
+                        />
+                      </th>
+                      <th className="text-center p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="Mode"
+                          align="center"
+                          filterType="select"
+                          filterOptions={[
+                            { value: "DIRECT", label: "Direct" },
+                            { value: "HYBRID", label: "Hybrid" },
+                            { value: "SHARED", label: "Shared" },
+                            { value: "AGGREGATED", label: "Aggregated" },
+                          ]}
+                          {...getHeaderProps("mode")}
+                        />
+                      </th>
                       <th className="text-center p-3 font-medium">
                         Quarterly Performance
                       </th>
-                      <th className="text-right p-3 font-medium">Actual</th>
-                      <th className="text-right p-3 font-medium">Target</th>
                       <th className="text-right p-3 font-medium">
-                        Achievement
+                        <SortableFilterableHeader
+                          label="Actual"
+                          align="right"
+                          filterable={false}
+                          {...getHeaderProps("actual")}
+                        />
                       </th>
                       <th className="text-right p-3 font-medium">
-                        Weight Allocation
+                        <SortableFilterableHeader
+                          label="Target"
+                          align="right"
+                          filterable={false}
+                          {...getHeaderProps("target")}
+                        />
                       </th>
-                      <th className="text-right p-3 font-medium">Cap</th>
-                      <th className="text-right p-3 font-medium">Score</th>
+                      <th className="text-right p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="Achievement"
+                          align="right"
+                          filterable={false}
+                          {...getHeaderProps("achievement")}
+                        />
+                      </th>
+                      <th className="text-right p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="Weight Allocation"
+                          align="right"
+                          filterable={false}
+                          {...getHeaderProps("weight")}
+                        />
+                      </th>
+                      <th className="text-right p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="Cap"
+                          align="right"
+                          filterable={false}
+                          {...getHeaderProps("cap")}
+                        />
+                      </th>
+                      <th className="text-right p-3 font-medium">
+                        <SortableFilterableHeader
+                          label="Score"
+                          align="right"
+                          filterable={false}
+                          {...getHeaderProps("score")}
+                        />
+                      </th>
                       <th className="text-right p-3 font-medium">Progress</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {scorecard.kpiScores.map((kpiScore) => {
+                    {kpiScoreRows.map((kpiScore) => {
                       const achievementPercent = kpiScore.achievementRate * 100;
                       const assignment = assignmentMap.get(kpiScore.kpi.kpiId);
                       const hasParentWeight = Boolean(

@@ -49,7 +49,8 @@ export default function UnifiedPerformanceOverview({
       divisionId,
     },
     skip: !employeeId || !organizationId,
-    fetchPolicy: 'network-only', // Force fresh data
+    fetchPolicy: "cache-first", // Force fresh data,
+    nextFetchPolicy: "cache-first",
     onError: (err) => {
       console.error('GET_EMPLOYEE_PERFORMANCE error:', err);
     },
@@ -204,7 +205,7 @@ export default function UnifiedPerformanceOverview({
 
       {/* Tabbed Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="w-full">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
             Overview

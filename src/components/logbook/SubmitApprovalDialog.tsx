@@ -26,6 +26,7 @@ import {
   TrashIcon,
   UploadIcon,
 } from "lucide-react";
+import { AttachmentTrigger } from "@/components/files/AttachmentTrigger";
 import {
   getOrderedLogbookFormulaSources,
   isLogbookFormulaCalculationType,
@@ -35,7 +36,7 @@ import {
   type LogbookFormulaForContextQueryData,
   type LogbookFormulaForContextQueryVariables,
 } from "@/types/logbook";
-import { useUser } from "@/stores";
+import { useOrgUnitStore, useUser } from "@/stores";
 import {
   getQuarterPlanSubmissionBlock,
   isQuarterPlanSubmissionError,
@@ -57,9 +58,18 @@ interface UploadedEvidenceFile {
 
 const uploadEvidenceFile = async (
   file: File,
+  employeeId?: string | null,
+  divisionId?: string | null,
 ): Promise<UploadedEvidenceFile> => {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("category", "Logbook");
+  if (divisionId) {
+    formData.append("divisionId", divisionId);
+  }
+  if (employeeId) {
+    formData.append("employeeId", employeeId);
+  }
 
   const token = getAccessToken();
   const response = await fetch(`${getApiBaseUrl()}/upload`, {
@@ -148,6 +158,12 @@ export function SubmitApprovalDialog({
   onEditAchievement,
 }: SubmitApprovalDialogProps) {
   const currentUser = useUser();
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const uploadDivisionId =
+    selectedUnit?.type === "division"
+      ? selectedUnit.id
+      : (currentUser?.departments?.[0] as { division?: { divisionId?: string } } | undefined)
+          ?.division?.divisionId;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState(
     item.description || item.activity || "",
@@ -165,7 +181,7 @@ export function SubmitApprovalDialog({
       skip: !open || !item.id,
       // Submission readiness must reflect the server's current plan link, not
       // a possibly stale entry cached before a KPI plan was approved.
-      fetchPolicy: "network-only",
+      fetchPolicy: "cache-first",
       notifyOnNetworkStatusChange: true,
     },
   );
@@ -208,7 +224,7 @@ export function SubmitApprovalDialog({
       !isFormulaKpi ||
       !contextKpiId ||
       !currentUser?.organizationId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
   });
   const formulaSources = getOrderedLogbookFormulaSources(
     formulaData?.logbookFormulaForContext,
@@ -360,7 +376,7 @@ export function SubmitApprovalDialog({
             ["file", "image", "certificate"].includes(evidence.type) &&
             evidence.file
           ) {
-            const uploaded = await uploadEvidenceFile(evidence.file);
+            const uploaded = await uploadEvidenceFile(evidence.file, currentUser?.employeeId, uploadDivisionId);
             return {
               ...evidence,
               value: uploaded.url,
@@ -473,14 +489,12 @@ export function SubmitApprovalDialog({
                 </button>
               </div>
             ) : isHttpUrl(evidence.value) ? (
-              <a
-                href={evidence.value}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block break-all text-sm text-blue-600 underline"
-              >
-                {evidence.name || evidence.value}
-              </a>
+              <AttachmentTrigger
+                url={evidence.value}
+                name={evidence.name || evidence.value}
+                evidenceType={evidence.type}
+                variant="link"
+              />
             ) : null}
           </div>
         );
@@ -527,14 +541,13 @@ export function SubmitApprovalDialog({
                 Selected: {evidence.file.name}
               </p>
             ) : isHttpUrl(evidence.value) ? (
-              <a
-                href={evidence.value}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block break-all text-xs text-blue-600 underline"
-              >
-                {evidence.name || evidence.value}
-              </a>
+              <AttachmentTrigger
+                url={evidence.value}
+                name={evidence.name || evidence.value}
+                evidenceType={evidence.type}
+                variant="link"
+                className="text-xs"
+              />
             ) : null}
           </div>
         );

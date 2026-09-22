@@ -52,7 +52,7 @@ export default function KpiWeightPage() {
     <div className="container mx-auto p-6">
       {isManagerOrHigher ? (
         <Tabs defaultValue="hierarchical" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="w-full max-w-md [&>button]:flex-1">
             <TabsTrigger value="hierarchical" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Hierarchical View

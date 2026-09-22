@@ -7,7 +7,6 @@ import {
   ChevronUpIcon,
   PencilIcon,
   TrashIcon,
-  FileIcon,
   CalendarIcon,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,6 +16,7 @@ import { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import type { FrontendLogbookItem } from "@/types/logbook";
+import { AttachmentList } from "@/components/files/AttachmentTrigger";
 
 interface LogbookTableCardProps {
   item: FrontendLogbookItem;
@@ -98,9 +98,9 @@ export function LogbookTableCard({
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="ml-2"
+            className="ml-2 h-9 w-9 min-h-9 min-w-9 shrink-0 touch-manipulation"
           >
             {isExpanded ? (
               <ChevronUpIcon className="w-5 h-5" />
@@ -118,9 +118,21 @@ export function LogbookTableCard({
         )}
 
         {(item.attachmentUrl || item.evidenceItems?.length) && (
-          <div className="flex items-center gap-1 text-[#3838EC] text-xs mt-2">
-            <FileIcon className="w-3 h-3" />
-            <span>{item.evidenceItems?.length || 1} evidence</span>
+          <div className="mt-2">
+            <AttachmentList
+              items={
+                item.evidenceItems?.length
+                  ? item.evidenceItems.map((evidence) => ({
+                      url: evidence.value,
+                      name: evidence.name,
+                      mimeType: evidence.mimeType,
+                      evidenceType: evidence.type,
+                    }))
+                  : item.attachmentUrl
+                    ? [{ url: item.attachmentUrl }]
+                    : []
+              }
+            />
           </div>
         )}
       </div>
@@ -196,14 +208,14 @@ export function LogbookTableCard({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-2 [&_button]:min-h-9 [&_button]:touch-manipulation">
             {canSubmit && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsSubmitDialogOpen(true)}
                 disabled={loading}
-                className="flex-1 text-green-600 border-green-600 hover:bg-green-50"
+                className="min-h-9 flex-1 text-green-600 border-green-600 hover:bg-green-50"
               >
                 Submit
               </Button>
@@ -213,7 +225,7 @@ export function LogbookTableCard({
               size="sm"
               onClick={handleEdit}
               disabled={loading || isLocked}
-              className="flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
+              className="min-h-9 flex-1 text-[#3838EC] border-[#3838EC] hover:bg-[#ECECFF]"
             >
               <PencilIcon className="w-4 h-4 mr-2" />
               Edit
@@ -223,7 +235,7 @@ export function LogbookTableCard({
               size="sm"
               onClick={handleDelete}
               disabled={loading || isLocked}
-              className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
+              className="min-h-9 flex-1 text-red-600 border-red-600 hover:bg-red-50"
             >
               <TrashIcon className="w-4 h-4 mr-2" />
               Delete

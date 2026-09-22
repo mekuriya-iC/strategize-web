@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { type Initiative } from "@/hooks/initiatives/useInitiatives";
 import InitiativeStatusBadge from "./InitiativeStatusBadge";
 import EditInitiativeDialog from "./EditInitiativeDialog";
@@ -23,6 +23,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { MoreHorizontal, Pencil, Trash2, Eye, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface InitiativeTableProps {
   initiatives: Initiative[];
@@ -33,6 +35,40 @@ export default function InitiativeTable({ initiatives, loading }: InitiativeTabl
   const router = useRouter();
   const [editInitiative, setEditInitiative] = useState<Initiative | null>(null);
   const [deleteInitiative, setDeleteInitiative] = useState<Initiative | null>(null);
+
+  const columns = useMemo(
+    () => [
+      { id: "title", accessor: (row: Initiative) => row.title },
+      {
+        id: "status",
+        accessor: (row: Initiative) => row.status,
+        filterFn: (row: Initiative, value: string) => row.status === value,
+      },
+      {
+        id: "scope",
+        accessor: (row: Initiative) => row.scopeType,
+        filterFn: (row: Initiative, value: string) => row.scopeType === value,
+      },
+      {
+        id: "progress",
+        accessor: (row: Initiative) => row.completionPercentage,
+      },
+      {
+        id: "owner",
+        accessor: (row: Initiative) => row.owner?.fullName || "Unassigned",
+      },
+      {
+        id: "timeline",
+        accessor: (row: Initiative) => row.startDate ?? row.dueDate ?? "",
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: initiatives,
+    columns,
+  });
 
   if (loading) {
     return (
@@ -77,17 +113,58 @@ export default function InitiativeTable({ initiatives, loading }: InitiativeTabl
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-              <TableHead className="font-semibold">Title</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold">Scope</TableHead>
-              <TableHead className="font-semibold">Progress</TableHead>
-              <TableHead className="font-semibold">Owner</TableHead>
-              <TableHead className="font-semibold">Timeline</TableHead>
+              <TableHead className="font-semibold">
+                <SortableFilterableHeader label="Title" {...getHeaderProps("title")} />
+              </TableHead>
+              <TableHead className="font-semibold">
+                <SortableFilterableHeader
+                  label="Status"
+                  filterType="select"
+                  filterOptions={[
+                    { value: "DRAFT", label: "Draft" },
+                    { value: "ACTIVE", label: "Active" },
+                    { value: "COMPLETED", label: "Completed" },
+                    { value: "ON_HOLD", label: "On Hold" },
+                    { value: "CANCELLED", label: "Cancelled" },
+                  ]}
+                  {...getHeaderProps("status")}
+                />
+              </TableHead>
+              <TableHead className="font-semibold">
+                <SortableFilterableHeader
+                  label="Scope"
+                  filterType="select"
+                  filterOptions={[
+                    { value: "ORGANIZATION", label: "Organization" },
+                    { value: "DIVISION", label: "Division" },
+                    { value: "DEPARTMENT", label: "Department" },
+                    { value: "PERSONNEL", label: "Personnel" },
+                  ]}
+                  {...getHeaderProps("scope")}
+                />
+              </TableHead>
+              <TableHead className="font-semibold">
+                <SortableFilterableHeader
+                  label="Progress"
+                  filterable={false}
+                  {...getHeaderProps("progress")}
+                />
+              </TableHead>
+              <TableHead className="font-semibold">
+                <SortableFilterableHeader label="Owner" {...getHeaderProps("owner")} />
+              </TableHead>
+              <TableHead className="font-semibold">
+                <SortableFilterableHeader
+                  label="Timeline"
+                  filterable={false}
+                  {...getHeaderProps("timeline")}
+                />
+              </TableHead>
               <TableHead className="font-semibold w-[50px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initiatives.map((initiative) => (
+            {processedRows.map((initiative) => (
               <TableRow
                 key={initiative.initiativeId}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors"

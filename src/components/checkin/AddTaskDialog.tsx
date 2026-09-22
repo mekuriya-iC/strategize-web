@@ -10,7 +10,8 @@ import {
 import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
 import { GET_INITIATIVES } from "@/lib/graphql/queries/initiatives";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useOrgUnitStore, useStrategicPeriodStore } from "@/stores";
+import { useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { showErrorToast, showSuccessToast } from "@/utils/error-handling";
-import { uploadFile } from "@/utils/fileUpload";
+import {
+  EVIDENCE_ACCEPT,
+  uploadFile,
+  validateEvidenceFile,
+} from "@/utils/fileUpload";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
@@ -97,6 +102,15 @@ export function AddTaskDialog({
   initialIsMidWeek = false,
 }: AddTaskDialogProps) {
   const user = useAuthStore((state) => state.user);
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const uploadDivisionId =
+    selectedUnit?.type === "division"
+      ? selectedUnit.id
+      : selectedUnit?.type === "department"
+        ? (selectedUnit.data as { division?: { divisionId?: string } })?.division
+            ?.divisionId
+        : (user?.departments?.[0] as { division?: { divisionId?: string } } | undefined)
+            ?.division?.divisionId;
   const editMode = editingTask
     ? getTaskEditMode(editingTask.submissionStatus)
     : "PLANNING";
@@ -154,12 +168,59 @@ export function AddTaskDialog({
   );
 
   const mutationLoading = creating || updating;
+  const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+  const currentUserId = user?.employeeId;
+  // KPIs are seeded on quarterly periods (Q1–Q4). Filtering by the annual
+  // "Year 2026" period returns zero rows — only pass true quarters.
+  const selectedQuarterPeriodId =
+    selectedPeriod &&
+    String(selectedPeriod.periodType || "").toLowerCase() === "quarterly"
+      ? selectedPeriod.strategicPeriodId
+      : undefined;
 
-  // Queries
-  const { data: kpisData } = useQuery(GET_MY_KPIS, {
-    variables: { page: 1, limit: 100, status: "APPROVED" },
+  // Queries — network-only so newly seeded/approved KPIs appear immediately.
+  const {
+    data: kpisData,
+    loading: kpisLoading,
+    error: kpisError,
+  } = useQuery(GET_MY_KPIS, {
+    variables: {
+      page: 1,
+      limit: 100,
+      status: "APPROVED",
+      ...(selectedQuarterPeriodId
+        ? { strategicPeriodId: selectedQuarterPeriodId }
+        : {}),
+    },
     skip: !open,
+    fetchPolicy: "network-only",
+    nextFetchPolicy: "network-only",
   });
+
+  const linkedKpiOptions = useMemo(() => {
+    const items = (kpisData?.myKpis?.items ?? []) as Array<{
+      kpiId: string;
+      name: string;
+      assigneeId?: string | null;
+      status?: string;
+      quarterPlans?: Array<{ status?: string }>;
+    }>;
+    const preferred = currentUserId
+      ? items.filter((kpi) => kpi.assigneeId === currentUserId)
+      : items;
+    const source = preferred.length > 0 ? preferred : items;
+    const byName = new Map<string, { value: string; label: string }>();
+    for (const kpi of source) {
+      if (byName.has(kpi.name)) continue;
+      byName.set(kpi.name, {
+        value: kpi.kpiId,
+        label: isKpiReadyForAchievementSubmission(kpi)
+          ? kpi.name
+          : `${kpi.name} — quarter plan not approved`,
+      });
+    }
+    return [...byName.values()];
+  }, [currentUserId, kpisData?.myKpis?.items]);
 
   const { data: initiativesData } = useQuery(GET_INITIATIVES, {
     variables: { page: 1, limit: 100 },
@@ -341,10 +402,25 @@ export function AddTaskDialog({
     setUploadedEvidenceUrl("");
     setAttachmentLink("");
     setEvidenceUploadError(null);
+
+    const validation = validateEvidenceFile(file);
+    if (!validation.valid) {
+      const message =
+        validation.error ||
+        "Only PDF, DOC, DOCX, JPEG, PNG, and WebP evidence files are allowed";
+      setEvidenceUploadError(message);
+      toast.error("Evidence upload failed", { description: message });
+      return;
+    }
+
     setUploadingEvidence(true);
 
     try {
-      const uploadResult = await uploadFile(file);
+      const uploadResult = await uploadFile(file, {
+        category: "TaskEvidence",
+        divisionId: uploadDivisionId,
+        employeeId: user?.employeeId,
+      });
       if (!uploadResult.url) {
         throw new Error("The upload completed without returning a file URL.");
       }
@@ -393,6 +469,7 @@ export function AddTaskDialog({
     
     // Frontend validation
     const QUALIFYING_VERBS = [
+      // Core task verbs
       'prepare', 'submit', 'review', 'complete', 'deliver',
       'meet', 'meeting', 'discuss', 'analyze', 'create',
       'develop', 'implement', 'test', 'deploy', 'present',
@@ -400,6 +477,34 @@ export function AddTaskDialog({
       'approve', 'finalize', 'update', 'monitor', 'evaluate',
       'conduct', 'schedule', 'send', 'follow-up', 'attend',
       'draft', 'compile', 'process', 'verify', 'confirm',
+      'validate', 'engage', 'execute', 'onboard', 'facilitate',
+      'provide',
+      // Technical development
+      'build', 'design', 'refactor', 'integrate', 'configure',
+      'optimize', 'debug', 'migrate', 'release', 'maintain',
+      'upgrade', 'automate', 'prototype', 'architect', 'troubleshoot',
+      'enhance', 'improve',
+      // Investment
+      'assess', 'appraise', 'underwrite', 'structure', 'negotiate',
+      'forecast', 'model', 'allocate', 'screen', 'value',
+      'price', 'acquire', 'close', 'originate', 'syndicate',
+      'diligence',
+      // Organizational development
+      'coach', 'mentor', 'train', 'align', 'define',
+      'cascade', 'redesign', 'transform', 'strengthen', 'enable',
+      'empower', 'induct', 'capacitate', 'workshop',
+      // Relations
+      'liaise', 'partner', 'collaborate', 'communicate', 'mediate',
+      'resolve', 'nurture', 'cultivate', 'represent', 'advocate',
+      'network', 'reconcile',
+      // Growth & strategy
+      'scale', 'expand', 'launch', 'grow', 'strategize',
+      'position', 'promote', 'pursue', 'identify', 'prioritize',
+      'drive', 'lead', 'establish', 'initiate', 'streamline',
+      'innovate', 'measure', 'track', 'report', 'synthesize',
+      'recommend', 'propose', 'advise', 'consult', 'support',
+      'manage', 'oversee', 'govern', 'steer', 'accelerate',
+      'capture', 'retain', 'activate',
     ];
     
     if (isPlanningForm && (!task || !startDate || !endDate)) {
@@ -648,8 +753,8 @@ export function AddTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+      <DialogContent className="max-h-[min(90dvh,900px)] max-w-[95vw] gap-0 overflow-hidden p-0 lg:max-w-[90vw] xl:max-w-[85vw]">
+        <DialogHeader className="border-b border-gray-200 px-4 pt-6 pb-4 dark:border-gray-700 sm:px-6">
           <DialogTitle className="text-xl font-semibold">
             {editingTask ? "Edit Task" : "Add a Task"}
           </DialogTitle>
@@ -664,7 +769,7 @@ export function AddTaskDialog({
           </p>
         </DialogHeader>
 
-        <div className="overflow-y-auto max-h-[80vh] px-6 py-6">
+        <div className="max-h-[min(70dvh,720px)] overflow-y-auto px-4 py-6 sm:px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
             {/* Task Type */}
             <div className="space-y-3">
@@ -707,22 +812,32 @@ export function AddTaskDialog({
                     Linked KPI <span className="text-red-500">*</span>
                   </Label>
                   <CheckboxSelect
-                    options={
-                      kpisData?.myKpis?.items?.map((kpi: any) => ({
-                        value: kpi.kpiId,
-                        label: isKpiReadyForAchievementSubmission(kpi)
-                          ? kpi.name
-                          : `${kpi.name} — quarter plan not approved`,
-                      })) || []
-                    }
+                    options={linkedKpiOptions}
                     value={linkedKpi ? [linkedKpi] : []}
                     onChange={(vals) => setLinkedKpi(vals[0] || "")}
-                    placeholder="Select Linked KPI"
+                    placeholder={
+                      kpisLoading
+                        ? "Loading KPIs..."
+                        : linkedKpiOptions.length
+                          ? "Select Linked KPI"
+                          : "No approved KPIs available"
+                    }
                     searchable
                     searchPlaceholder="Search KPI..."
-                    disabled={!isPlanningForm}
+                    disabled={!isPlanningForm || kpisLoading}
                   />
-                  {isPlanningForm && (
+                  {kpisError && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Could not load KPIs: {kpisError.message}
+                    </p>
+                  )}
+                  {!kpisLoading && !kpisError && linkedKpiOptions.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                      No approved KPIs found. Select a 2026 quarter (Q1–Q4) in
+                      the header, or keep Year 2026 — KPIs should still load.
+                    </p>
+                  )}
+                  {isPlanningForm && linkedKpiOptions.length > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Approved KPIs can be linked for weekly planning. Achievement
                       submission requires an approved quarterly plan.
@@ -798,13 +913,18 @@ export function AddTaskDialog({
                     onCheckedChange={(checked) =>
                       setIsMidWeekTask(checked as boolean)
                     }
-                    disabled={!isMidWeekTask && midWeekTaskCount >= 3}
+                    disabled={
+                      initialIsMidWeek ||
+                      (!isMidWeekTask && midWeekTaskCount >= 3)
+                    }
                   />
                   <label
                     htmlFor="midWeekTask"
                     className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
                   >
-                    Mid-Week Task ({midWeekTaskCount}/3)
+                    {initialIsMidWeek
+                      ? `Additional approval task (${midWeekTaskCount}/3)`
+                      : `Mid-Week Task (${midWeekTaskCount}/3)`}
                   </label>
                 </div>
               )}
@@ -1095,6 +1215,7 @@ export function AddTaskDialog({
                 <input
                   id="file-upload"
                   type="file"
+                  accept={EVIDENCE_ACCEPT}
                   className="hidden"
                   disabled={uploadingEvidence}
                   onChange={(e) => {
@@ -1110,6 +1231,9 @@ export function AddTaskDialog({
                   {uploadingEvidence
                     ? "Uploading evidence..."
                     : "Click or drag here to upload"}
+                </span>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                  PDF, DOC, DOCX, JPEG, PNG, or WebP · max 10MB
                 </span>
               </label>
               

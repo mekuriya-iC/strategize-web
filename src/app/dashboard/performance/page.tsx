@@ -405,7 +405,7 @@ export default function PerformancePage() {
           value={activeView}
           onValueChange={(value) => setActiveView(value as any)}
         >
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="w-full max-w-md [&>button]:flex-1">
             <TabsTrigger value="my-performance">My Performance</TabsTrigger>
             <TabsTrigger value="team-performance">Team Performance</TabsTrigger>
           </TabsList>
@@ -604,7 +604,7 @@ export default function PerformancePage() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="distribution" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="w-full">
                     <TabsTrigger value="distribution" className="flex items-center gap-2">
                       <BarChart3 className="h-4 w-4" />
                       Distribution

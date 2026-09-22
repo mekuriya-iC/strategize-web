@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -33,6 +33,8 @@ import DeleteDivisionDialog from "./DeleteDivisionDialog";
 import EditDivisionDialog from "./EditDivisionDialog";
 import { useDivisionMutations } from "@/hooks/divisions/useDivisionMutations";
 import { toast } from "sonner";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 // Division interface matching the design
 export interface Division {
@@ -86,7 +88,27 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { removeDivision } = useDivisionMutations();
 
-  const divisionsToShow = propDivisions;
+  const columns = useMemo(
+    () => [
+      { id: "divisionName", accessor: (d: Division) => d.divisionName },
+      { id: "createdBy", accessor: (d: Division) => d.createdBy },
+      {
+        id: "createdOn",
+        accessor: (d: Division) => d.createdOn,
+        compare: (a: Division, b: Division) =>
+          new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
+      },
+      { id: "managedBy", accessor: (d: Division) => d.managedBy },
+      { id: "departments", accessor: (d: Division) => d.departments },
+    ],
+    [],
+  );
+
+  const { processedRows: divisionsToShow, getHeaderProps } =
+    useTableColumnControls({
+      rows: propDivisions,
+      columns,
+    });
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
@@ -199,22 +221,39 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
               </TableHead>
             )}
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              DIVISION NAME
+              <SortableFilterableHeader
+                label="Division Name"
+                {...getHeaderProps("divisionName")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-              CREATED BY
+              <SortableFilterableHeader
+                label="Created By"
+                {...getHeaderProps("createdBy")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-              CREATED ON
+              <SortableFilterableHeader
+                label="Created On"
+                filterable={false}
+                {...getHeaderProps("createdOn")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-              DIRECTOR
+              <SortableFilterableHeader
+                label="Director"
+                {...getHeaderProps("managedBy")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-              DEPARTMENTS
+              <SortableFilterableHeader
+                label="Departments"
+                filterable={false}
+                {...getHeaderProps("departments")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-              ACTIONS
+              Actions
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -290,7 +329,11 @@ const DivisionTable: React.FC<DivisionTableProps> = ({
                     {!readOnly && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 min-h-9 min-w-9 touch-manipulation"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

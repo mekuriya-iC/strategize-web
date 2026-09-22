@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import React from "react";
@@ -38,21 +38,6 @@ import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 
 
 export default function ObjectivesApprovalTable() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setMounted(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
-
   return <ObjectivesApprovalTableContent />;
 }
 
@@ -137,42 +122,17 @@ function ObjectivesApprovalTableContent() {
       vars.assigneeId = assigneeId;
     }
 
-    console.log("🔍 [ObjectivesQuery] Query variables", {
-      vars,
-      userRole: userRole,
-      isEmployee: isEmployee,
-      assigneeId: assigneeId,
-    });
-
     return vars;
   }, [assigneeId, searchTerm, isEmployee]);
 
   // Fetch a large set and paginate client-side for predictable counts
   const pathname = usePathname();
-  const { objectives, loading, error, /* meta, */ refetch } =
-    useObjectives(objectivesQueryVars);
-
-  // Refresh when landing on objectives, after login, or when user context changes.
-  useEffect(() => {
-    if (pathname === "/dashboard/objectives" && userEmployeeId) {
-      refetch();
-    }
-  }, [pathname, userEmployeeId, refetch]);
-
-  console.log("🔍 [ObjectivesQuery] API Response", {
-    count: objectives.length,
+  const {
+    objectives,
     loading,
-    error: error?.message,
-    objectives: objectives.map((o) => ({
-      id: o.objectiveId,
-      title: o.title,
-      type: o.type,
-      assigneeType: o.assigneeType,
-      assigneeId: o.assigneeId,
-      periodId: o.strategicPeriod?.strategicPeriodId,
-      periodStartDate: o.strategicPeriod?.startDate,
-    })),
-  });
+    error,
+    refetch,
+  } = useObjectives(objectivesQueryVars);
 
   // Fetch a broad set of objectives for lookup (to resolve parent KPI names in expanded rows)
   // This avoids missing parent corporate objectives when the view is scoped to a unit
@@ -194,20 +154,25 @@ function ObjectivesApprovalTableContent() {
     limit: 1000,
   });
 
-  // Period/quarter changes are stored globally in the topbar selector. Refetch
-  // and clear local table state so the objectives dashboard responds without a
-  // manual page refresh.
+  // Only refetch when the strategic period actually changes — not on every
+  // navigation back to this page (Apollo cache already holds the list).
+  const previousPeriodIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (pathname !== "/dashboard/objectives" || !userEmployeeId) return;
+    if (!selectedPeriodId) return;
+
+    const previous = previousPeriodIdRef.current;
+    previousPeriodIdRef.current = selectedPeriodId;
+    if (previous === undefined || previous === selectedPeriodId) return;
 
     setOrderedObjectives(null);
     setSelected([]);
     setExpanded(null);
     setCurrentPage(1);
 
-    refetch();
-    refetchAllObjectivesForLookup();
-    refetchKpis();
+    void refetch();
+    void refetchAllObjectivesForLookup();
+    void refetchKpis();
   }, [
     pathname,
     userEmployeeId,

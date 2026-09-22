@@ -152,7 +152,10 @@ const AddEmployeeDialog: React.FC<AddEmployeeDialogProps> = ({ children, onSucce
     // Upload file
     setUploading(true);
     try {
-      const uploadResult = await uploadFile(file);
+      const uploadResult = await uploadFile(file, {
+        category: "Profile",
+        employeeId: formData.email.trim() || "unassigned",
+      });
       setFormData((prev) => ({ ...prev, picture: uploadResult.url }));
     } catch (error) {
       console.error("Upload failed:", error);

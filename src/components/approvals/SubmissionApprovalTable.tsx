@@ -25,6 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  tableIconButtonClassName,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApproveSubmissionDialog from "./ApproveSubmissionDialog";
@@ -44,6 +45,8 @@ import {
   getQuartersByYear,
   getYearlyTotals,
 } from "@/utils/strategic/kpi-math";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 type KpiSubmission = {
   submissionId: string;
@@ -215,8 +218,70 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
     return submissions;
   }, [submissions, activeTab, isCorporateLevel]);
 
-  // All submissions are objective submissions with nested KPIs
-  const objectiveSubmissions = filteredSubmissions;
+  const approvalColumns = useMemo(
+    () => [
+      {
+        id: "strategicObjective",
+        accessor: (submission: GroupedSubmission) => {
+          const childId = submission.objective?.objectiveId;
+          const child = allObjectives?.find((o) => o.objectiveId === childId);
+          const hasParent = !!child?.parent;
+          return hasParent
+            ? child.parent?.title || child.parent?.name || "N/A"
+            : submission.objective?.title ||
+                submission.objective?.name ||
+                "N/A";
+        },
+      },
+      {
+        id: "childObjective",
+        accessor: (submission: GroupedSubmission) => {
+          const childId = submission.objective?.objectiveId;
+          const child = allObjectives?.find((o) => o.objectiveId === childId);
+          return child?.parent
+            ? submission.objective?.title ||
+                submission.objective?.name ||
+                ""
+            : "";
+        },
+      },
+      {
+        id: "submittedBy",
+        accessor: (submission: GroupedSubmission) =>
+          submission.submittedBy?.fullName ?? "",
+      },
+      {
+        id: "reason",
+        accessor: (submission: GroupedSubmission) => submission.reason ?? "",
+      },
+      {
+        id: "kpiSubmissions",
+        accessor: (submission: GroupedSubmission) =>
+          submission.kpiSubmissionCount ??
+          submission.associatedKpiSubmissions?.length ??
+          0,
+      },
+      {
+        id: "level",
+        accessor: (submission: GroupedSubmission) => submission.level,
+        filterFn: (submission: GroupedSubmission, value: string) =>
+          submission.level === value,
+      },
+      {
+        id: "status",
+        accessor: (submission: GroupedSubmission) => submission.status,
+        filterFn: (submission: GroupedSubmission, value: string) =>
+          submission.status === value,
+      },
+    ],
+    [allObjectives],
+  );
+
+  const { processedRows: objectiveSubmissions, getHeaderProps } =
+    useTableColumnControls({
+      rows: filteredSubmissions,
+      columns: approvalColumns,
+    });
 
   // Helper function to get KPI submissions for a specific objective
   const getKPISubmissionsForObjective = (submission: GroupedSubmission) => {
@@ -403,14 +468,10 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
         {isCorporateLevel && (
           <div className="p-4 border-b border-gray-200">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="division">Division Objectives</TabsTrigger>
-                <TabsTrigger value="department">
-                  Department Objectives
-                </TabsTrigger>
-                <TabsTrigger value="personnel">
-                  Personnel Objectives
-                </TabsTrigger>
+              <TabsList className="w-full">
+                <TabsTrigger value="division">Division</TabsTrigger>
+                <TabsTrigger value="department">Department</TabsTrigger>
+                <TabsTrigger value="personnel">Personnel</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -426,7 +487,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
   }
 
   return (
-    <div className="dark:bg-muted rounded-lg border overflow-x-auto custom-scrollbar">
+    <div className="rounded-lg border dark:bg-muted">
       {isCorporateLevel && (
         <div className="p-4 border-b border-gray-200">
           <div className="mb-4">
@@ -452,12 +513,10 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
             </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="division">Division Objectives</TabsTrigger>
-              <TabsTrigger value="department">
-                Department Objectives
-              </TabsTrigger>
-              <TabsTrigger value="personnel">Personnel Objectives</TabsTrigger>
+            <TabsList className="w-full">
+              <TabsTrigger value="division">Division</TabsTrigger>
+              <TabsTrigger value="department">Department</TabsTrigger>
+              <TabsTrigger value="personnel">Personnel</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -486,30 +545,64 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
               return (
                 <>
                   <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {columnHeaders.firstColumn}
+                    <SortableFilterableHeader
+                      label={columnHeaders.firstColumn}
+                      {...getHeaderProps("strategicObjective")}
+                    />
                   </TableHead>
                   {columnHeaders.showSecondColumn && (
                     <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {columnHeaders.secondColumn}
+                      <SortableFilterableHeader
+                        label={columnHeaders.secondColumn}
+                        {...getHeaderProps("childObjective")}
+                      />
                     </TableHead>
                   )}
                 </>
               );
             })()}
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Submitted By
+              <SortableFilterableHeader
+                label="Submitted By"
+                {...getHeaderProps("submittedBy")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Reason
+              <SortableFilterableHeader
+                label="Reason"
+                {...getHeaderProps("reason")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              KPI Submissions
+              <SortableFilterableHeader
+                label="KPI Submissions"
+                filterable={false}
+                {...getHeaderProps("kpiSubmissions")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Level
+              <SortableFilterableHeader
+                label="Level"
+                filterType="select"
+                filterOptions={[
+                  { value: "DIVISION", label: "Division" },
+                  { value: "DEPARTMENT", label: "Department" },
+                  { value: "PERSONNEL", label: "Personnel" },
+                ]}
+                {...getHeaderProps("level")}
+              />
             </TableHead>
             <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
+              <SortableFilterableHeader
+                label="Status"
+                filterType="select"
+                filterOptions={[
+                  { value: "PENDING", label: "Pending" },
+                  { value: "APPROVED", label: "Approved" },
+                  { value: "REJECTED", label: "Rejected" },
+                ]}
+                {...getHeaderProps("status")}
+              />
             </TableHead>
             {!readOnly && (
               <TableHead className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -718,8 +811,8 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                            size="icon"
+                            className={`${tableIconButtonClassName} hover:bg-gray-100`}
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
@@ -1014,7 +1107,7 @@ const SubmissionApprovalTable: React.FC<SubmissionApprovalTableProps> = ({
                               : obj.submissionId,
                           )
                         }
-                        className="h-8 w-8 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
+                        className="flex h-9 w-9 min-h-9 min-w-9 touch-manipulation items-center justify-center rounded transition-colors hover:bg-gray-100"
                       >
                         {expanded === obj.submissionId ? (
                           <ChevronUp className="h-4 w-4" />

@@ -1,16 +1,16 @@
 import React from "react";
 import { TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import type { ColumnHeaderControls } from "@/hooks/table/useTableColumnControls";
 
 interface ObjectiveTableHeaderProps {
     onSelectAll?: () => void;
     allSelected: boolean;
     showLevelSpecificColumn: boolean;
     columnHeaders: { firstColumn: string; secondColumn: string | null };
-    sortConfig?: { key: string; direction: "asc" | "desc" } | null;
-    onSort?: (key: string) => void;
     enableSorting?: boolean;
+    getHeaderProps: (key: string) => ColumnHeaderControls;
 }
 
 const ObjectiveTableHeader: React.FC<ObjectiveTableHeaderProps> = ({
@@ -18,23 +18,9 @@ const ObjectiveTableHeader: React.FC<ObjectiveTableHeaderProps> = ({
     allSelected,
     showLevelSpecificColumn,
     columnHeaders,
-    sortConfig,
-    onSort,
     enableSorting,
+    getHeaderProps,
 }) => {
-    const renderSortIcon = (key: string) => {
-        if (sortConfig?.key !== key) return null;
-        return sortConfig.direction === "asc" ? (
-            <ChevronUp className="inline ml-1 h-3 w-3" />
-        ) : (
-            <ChevronDown className="inline ml-1 h-3 w-3" />
-        );
-    };
-
-    const handleSort = (key: string) => {
-        if (onSort) onSort(key);
-    };
-
     return (
         <TableHeader>
             <TableRow className="bg-muted/60 hover:bg-muted/60 border-b">
@@ -49,42 +35,50 @@ const ObjectiveTableHeader: React.FC<ObjectiveTableHeaderProps> = ({
                     )}
                 </TableHead>
 
-                <TableHead
-                    className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3 cursor-pointer hover:bg-muted/80 transition-colors"
-                    onClick={() => handleSort("name")}
-                >
-                    {columnHeaders.firstColumn}
-                    {renderSortIcon("name")}
+                <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
+                    <SortableFilterableHeader
+                        label={columnHeaders.firstColumn}
+                        {...getHeaderProps("name")}
+                    />
                 </TableHead>
 
                 {showLevelSpecificColumn && (
-                    <TableHead
-                        className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3 cursor-pointer hover:bg-muted/80 transition-colors"
-                        onClick={() => handleSort("name")}
-                    >
-                        {columnHeaders.secondColumn}
-                        {renderSortIcon("name")}
+                    <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
+                        <SortableFilterableHeader
+                            label={columnHeaders.secondColumn ?? ""}
+                            {...getHeaderProps("levelColumn")}
+                        />
                     </TableHead>
                 )}
 
                 <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-                    Progress
+                    <SortableFilterableHeader
+                        label="Progress"
+                        filterable={false}
+                        {...getHeaderProps("progress")}
+                    />
                 </TableHead>
 
-                <TableHead
-                    className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3 cursor-pointer hover:bg-muted/80 transition-colors"
-                    onClick={() => handleSort("status")}
-                >
-                    Status
-                    {renderSortIcon("status")}
+                <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
+                    <SortableFilterableHeader
+                        label="Status"
+                        filterType="select"
+                        filterOptions={[
+                            { value: "NOT_SUBMITTED", label: "Not Submitted" },
+                            { value: "PENDING", label: "Pending" },
+                            { value: "APPROVED", label: "Approved" },
+                            { value: "REJECTED", label: "Rejected" },
+                        ]}
+                        {...getHeaderProps("status")}
+                    />
                 </TableHead>
 
-                <TableHead
-                    className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3 cursor-pointer hover:bg-muted/80 transition-colors"
-                    onClick={() => handleSort("createdAt")}
-                >
-                    Created
-                    {renderSortIcon("createdAt")}
+                <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
+                    <SortableFilterableHeader
+                        label="Created"
+                        filterable={false}
+                        {...getHeaderProps("createdAt")}
+                    />
                 </TableHead>
 
                 <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3 w-16 text-right">

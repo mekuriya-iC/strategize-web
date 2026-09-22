@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreVerticalIcon, ClockIcon, FileTextIcon } from "lucide-react";
+import { MoreVerticalIcon, ClockIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
 import { useMutation } from "@apollo/client";
 import { DELETE_CHECKIN } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
+import { AttachmentTrigger } from "@/components/files/AttachmentTrigger";
 
 interface CheckInItemProps {
   checkin: {
@@ -95,10 +96,7 @@ export function CheckInItem({ checkin, onRefetch }: CheckInItemProps) {
               </span>
             </div>
             {checkin.attachment && (
-              <div className="flex items-center gap-1">
-                <FileTextIcon className="w-4 h-4" />
-                <span>Attachment</span>
-              </div>
+              <AttachmentTrigger url={checkin.attachment} name="Attachment" />
             )}
           </div>
 

@@ -91,6 +91,12 @@ export default function StructureBuilder({ templateId, liveData, liveLoading, ca
 
   const { saveOrgChart, loading: saving } = useOrgChartMutations();
 
+  // Start slightly zoomed out on narrow screens so the tree fits better
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth < 768) setZoom(70);
+  }, []);
+
   // Sync live API data into local state
   useEffect(() => {
     if (liveData) {
@@ -181,11 +187,11 @@ export default function StructureBuilder({ templateId, liveData, liveLoading, ca
       {node.children.length > 0 && (
         <div className="flex flex-col items-center mt-6">
           <div className="w-0.5 h-8 bg-gray-300 dark:bg-gray-600" />
-          <div className="flex gap-16 relative">
+          <div className="flex gap-6 sm:gap-16 relative">
             {node.children.length > 1 && (
               <div
                 className="absolute top-0 h-0.5 bg-gray-300 dark:bg-gray-600"
-                style={{ left: "50%", transform: "translateX(-50%)", width: "calc(100% - 128px)" }}
+                style={{ left: "50%", transform: "translateX(-50%)", width: "calc(100% - 80px)" }}
               />
             )}
             {node.children.map((child) => (
@@ -203,35 +209,35 @@ export default function StructureBuilder({ templateId, liveData, liveLoading, ca
     <>
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/50 sm:gap-3 sm:px-6 sm:py-3">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
             {canManage && (
               <>
                 <Button variant="ghost" size="icon" className="h-8 w-8"><Undo2 size={16} /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8"><Redo2 size={16} /></Button>
-                <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2" />
+                <div className="mx-1 hidden h-6 w-px bg-gray-300 dark:bg-gray-600 sm:mx-2 sm:block" />
               </>
             )}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(zoom + 10, 150))}><ZoomIn size={16} /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(zoom - 10, 50))}><ZoomOut size={16} /></Button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{zoom}%</span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 ml-2" onClick={() => setZoom(100)}><Maximize2 size={16} /></Button>
+            <span className="ml-1 text-xs text-gray-600 dark:text-gray-400 sm:ml-2 sm:text-sm">{zoom}%</span>
+            <Button variant="ghost" size="icon" className="ml-1 h-8 w-8 sm:ml-2" onClick={() => setZoom(100)}><Maximize2 size={16} /></Button>
           </div>
 
           {canManage && (
             <div className="flex items-center gap-2">
               {isDirty && (
-                <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved changes</span>
+                <span className="hidden text-xs text-amber-500 dark:text-amber-400 sm:inline">Unsaved changes</span>
               )}
               <Button
                 onClick={handleSave}
                 disabled={saving || !isDirty}
-                className="bg-primary hover:bg-primary/90 text-white px-6 h-8 text-sm gap-2"
+                className="h-8 gap-2 bg-primary px-3 text-sm text-white hover:bg-primary/90 sm:px-6"
               >
                 {saving ? (
                   <>
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Saving...
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span className="hidden sm:inline">Saving...</span>
                   </>
                 ) : (
                   <>
@@ -244,18 +250,18 @@ export default function StructureBuilder({ templateId, liveData, liveLoading, ca
           )}
         </div>
 
-        {/* Canvas */}
-        <div className="flex-1 overflow-auto p-12 bg-gray-50 dark:bg-[#09090b]">
+        {/* Canvas — pan/zoom friendly on touch devices */}
+        <div className="flex-1 overflow-auto overscroll-contain bg-gray-50 p-4 [-webkit-overflow-scrolling:touch] dark:bg-[#09090b] sm:p-8 lg:p-12">
           {liveLoading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex h-full items-center justify-center">
               <div className="flex flex-col items-center gap-3 text-gray-400">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 <span className="text-sm">Loading structure...</span>
               </div>
             </div>
           ) : (
             <div
-              className="flex justify-center items-start min-h-full"
+              className="flex min-h-full min-w-max items-start justify-center"
               style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
             >
               {renderNode(structure)}

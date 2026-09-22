@@ -207,7 +207,7 @@ export default function UnifiedPerformanceReport({
       },
     },
     skip: isTeamView || !selectedPeriodId || !user?.employeeId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Team Performance Query
@@ -224,7 +224,7 @@ export default function UnifiedPerformanceReport({
       },
     },
     skip: !isTeamView || !selectedPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const loading = isTeamView ? teamLoading : personalLoading;

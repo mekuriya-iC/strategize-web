@@ -854,7 +854,7 @@ export default function ExecutivePerformanceDashboard({
         <div className="border-b bg-muted/30 p-2 sm:p-3">
           <TabsList
             aria-label="Performance sections"
-            className="grid h-auto w-full grid-cols-2 gap-1 bg-transparent p-0 sm:flex sm:flex-wrap"
+            className="w-full bg-transparent p-0"
           >
             <TabsTrigger
               value="overview"

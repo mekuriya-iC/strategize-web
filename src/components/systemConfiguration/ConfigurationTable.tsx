@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -22,6 +22,8 @@ import { MoreHorizontal, Pencil, Trash2, Search } from "lucide-react";
 import { SystemConfiguration } from "@/hooks/systemConfiguration/useSystemConfiguration";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface ConfigurationTableProps {
   configurations: SystemConfiguration[];
@@ -38,12 +40,50 @@ export default function ConfigurationTable({
 }: ConfigurationTableProps) {
   const [search, setSearch] = useState("");
 
-  const filteredConfigs = configurations.filter(
-    (config: any) =>
-      config.configKey?.toLowerCase().includes(search.toLowerCase()) ||
-      config.configValue?.toLowerCase().includes(search.toLowerCase()) ||
-      config.description?.toLowerCase().includes(search.toLowerCase())
+  const searchFiltered = useMemo(
+    () =>
+      configurations.filter(
+        (config: any) =>
+          config.configKey?.toLowerCase().includes(search.toLowerCase()) ||
+          config.configValue?.toLowerCase().includes(search.toLowerCase()) ||
+          config.description?.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [configurations, search],
   );
+
+  const columns = useMemo(
+    () => [
+      {
+        id: "configKey",
+        accessor: (row: any) => row.configKey ?? "",
+      },
+      {
+        id: "configValue",
+        accessor: (row: any) => row.configValue ?? "",
+      },
+      {
+        id: "description",
+        accessor: (row: any) => row.description ?? "",
+      },
+      {
+        id: "status",
+        accessor: (row: any) => (row.isActive ? "Active" : "Inactive"),
+        filterFn: (row: any, value: string) =>
+          (row.isActive ? "Active" : "Inactive") === value,
+      },
+      {
+        id: "updatedAt",
+        accessor: (row: any) =>
+          row.updatedAt ? new Date(row.updatedAt) : new Date(row.createdAt),
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: searchFiltered,
+    columns,
+  });
 
   const handleDelete = (config: any) => {
     toast(
@@ -103,23 +143,54 @@ export default function ConfigurationTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Configuration Key</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Updated</TableHead>
+              <TableHead>
+                <SortableFilterableHeader
+                  label="Configuration Key"
+                  {...getHeaderProps("configKey")}
+                />
+              </TableHead>
+              <TableHead>
+                <SortableFilterableHeader
+                  label="Value"
+                  {...getHeaderProps("configValue")}
+                />
+              </TableHead>
+              <TableHead>
+                <SortableFilterableHeader
+                  label="Description"
+                  {...getHeaderProps("description")}
+                />
+              </TableHead>
+              <TableHead>
+                <SortableFilterableHeader
+                  label="Status"
+                  filterType="select"
+                  filterOptions={[
+                    { value: "Active", label: "Active" },
+                    { value: "Inactive", label: "Inactive" },
+                  ]}
+                  {...getHeaderProps("status")}
+                />
+              </TableHead>
+              <TableHead>
+                <SortableFilterableHeader
+                  label="Last Updated"
+                  filterable={false}
+                  {...getHeaderProps("updatedAt")}
+                />
+              </TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredConfigs.length === 0 ? (
+            {processedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   {search ? "No configurations found matching your search" : "No configurations yet"}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredConfigs.map((config: any) => (
+              processedRows.map((config: any) => (
                 <TableRow key={config.systemConfigurationId}>
                   <TableCell className="font-mono text-sm font-medium">
                     {config.configKey}

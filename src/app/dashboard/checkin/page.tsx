@@ -1153,7 +1153,7 @@ export default function CheckInPage() {
         <CreateSessionDialog
           open={isCreateSessionOpen}
           onOpenChange={setIsCreateSessionOpen}
-          currentUserId={currentUser?.employeeId}
+          currentUserId={currentUser?.employeeId ?? ""}
           onSuccess={() => {
             refetchAll();
           }}

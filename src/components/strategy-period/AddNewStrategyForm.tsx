@@ -19,7 +19,9 @@ import { toast } from "sonner";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { useMutation } from "@apollo/client";
 import { CREATE_STRATEGIC_PLAN } from "@/lib/graphql/mutations/strategicPlans";
+import { GET_STRATEGIC_PLANS } from "@/lib/graphql/queries/strategicPlans";
 import { formatAnnualTimeline } from "@/lib/strategic-periods/periodDates";
+import { selectLatestActiveStrategicPlan } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
 
 const GET_ORGANIZATIONS = gql`
   query GetOrganizationsForPeriodSetup {
@@ -47,17 +49,28 @@ export default function AddNewStrategyForm() {
   const { selectPeriodWithTimeline } = useStrategicPeriodStore();
   const { createStrategicPeriod } = useStrategicPeriodMutations();
 
-  // Call the mutation directly (no success toast — plan creation is invisible to the user)
+  // Only create a plan when the org has none — never spawn a competing "active" plan.
   const [createPlanMutation] = useMutation(CREATE_STRATEGIC_PLAN);
 
   // Fallback: fetch org if not on the user object (super admins)
   const { data: orgData, loading: orgLoading } = useQuery(GET_ORGANIZATIONS, {
     skip: !!userOrgId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const organizationId =
     userOrgId || orgData?.organizations?.items?.[0]?.organizationId || "";
+
+  const { data: plansData, loading: plansLoading } = useQuery(GET_STRATEGIC_PLANS, {
+    variables: { page: 1, limit: 100, search: "" },
+    skip: !organizationId,
+    fetchPolicy: "network-only",
+  });
+
+  const existingActivePlan = selectLatestActiveStrategicPlan(
+    plansData?.strategicPlans?.items ?? [],
+    organizationId,
+  );
 
   const [form, setForm] = useState({
     name: "",
@@ -89,33 +102,35 @@ export default function AddNewStrategyForm() {
 
     setSubmitting(true);
     try {
-      // Step 1: silently create a strategic plan to satisfy the backend requirement.
-      // The user never sees this — the period name is used as the plan title.
-      const { data: planData } = await createPlanMutation({
-        variables: {
-          input: {
-            title: form.name.trim(),
-            startDate: form.startDate,
-            endDate: form.endDate,
-            organizationId,
-            isActive: true,
-          },
-        },
-      });
-      const plan = planData?.createStrategicPlan;
+      let strategicPlanId = existingActivePlan?.strategicPlanId;
 
-      if (!plan?.strategicPlanId) {
+      // Bootstrap a plan only when the organization has no active plan yet.
+      if (!strategicPlanId) {
+        const { data: planData } = await createPlanMutation({
+          variables: {
+            input: {
+              title: form.name.trim(),
+              startDate: form.startDate,
+              endDate: form.endDate,
+              organizationId,
+              isActive: true,
+            },
+          },
+        });
+        strategicPlanId = planData?.createStrategicPlan?.strategicPlanId;
+      }
+
+      if (!strategicPlanId) {
         toast.error("Failed to initialize strategy. Please try again.");
         return;
       }
 
-      // Step 2: create the strategic period under that plan
       const period = await createStrategicPeriod({
         name: form.name.trim(),
         startDate: form.startDate,
         endDate: form.endDate,
         periodType: form.periodType,
-        strategicPlanId: plan.strategicPlanId,
+        strategicPlanId,
         organizationId,
       });
 
@@ -131,7 +146,7 @@ export default function AddNewStrategyForm() {
     }
   };
 
-  if (orgLoading) {
+  if (orgLoading || (!!organizationId && plansLoading)) {
     return (
       <div className="w-full max-w-sm text-center text-sm text-gray-500">
         Loading your account details...

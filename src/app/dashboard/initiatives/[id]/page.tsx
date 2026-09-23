@@ -140,7 +140,7 @@ export default function InitiativeDetailPage({ params }: InitiativeDetailPagePro
 
       {/* Tabbed Content */}
       <Tabs defaultValue="activities" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="w-full lg:w-auto">
           <TabsTrigger value="activities" className="gap-2">
             <Target className="h-4 w-4" />
             <span className="hidden sm:inline">Activities</span>

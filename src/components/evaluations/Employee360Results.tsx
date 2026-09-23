@@ -75,7 +75,7 @@ export default function Employee360Results() {
         evaluateeUserId: targetEmployeeId,
       },
       skip: !activeCycle?.evaluationCycleId || !targetEmployeeId,
-      fetchPolicy: "network-only",
+      fetchPolicy: "cache-first",
     }
   );
 
@@ -141,7 +141,7 @@ export default function Employee360Results() {
             page: 1,
             limit: 1000
           },
-          fetchPolicy: 'network-only',
+          fetchPolicy: "cache-first",
         });
 
         const responses = data?.assessmentResponses?.items || [];

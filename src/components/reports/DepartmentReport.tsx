@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
@@ -19,11 +19,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { stickyFirstColumnTableClassName } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download, Building2, Users, Briefcase } from "lucide-react";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface DepartmentReportProps {
   onExport?: (data: any) => void;
+}
+
+interface BreakdownRow {
+  name: string;
+  employees: number;
+  percent: number;
 }
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -33,17 +42,17 @@ export default function DepartmentReport({ onExport }: DepartmentReportProps) {
 
   const { data: deptsData, loading: deptsLoading } = useQuery(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const { data: divsData, loading: divsLoading } = useQuery(GET_DIVISIONS, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const { data: empsData, loading: empsLoading } = useQuery(GET_EMPLOYEES, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const departments = deptsData?.departments?.items || [];
@@ -66,6 +75,33 @@ export default function DepartmentReport({ onExport }: DepartmentReportProps) {
     name: div.name,
     employees: employees.filter((emp: any) => emp.division?.divisionId === div.divisionId).length,
   })).sort((a: any, b: any) => b.employees - a.employees);
+
+  const breakdownRows = useMemo<BreakdownRow[]>(() => {
+    const source = viewType === "department" ? employeesByDept : employeesByDiv;
+    return source.map((item: { name: string; employees: number }) => ({
+      name: item.name,
+      employees: item.employees,
+      percent:
+        totalEmployees > 0
+          ? (item.employees / totalEmployees) * 100
+          : 0,
+    }));
+  }, [viewType, employeesByDept, employeesByDiv, totalEmployees]);
+
+  const breakdownColumns = useMemo(
+    () => [
+      { id: "name", accessor: (row: BreakdownRow) => row.name },
+      { id: "employees", accessor: (row: BreakdownRow) => row.employees },
+      { id: "percent", accessor: (row: BreakdownRow) => row.percent },
+    ],
+    [],
+  );
+
+  const { processedRows: processedBreakdown, getHeaderProps: getBreakdownHeaderProps } =
+    useTableColumnControls({
+      rows: breakdownRows,
+      columns: breakdownColumns,
+    });
 
   const maxEmployees = Math.max(
     ...employeesByDept.map((d: any) => d.employees),
@@ -266,24 +302,41 @@ export default function DepartmentReport({ onExport }: DepartmentReportProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            <table className={`w-full min-w-[480px] text-sm ${stickyFirstColumnTableClassName}`}>
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-semibold">Name</th>
-                  <th className="text-right py-3 px-4 font-semibold">Employees</th>
-                  <th className="text-right py-3 px-4 font-semibold">% of Total</th>
+                  <th className="text-left py-3 px-4 font-semibold">
+                    <SortableFilterableHeader
+                      label="Name"
+                      {...getBreakdownHeaderProps("name")}
+                    />
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold">
+                    <SortableFilterableHeader
+                      label="Employees"
+                      align="right"
+                      filterable={false}
+                      {...getBreakdownHeaderProps("employees")}
+                    />
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold">
+                    <SortableFilterableHeader
+                      label="% of Total"
+                      align="right"
+                      filterable={false}
+                      {...getBreakdownHeaderProps("percent")}
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {(viewType === "department" ? employeesByDept : employeesByDiv).map((item: any, idx: number) => (
+                {processedBreakdown.map((item, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900/30">
                     <td className="py-3 px-4">{item.name}</td>
                     <td className="text-right py-3 px-4">{item.employees}</td>
                     <td className="text-right py-3 px-4">
-                      {totalEmployees > 0
-                        ? `${((item.employees / totalEmployees) * 100).toFixed(1)}%`
-                        : "0%"}
+                      {item.percent.toFixed(1)}%
                     </td>
                   </tr>
                 ))}

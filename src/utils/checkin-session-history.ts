@@ -29,6 +29,20 @@ export const isClosedCheckinoutSession = (
   session: Pick<CheckinoutSessionLike, "overallStatus">,
 ): boolean => session.overallStatus?.toUpperCase() === "CLOSED";
 
+/**
+ * Single display status for UI. Locked and Open must never appear together —
+ * a soft-locked OPEN session shows as LOCKED.
+ */
+export const getEffectiveCheckinoutSessionStatus = (session: {
+  overallStatus?: string | null;
+  isLocked?: boolean | null;
+}): string => {
+  const status = String(session.overallStatus || "OPEN").toUpperCase();
+  if (status === "CLOSED") return "CLOSED";
+  if (session.isLocked) return "LOCKED";
+  return status || "OPEN";
+};
+
 export const isExpiredCheckinoutSession = (
   session: Pick<CheckinoutSessionLike, "weekEndDate">,
   today: Date = new Date(),

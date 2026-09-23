@@ -81,13 +81,6 @@ export default function LoginForm() {
         window.location.assign(path);
       };
 
-      // Check for redirect URL
-      const redirectUrl = searchParams.get("redirect");
-      if (redirectUrl && redirectUrl.startsWith("/")) {
-        navigateAfterLogin(redirectUrl);
-        return;
-      }
-
       // PRIORITY 1: Check if user needs onboarding (first login or password change)
       const isFirstLogin = result.user?.isFirstLogin;
       const mustChangePassword = result.user?.mustChangePassword;
@@ -97,7 +90,19 @@ export default function LoginForm() {
         return;
       }
 
-      // PRIORITY 2: Role-based routing after login
+      // PRIORITY 2: Resolve post-login destination.
+      // Ignore stale redirects into the template/setup wizard — those URLs are
+      // often left in ?redirect= after an expired session on those pages.
+      const rawRedirect = searchParams.get("redirect");
+      const redirectUrl =
+        rawRedirect &&
+        rawRedirect.startsWith("/") &&
+        !rawRedirect.startsWith("/organization-template") &&
+        !rawRedirect.startsWith("/setup/") &&
+        !rawRedirect.startsWith("/onboarding")
+          ? rawRedirect
+          : null;
+
       const userRole = result.user?.role;
 
       // Only ADMIN and SUPER_ADMIN need to check organization setup
@@ -124,19 +129,27 @@ export default function LoginForm() {
             (objectivesResult.data?.objectives?.meta?.totalItems ?? 0) > 0;
           const isSetupComplete = hasPeriods && hasObjectives;
 
-          navigateAfterLogin(
-            isSetupComplete ? "/dashboard" : "/organization-template",
-          );
+          if (isSetupComplete) {
+            navigateAfterLogin(redirectUrl || "/dashboard");
+          } else {
+            navigateAfterLogin("/organization-template");
+          }
         } catch (error) {
           console.error("Error checking organization setup:", error);
-          navigateAfterLogin("/organization-template");
+          // If the org already exists on the user, prefer dashboard over the
+          // template wizard — setup probes can fail on schema drift.
+          navigateAfterLogin(
+            result.user?.organizationId
+              ? redirectUrl || "/dashboard"
+              : "/organization-template",
+          );
         } finally {
           setCheckingSetup(false);
         }
         return;
       }
 
-      navigateAfterLogin("/dashboard");
+      navigateAfterLogin(redirectUrl || "/dashboard");
     } else {
       // Determine the type of error and show appropriate message
       const error = result?.error;

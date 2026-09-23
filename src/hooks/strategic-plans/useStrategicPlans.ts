@@ -31,13 +31,16 @@ interface GetStrategicPlansResponse {
   strategicPlans: PaginatedStrategicPlans;
 }
 
-export const useStrategicPlansQuery = (variables = { page: 1, limit: 100, search: "" }) => {
+export const useStrategicPlansQuery = (
+  variables = { page: 1, limit: 100, search: "" },
+  options?: { fetchPolicy?: "cache-first" | "cache-and-network" | "network-only" },
+) => {
   const { data, loading, error, refetch } = useQuery<GetStrategicPlansResponse>(
     GET_STRATEGIC_PLANS,
     {
       variables,
-      fetchPolicy: "cache-first",
-      nextFetchPolicy: "cache-first",
+      fetchPolicy: options?.fetchPolicy ?? "cache-first",
+      nextFetchPolicy: options?.fetchPolicy ?? "cache-first",
     }
   );
 

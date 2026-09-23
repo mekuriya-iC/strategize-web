@@ -86,7 +86,7 @@ function SettingsContent() {
       >
         {/* Sidebar Navigation */}
         <div className="lg:w-64 shrink-0">
-          <TabsList className="flex flex-row lg:flex-col w-full h-auto bg-transparent gap-1 overflow-x-auto pb-2 lg:pb-0">
+          <TabsList className="h-auto w-full flex-row gap-1 overflow-x-auto bg-transparent pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}

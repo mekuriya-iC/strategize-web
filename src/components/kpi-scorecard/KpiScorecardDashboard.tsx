@@ -31,17 +31,17 @@ export default function KpiScorecardDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">KPI Scorecard</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">KPI Scorecard</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Track and analyze KPI performance across all organizational levels
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             ✨ Scores are calculated automatically from approved logbook entries in real-time
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
@@ -58,13 +58,15 @@ export default function KpiScorecardDashboard() {
       {activePeriod && (
         <Card className="border-primary/50 bg-primary/5">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-sm font-medium">
-                Active Period:{" "}
-                <span className="text-primary">{activePeriod.name}</span>
-              </p>
-              <span className="text-muted-foreground text-sm ml-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-green-500" />
+                <p className="text-sm font-medium">
+                  Active Period:{" "}
+                  <span className="text-primary">{activePeriod.name}</span>
+                </p>
+              </div>
+              <span className="text-sm text-muted-foreground sm:ml-4">
                 {new Date(activePeriod.startDate).toLocaleDateString()} -{" "}
                 {new Date(activePeriod.endDate).toLocaleDateString()}
               </span>
@@ -79,18 +81,36 @@ export default function KpiScorecardDashboard() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="individual">Individual</TabsTrigger>
-          <TabsTrigger value="department" disabled={!canReadAll}>
+        <TabsList className="w-full">
+          <TabsTrigger value="individual" className="shrink-0 text-xs sm:text-sm">
+            Individual
+          </TabsTrigger>
+          <TabsTrigger
+            value="department"
+            disabled={!canReadAll}
+            className="shrink-0 text-xs sm:text-sm"
+          >
             Department
           </TabsTrigger>
-          <TabsTrigger value="division" disabled={!canReadAll}>
+          <TabsTrigger
+            value="division"
+            disabled={!canReadAll}
+            className="shrink-0 text-xs sm:text-sm"
+          >
             Division
           </TabsTrigger>
-          <TabsTrigger value="corporate" disabled={!canReadAll}>
+          <TabsTrigger
+            value="corporate"
+            disabled={!canReadAll}
+            className="shrink-0 text-xs sm:text-sm"
+          >
             Corporate
           </TabsTrigger>
-          <TabsTrigger value="mappings" disabled={!canManageKpis}>
+          <TabsTrigger
+            value="mappings"
+            disabled={!canManageKpis}
+            className="shrink-0 text-xs sm:text-sm"
+          >
             Mappings
           </TabsTrigger>
         </TabsList>

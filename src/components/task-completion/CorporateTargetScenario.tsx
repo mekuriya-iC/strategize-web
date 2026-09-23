@@ -73,7 +73,8 @@ function CorporateScenarioPanel({
       },
     },
     skip: !annualId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
   const report = data?.kpiQuarterPerformanceReport;

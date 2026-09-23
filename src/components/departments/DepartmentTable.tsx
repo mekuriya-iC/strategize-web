@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -33,6 +33,8 @@ import DeleteDepartmentDialog from "./DeleteDepartmentDialog";
 import EditDepartmentDialog from "./EditDepartmentDialog";
 import { useDepartmentMutations } from "@/hooks/departments/useDepartmentMutations";
 import { toast } from "sonner";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 // Department interface matching the design
 export interface Department {
@@ -94,7 +96,28 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { removeDepartment } = useDepartmentMutations();
 
-  const departmentsToShow = propDepartments;
+  const columns = useMemo(
+    () => [
+      { id: "departmentName", accessor: (d: Department) => d.departmentName },
+      { id: "createdBy", accessor: (d: Department) => d.createdBy },
+      {
+        id: "createdOn",
+        accessor: (d: Department) => d.createdOn,
+        compare: (a: Department, b: Department) =>
+          new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
+      },
+      { id: "managedBy", accessor: (d: Department) => d.managedBy },
+      { id: "division", accessor: (d: Department) => d.division },
+      { id: "members", accessor: (d: Department) => d.members },
+    ],
+    [],
+  );
+
+  const { processedRows: departmentsToShow, getHeaderProps } =
+    useTableColumnControls({
+      rows: propDepartments,
+      columns,
+    });
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
@@ -207,25 +230,45 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
               </TableHead>
             )}
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              DEPARTMENT NAME
+              <SortableFilterableHeader
+                label="Department Name"
+                {...getHeaderProps("departmentName")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              CREATED BY
+              <SortableFilterableHeader
+                label="Created By"
+                {...getHeaderProps("createdBy")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              CREATED ON
+              <SortableFilterableHeader
+                label="Created On"
+                filterable={false}
+                {...getHeaderProps("createdOn")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              MANAGER
+              <SortableFilterableHeader
+                label="Manager"
+                {...getHeaderProps("managedBy")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              DIVISION
+              <SortableFilterableHeader
+                label="Division"
+                {...getHeaderProps("division")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              MEMBERS
+              <SortableFilterableHeader
+                label="Members"
+                filterable={false}
+                {...getHeaderProps("members")}
+              />
             </TableHead>
             <TableHead className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-              ACTIONS
+              Actions
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -299,7 +342,11 @@ const DepartmentTable: React.FC<DepartmentTableProps> = ({
                     {!readOnly && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 min-h-9 min-w-9 touch-manipulation"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

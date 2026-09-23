@@ -29,7 +29,9 @@ function getProfileImageUrl(picture?: string): string {
   if (!picture) return "/avatars/default.png";
   if (
     picture.includes("storage.googleapis.com") ||
-    picture.includes("storage.cloud.google.com")
+    picture.includes("storage.cloud.google.com") ||
+    picture.includes("storage.shofer.et") ||
+    picture.includes("vault.shofer.et")
   ) {
     return `/api/storage/${picture.split("/").pop()}`;
   }

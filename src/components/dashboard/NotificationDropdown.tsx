@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, ClipboardCheck, FileCheck2 } from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_NOTIFICATIONS } from "@/lib/graphql/queries/notifications";
 import { UPDATE_NOTIFICATION } from "@/lib/graphql/mutations/notifications";
-import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
+import { usePendingApprovalsBadge } from "@/providers/PendingApprovalsProvider";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,7 @@ export default function NotificationDropdown() {
     submissionCount,
     logbookCount,
     loading: approvalsLoading,
-  } = usePendingApprovalsCount();
+  } = usePendingApprovalsBadge();
 
   const { data, loading, refetch } = useQuery(GET_NOTIFICATIONS, {
     variables: {
@@ -33,8 +33,17 @@ export default function NotificationDropdown() {
       recipientUserId: user?.employeeId,
     },
     skip: !user?.employeeId,
-    pollInterval: 30000, // Poll every 30 seconds for new notifications
+    // Only poll while the menu is open; otherwise rely on Apollo cache.
+    pollInterval: open ? 60_000 : 0,
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
+
+  useEffect(() => {
+    if (open && user?.employeeId) {
+      void refetch();
+    }
+  }, [open, refetch, user?.employeeId]);
 
   const [updateNotification] = useMutation(UPDATE_NOTIFICATION);
 

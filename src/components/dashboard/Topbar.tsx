@@ -65,153 +65,158 @@ export default function Topbar() {
   };
 
   return (
-    <header className="sticky w-full flex items-center justify-between py-3 px-4 sm:py-4 sm:px-6 bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
-      {/* Left: Breadcrumbs and filter */}
-      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-        <nav className="flex items-center text-sm text-gray-500 dark:text-gray-400 min-w-0">
-          {/* Sidebar toggle - visible on all screens */}
+    <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
+      <header className="flex w-full items-center justify-between py-3 px-3 sm:py-4 sm:px-6">
+        {/* Left: Breadcrumbs and filter */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+          <nav className="flex min-w-0 items-center text-sm text-gray-500 dark:text-gray-400">
+            {/* Sidebar toggle - hamburger on mobile, collapse control on desktop */}
+            <button
+              className="mr-1 flex-shrink-0 rounded-md p-2 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#3838EC] dark:hover:bg-gray-800 sm:mr-2"
+              aria-label="Toggle sidebar"
+              onClick={toggleSidebar}
+            >
+              {open ? (
+                <SidebarClose
+                  className="h-5 w-5 text-gray-700 dark:text-gray-300"
+                  size={20}
+                  strokeWidth={1.5}
+                  color="#3838EC"
+                />
+              ) : (
+                <SidebarOpen
+                  className="h-5 w-5 text-gray-700 dark:text-gray-300"
+                  size={20}
+                  strokeWidth={1.5}
+                  color="#3838EC"
+                />
+              )}
+            </button>
+            <span className="truncate font-medium text-gray-700 dark:text-gray-100">
+              {getPageName(pathname)}
+            </span>
+            {/* Strategic Period Selector — tablet+ */}
+            <div className="ml-4 hidden md:block">
+              <StrategicPeriodSelector />
+            </div>
+            <div className="hidden lg:block">
+              <OrgUnitSelector />
+            </div>
+            <div className="hidden lg:block">
+              <DepartmentSelector className="ml-4" />
+            </div>
+          </nav>
+        </div>
+        {/* Right: Icons, language, user */}
+        <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
+          <NotificationDropdown />
+
           <button
-            className="mr-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-[#3838EC] flex-shrink-0"
-            aria-label="Toggle sidebar"
-            onClick={toggleSidebar}
+            className="rounded-full bg-gray-50 p-2 transition-colors hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 sm:p-3"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
           >
-            {open ? (
-              <SidebarClose
-                className="w-5 h-5 text-gray-700 dark:text-gray-300"
-                size={20}
-                strokeWidth={1.5}
-                color="#3838EC"
-              />
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-gray-600 dark:text-gray-300 sm:h-5 sm:w-5" />
             ) : (
-              <SidebarOpen
-                className="w-5 h-5 text-gray-700 dark:text-gray-300"
-                size={20}
-                strokeWidth={1.5}
-                color="#3838EC"
-              />
+              <Moon className="h-4 w-4 text-gray-600 dark:text-gray-300 sm:h-5 sm:w-5" />
             )}
           </button>
-          <span className="font-medium text-gray-700 dark:text-gray-100 truncate">
-            {getPageName(pathname)}
-          </span>
-          {/* Strategic Period Selector with Year + Quarter - Hidden on mobile, visible on tablet+ */}
-          <div className="hidden md:block ml-4">
-            <StrategicPeriodSelector />
-          </div>
-          <div className="hidden lg:block">
-            <OrgUnitSelector />
-          </div>
-          <div className="hidden lg:block">
-            <DepartmentSelector className="ml-4" />
-          </div>
-        </nav>
-      </div>
-      {/* Right: Icons, language, user */}
-      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        {/* Notification bell */}
-        <NotificationDropdown />
 
-        {/* Theme toggle button */}
-        <button
-          className="p-2 sm:p-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          {theme === "dark" ? (
-            <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
-          ) : (
-            <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
-          )}
-        </button>
+          {/* Language selector - Hidden on mobile */}
+          <div className="hidden sm:block">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 rounded-full bg-gray-50 px-3 py-2 transition-colors hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 sm:px-4 sm:py-3">
+                  <Globe className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Eng
+                  </span>
+                  <ChevronRight className="h-4 w-4 rotate-90 text-gray-500 dark:text-gray-400" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>English</DropdownMenuItem>
+                <DropdownMenuItem>French</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-        {/* Language selector - Hidden on mobile */}
-        <div className="hidden sm:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <Globe className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Eng
-                </span>
-                <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 rotate-90" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>English</DropdownMenuItem>
-              <DropdownMenuItem>French</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* User profile dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <UserAvatar
-                src={userPicture}
-                alt={userFullName || "User"}
+              <Button
+                variant="ghost"
                 size="sm"
-              />
-              <span className="hidden sm:inline">
-                {userFullName || "User"}
-              </span>
-              <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 rotate-90" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem disabled>
-              <div className="flex items-center gap-3">
+                className="flex items-center gap-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:gap-3"
+              >
                 <UserAvatar
                   src={userPicture}
                   alt={userFullName || "User"}
-                  size="md"
+                  size="sm"
                 />
-                <div className="flex flex-col">
-                  <span className="font-medium">
-                    {userFullName || "User"}
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {userEmail || ""}
-                  </span>
+                <span className="hidden sm:inline">
+                  {userFullName || "User"}
+                </span>
+                <ChevronRight className="hidden h-4 w-4 rotate-90 text-gray-500 dark:text-gray-400 sm:block" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem disabled>
+                <div className="flex items-center gap-3">
+                  <UserAvatar
+                    src={userPicture}
+                    alt={userFullName || "User"}
+                    size="md"
+                  />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate font-medium">
+                      {userFullName || "User"}
+                    </span>
+                    <span className="truncate text-sm text-gray-500 dark:text-gray-400">
+                      {userEmail || ""}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard/settings?tab=security")}
-              className="cursor-pointer"
-            >
-              <Shield className="w-4 h-4 mr-2" />
-              Account Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard/settings?tab=profile")}
-              className="cursor-pointer"
-            >
-              <User className="w-4 h-4 mr-2" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard/settings")}
-              className="cursor-pointer"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              All Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-red-600 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings?tab=security")}
+                className="cursor-pointer"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Account Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings?tab=profile")}
+                className="cursor-pointer"
+              >
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings")}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                All Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="cursor-pointer text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Mobile context selectors — period is critical for most pages */}
+      <div className="flex gap-2 overflow-x-auto px-3 pb-3 md:hidden">
+        <StrategicPeriodSelector />
       </div>
-    </header>
+    </div>
   );
 }

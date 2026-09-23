@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CheckinoutSessionLike } from "./checkin-session-groups";
 import {
   deduplicateCheckinoutSessions,
+  getEffectiveCheckinoutSessionStatus,
   isExpiredCheckinoutSession,
   isHistoricalCheckinoutSession,
 } from "./checkin-session-history";
@@ -42,6 +43,27 @@ describe("check-in/out session history", () => {
     expect(isHistoricalCheckinoutSession(session(), new Date(2026, 7, 23))).toBe(
       false,
     );
+  });
+
+  it("never shows OPEN and LOCKED together", () => {
+    expect(
+      getEffectiveCheckinoutSessionStatus({
+        overallStatus: "OPEN",
+        isLocked: true,
+      }),
+    ).toBe("LOCKED");
+    expect(
+      getEffectiveCheckinoutSessionStatus({
+        overallStatus: "OPEN",
+        isLocked: false,
+      }),
+    ).toBe("OPEN");
+    expect(
+      getEffectiveCheckinoutSessionStatus({
+        overallStatus: "CLOSED",
+        isLocked: true,
+      }),
+    ).toBe("CLOSED");
   });
 
   it("deduplicates sessions aggregated from overlapping scopes", () => {

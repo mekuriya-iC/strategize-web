@@ -42,6 +42,8 @@ import {
   Loader2,
 } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface PerformanceReportProps {
   onExport?: (data: unknown) => void;
@@ -86,7 +88,7 @@ export default function PerformanceReport({
         includeInactive: false,
       },
       skip: !user?.organizationId || !canViewTeam,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
     },
   );
 
@@ -101,7 +103,7 @@ export default function PerformanceReport({
           strategicPeriodId !== "all" ? strategicPeriodId : undefined,
       },
       skip: !user?.employeeId || !user?.organizationId,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: "cache-first",
     },
   );
 
@@ -190,6 +192,45 @@ export default function PerformanceReport({
       improvementAreas,
     };
   }, [teamData, myData, canViewTeam, employeeFilter]);
+
+  const performanceColumns = useMemo(
+    () => [
+      {
+        id: "employee",
+        accessor: (result: any) => result.employee?.fullName ?? "",
+      },
+      {
+        id: "kpiScore",
+        accessor: (result: any) =>
+          result.breakdown?.kpiScore?.percentageAchieved ?? 0,
+      },
+      {
+        id: "competencyScore",
+        accessor: (result: any) =>
+          result.breakdown?.competencyScore?.percentageAchieved ?? 0,
+      },
+      {
+        id: "activityScore",
+        accessor: (result: any) =>
+          result.breakdown?.activityScore?.percentageAchieved ?? 0,
+      },
+      {
+        id: "overallScore",
+        accessor: (result: any) => result.overallPercentage ?? 0,
+      },
+      {
+        id: "rating",
+        accessor: (result: any) => result.rating ?? "",
+      },
+    ],
+    [],
+  );
+
+  const { processedRows: performanceRows, getHeaderProps } =
+    useTableColumnControls({
+      rows: reportData.results,
+      columns: performanceColumns,
+    });
 
   const rawEmployees = useMemo(
     () =>
@@ -460,22 +501,59 @@ export default function PerformanceReport({
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+              <Table stickyFirstColumn>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead className="text-center">KPI Score</TableHead>
-                    <TableHead className="text-center">360° Score</TableHead>
-                    <TableHead className="text-center">
-                      Activity Score
+                    <TableHead>
+                      <SortableFilterableHeader
+                        label="Employee"
+                        {...getHeaderProps("employee")}
+                      />
                     </TableHead>
-                    <TableHead className="text-center">Overall Score</TableHead>
-                    <TableHead className="text-center">Rating</TableHead>
+                    <TableHead className="text-center">
+                      <SortableFilterableHeader
+                        label="KPI Score"
+                        align="center"
+                        filterable={false}
+                        {...getHeaderProps("kpiScore")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <SortableFilterableHeader
+                        label="360° Score"
+                        align="center"
+                        filterable={false}
+                        {...getHeaderProps("competencyScore")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <SortableFilterableHeader
+                        label="Activity Score"
+                        align="center"
+                        filterable={false}
+                        {...getHeaderProps("activityScore")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <SortableFilterableHeader
+                        label="Overall Score"
+                        align="center"
+                        filterable={false}
+                        {...getHeaderProps("overallScore")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <SortableFilterableHeader
+                        label="Rating"
+                        align="center"
+                        {...getHeaderProps("rating")}
+                      />
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData.results.map((result: any) => (
+                  {performanceRows.map((result: any) => (
                     <TableRow key={result.employeeId}>
                       <TableCell>
                         <div className="flex items-center gap-3">

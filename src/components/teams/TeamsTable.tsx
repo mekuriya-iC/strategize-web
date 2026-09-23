@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import React from "react";
 import { getOrganizationId } from "@/lib/constants/organization";
 import { type Team, useTeamMutations } from "@/hooks/teams/useTeams";
@@ -56,6 +56,8 @@ import UserAvatar from "@/components/UserAvatar";
 import { useAuthStore } from "@/stores";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface TeamsTableProps {
   teams: Team[];
@@ -165,6 +167,42 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
       day: "numeric",
       year: "numeric",
     });
+
+  const columns = useMemo(
+    () => [
+      { id: "name", accessor: (team: Team) => team.name },
+      {
+        id: "department",
+        accessor: (team: Team) => team.department?.name ?? "",
+      },
+      {
+        id: "teamLead",
+        accessor: (team: Team) => team.teamLead?.fullName ?? "",
+      },
+      {
+        id: "members",
+        accessor: (team: Team) => team.members?.length ?? 0,
+      },
+      {
+        id: "status",
+        accessor: (team: Team) => (team.isActive ? "Active" : "Inactive"),
+        filterFn: (team: Team, value: string) =>
+          (team.isActive ? "Active" : "Inactive") === value,
+      },
+      {
+        id: "createdAt",
+        accessor: (team: Team) => team.createdAt,
+        compare: (a: Team, b: Team) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: teams,
+    columns,
+  });
 
   const TeamForm = ({
     onSubmit,
@@ -378,20 +416,54 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
         </div>
       ) : (
         <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <Table>
+          <Table stickyFirstColumn>
             <TableHeader>
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                <TableHead className="font-semibold">Team Name</TableHead>
-                <TableHead className="font-semibold">Department</TableHead>
-                <TableHead className="font-semibold">Team Lead</TableHead>
-                <TableHead className="font-semibold">Members</TableHead>
-                <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Created</TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader label="Team Name" {...getHeaderProps("name")} />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Department"
+                    {...getHeaderProps("department")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Team Lead"
+                    {...getHeaderProps("teamLead")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Members"
+                    filterable={false}
+                    {...getHeaderProps("members")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Status"
+                    filterType="select"
+                    filterOptions={[
+                      { value: "Active", label: "Active" },
+                      { value: "Inactive", label: "Inactive" },
+                    ]}
+                    {...getHeaderProps("status")}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">
+                  <SortableFilterableHeader
+                    label="Created"
+                    filterable={false}
+                    {...getHeaderProps("createdAt")}
+                  />
+                </TableHead>
                 <TableHead className="font-semibold w-[50px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {teams.map((team) => (
+              {processedRows.map((team) => (
                 <TableRow
                   key={team.teamId}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors"
@@ -464,7 +536,7 @@ export default function TeamsTable({ teams, loading }: TeamsTableProps) {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 min-h-9 min-w-9 touch-manipulation">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

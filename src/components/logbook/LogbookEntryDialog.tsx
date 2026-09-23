@@ -48,7 +48,7 @@ import {
   type LogbookKpisQueryVariables,
   type LogbookMetricFormulaSource,
 } from "@/types/logbook";
-import { useStrategicPeriodStore, useUser } from "@/stores";
+import { useOrgUnitStore, useStrategicPeriodStore, useUser } from "@/stores";
 import { getAccessToken } from "@/lib/auth-utils";
 import {
   Select,
@@ -83,9 +83,20 @@ const getApiBaseUrl = () => {
   return graphqlUrl.replace(/\/graphql\/?$/, "");
 };
 
-const uploadLogbookFile = async (file: File): Promise<string> => {
+const uploadLogbookFile = async (
+  file: File,
+  employeeId?: string | null,
+  divisionId?: string | null,
+): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("category", "Logbook");
+  if (divisionId) {
+    formData.append("divisionId", divisionId);
+  }
+  if (employeeId) {
+    formData.append("employeeId", employeeId);
+  }
 
   const token = getAccessToken();
   const response = await fetch(`${getApiBaseUrl()}/upload`, {
@@ -109,6 +120,12 @@ export function LogbookEntryDialog({
   editingEntry,
 }: LogbookEntryDialogProps) {
   const currentUser = useUser();
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
+  const uploadDivisionId =
+    selectedUnit?.type === "division"
+      ? selectedUnit.id
+      : (currentUser?.departments?.[0] as { division?: { divisionId?: string } } | undefined)
+          ?.division?.divisionId;
   const selectedPeriod = useStrategicPeriodStore(
     (state) => state.selectedPeriod,
   );
@@ -206,7 +223,7 @@ export function LogbookEntryDialog({
       strategicPeriodId: contextPeriodId,
     },
     skip: !open || !linkedKpiId || !isBasisDrivenKpi,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
   const resultEntryContext = resultContextData?.kpiResultEntryContext;
   const actualBasisSource =
@@ -443,7 +460,7 @@ export function LogbookEntryDialog({
     try {
       let evidenceUrl = editingEntry?.attachmentUrl || null;
       if (attachment) {
-        evidenceUrl = await uploadLogbookFile(attachment);
+        evidenceUrl = await uploadLogbookFile(attachment, currentUser?.employeeId, uploadDivisionId);
       }
 
       const entryData: Record<string, unknown> = {

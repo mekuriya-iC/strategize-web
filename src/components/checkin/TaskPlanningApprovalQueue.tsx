@@ -33,6 +33,7 @@ interface PendingPlanningTask {
   plannedDescription?: string | null;
   planningRevision: number;
   isMidWeekTask?: boolean;
+  createdAt?: string | null;
   submittedAt?: string | null;
   taskStartDate?: string | null;
   taskEndDate?: string | null;
@@ -60,13 +61,19 @@ export function TaskPlanningApprovalQueue({
   const { data, loading } = useQuery(GET_PENDING_TASK_PLANNING_APPROVALS, {
     variables: { sessionId },
     skip: !canReview,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
   });
-  const tasks = useMemo<PendingPlanningTask[]>(
-    () => data?.pendingTaskPlanningApprovals || [],
-    [data],
-  );
+  const tasks = useMemo<PendingPlanningTask[]>(() => {
+    const items: PendingPlanningTask[] =
+      data?.pendingTaskPlanningApprovals || [];
+    return [...items].sort((a, b) => {
+      const aTime = new Date(a.createdAt || a.submittedAt || 0).getTime();
+      const bTime = new Date(b.createdAt || b.submittedAt || 0).getTime();
+      if (aTime !== bTime) return aTime - bTime;
+      return String(a.checkinoutTaskId).localeCompare(String(b.checkinoutTaskId));
+    });
+  }, [data]);
 
   const [approve, { loading: approving }] = useMutation(APPROVE_TASK_PLANNING, {
     update: (cache, { data: mutationData }) => {

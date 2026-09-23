@@ -8,17 +8,23 @@
 }
 
 .sections {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   width: 100%;
   height: auto;
   gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sections::-webkit-scrollbar {
+  display: none;
 }
 
 .sections button {
-  min-width: 0;
+  flex-shrink: 0;
   height: auto;
-  white-space: normal;
+  white-space: nowrap;
   font-size: 13px;
 }
 

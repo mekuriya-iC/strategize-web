@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import React from "react";
@@ -25,6 +25,7 @@ import {
 } from "@/lib/graphql/queries/submissions";
 import BulkSubmitDialog from "../submissions/BulkSubmitDialog";
 import { isTopLevelCorporateObjective } from "@/lib/objectives/kpiWeightScope";
+import { isPersonalObjectiveAssignment } from "@/lib/objectives/personalObjectiveScope";
 import {
   kpiSubmissionsQueryVariables,
   objectiveSubmissionsQueryVariables,
@@ -37,21 +38,6 @@ import { useSelectedStrategicPeriod } from "@/stores/strategicPeriodStore";
 
 
 export default function ObjectivesApprovalTable() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setMounted(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
-
   return <ObjectivesApprovalTableContent />;
 }
 
@@ -136,42 +122,17 @@ function ObjectivesApprovalTableContent() {
       vars.assigneeId = assigneeId;
     }
 
-    console.log("🔍 [ObjectivesQuery] Query variables", {
-      vars,
-      userRole: userRole,
-      isEmployee: isEmployee,
-      assigneeId: assigneeId,
-    });
-
     return vars;
   }, [assigneeId, searchTerm, isEmployee]);
 
   // Fetch a large set and paginate client-side for predictable counts
   const pathname = usePathname();
-  const { objectives, loading, error, /* meta, */ refetch } =
-    useObjectives(objectivesQueryVars);
-
-  // Refresh when landing on objectives, after login, or when user context changes.
-  useEffect(() => {
-    if (pathname === "/dashboard/objectives" && userEmployeeId) {
-      refetch();
-    }
-  }, [pathname, userEmployeeId, refetch]);
-
-  console.log("🔍 [ObjectivesQuery] API Response", {
-    count: objectives.length,
+  const {
+    objectives,
     loading,
-    error: error?.message,
-    objectives: objectives.map((o) => ({
-      id: o.objectiveId,
-      title: o.title,
-      type: o.type,
-      assigneeType: o.assigneeType,
-      assigneeId: o.assigneeId,
-      periodId: o.strategicPeriod?.strategicPeriodId,
-      periodStartDate: o.strategicPeriod?.startDate,
-    })),
-  });
+    error,
+    refetch,
+  } = useObjectives(objectivesQueryVars);
 
   // Fetch a broad set of objectives for lookup (to resolve parent KPI names in expanded rows)
   // This avoids missing parent corporate objectives when the view is scoped to a unit
@@ -193,20 +154,25 @@ function ObjectivesApprovalTableContent() {
     limit: 1000,
   });
 
-  // Period/quarter changes are stored globally in the topbar selector. Refetch
-  // and clear local table state so the objectives dashboard responds without a
-  // manual page refresh.
+  // Only refetch when the strategic period actually changes — not on every
+  // navigation back to this page (Apollo cache already holds the list).
+  const previousPeriodIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (pathname !== "/dashboard/objectives" || !userEmployeeId) return;
+    if (!selectedPeriodId) return;
+
+    const previous = previousPeriodIdRef.current;
+    previousPeriodIdRef.current = selectedPeriodId;
+    if (previous === undefined || previous === selectedPeriodId) return;
 
     setOrderedObjectives(null);
     setSelected([]);
     setExpanded(null);
     setCurrentPage(1);
 
-    refetch();
-    refetchAllObjectivesForLookup();
-    refetchKpis();
+    void refetch();
+    void refetchAllObjectivesForLookup();
+    void refetchKpis();
   }, [
     pathname,
     userEmployeeId,
@@ -268,6 +234,9 @@ function ObjectivesApprovalTableContent() {
   // Build names lookup map
   const unitNames = useMemo(() => {
     const map: Record<string, string> = {};
+    // Employees cannot fetch the admin-only directory, but their own name is
+    // already available. An assigned personal objective is not "Unassigned".
+    if (userEmployeeId) map[userEmployeeId] = user?.fullName || "You";
     divisionsData?.divisions?.items?.forEach((d: any) => {
       map[d.divisionId] = d.name;
     });
@@ -278,7 +247,13 @@ function ObjectivesApprovalTableContent() {
       map[e.employeeId] = e.fullName;
     });
     return map;
-  }, [divisionsData, departmentsData, employeesData]);
+  }, [
+    divisionsData,
+    departmentsData,
+    employeesData,
+    userEmployeeId,
+    user?.fullName,
+  ]);
 
   // Build rejection reasons maps for Objectives and KPIs
   const { objectiveRejectionReasons, kpiRejectionReasons } = useMemo(() => {
@@ -422,20 +397,9 @@ function ObjectivesApprovalTableContent() {
     // First, handle role-based scope filtering with strict hierarchical alignment
     if (isEmployee) {
       console.log("🔍 [ObjectivesFilter] Applying EMPLOYEE filter");
-      filtered = filtered.filter((obj) => {
-        // Show objectives explicitly assigned to this employee
-        if (obj.assigneeType === "PERSONNEL") {
-          return obj.assigneeId === userEmployeeId;
-        }
-        // Show parent department objectives for context (no assigneeType means corporate or top-level)
-        if (
-          obj.assigneeType === "DEPARTMENT" ||
-          (!obj.assigneeType && !obj.assigneeId)
-        ) {
-          return !obj.parent;
-        }
-        return false;
-      });
+      filtered = filtered.filter((obj) =>
+        isPersonalObjectiveAssignment(obj, userEmployeeId),
+      );
     } else if (isManager) {
       console.log("🔍 [ObjectivesFilter] Applying MANAGER filter", {
         managedDepartmentIds: managedDepartmentIds,
@@ -717,7 +681,12 @@ function ObjectivesApprovalTableContent() {
   // Sort objectives by order field
   const sortedObjectives = useMemo(() => {
     // If we have an optimistic order, use it
-    if (orderedObjectives) return orderedObjectives;
+    if (orderedObjectives) {
+      const visibleIds = new Set(
+        filteredObjectives.map((obj) => obj.objectiveId),
+      );
+      return orderedObjectives.filter((obj) => visibleIds.has(obj.objectiveId));
+    }
 
     // Otherwise, sort the filtered objectives by their order field
     return [...filteredObjectives].sort((a, b) => {

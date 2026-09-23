@@ -1,5 +1,5 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
+import { tableIconButtonClassName } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -29,7 +29,12 @@ const EmployeeActionsMenu = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-7">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={tableIconButtonClassName}
+          aria-label="Employee actions"
+        >
           <MoreVertical className="size-4" />
         </Button>
       </DropdownMenuTrigger>

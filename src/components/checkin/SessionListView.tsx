@@ -20,6 +20,7 @@ import {
 } from "@/utils/checkin-session-groups";
 import {
   deduplicateCheckinoutSessions,
+  getEffectiveCheckinoutSessionStatus,
   isClosedCheckinoutSession,
   isHistoricalCheckinoutSession,
 } from "@/utils/checkin-session-history";
@@ -244,9 +245,11 @@ export default function SessionListView({
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (String(status || "").toUpperCase()) {
       case "OPEN":
         return "bg-blue-100 text-blue-700";
+      case "LOCKED":
+        return "bg-amber-100 text-amber-800";
       case "SUBMITTED":
         return "bg-amber-100 text-amber-700";
       case "REVIEWED":
@@ -257,6 +260,8 @@ export default function SessionListView({
         return "bg-red-100 text-red-700";
       case "CLOSED":
         return "bg-slate-200 text-slate-800";
+      case "MIXED":
+        return "bg-gray-100 text-gray-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -394,6 +399,7 @@ export default function SessionListView({
     const isClosed = isClosedCheckinoutSession(session);
     const isHistorical = isHistoricalCheckinoutSession(session, today);
     const isLocked = Boolean(session.isLocked) || isClosed;
+    const displayStatus = getEffectiveCheckinoutSessionStatus(session);
 
     return (
       <Card
@@ -407,13 +413,6 @@ export default function SessionListView({
                 <h3 className="text-lg font-semibold text-gray-900">
                   {sprintTitle}
                 </h3>
-                {isLocked && (
-                  <div
-                    title={isClosed ? "Session is closed" : "Session is locked"}
-                  >
-                    <Lock className="h-4 w-4 text-amber-600" />
-                  </div>
-                )}
               </div>
               {showEmployee && (
                 <p className="text-sm text-gray-600">
@@ -428,8 +427,11 @@ export default function SessionListView({
                 <span className="font-medium">{supervisorName}</span>
               </p>
             </div>
-            <Badge className={getStatusColor(session.overallStatus)}>
-              {session.overallStatus}
+            <Badge className={`${getStatusColor(displayStatus)} gap-1`}>
+              {(displayStatus === "LOCKED" || displayStatus === "CLOSED") && (
+                <Lock className="h-3 w-3" />
+              )}
+              {displayStatus}
             </Badge>
           </div>
 
@@ -475,10 +477,25 @@ export default function SessionListView({
               <Button
                 size="sm"
                 variant="outline"
-                className={isLocked ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}
-                onClick={() => handleToggleLock(session.checkinoutSessionId, isLocked)}
+                className={
+                  Boolean(session.isLocked)
+                    ? "text-green-600 hover:text-green-700 hover:bg-green-50"
+                    : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                }
+                onClick={() =>
+                  handleToggleLock(
+                    session.checkinoutSessionId,
+                    Boolean(session.isLocked),
+                  )
+                }
+                title={
+                  Boolean(session.isLocked)
+                    ? "Unlock session"
+                    : "Lock session"
+                }
+                disabled={isClosed}
               >
-                {isLocked ? (
+                {Boolean(session.isLocked) ? (
                   <Unlock className="h-4 w-4" />
                 ) : (
                   <Lock className="h-4 w-4" />
@@ -515,14 +532,15 @@ export default function SessionListView({
     const session = group.representativeSession;
     const sprintTitle = getSprintTitle(session, index);
     const statuses = new Set(
-      group.participantSessions.map(
-        (participant) => participant.overallStatus || "OPEN",
+      group.participantSessions.map((participant) =>
+        getEffectiveCheckinoutSessionStatus(participant),
       ),
     );
     const groupStatus = statuses.size === 1 ? Array.from(statuses)[0] : "MIXED";
     const lockedCount = group.participantSessions.filter(
       (participant) =>
-        participant.isLocked || isClosedCheckinoutSession(participant),
+        getEffectiveCheckinoutSessionStatus(participant) === "LOCKED" ||
+        getEffectiveCheckinoutSessionStatus(participant) === "CLOSED",
     ).length;
 
     return (
@@ -534,11 +552,6 @@ export default function SessionListView({
                 <h3 className="text-lg font-semibold text-gray-900">
                   {sprintTitle}
                 </h3>
-                {lockedCount > 0 && (
-                  <div title={`${lockedCount} participant session(s) locked`}>
-                    <Lock className="h-4 w-4 text-amber-600" />
-                  </div>
-                )}
               </div>
               <p className="text-sm text-gray-600">
                 Session creator / supervisor:{" "}
@@ -551,9 +564,17 @@ export default function SessionListView({
                 {group.participantSessions.length === 1
                   ? "participant"
                   : "participants"}
+                {groupStatus === "MIXED" && lockedCount > 0
+                  ? ` · ${lockedCount} locked/closed`
+                  : ""}
               </p>
             </div>
-            <Badge className={getStatusColor(groupStatus)}>{groupStatus}</Badge>
+            <Badge className={`${getStatusColor(groupStatus)} gap-1`}>
+              {(groupStatus === "LOCKED" || groupStatus === "CLOSED") && (
+                <Lock className="h-3 w-3" />
+              )}
+              {groupStatus}
+            </Badge>
           </div>
 
           <div className="flex items-center gap-1 text-sm text-gray-600 mb-4">
@@ -584,6 +605,8 @@ export default function SessionListView({
                 today,
               );
               const isLocked = Boolean(participant.isLocked) || isClosed;
+              const displayStatus =
+                getEffectiveCheckinoutSessionStatus(participant);
 
               return (
                 <div
@@ -594,14 +617,16 @@ export default function SessionListView({
                     <p className="truncate text-sm font-medium text-gray-900">
                       {participantName}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>{participant.overallStatus || "OPEN"}</span>
-                      {isLocked && (
-                        <span className="flex items-center gap-1 text-amber-700">
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium ${getStatusColor(displayStatus)}`}
+                      >
+                        {(displayStatus === "LOCKED" ||
+                          displayStatus === "CLOSED") && (
                           <Lock className="h-3 w-3" />
-                          {isClosed ? "Closed" : "Locked"}
-                        </span>
-                      )}
+                        )}
+                        {displayStatus}
+                      </span>
                     </div>
                   </div>
 
@@ -618,12 +643,17 @@ export default function SessionListView({
                         onClick={() =>
                           handleToggleLock(
                             participant.checkinoutSessionId,
-                            isLocked,
+                            Boolean(participant.isLocked),
                           )
                         }
-                        title={isLocked ? "Unlock session" : "Lock session"}
+                        title={
+                          Boolean(participant.isLocked)
+                            ? "Unlock session"
+                            : "Lock session"
+                        }
+                        disabled={isClosed}
                       >
-                        {isLocked ? (
+                        {Boolean(participant.isLocked) ? (
                           <Unlock className="h-4 w-4" />
                         ) : (
                           <Lock className="h-4 w-4" />
@@ -718,12 +748,12 @@ export default function SessionListView({
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
               My Check-In Sessions
             </h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="mt-1 text-sm text-gray-600">
               View and manage your weekly check-in sessions
             </p>
           </div>
@@ -800,21 +830,21 @@ export default function SessionListView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
             Check-In Sessions
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="mt-1 text-sm text-gray-600">
             Manage check-in sessions for your team
           </p>
         </div>
         {isManager && (
           <Button
             onClick={onCreateSession}
-            className="bg-indigo-600 hover:bg-indigo-700"
+            className="w-full shrink-0 bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Create Check-In Period
           </Button>
         )}
@@ -833,29 +863,29 @@ export default function SessionListView({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="h-auto flex-wrap bg-white border border-gray-200">
+        <TabsList className="w-full border border-gray-200 bg-white p-1">
           <TabsTrigger
             value="my-team"
-            className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+            className="text-xs data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 sm:text-sm"
           >
             My Team ({teamWeekGroups.length})
           </TabsTrigger>
           <TabsTrigger
             value="my-sessions"
-            className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+            className="text-xs data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 sm:text-sm"
           >
             My Sessions ({activeOwnSessions.length})
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+            className="text-xs data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 sm:text-sm"
           >
             History ({historyWeekGroups.length})
           </TabsTrigger>
           {isManager && (
             <TabsTrigger
               value="peer-managers"
-              className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+              className="text-xs data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 sm:text-sm"
             >
               Peer Managers ({peerManagerSessions.length})
             </TabsTrigger>
@@ -863,7 +893,7 @@ export default function SessionListView({
           {isAdminOrHR && (
             <TabsTrigger
               value="all-sessions"
-              className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"
+              className="text-xs data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 sm:text-sm"
             >
               All Sessions ({activeAllSessions.length})
             </TabsTrigger>

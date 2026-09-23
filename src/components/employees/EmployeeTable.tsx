@@ -1,10 +1,27 @@
-import React, { useState, useMemo } from "react";
-import { Table, TableBody, TableRow, TableCell } from "@/components/ui/table";
+import React, { useMemo } from "react";
+import {
+  Table,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  DataTableCard,
+  DataTableCardHeader,
+  DataTableCardMeta,
+  DataTableCardMetaRow,
+  DataTableCards,
+  DataTableDesktop,
+} from "@/components/ui/responsive-table";
 import EmployeeTableRow from "./EmployeeTableRow";
+import EmployeeAvatar from "./EmployeeAvatar";
+import EmployeeStatusBadge from "./EmployeeStatusBadge";
+import EmployeeRoleBadge from "./EmployeeRoleBadge";
+import EmployeeActionsMenu from "./EmployeeActionsMenu";
 import ReusableTableHeader, {
   HeaderColumn,
-  SortConfig,
 } from "@/components/ui/table-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { Employee as GraphQLEmployee } from "@/types/graphql";
 import { EmployeeTableSkeleton } from "@/components/skeleton";
 import { ROLE_HIERARCHY } from "@/lib/rbac/roles";
@@ -42,6 +59,11 @@ export interface LegacyEmployee {
   employeeId?: string;
 }
 
+type EmployeeRow = {
+  transformed: LegacyEmployee;
+  original?: GraphQLEmployee;
+};
+
 // Props interface for the component
 interface EmployeeTableProps {
   employees: GraphQLEmployee[] | Employee[] | LegacyEmployee[];
@@ -68,35 +90,49 @@ const formatPhoneNumber = (phoneNumber: string): string => {
   return `+251${phoneNumber}`;
 };
 
+const DEFAULT_HEADERS: HeaderColumn[] = [
+  { key: "fullName", label: "FULL NAME", filterable: true },
+  { key: "profilePic", label: "PROFILE PICTURE", sortable: false, filterable: false },
+  { key: "email", label: "EMAIL", filterable: true },
+  { key: "title", label: "TITLE", filterable: true },
+  {
+    key: "department",
+    label: "ACCESS ROLE",
+    filterable: true,
+    filterType: "select",
+    filterOptions: Object.keys(ROLE_HIERARCHY).map((role) => ({
+      value: role,
+      label: role.replace(/_/g, " "),
+    })),
+  },
+  { key: "phone", label: "PHONE NUMBER", filterable: true },
+  { key: "employedOn", label: "EMPLOYED ON", filterable: true },
+  {
+    key: "status",
+    label: "STATUS",
+    filterable: true,
+    filterType: "select",
+    filterOptions: [
+      { value: "Active", label: "Active" },
+      { value: "Deactivated", label: "Deactivated" },
+    ],
+  },
+  { key: "action", label: "ACTION", sortable: false, filterable: false },
+];
+
 const EmployeeTable: React.FC<EmployeeTableProps> = ({
   employees,
-  headers = [
-    { key: "fullName", label: "FULL NAME" },
-    { key: "profilePic", label: "PROFILE PICTURE", sortable: false },
-    { key: "email", label: "EMAIL" },
-    { key: "title", label: "TITLE" },
-    { key: "department", label: "ACCESS ROLE" },
-    { key: "phone", label: "PHONE NUMBER" },
-    { key: "employedOn", label: "EMPLOYED ON" },
-    { key: "status", label: "STATUS" },
-    { key: "action", label: "ACTION", sortable: false },
-  ],
+  headers = DEFAULT_HEADERS,
   loading = false,
   error,
 }) => {
-  // Sorting state - default to role in descending order (highest role first)
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: "department", // department field contains the role
-    direction: "desc",
-  });
-
   // Transform GraphQL employees to legacy format for UI compatibility
-  const transformedEmployees = useMemo(() => {
+  const transformedEmployees = useMemo((): EmployeeRow[] => {
     return employees.map(
       (
         employee,
         index
-      ): { transformed: LegacyEmployee; original?: GraphQLEmployee } => {
+      ): EmployeeRow => {
         if ("employeeId" in employee) {
           // It's a GraphQL employee, transform it
           const graphqlEmployee = employee as Employee;
@@ -135,75 +171,78 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
     );
   }, [employees]);
 
-  // Sorting logic
-  const sortedEmployees = useMemo(() => {
-    if (!sortConfig) return transformedEmployees;
+  const columns = useMemo(
+    () => [
+      {
+        id: "fullName",
+        accessor: (row: EmployeeRow) => row.transformed.fullName,
+      },
+      {
+        id: "email",
+        accessor: (row: EmployeeRow) => row.transformed.email,
+      },
+      {
+        id: "title",
+        accessor: (row: EmployeeRow) => row.transformed.title,
+      },
+      {
+        id: "department",
+        accessor: (row: EmployeeRow) => row.transformed.department,
+        compare: (a: EmployeeRow, b: EmployeeRow) => {
+          const aHierarchy =
+            ROLE_HIERARCHY[
+              a.transformed.department as keyof typeof ROLE_HIERARCHY
+            ] ?? -1;
+          const bHierarchy =
+            ROLE_HIERARCHY[
+              b.transformed.department as keyof typeof ROLE_HIERARCHY
+            ] ?? -1;
+          return aHierarchy - bHierarchy;
+        },
+        filterFn: (row: EmployeeRow, value: string) =>
+          row.transformed.department === value,
+      },
+      {
+        id: "phone",
+        accessor: (row: EmployeeRow) => row.transformed.phone,
+      },
+      {
+        id: "employedOn",
+        accessor: (row: EmployeeRow) => row.transformed.employedOn,
+        compare: (a: EmployeeRow, b: EmployeeRow) => {
+          const aDate =
+            a.transformed.employedOn === "N/A"
+              ? 0
+              : new Date(a.transformed.employedOn).getTime();
+          const bDate =
+            b.transformed.employedOn === "N/A"
+              ? 0
+              : new Date(b.transformed.employedOn).getTime();
+          return aDate - bDate;
+        },
+      },
+      {
+        id: "status",
+        accessor: (row: EmployeeRow) => row.transformed.status,
+        filterFn: (row: EmployeeRow, value: string) =>
+          row.transformed.status === value,
+      },
+    ],
+    [],
+  );
 
-    const sorted = [...transformedEmployees].sort((a, b) => {
-      const aValue = a.transformed[sortConfig.key as keyof LegacyEmployee];
-      const bValue = b.transformed[sortConfig.key as keyof LegacyEmployee];
-
-      // Special handling for role/department field
-      if (sortConfig.key === "department") {
-        const aRole = a.transformed.department as string;
-        const bRole = b.transformed.department as string;
-
-        // Get role hierarchy values (higher number = higher role)
-        const aHierarchy = ROLE_HIERARCHY[aRole as keyof typeof ROLE_HIERARCHY] ?? -1;
-        const bHierarchy = ROLE_HIERARCHY[bRole as keyof typeof ROLE_HIERARCHY] ?? -1;
-
-        if (sortConfig.direction === "asc") {
-          return aHierarchy - bHierarchy; // NORMAL → SUPER_ADMIN
-        } else {
-          return bHierarchy - aHierarchy; // SUPER_ADMIN → NORMAL
-        }
-      }
-
-      // Special handling for date fields
-      if (sortConfig.key === "employedOn") {
-        const aDate = aValue === "N/A" ? new Date(0) : new Date(aValue as string);
-        const bDate = bValue === "N/A" ? new Date(0) : new Date(bValue as string);
-
-        if (sortConfig.direction === "asc") {
-          return aDate.getTime() - bDate.getTime();
-        } else {
-          return bDate.getTime() - aDate.getTime();
-        }
-      }
-
-      // Handle null/undefined values
-      if (!aValue) return 1;
-      if (!bValue) return -1;
-
-      // String comparison for other fields
-      const aString = String(aValue).toLowerCase();
-      const bString = String(bValue).toLowerCase();
-
-      if (sortConfig.direction === "asc") {
-        return aString.localeCompare(bString);
-      } else {
-        return bString.localeCompare(aString);
-      }
-    });
-
-    return sorted;
-  }, [transformedEmployees, sortConfig]);
-
-  // Handle sort
-  const handleSort = (key: string) => {
-    setSortConfig((prevConfig) => {
-      // If clicking the same column, toggle direction
-      if (prevConfig?.key === key) {
-        if (prevConfig.direction === "asc") {
-          return { key, direction: "desc" };
-        } else if (prevConfig.direction === "desc") {
-          return { key, direction: "asc" };
-        }
-      }
-      // If clicking a new column, start with ascending
-      return { key, direction: "asc" };
-    });
-  };
+  const {
+    processedRows: sortedEmployees,
+    sortConfig,
+    filters,
+    toggleSort,
+    setFilter,
+  } = useTableColumnControls({
+    rows: transformedEmployees,
+    columns,
+    initialSort: { key: "department", direction: "desc" },
+    allowUnsorted: false,
+  });
 
   if (loading) {
     return <EmployeeTableSkeleton rows={6} headers={headers} />;
@@ -218,38 +257,101 @@ const EmployeeTable: React.FC<EmployeeTableProps> = ({
   }
 
   return (
-    <Table className="border-none">
-      <ReusableTableHeader
-        headers={headers}
-        sortConfig={sortConfig}
-        onSort={handleSort}
-      />
-      <TableBody>
+    <>
+      <DataTableDesktop className="overflow-hidden rounded-lg border border-border">
+        <Table stickyFirstColumn className="border-none">
+          <ReusableTableHeader
+            headers={headers}
+            sortConfig={sortConfig}
+            onSort={toggleSort}
+            filters={filters}
+            onFilterChange={setFilter}
+          />
+          <TableBody>
+            {sortedEmployees.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={headers.length} className="text-center py-8">
+                  <div className="flex flex-col items-center justify-center text-gray-500">
+                    <p className="text-lg font-medium mb-2">No employees found</p>
+                    <p className="text-sm">
+                      {error
+                        ? "Error loading employees. Try adjusting your search and filters"
+                        : "Try adjusting your search and filters"}
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedEmployees.map((employeeData, idx) => (
+                <EmployeeTableRow
+                  key={employeeData.transformed.employeeId || `employee-${idx}`}
+                  employee={employeeData.transformed}
+                  odd={idx % 2 === 1}
+                  originalEmployee={employeeData.original}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </DataTableDesktop>
+
+      <DataTableCards className="space-y-3 p-1">
         {sortedEmployees.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={headers.length} className="text-center py-8">
-              <div className="flex flex-col items-center justify-center text-gray-500">
-                <p className="text-lg font-medium mb-2">No employees found</p>
-                <p className="text-sm">
-                  {error
-                    ? "Error loading employees. Try adjusting your search and filters"
-                    : "Try adjusting your search and filters"}
-                </p>
-              </div>
-            </TableCell>
-          </TableRow>
+          <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+            No employees found
+          </div>
         ) : (
-          sortedEmployees.map((employeeData, idx) => (
-            <EmployeeTableRow
-              key={employeeData.transformed.employeeId || `employee-${idx}`}
-              employee={employeeData.transformed}
-              odd={idx % 2 === 1}
-              originalEmployee={employeeData.original}
-            />
-          ))
+          sortedEmployees.map((employeeData, idx) => {
+            const employee = employeeData.transformed;
+            return (
+              <DataTableCard
+                key={employee.employeeId || `employee-card-${idx}`}
+              >
+                <DataTableCardHeader>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <EmployeeAvatar
+                      src={employee.profilePic}
+                      alt={employee.fullName}
+                      downloadUrl={employee.profilePic}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground">
+                        {employee.fullName}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {employee.title}
+                      </p>
+                    </div>
+                  </div>
+                  <EmployeeActionsMenu
+                    employeeName={employee.fullName}
+                    employeeId={employee.employeeId}
+                    originalEmployee={employeeData.original}
+                  />
+                </DataTableCardHeader>
+                <DataTableCardMeta>
+                  <DataTableCardMetaRow label="Email">
+                    <span className="break-all">{employee.email}</span>
+                  </DataTableCardMetaRow>
+                  <DataTableCardMetaRow label="Role">
+                    <EmployeeRoleBadge role={employee.department} />
+                  </DataTableCardMetaRow>
+                  <DataTableCardMetaRow label="Phone">
+                    {employee.phone}
+                  </DataTableCardMetaRow>
+                  <DataTableCardMetaRow label="Employed">
+                    {employee.employedOn}
+                  </DataTableCardMetaRow>
+                  <DataTableCardMetaRow label="Status">
+                    <EmployeeStatusBadge status={employee.status} />
+                  </DataTableCardMetaRow>
+                </DataTableCardMeta>
+              </DataTableCard>
+            );
+          })
         )}
-      </TableBody>
-    </Table>
+      </DataTableCards>
+    </>
   );
 };
 

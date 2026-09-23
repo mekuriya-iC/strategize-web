@@ -41,10 +41,12 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
       isInitialized: false,
 
-      // Set user
+      // Set user — clone so Immer/Apollo cannot leave frozen GraphQL objects in UI state
       setUser: (user) =>
         set((state) => {
-          state.user = user;
+          state.user = user
+            ? (structuredClone(user) as Employee)
+            : null;
           state.isAuthenticated = !!user;
         }),
 
@@ -88,7 +90,7 @@ export const useAuthStore = create<AuthState>()(
       login: (user, token) => {
         setAccessToken(token);
         set((state) => {
-          state.user = user;
+          state.user = structuredClone(user) as Employee;
           state.isAuthenticated = true;
           state.isLoading = false;
         });

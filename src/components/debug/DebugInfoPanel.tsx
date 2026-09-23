@@ -56,8 +56,10 @@ export default function DebugInfoPanel() {
     const token = getAccessToken();
 
     const { data, loading, refetch, error } = useQuery(DEBUG_QUERY, {
-        fetchPolicy: "network-only",
-        skip: !token || pathname === "/auth",
+        fetchPolicy: "cache-first",
+        nextFetchPolicy: "cache-first",
+        // Critical: do not hit the API while the panel is closed.
+        skip: !isOpen || !token || pathname === "/auth",
     });
 
     React.useEffect(() => {

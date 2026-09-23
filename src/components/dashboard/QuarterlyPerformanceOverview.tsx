@@ -113,7 +113,7 @@ export default function QuarterlyPerformanceOverview() {
       },
     },
     skip,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
@@ -127,7 +127,7 @@ export default function QuarterlyPerformanceOverview() {
   }>(GET_KPI_QUARTER_PERFORMANCE_REPORT, {
     variables: { filters: sharedDirectFilters },
     skip,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
@@ -144,7 +144,7 @@ export default function QuarterlyPerformanceOverview() {
       },
     },
     skip,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });

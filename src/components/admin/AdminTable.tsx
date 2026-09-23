@@ -23,6 +23,8 @@ import { Employee } from "@/types/graphql";
 import AdminTableRow from "./AdminTableRow";
 import AddAdminDialog from "./AddAdminDialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 
 interface AdminTableProps {
   admins: Employee[];
@@ -78,9 +80,37 @@ export default function AdminTable({
     });
   }, [admins, searchQuery, statusFilter]);
 
+  const columns = useMemo(
+    () => [
+      { id: "fullName", accessor: (row: Employee) => row.fullName },
+      {
+        id: "role",
+        accessor: (row: Employee) => row.role ?? "",
+        filterFn: (row: Employee, value: string) => (row.role ?? "") === value,
+      },
+      {
+        id: "username",
+        accessor: (row: Employee) => row.email?.split("@")[0] ?? "",
+      },
+      {
+        id: "status",
+        accessor: (row: Employee) =>
+          row.status === "ACTIVE" ? "ACTIVE" : "INACTIVE",
+        filterFn: (row: Employee, value: string) =>
+          (row.status === "ACTIVE" ? "ACTIVE" : "INACTIVE") === value,
+      },
+    ],
+    [],
+  );
+
+  const { processedRows, getHeaderProps } = useTableColumnControls({
+    rows: filteredAdmins,
+    columns,
+  });
+
   // Pagination
-  const totalPages = Math.ceil(filteredAdmins.length / ITEMS_PER_PAGE);
-  const paginatedAdmins = filteredAdmins.slice(
+  const totalPages = Math.ceil(processedRows.length / ITEMS_PER_PAGE) || 1;
+  const paginatedAdmins = processedRows.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -176,19 +206,36 @@ export default function AdminTable({
                 />
               </TableHead>
               <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                Full Name
+                <SortableFilterableHeader
+                  label="Full Name"
+                  {...getHeaderProps("fullName")}
+                />
               </TableHead>
               <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                Role
+                <SortableFilterableHeader
+                  label="Role"
+                  {...getHeaderProps("role")}
+                />
               </TableHead>
               <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                Username
+                <SortableFilterableHeader
+                  label="Username"
+                  {...getHeaderProps("username")}
+                />
               </TableHead>
               <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
                 Password
               </TableHead>
               <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                Status
+                <SortableFilterableHeader
+                  label="Status"
+                  filterType="select"
+                  filterOptions={[
+                    { value: "ACTIVE", label: "Active" },
+                    { value: "INACTIVE", label: "Inactive" },
+                  ]}
+                  {...getHeaderProps("status")}
+                />
               </TableHead>
               <TableHead className="px-4 py-3 w-12"></TableHead>
             </TableRow>
@@ -223,7 +270,7 @@ export default function AdminTable({
       )}
 
       {/* Pagination */}
-      {!loading && filteredAdmins.length > 0 && (
+      {!loading && processedRows.length > 0 && (
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
           <p className="text-sm text-gray-500">
             Showing Page {currentPage} of {totalPages}

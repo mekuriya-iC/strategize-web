@@ -34,7 +34,8 @@ export const useDepartmentHierarchy = ({
 }: UseDepartmentHierarchyOptions): DepartmentHierarchyResult => {
   const { data, loading } = useQuery(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 1000 },
-    fetchPolicy: "cache-first", // Use cache to avoid redundant fetches
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
     skip: !shouldFetch,
   });
 

@@ -104,7 +104,7 @@ export default function PermissionsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+        <TabsList className="w-full lg:w-auto">
           <TabsTrigger value="roles" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">Roles</span>

@@ -46,7 +46,7 @@ export default function FileManager({
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="w-full [&>button]:flex-1">
               <TabsTrigger value="files" className="gap-2">
                 <FileText className="h-4 w-4" />
                 Files

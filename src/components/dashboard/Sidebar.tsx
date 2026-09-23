@@ -10,7 +10,7 @@ import type { Permission } from "@/lib/rbac/permissions";
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores";
-import { usePendingApprovalsCount } from "@/hooks/submissions/usePendingApprovalsCount";
+import { usePendingApprovalsBadge } from "@/providers/PendingApprovalsProvider";
 import { useFlaggedKpiCount } from "@/hooks/kpis/useFlaggedKpiCount";
 import { usePendingTaskCollaborationCount } from "@/hooks/tasks/usePendingTaskCollaborationCount";
 
@@ -599,7 +599,7 @@ const navCategories: NavCategory[] = [
       },
       {
         label: "My Submissions",
-        href: "/dashboard/reports?tab=my-submissions",
+        href: "/dashboard/reports?tab=submissions",
         permission: "nav:reports",
         icon: (
           <Image
@@ -805,7 +805,7 @@ function CollapsibleCategory({
       openSidebar();
       setIsExpanded(true);
     } else {
-      setIsExpanded(!isExpanded);
+      setIsExpanded((expanded) => !expanded);
     }
   };
 
@@ -863,14 +863,22 @@ function CollapsibleCategory({
   );
 }
 
-export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
+export default function Sidebar({
+  onLinkClick,
+  forceExpanded = false,
+}: {
+  onLinkClick?: () => void;
+  /** When true (mobile drawer), always show labels — ignore collapse state */
+  forceExpanded?: boolean;
+}) {
   const pathname = usePathname();
   const currentSearch = useSearchParams().toString();
-  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const storeSidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const sidebarOpen = forceExpanded || storeSidebarOpen;
   const openSidebar = useUIStore((state) => state.openSidebar);
   const { can } = usePermissions();
   const userRole = useAuthStore((state) => state.user?.role);
-  const { count: pendingApprovalsCount } = usePendingApprovalsCount();
+  const { count: pendingApprovalsCount } = usePendingApprovalsBadge();
   const { count: flaggedKpiCount } = useFlaggedKpiCount();
   const { pendingCount: pendingTaskRequestCount } =
     usePendingTaskCollaborationCount();
@@ -890,7 +898,7 @@ export default function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
     <div
       className={`
         flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 transition-all duration-300
-        ${sidebarOpen ? "w-64" : "w-20"}
+        ${forceExpanded ? "w-full border-r-0" : sidebarOpen ? "w-64" : "w-20"}
       `}
     >
       <div className={`p-6 mb-2 ${!sidebarOpen && "flex justify-center"}`}>

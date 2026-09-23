@@ -46,6 +46,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { GET_KPI_QUARTER_PERFORMANCE_REPORT } from "@/lib/graphql/queries/quarterly-performance";
 import { exportReport } from "@/lib/utils/exportReport";
@@ -55,6 +57,7 @@ import type {
   KpiQuarterPerformanceReport,
   KpiQuarterPlanStatus,
   KpiQuarterReportRow,
+  KpiQuarterReportRollup,
   KpiQuarterResultStatus,
   ScorecardLevel,
 } from "@/types/graphql";
@@ -135,12 +138,117 @@ export default function QuarterlyPerformanceReport() {
   }>(GET_KPI_QUARTER_PERFORMANCE_REPORT, {
     variables,
     skip: !selectedPeriod?.strategicPeriodId || !isAnnual,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
   });
 
   const report = data?.kpiQuarterPerformanceReport;
   const available = report?.availableFilters;
+
+  const rollupSource = useMemo(
+    () => report?.rollups?.slice(0, 20) ?? [],
+    [report?.rollups],
+  );
+  const rollupColumns = useMemo(
+    () => [
+      {
+        id: "entity",
+        accessor: (row: KpiQuarterReportRollup) => row.entityName,
+      },
+      {
+        id: "level",
+        accessor: (row: KpiQuarterReportRollup) => row.level,
+        filterFn: (row: KpiQuarterReportRollup, value: string) =>
+          row.level === value,
+      },
+      {
+        id: "kpiCount",
+        accessor: (row: KpiQuarterReportRollup) => row.kpiCount,
+      },
+      {
+        id: "achievement",
+        accessor: (row: KpiQuarterReportRollup) => row.averageAchievementRate,
+      },
+      {
+        id: "contribution",
+        accessor: (row: KpiQuarterReportRollup) => row.annualContribution,
+      },
+      {
+        id: "carry",
+        accessor: (row: KpiQuarterReportRollup) => row.carryOut,
+      },
+    ],
+    [],
+  );
+  const { processedRows: processedRollups, getHeaderProps: getRollupHeaderProps } =
+    useTableColumnControls({
+      rows: rollupSource,
+      columns: rollupColumns,
+    });
+
+  const resultRows = useMemo(() => report?.rows ?? [], [report?.rows]);
+  const resultColumns = useMemo(
+    () => [
+      {
+        id: "kpi",
+        accessor: (row: KpiQuarterReportRow) => row.kpiName,
+      },
+      {
+        id: "quarter",
+        accessor: (row: KpiQuarterReportRow) => row.quarterNumber,
+        filterFn: (row: KpiQuarterReportRow, value: string) =>
+          String(row.quarterNumber) === value,
+      },
+      {
+        id: "mode",
+        accessor: (row: KpiQuarterReportRow) => row.kpiMode,
+        filterFn: (row: KpiQuarterReportRow, value: string) =>
+          row.kpiMode === value,
+      },
+      {
+        id: "original",
+        accessor: (row: KpiQuarterReportRow) => row.originalTarget,
+      },
+      {
+        id: "carryIn",
+        accessor: (row: KpiQuarterReportRow) => row.carryIn,
+      },
+      {
+        id: "effective",
+        accessor: (row: KpiQuarterReportRow) => row.effectiveTarget,
+      },
+      {
+        id: "actual",
+        accessor: (row: KpiQuarterReportRow) => row.actual,
+      },
+      {
+        id: "achievement",
+        accessor: (row: KpiQuarterReportRow) => row.achievementRate,
+      },
+      {
+        id: "contribution",
+        accessor: (row: KpiQuarterReportRow) => row.annualContribution,
+      },
+      {
+        id: "carryOut",
+        accessor: (row: KpiQuarterReportRow) => row.carryOut,
+      },
+      {
+        id: "status",
+        accessor: (row: KpiQuarterReportRow) =>
+          row.resultStatus ?? row.planStatus ?? "",
+        filterFn: (row: KpiQuarterReportRow, value: string) =>
+          (row.resultStatus ?? row.planStatus ?? "") === value,
+      },
+    ],
+    [],
+  );
+  const { processedRows: processedResults, getHeaderProps: getResultHeaderProps } =
+    useTableColumnControls({
+      rows: resultRows,
+      columns: resultColumns,
+    });
+
   const selectedDivisionIds = useMemo(() => {
     if (!available || filters.divisionId === ALL) return null;
     const ids = new Set([filters.divisionId]);
@@ -552,20 +660,65 @@ export default function QuarterlyPerformanceReport() {
                   secure scope.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <Table>
+              <CardContent>
+                <Table stickyFirstColumn>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Entity</TableHead>
-                      <TableHead>Level</TableHead>
-                      <TableHead className="text-right">KPIs</TableHead>
-                      <TableHead className="text-right">Achievement</TableHead>
-                      <TableHead className="text-right">Contribution</TableHead>
-                      <TableHead className="text-right">Carry</TableHead>
+                      <TableHead>
+                        <SortableFilterableHeader
+                          label="Entity"
+                          {...getRollupHeaderProps("entity")}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableFilterableHeader
+                          label="Level"
+                          filterType="select"
+                          filterOptions={[
+                            { value: "CORPORATE", label: "Corporate" },
+                            { value: "DIVISION", label: "Division" },
+                            { value: "DEPARTMENT", label: "Department" },
+                            { value: "INDIVIDUAL", label: "Individual" },
+                          ]}
+                          {...getRollupHeaderProps("level")}
+                        />
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <SortableFilterableHeader
+                          label="KPIs"
+                          align="right"
+                          filterable={false}
+                          {...getRollupHeaderProps("kpiCount")}
+                        />
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <SortableFilterableHeader
+                          label="Achievement"
+                          align="right"
+                          filterable={false}
+                          {...getRollupHeaderProps("achievement")}
+                        />
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <SortableFilterableHeader
+                          label="Contribution"
+                          align="right"
+                          filterable={false}
+                          {...getRollupHeaderProps("contribution")}
+                        />
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <SortableFilterableHeader
+                          label="Carry"
+                          align="right"
+                          filterable={false}
+                          {...getRollupHeaderProps("carry")}
+                        />
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {report.rollups.slice(0, 20).map((rollup) => (
+                    {processedRollups.map((rollup) => (
                       <TableRow
                         key={`${rollup.level}-${rollup.entityId}`}
                         className={
@@ -626,32 +779,114 @@ export default function QuarterlyPerformanceReport() {
                 performance view.
               </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table>
+            <CardContent>
+              <Table stickyFirstColumn>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>KPI / owner</TableHead>
-                    <TableHead>Quarter</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead className="text-right">Original</TableHead>
-                    <TableHead className="text-right">Carry in</TableHead>
-                    <TableHead className="text-right">Effective</TableHead>
-                    <TableHead className="text-right">Actual</TableHead>
-                    <TableHead className="text-right">Achievement</TableHead>
-                    <TableHead className="text-right">Contribution</TableHead>
-                    <TableHead className="text-right">Carry out</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      <SortableFilterableHeader
+                        label="KPI / owner"
+                        {...getResultHeaderProps("kpi")}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableFilterableHeader
+                        label="Quarter"
+                        filterType="select"
+                        filterOptions={[
+                          { value: "1", label: "Q1" },
+                          { value: "2", label: "Q2" },
+                          { value: "3", label: "Q3" },
+                          { value: "4", label: "Q4" },
+                        ]}
+                        {...getResultHeaderProps("quarter")}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableFilterableHeader
+                        label="Mode"
+                        filterType="select"
+                        filterOptions={[
+                          { value: "AGGREGATED", label: "Aggregated" },
+                          { value: "DIRECT", label: "Direct" },
+                          { value: "HYBRID", label: "Hybrid" },
+                        ]}
+                        {...getResultHeaderProps("mode")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Original"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("original")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Carry in"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("carryIn")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Effective"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("effective")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Actual"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("actual")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Achievement"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("achievement")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Contribution"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("contribution")}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <SortableFilterableHeader
+                        label="Carry out"
+                        align="right"
+                        filterable={false}
+                        {...getResultHeaderProps("carryOut")}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableFilterableHeader
+                        label="Status"
+                        {...getResultHeaderProps("status")}
+                      />
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.rows.length === 0 ? (
+                  {processedResults.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={11} className="h-28 text-center">
                         No quarterly KPI records match these filters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    report.rows.map((row) => (
+                    processedResults.map((row) => (
                       <TableRow
                         key={row.kpiQuarterPlanId}
                         className="cursor-pointer"

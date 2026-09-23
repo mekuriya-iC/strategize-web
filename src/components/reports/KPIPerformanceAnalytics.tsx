@@ -32,7 +32,7 @@ import {
   Layers,
   Activity,
 } from "lucide-react";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 
 // GraphQL Queries for real-time scorecards
 const GET_CORPORATE_SCORECARD = gql`
@@ -261,7 +261,12 @@ interface KPIPerformanceAnalyticsProps {
 
 export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnalyticsProps) {
   const user = useAuthStore((state) => state.user);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
+  const storePeriodId = useStrategicPeriodStore(
+    (state) => state.selectedPeriod?.strategicPeriodId,
+  );
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
+    () => storePeriodId || "",
+  );
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("all");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("all");
@@ -283,9 +288,15 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
     return now >= start && now <= end;
   });
 
-  // Auto-select active period (only once)
-  if (!selectedPeriodId && activePeriod && activePeriod.strategicPeriodId) {
-    setSelectedPeriodId(activePeriod.strategicPeriodId);
+  // Prefer the global dashboard period, then fall back to the active period.
+  if (!selectedPeriodId) {
+    const nextId =
+      storePeriodId ||
+      (activePeriod?.strategicPeriodId as string | undefined) ||
+      "";
+    if (nextId) {
+      setSelectedPeriodId(nextId);
+    }
   }
 
   // Fetch corporate scorecard
@@ -296,7 +307,7 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       capFinalScore: false,
     },
     skip: !user?.organizationId || !selectedPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Fetch divisions
@@ -311,7 +322,7 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       capFinalScore: false,
     },
     skip: selectedDivisionId === "all" || !selectedPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Fetch division assignments for parent weights
@@ -351,7 +362,7 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       },
     },
     skip: selectedEmployeeId === "all" || !selectedPeriodId || !hasFullAccess,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Fetch department scorecard
@@ -362,7 +373,7 @@ export default function KPIPerformanceAnalytics({ onExport }: KPIPerformanceAnal
       capFinalScore: false,
     },
     skip: selectedDepartmentId === "all" || !selectedPeriodId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   // Fetch department assignments for parent weights

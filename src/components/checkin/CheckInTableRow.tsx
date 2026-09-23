@@ -3,9 +3,9 @@
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { tableIconButtonClassName } from "@/components/ui/table";
 import {
   AlertTriangleIcon,
-  FileIcon,
   LockIcon,
   PencilIcon,
   SendIcon,
@@ -15,6 +15,7 @@ import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 import { getTaskColors, getTaskCategory } from "@/utils/task-colors";
+import { AttachmentTrigger } from "@/components/files/AttachmentTrigger";
 import { removeCheckinTask } from "./checkin-cache";
 import {
   getLatestPlanningRejection,
@@ -65,17 +66,6 @@ interface CheckInTableRowProps {
   submittingTaskForApproval?: boolean;
 }
 
-const TASK_TYPE_LABELS: Record<string, string> = {
-  KPI_FULFILLED: "KPI Fulfilled",
-  KPI_UNMET: "KPI Unmet",
-  INITIATIVE_FULFILLED: "Initiative Fulfilled",
-  INITIATIVE_UNMET: "Initiative Unmet",
-  SELF_DEVELOPMENT_FULFILLED: "Self-Development Fulfilled",
-  SELF_DEVELOPMENT_UNMET: "Self-Development Unmet",
-  SELF_DEVELOPMENT: "Self Development",
-  UNLINKED: "Unlinked",
-};
-
 const STATUS_COLORS: Record<string, string> = {
   DONE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   NOT_DONE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -83,6 +73,17 @@ const STATUS_COLORS: Record<string, string> = {
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
 };
+
+function formatScheduleRange(startTime: string, endTime: string): string {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const sameDay =
+    format(start, "yyyy-MM-dd") === format(end, "yyyy-MM-dd");
+  if (sameDay) {
+    return `${format(start, "d MMM yyyy")} · ${format(start, "h:mm a")} – ${format(end, "h:mm a")}`;
+  }
+  return `${format(start, "d MMM, h:mm a")} → ${format(end, "d MMM, h:mm a")}`;
+}
 
 export function CheckInTableRow({
   task,
@@ -96,7 +97,6 @@ export function CheckInTableRow({
 }: CheckInTableRowProps) {
   const [deleteCheckin, { loading }] = useMutation(REMOVE_CHECKINOUT_TASK);
 
-  // Get color configuration for this task type
   const taskColors = getTaskColors(task.taskType);
   const taskCategory = getTaskCategory(task.taskType);
   const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
@@ -104,68 +104,17 @@ export function CheckInTableRow({
     isSelectionEnabled && task.submissionStatus === "DRAFT";
   const latestRejection = getLatestPlanningRejection(task.planningReviewHistory);
   const canSubmitIndividually =
-    task.submissionStatus === "DRAFT" &&
-    (Boolean(task.isMidWeekTask) || Boolean(latestRejection));
+    (task.submissionStatus === "DRAFT" &&
+      (Boolean(task.isMidWeekTask) || Boolean(latestRejection))) ||
+    task.submissionStatus === "PERSONAL_TODO";
   const planningIsLocked = task.submissionStatus === "PENDING_APPROVAL";
   const isOverdueFulfilled =
     task.taskType === "KPI_FULFILLED" &&
     task.logbookStatus?.toUpperCase() === "OVERDUE";
-  const isRejectedFulfilled =
-    task.taskType === "KPI_FULFILLED" &&
-    task.logbookStatus?.toUpperCase() === "REJECTED";
-
-  // Determine objective status based on task flags
-  const getObjectiveStatus = () => {
-    if (isRejectedFulfilled) {
-      return {
-        label: "Achievement rejected",
-        color: "text-red-700 bg-red-50 dark:bg-red-900/20",
-      };
-    } else if (isOverdueFulfilled) {
-      return {
-        label: "Achievement overdue",
-        color: "text-red-700 bg-red-50 dark:bg-red-900/20",
-      };
-    } else if (task.taskType === "KPI_FULFILLED" || task.isKpiMet) {
-      return {
-        label: "KPI Fulfilled",
-        color: "text-green-600 bg-green-50 dark:bg-green-900/20",
-      };
-    } else if (task.taskType === "KPI_UNMET") {
-      return {
-        label: "KPI Unmet",
-        color: "text-red-600 bg-red-50 dark:bg-red-900/20",
-      };
-    } else if (
-      task.taskType === "INITIATIVE_FULFILLED" ||
-      task.isInitiativeMet
-    ) {
-      return {
-        label: "Initiative Fulfilled",
-        color: "text-green-600 bg-green-50 dark:bg-green-900/20",
-      };
-    } else if (task.taskType === "INITIATIVE_UNMET") {
-      return {
-        label: "Initiative Unmet",
-        color: "text-red-600 bg-red-50 dark:bg-red-900/20",
-      };
-    } else if (
-      task.taskType === "SELF_DEVELOPMENT_FULFILLED" ||
-      task.taskType === "SELF_DEVELOPMENT_UNMET" ||
-      task.taskType === "SELF_DEVELOPMENT"
-    ) {
-      return {
-        label:
-          task.taskType === "SELF_DEVELOPMENT_UNMET"
-            ? "Self-Development Unmet"
-            : "Self-Development Fulfilled",
-        color: "text-amber-700 bg-amber-50 dark:bg-amber-900/20",
-      };
-    }
-    return { label: "-", color: "text-gray-600" };
-  };
-
-  const objectiveStatus = getObjectiveStatus();
+  const linkedLabel =
+    task.linkedKpiName ||
+    task.linkedInitiativeName ||
+    taskCategory.label;
 
   const handleDelete = async () => {
     if (!isEditable) {
@@ -194,22 +143,19 @@ export function CheckInTableRow({
       toast.error("You can only edit your own tasks.");
       return;
     }
-
-    if (onEditTask) {
-      onEditTask(task);
-    }
+    onEditTask?.(task);
   };
 
   return (
     <tr
-      className={`${
+      className={`group border-l-[3px] ${taskColors.border} ${
         !isEditable
-          ? "bg-gray-50 dark:bg-gray-900/50 opacity-75"
-          : `${taskColors.background} hover:brightness-95 dark:hover:brightness-110`
-      } transition-all border-l-4 ${taskColors.border}`}
+          ? "bg-gray-50/80 dark:bg-gray-900/40"
+          : "bg-white hover:bg-gray-50/90 dark:bg-transparent dark:hover:bg-gray-900/30"
+      } transition-colors`}
     >
       {isSelectionEnabled && onSelectionChange && (
-        <td className="px-4 py-4">
+        <td className="px-3 py-3 align-top">
           {task.submissionStatus === "DRAFT" && (
             <input
               type="checkbox"
@@ -219,132 +165,121 @@ export function CheckInTableRow({
                 onSelectionChange(task.id, event.target.checked)
               }
               aria-label={`Select draft task: ${task.task}`}
-              className="h-4 w-4 rounded border-gray-300 text-[#3838EC] focus:ring-[#3838EC] disabled:cursor-not-allowed"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-[#3838EC] focus:ring-[#3838EC] disabled:cursor-not-allowed"
             />
           )}
         </td>
       )}
 
-      {/* Major Task */}
-      <td className="px-4 py-4">
-        <div className="flex items-center gap-2">
-          {!isEditable && <LockIcon className="w-4 h-4 text-gray-400" />}
-          <div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
+      {/* Task + status */}
+      <td className="px-3 py-3 align-top">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex items-start gap-2">
+            {!isEditable && (
+              <LockIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+            )}
+            <p
+              className="truncate text-sm font-semibold text-gray-900 dark:text-white"
+              title={task.task}
+            >
               {task.task}
-            </span>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <Badge className={submissionStatus.badgeClassName}>
-                {submissionStatus.label}
-              </Badge>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {submissionStatus.description}
-              </span>
-              {(task.planningRevision ?? 0) > 0 && (
-                <Badge variant="outline">Revision {task.planningRevision}</Badge>
-              )}
-              {(task.carryoverGeneration ?? 0) > 0 && (
-                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
-                  Carryover Week {Math.min((task.carryoverGeneration ?? 0) + 1, 2)} of 2
-                </Badge>
-              )}
-              {(task.isCarryoverOverdue || task.carryoverEscalatedAt) && (
-                <Badge className="gap-1 bg-red-600 text-white">
-                  <AlertTriangleIcon className="h-3 w-3" /> Critical carryover overdue
-                </Badge>
-              )}
-              {latestRejection && task.submissionStatus === "DRAFT" && (
-                <span className="basis-full text-xs font-medium text-red-700 dark:text-red-300">
-                  Revision {latestRejection.revision} rejected: {latestRejection.rejectionReason}
-                </span>
-              )}
-            </div>
+            </p>
           </div>
-        </div>
-      </td>
 
-      {/* Linked KPI/Initiative */}
-      <td className="px-4 py-4">
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-2 h-2 rounded-full ${taskCategory.dotColor}`}
-            aria-hidden="true"
-          />
-          <span className={`text-xs font-semibold ${taskCategory.colorClass}`}>
-            {taskCategory.label}
-          </span>
-          {task.linkedKpiName || task.linkedInitiativeName ? (
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {task.linkedKpiName || task.linkedInitiativeName}
-            </span>
-          ) : (
-            <Badge variant="outline" className={taskColors.badge}>
-              {TASK_TYPE_LABELS[task.taskType] || task.taskType}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              className={`${submissionStatus.badgeClassName} text-[10px] font-semibold`}
+              title={submissionStatus.description}
+            >
+              {submissionStatus.label}
             </Badge>
+            {(task.planningRevision ?? 0) > 0 && (
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                Rev {task.planningRevision}
+              </span>
+            )}
+            {(task.carryoverGeneration ?? 0) > 0 && (
+              <Badge className="bg-orange-100 text-[10px] text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                Carryover {Math.min((task.carryoverGeneration ?? 0) + 1, 2)}/2
+              </Badge>
+            )}
+            {(task.isCarryoverOverdue || task.carryoverEscalatedAt) && (
+              <Badge className="gap-1 bg-red-600 text-[10px] text-white">
+                <AlertTriangleIcon className="h-3 w-3" /> Overdue
+              </Badge>
+            )}
+            {isOverdueFulfilled && (
+              <Badge className="bg-red-100 text-[10px] text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                Logbook overdue
+              </Badge>
+            )}
+          </div>
+
+          {task.description && (
+            <p
+              className="line-clamp-1 text-xs text-gray-500 dark:text-gray-400"
+              title={task.description}
+            >
+              {task.description}
+            </p>
+          )}
+
+          {latestRejection && task.submissionStatus === "DRAFT" && (
+            <p className="line-clamp-2 text-xs font-medium text-red-700 dark:text-red-300">
+              Rejected: {latestRejection.rejectionReason}
+            </p>
           )}
         </div>
       </td>
 
-      {/* Objective */}
-      <td className="px-4 py-4">
-        <span
-          className={`text-sm font-medium px-2 py-1 rounded ${objectiveStatus.color}`}
-        >
-          {objectiveStatus.label}
-        </span>
-        {isOverdueFulfilled && (
-          <Badge className="ml-2 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
-            Action required: logbook overdue
-          </Badge>
-        )}
+      {/* Linked KPI / initiative */}
+      <td className="px-3 py-3 align-top">
+        <div className="flex min-w-0 items-start gap-2">
+          <span
+            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${taskCategory.dotColor}`}
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <p className={`text-[11px] font-semibold ${taskCategory.colorClass}`}>
+              {taskCategory.label}
+            </p>
+            <p
+              className="line-clamp-2 text-sm text-gray-800 dark:text-gray-200"
+              title={linkedLabel}
+            >
+              {linkedLabel}
+            </p>
+            {task.relatedTo && (
+              <p className="mt-0.5 truncate text-xs text-gray-500" title={task.relatedTo}>
+                With {task.relatedTo}
+              </p>
+            )}
+          </div>
+        </div>
       </td>
 
-      {/* Description */}
-      <td className="px-4 py-4 max-w-xs">
-        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-          {task.description || "-"}
+      {/* Schedule */}
+      <td className="px-3 py-3 align-top">
+        <p className="whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+          {formatScheduleRange(task.startTime, task.endTime)}
         </p>
       </td>
 
-      {/* Related With */}
-      <td className="px-4 py-4">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
-          {task.relatedTo || "-"}
-        </span>
-      </td>
-
-      {/* Start Time & Date */}
-      <td className="px-4 py-4">
-        <div className="text-sm text-gray-900 dark:text-white">
-          {format(new Date(task.startTime), "d MMM yyyy, h:mm a")}
-        </div>
-      </td>
-
-      {/* End Time & Date */}
-      <td className="px-4 py-4">
-        <div className="text-sm text-gray-900 dark:text-white">
-          {format(new Date(task.endTime), "d MMM yyyy, h:mm a")}
-        </div>
-      </td>
-
       {/* Attachment */}
-      <td className="px-4 py-4">
+      <td className="px-3 py-3 align-top">
         {task.attachment ? (
-          <div className="flex items-center gap-1 text-[#3838EC]">
-            <FileIcon className="w-4 h-4" />
-            <span className="text-xs">File.pdf</span>
-          </div>
+          <AttachmentTrigger url={task.attachment} />
         ) : (
-          <span className="text-sm text-gray-400">None</span>
+          <span className="text-xs text-gray-400">—</span>
         )}
       </td>
 
       {/* Checkout */}
-      <td className="px-4 py-4">
+      <td className="px-3 py-3 align-top">
         <Badge
-          className={
+          className={`whitespace-nowrap text-[10px] ${
             STATUS_COLORS[task.checkoutStatus] || STATUS_COLORS.NOT_DONE
-          }
+          }`}
         >
           {task.checkoutStatus
             ? task.checkoutStatus.replace("_", " ")
@@ -352,21 +287,14 @@ export function CheckInTableRow({
           {task.checkoutStatus === "DONE" &&
           task.requiresApproval &&
           !task.approvedAt
-            ? " (Pending)"
+            ? " · Pending"
             : ""}
         </Badge>
       </td>
 
-      {/* Remark */}
-      <td className="px-4 py-4 max-w-xs">
-        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-          {task.remark || "-"}
-        </p>
-      </td>
-
       {/* Actions */}
-      <td className="px-4 py-4">
-        <div className="flex items-center gap-2 min-h-9">
+      <td className="px-3 py-3 align-top">
+        <div className="flex items-center justify-end gap-1">
           {isEditable ? (
             <>
               {canSubmitIndividually && onSubmitForApproval && (
@@ -375,24 +303,30 @@ export function CheckInTableRow({
                   size="sm"
                   onClick={() => onSubmitForApproval(task.id)}
                   disabled={submittingTaskForApproval || loading}
-                  className="gap-1 border-blue-600 text-blue-700 hover:bg-blue-50"
-                  title="Submit this revised or midweek draft for planning approval"
+                  className="h-9 min-h-9 gap-1 touch-manipulation border-blue-600 px-2.5 text-xs text-blue-700 hover:bg-blue-50"
+                  title={
+                    task.submissionStatus === "PERSONAL_TODO"
+                      ? "Submit this personal to-do for planning approval"
+                      : "Submit this revised or midweek draft for planning approval"
+                  }
                 >
-                  <SendIcon className="w-4 h-4" /> Submit
+                  <SendIcon className="h-3.5 w-3.5" />
+                  Submit
                 </Button>
               )}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleEdit}
                 disabled={loading || planningIsLocked}
-                className="text-[#3838EC] hover:text-[#2d2dbd] hover:bg-[#ECECFF]"
+                className={`${tableIconButtonClassName} text-[#3838EC] hover:bg-[#ECECFF] hover:text-[#2d2dbd]`}
+                title="Edit task"
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleDelete}
                 disabled={
                   loading ||
@@ -400,15 +334,16 @@ export function CheckInTableRow({
                   task.submissionStatus === "APPROVED" ||
                   task.submissionStatus === "SUBMITTED"
                 }
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className={`${tableIconButtonClassName} text-red-600 hover:bg-red-50 hover:text-red-700`}
+                title="Delete task"
               >
-                <TrashIcon className="w-4 h-4" />
+                <TrashIcon className="h-4 w-4" />
               </Button>
             </>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <LockIcon className="w-3.5 h-3.5" />
-              View only
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <LockIcon className="h-3.5 w-3.5" />
+              View
             </span>
           )}
         </div>

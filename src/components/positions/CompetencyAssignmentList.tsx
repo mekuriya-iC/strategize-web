@@ -84,7 +84,7 @@ export default function CompetencyAssignmentList({
   // Fetch all competencies for the dropdown
   const { data: compData, loading: compLoading } = useQuery(GET_COMPETENCIES, {
     variables: { page: 1, limit: 200 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
 
   const allCompetencies = (compData?.competencies?.items || []) as Competency[];

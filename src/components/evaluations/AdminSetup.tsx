@@ -498,7 +498,7 @@ export default function AdminSetup() {
         onValueChange={setActiveSubTab}
         className="space-y-6"
       >
-        <TabsList className="bg-white p-1 border border-gray-200 rounded-lg">
+        <TabsList className="w-full rounded-lg border border-gray-200 bg-white p-1">
           {canManageFramework && (
             <TabsTrigger
               value="framework"

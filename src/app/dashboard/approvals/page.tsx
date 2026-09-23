@@ -31,6 +31,7 @@ import {
   FileText,
   Link as LinkIcon,
 } from "lucide-react";
+import { AttachmentTrigger } from "@/components/files/AttachmentTrigger";
 import {
   Select,
   SelectContent,
@@ -304,9 +305,9 @@ export default function ApprovalsPage() {
         {/* Page Content */}
         <div className="space-y-6">
           {/* Page Header */}
-          <div className="px-6">
-            <div className="flex items-center justify-between mb-2">
-              <h1 className="text-3xl font-semibold text-gray-900">
+          <div className="px-0 sm:px-6">
+            <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">
                 {isViewingOwnSubmissions
                   ? "My Submissions"
                   : user?.role === "DIRECTOR" || user?.role === "MANAGER"
@@ -317,7 +318,7 @@ export default function ApprovalsPage() {
                 <Button
                   variant="outline"
                   onClick={() => router.push("/dashboard/approvals/config")}
-                  className="gap-2"
+                  className="w-full gap-2 sm:w-auto"
                 >
                   <svg
                     className="h-4 w-4"
@@ -440,15 +441,19 @@ export default function ApprovalsPage() {
           </div>
 
           {/* Workflow Content - Tabbed View */}
-          <div className="px-6">
+          <div className="px-0 sm:px-6">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
               className="w-full"
             >
-              <TabsList className="grid w-full max-w-md grid-cols-2">
-                <TabsTrigger value="objectives">Objectives & KPIs</TabsTrigger>
-                <TabsTrigger value="logbook">Logbook Entries</TabsTrigger>
+              <TabsList className="w-full max-w-md [&>button]:flex-1">
+                <TabsTrigger value="objectives" className="text-xs sm:text-sm">
+                  Objectives & KPIs
+                </TabsTrigger>
+                <TabsTrigger value="logbook" className="text-xs sm:text-sm">
+                  Logbook Entries
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="objectives" className="mt-6">
@@ -457,7 +462,7 @@ export default function ApprovalsPage() {
 
               <TabsContent value="logbook" className="mt-6 space-y-4">
                 {/* Logbook Filter */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-gray-600">
                     {logbookEntries.length} logbook{" "}
                     {logbookEntries.length === 1 ? "entry" : "entries"}
@@ -466,7 +471,7 @@ export default function ApprovalsPage() {
                     value={logbookStatusFilter}
                     onValueChange={setLogbookStatusFilter}
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full sm:w-40">
                       <SelectValue placeholder="All Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -898,14 +903,14 @@ export default function ApprovalsPage() {
                               {evidence.value}
                             </p>
                           ) : (
-                            <a
-                              href={evidence.value}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-1 block break-all text-sm text-blue-600 underline hover:text-blue-700"
-                            >
-                              {evidence.name || evidence.value}
-                            </a>
+                            <AttachmentTrigger
+                              url={evidence.value}
+                              name={evidence.name || evidence.value}
+                              mimeType={evidence.mimeType}
+                              evidenceType={evidence.type}
+                              variant="link"
+                              className="mt-1"
+                            />
                           )}
                           {evidence.mimeType && (
                             <p className="mt-1 text-xs text-gray-500">
@@ -931,14 +936,11 @@ export default function ApprovalsPage() {
                     Evidence Link
                   </Label>
                   <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <a
-                      href={selectedLogbookEntry.evidenceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-700 underline break-all"
-                    >
-                      {selectedLogbookEntry.evidenceUrl}
-                    </a>
+                    <AttachmentTrigger
+                      url={selectedLogbookEntry.evidenceUrl}
+                      name={selectedLogbookEntry.evidenceUrl}
+                      variant="link"
+                    />
                   </div>
                 </div>
               )}

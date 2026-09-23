@@ -1,9 +1,7 @@
 /**
- * Pending Approvals Count Hook
- * Lightweight hook that returns the total number of pending approval requests
- * for the current user based on their role.
- *
- * Used by Sidebar (badge on "Approve Requests") and Topbar (notification bell).
+ * Lightweight pending-approvals badge data.
+ * Uses role-scoped levels, server-side PENDING filter, and slim GraphQL fields
+ * so the dashboard shell stays fast without changing approval workflows.
  */
 
 import { useMemo } from "react";
@@ -12,35 +10,88 @@ import { useAuthStore, useOrgUnitStore } from "@/stores";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {
   type ApproverRole,
-  useSubmissionQueries,
+  type MinimalSubmission,
+} from "./types";
+import {
   useDepartmentHierarchy,
+} from "./useDepartmentHierarchy";
+import {
   filterSubmissionsByHierarchy,
   filterSubmissionsByListMode,
-} from "@/hooks/submissions";
-import { GET_LOGBOOK_ENTRIES } from "@/lib/graphql/queries/logbook";
+  deduplicateSubmissions,
+} from "./utils";
+import { GET_PENDING_SUBMISSIONS_LIGHT } from "@/lib/graphql/queries/submissions";
+import { GET_LOGBOOK_PENDING_BADGE } from "@/lib/graphql/queries/logbook";
+import type { ObjectiveType } from "@/types/graphql";
+import {
+  BADGE_LIMIT,
+  inboundLevelsForApprover,
+  kpiSubmissionsQueryVariables,
+  objectiveSubmissionsQueryVariables,
+} from "./submissionQueryVariables";
 
 interface PendingApprovalsCount {
-  /** Total pending approval count (submissions + logbook entries) */
   count: number;
-  /** Pending objective/KPI submissions count */
   submissionCount: number;
-  /** Pending logbook entries count */
   logbookCount: number;
-  /** Whether data is still loading */
   loading: boolean;
 }
 
-/**
- * Derive the approver role from the user's system role.
- * Mirrors the logic in SubmissionApprovalsTable.
- */
-function getApproverRole(
-  userRole: string | undefined,
-): ApproverRole {
+function getApproverRole(userRole: string | undefined): ApproverRole {
   if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") return "CORPORATE";
   if (userRole === "DIRECTOR") return "DIVISION";
   if (userRole === "MANAGER") return "DEPARTMENT";
   return "CORPORATE";
+}
+
+function mapLightItems(
+  items: MinimalSubmission[] | undefined,
+): MinimalSubmission[] {
+  return (items ?? []).map((item) => ({
+    ...item,
+    objective: item.objective
+      ? {
+          ...item.objective,
+          name:
+            item.objective.name ?? (item.objective as { title?: string }).title,
+        }
+      : item.objective,
+    kpi: item.kpi
+      ? {
+          ...item.kpi,
+          objective: item.kpi.objective
+            ? {
+                ...item.kpi.objective,
+                name:
+                  item.kpi.objective.name ??
+                  (item.kpi.objective as { title?: string }).title,
+              }
+            : item.kpi.objective,
+        }
+      : item.kpi,
+  }));
+}
+
+function useLightLevelQuery(
+  level: ObjectiveType,
+  enabledLevels: ObjectiveType[],
+  shouldFetch: boolean,
+  submissionType: "OBJECTIVE" | "KPI",
+) {
+  const buildVars =
+    submissionType === "OBJECTIVE"
+      ? objectiveSubmissionsQueryVariables
+      : kpiSubmissionsQueryVariables;
+
+  return useQuery(GET_PENDING_SUBMISSIONS_LIGHT, {
+    variables: buildVars(level, {
+      limit: BADGE_LIMIT,
+      status: "PENDING",
+    }),
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    skip: !shouldFetch || !enabledLevels.includes(level),
+  });
 }
 
 export function usePendingApprovalsCount(): PendingApprovalsCount {
@@ -49,6 +100,10 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
   const { scope } = usePermissions();
 
   const approverRole = getApproverRole(user?.role);
+  const enabledLevels = useMemo(
+    () => inboundLevelsForApprover(approverRole),
+    [approverRole],
+  );
 
   const shouldMakeQueries = Boolean(
     user &&
@@ -59,17 +114,87 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
         selectedUnit),
   );
 
-  // ── Objective / KPI submissions (pending only) ───────────────────────
-  const {
-    submissions: allSubmissions,
-    loading: submissionsLoading,
-  } = useSubmissionQueries({
-    shouldFetch: shouldMakeQueries,
-    approverRole,
-    pendingOnly: true,
-  });
+  const divisionObj = useLightLevelQuery(
+    "DIVISION",
+    enabledLevels,
+    shouldMakeQueries,
+    "OBJECTIVE",
+  );
+  const departmentObj = useLightLevelQuery(
+    "DEPARTMENT",
+    enabledLevels,
+    shouldMakeQueries,
+    "OBJECTIVE",
+  );
+  const personnelObj = useLightLevelQuery(
+    "PERSONNEL",
+    enabledLevels,
+    shouldMakeQueries,
+    "OBJECTIVE",
+  );
+  const divisionKpi = useLightLevelQuery(
+    "DIVISION",
+    enabledLevels,
+    shouldMakeQueries,
+    "KPI",
+  );
+  const departmentKpi = useLightLevelQuery(
+    "DEPARTMENT",
+    enabledLevels,
+    shouldMakeQueries,
+    "KPI",
+  );
+  const personnelKpi = useLightLevelQuery(
+    "PERSONNEL",
+    enabledLevels,
+    shouldMakeQueries,
+    "KPI",
+  );
 
-  // ── Hierarchy filtering (same as useSubmissionApprovals) ──────────────
+  const allSubmissions = useMemo(
+    () =>
+      deduplicateSubmissions([
+        ...mapLightItems(
+          divisionObj.data?.submissions?.items as
+            | MinimalSubmission[]
+            | undefined,
+        ),
+        ...mapLightItems(
+          departmentObj.data?.submissions?.items as
+            | MinimalSubmission[]
+            | undefined,
+        ),
+        ...mapLightItems(
+          personnelObj.data?.submissions?.items as
+            | MinimalSubmission[]
+            | undefined,
+        ),
+        ...mapLightItems(
+          divisionKpi.data?.submissions?.items as
+            | MinimalSubmission[]
+            | undefined,
+        ),
+        ...mapLightItems(
+          departmentKpi.data?.submissions?.items as
+            | MinimalSubmission[]
+            | undefined,
+        ),
+        ...mapLightItems(
+          personnelKpi.data?.submissions?.items as
+            | MinimalSubmission[]
+            | undefined,
+        ),
+      ]),
+    [
+      divisionObj.data,
+      departmentObj.data,
+      personnelObj.data,
+      divisionKpi.data,
+      departmentKpi.data,
+      personnelKpi.data,
+    ],
+  );
+
   const {
     departmentsWithoutDivision,
     getDepartmentsForDivision,
@@ -110,7 +235,6 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
       : new Set<string>();
 
   const submissionCount = useMemo(() => {
-    // Filter to inbound + hierarchy
     const inbound = filterSubmissionsByListMode(
       allSubmissions,
       "inbound",
@@ -136,30 +260,36 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
     effectiveSelectedUnitId,
   ]);
 
-  // ── Logbook entries (SUBMITTED = pending) ────────────────────────────
   const { data: logbookData, loading: logbookLoading } = useQuery(
-    GET_LOGBOOK_ENTRIES,
+    GET_LOGBOOK_PENDING_BADGE,
     {
       variables: {
         entryStatus: "SUBMITTED",
-        limit: 200,
+        limit: BADGE_LIMIT,
         page: 1,
       },
       skip: !user?.employeeId,
       fetchPolicy: "cache-first",
       nextFetchPolicy: "cache-first",
-      pollInterval: 60000, // Poll every 60 s for fresh data
+      pollInterval: 120_000,
     },
   );
 
   const logbookCount = useMemo(() => {
     const entries = logbookData?.logbookEntries?.items || [];
-    // Only count entries that are not submitted by the current user
-    // (the user shouldn't see their own entries as pending approvals)
     return entries.filter(
-      (e: any) => e.employee?.employeeId !== user?.employeeId,
+      (e: { owner?: { employeeId?: string } }) =>
+        e.owner?.employeeId !== user?.employeeId,
     ).length;
   }, [logbookData, user?.employeeId]);
+
+  const submissionsLoading =
+    divisionObj.loading ||
+    departmentObj.loading ||
+    personnelObj.loading ||
+    divisionKpi.loading ||
+    departmentKpi.loading ||
+    personnelKpi.loading;
 
   const loading = submissionsLoading || departmentsLoading || logbookLoading;
   const count = submissionCount + logbookCount;

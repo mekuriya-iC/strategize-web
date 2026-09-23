@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { TableRow, TableCell } from "@/components/ui/table";
+import { TableRow, TableCell, TableActions } from "@/components/ui/table";
 import EmployeeAvatar from "./EmployeeAvatar";
 import EmployeeStatusBadge from "./EmployeeStatusBadge";
 import EmployeeRoleBadge from "./EmployeeRoleBadge";
@@ -30,11 +30,17 @@ const EmployeeTableRow = ({
   originalEmployee?: GraphQLEmployee;
 }) => {
   return (
-    <TableRow className={odd ? "bg-white dark:bg-transparent" : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"}>
-      <TableCell className="font-medium px-6 py-4 text-[#11181C] dark:text-gray-100">
+    <TableRow
+      className={
+        odd
+          ? "bg-white dark:bg-transparent"
+          : "bg-[#ECECFF] dark:bg-[#1e1e3f]/40"
+      }
+    >
+      <TableCell className="px-6 py-4 font-medium text-[#11181C] dark:text-gray-100">
         {employee.fullName}
       </TableCell>
-      <TableCell className="px-6 py- text-[#11181C] dark:text-gray-100">
+      <TableCell className="px-6 py-4 text-[#11181C] dark:text-gray-100">
         <EmployeeAvatar
           src={employee.profilePic}
           alt={employee.fullName}
@@ -59,13 +65,13 @@ const EmployeeTableRow = ({
       <TableCell className="px-6 py-4 text-[#11181C] dark:text-gray-100">
         <EmployeeStatusBadge status={employee.status} />
       </TableCell>
-      <TableCell className="px-6 py-4 text-[#11181C] dark:text-gray-100">
+      <TableActions className="px-6 py-4 text-[#11181C] dark:text-gray-100">
         <EmployeeActionsMenu
           employeeName={employee.fullName}
           employeeId={employee.employeeId}
           originalEmployee={originalEmployee}
         />
-      </TableCell>
+      </TableActions>
     </TableRow>
   );
 };

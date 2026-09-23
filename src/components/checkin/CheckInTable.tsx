@@ -1,6 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
+import {
+  DataTableCards,
+  DataTableDesktop,
+} from "@/components/ui/responsive-table";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { CheckInTableRow } from "./CheckInTableRow";
 import { CheckInTableCard } from "./CheckInTableCard";
 import type {
@@ -60,6 +66,9 @@ interface CheckInTableProps {
   };
 }
 
+const thClass =
+  "px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400";
+
 export function CheckInTable({
   tasks,
   createdDate,
@@ -77,24 +86,23 @@ export function CheckInTable({
 }: CheckInTableProps) {
   void createdDate;
   void endDate;
-  // Filter tasks based on search query and filters
-  const filteredTasks = useMemo(() => {
+
+  const baseFilteredTasks = useMemo(() => {
     let filtered = tasks;
 
-    // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (task) =>
           task.task.toLowerCase().includes(query) ||
           task.description?.toLowerCase().includes(query) ||
-          task.relatedTo?.toLowerCase().includes(query),
+          task.relatedTo?.toLowerCase().includes(query) ||
+          task.linkedKpiName?.toLowerCase().includes(query) ||
+          task.linkedInitiativeName?.toLowerCase().includes(query),
       );
     }
 
-    // Apply filters
     if (filters) {
-      // Filter by objective
       if (filters.objective) {
         filtered = filtered.filter((task) => {
           if (filters.objective === "kpi_unmet") return !task.isKpiMet;
@@ -107,7 +115,6 @@ export function CheckInTable({
         });
       }
 
-      // Filter by date range
       if (filters.startDate) {
         filtered = filtered.filter((task) => {
           const taskDate = new Date(task.startTime);
@@ -121,14 +128,12 @@ export function CheckInTable({
         });
       }
 
-      // Filter by attachment
       if (filters.attachment === "yes") {
         filtered = filtered.filter((task) => task.attachment);
       } else if (filters.attachment === "no") {
         filtered = filtered.filter((task) => !task.attachment);
       }
 
-      // Filter by checkout status
       if (filters.checkoutStatus.length > 0) {
         filtered = filtered.filter((task) =>
           filters.checkoutStatus.includes(task.checkoutStatus),
@@ -139,95 +144,197 @@ export function CheckInTable({
     return filtered;
   }, [tasks, searchQuery, filters]);
 
-  // Action visibility is ownership-based.
-  // If the current viewer owns this session's tasks, show edit/delete actions.
-  // Team members' tasks remain view-only.
+  const columns = useMemo(
+    () => [
+      {
+        id: "task",
+        accessor: (task: Task) => task.task,
+        filterFn: (task: Task, value: string) => {
+          const q = value.toLowerCase();
+          return (
+            task.task.toLowerCase().includes(q) ||
+            (task.description?.toLowerCase().includes(q) ?? false)
+          );
+        },
+      },
+      {
+        id: "linkedTo",
+        accessor: (task: Task) =>
+          task.linkedKpiName ||
+          task.linkedInitiativeName ||
+          task.relatedTo ||
+          "",
+      },
+      {
+        id: "schedule",
+        accessor: (task: Task) => task.startTime,
+        compare: (a: Task, b: Task) =>
+          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+      },
+      {
+        id: "file",
+        accessor: (task: Task) => (task.attachment ? "yes" : "no"),
+        filterFn: (task: Task, value: string) =>
+          value === "yes" ? !!task.attachment : !task.attachment,
+      },
+      {
+        id: "checkout",
+        accessor: (task: Task) => task.checkoutStatus,
+        filterFn: (task: Task, value: string) =>
+          task.checkoutStatus.toLowerCase() === value.toLowerCase(),
+      },
+    ],
+    [],
+  );
+
+  const {
+    processedRows: filteredTasks,
+    getHeaderProps,
+    sortConfig,
+  } = useTableColumnControls({
+    rows: baseFilteredTasks,
+    columns,
+    initialSort: null,
+    allowUnsorted: true,
+  });
+
+  // Stable fallback when no column sort is active
+  const displayTasks = useMemo(() => {
+    if (sortConfig?.direction) return filteredTasks;
+    return [...filteredTasks].sort((a, b) => {
+      const aTime = new Date(a.createdAt || 0).getTime();
+      const bTime = new Date(b.createdAt || 0).getTime();
+      if (aTime !== bTime) return aTime - bTime;
+      return String(a.id).localeCompare(String(b.id));
+    });
+  }, [filteredTasks, sortConfig]);
+
+  const taskHdr = getHeaderProps("task");
+  const linkedHdr = getHeaderProps("linkedTo");
+  const scheduleHdr = getHeaderProps("schedule");
+  const fileHdr = getHeaderProps("file");
+  const checkoutHdr = getHeaderProps("checkout");
 
   return (
     <>
-      {/* Desktop Table View */}
-      <div className="hidden lg:block bg-white dark:bg-gray-800 border border-t-0 border-gray-200 dark:border-gray-700 rounded-b-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+      <DataTableDesktop className="overflow-hidden rounded-b-lg border border-t-0 border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[920px] table-fixed">
+            <colgroup>
+              {isSelectionEnabled && onSelectionChange && (
+                <col className="w-12" />
+              )}
+              <col className="w-[28%]" />
+              <col className="w-[18%]" />
+              <col className="w-[20%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+            </colgroup>
+            <thead className="sticky top-0 z-[1] border-b border-gray-200 bg-gray-50/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/80">
               <tr>
                 {isSelectionEnabled && onSelectionChange && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Select
-                  </th>
+                  <th className={thClass}>Select</th>
                 )}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Major Task
+                <th className={thClass}>
+                  <SortableFilterableHeader
+                    label="Task"
+                    {...taskHdr}
+                  />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Linked KPI/Initiative
+                <th className={thClass}>
+                  <SortableFilterableHeader
+                    label="Linked to"
+                    {...linkedHdr}
+                  />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Objective
+                <th className={thClass}>
+                  <SortableFilterableHeader
+                    label="Schedule"
+                    filterable={false}
+                    {...scheduleHdr}
+                  />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Description
+                <th className={thClass}>
+                  <SortableFilterableHeader
+                    label="File"
+                    filterType="select"
+                    filterOptions={[
+                      { value: "yes", label: "Has file" },
+                      { value: "no", label: "No file" },
+                    ]}
+                    {...fileHdr}
+                  />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Related With
+                <th className={thClass}>
+                  <SortableFilterableHeader
+                    label="Checkout"
+                    filterType="select"
+                    filterOptions={[
+                      { value: "PENDING", label: "Pending" },
+                      { value: "CHECKED_OUT", label: "Checked out" },
+                      { value: "APPROVED", label: "Approved" },
+                      { value: "REJECTED", label: "Rejected" },
+                    ]}
+                    {...checkoutHdr}
+                  />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Start Time & Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  End Time & Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Attachment
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Checkout
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Remark
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className={`${thClass} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredTasks.map((task) => (
-                <CheckInTableRow
-                  key={task.id}
-                  task={task}
-                  isEditable={isEditable}
-                  onRefetch={onRefetch}
-                  onEditTask={onEditTask}
-                  isSelectionEnabled={isSelectionEnabled}
-                  isSelected={selectedTaskIds.has(task.id)}
-                  onSelectionChange={onSelectionChange}
-                  onSubmitForApproval={onSubmitForApproval}
-                  submittingTaskForApproval={submittingTaskForApproval}
-                />
-              ))}
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/80">
+              {displayTasks.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={isSelectionEnabled ? 7 : 6}
+                    className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    No tasks match this view.
+                  </td>
+                </tr>
+              ) : (
+                displayTasks.map((task) => (
+                  <CheckInTableRow
+                    key={task.id}
+                    task={task}
+                    isEditable={isEditable}
+                    onRefetch={onRefetch}
+                    onEditTask={onEditTask}
+                    isSelectionEnabled={isSelectionEnabled}
+                    isSelected={selectedTaskIds.has(task.id)}
+                    onSelectionChange={onSelectionChange}
+                    onSubmitForApproval={onSubmitForApproval}
+                    submittingTaskForApproval={submittingTaskForApproval}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         </div>
-      </div>
+      </DataTableDesktop>
 
-      {/* Mobile/Tablet Card View */}
-      <div className="lg:hidden space-y-4">
-        {filteredTasks.map((task) => (
-          <CheckInTableCard
-            key={task.id}
-            task={task}
-            isEditable={isEditable}
-            onRefetch={onRefetch}
-            onEditTask={onEditTask}
-            isSelectionEnabled={isSelectionEnabled}
-            isSelected={selectedTaskIds.has(task.id)}
-            onSelectionChange={onSelectionChange}
-            onSubmitForApproval={onSubmitForApproval}
-            submittingTaskForApproval={submittingTaskForApproval}
-          />
-        ))}
-      </div>
+      <DataTableCards>
+        {displayTasks.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-200 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            No tasks match this view.
+          </div>
+        ) : (
+          displayTasks.map((task) => (
+            <CheckInTableCard
+              key={task.id}
+              task={task}
+              isEditable={isEditable}
+              onRefetch={onRefetch}
+              onEditTask={onEditTask}
+              isSelectionEnabled={isSelectionEnabled}
+              isSelected={selectedTaskIds.has(task.id)}
+              onSelectionChange={onSelectionChange}
+              onSubmitForApproval={onSubmitForApproval}
+              submittingTaskForApproval={submittingTaskForApproval}
+            />
+          ))
+        )}
+      </DataTableCards>
     </>
   );
 }

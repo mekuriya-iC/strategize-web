@@ -173,7 +173,7 @@ export function KpiFormulaManagement({
       </div>
 
       <Tabs defaultValue="metrics" className="w-full gap-4">
-        <TabsList className="grid h-auto w-full grid-cols-3 p-1 lg:w-155">
+        <TabsList className="w-full p-1 lg:w-auto">
           <TabsTrigger value="metrics" className="min-h-9">
             <Ruler className="h-4 w-4" />
             <span className="hidden sm:inline">Metrics</span>

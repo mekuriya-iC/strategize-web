@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useQuery } from "@apollo/client";
+import { NetworkStatus, useQuery } from "@apollo/client";
 import {
   GET_OBJECTIVES,
   GET_OBJECTIVE,
@@ -19,7 +19,7 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     ...variables,
   };
 
-  const { data, loading, error, refetch } = useQuery<
+  const { data, loading, error, refetch, networkStatus } = useQuery<
     GetObjectivesResponse,
     ObjectivesQueryVariables
   >(GET_OBJECTIVES, {
@@ -27,10 +27,12 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
+    // Keep showing cached rows while a background refresh runs.
+    returnPartialData: true,
   });
 
   const objectivesRefetchPending = useCacheStore((state) =>
-    state.pendingRefetches.has("objectives")
+    state.pendingRefetches.has("objectives"),
   );
   const markRefetched = useCacheStore((state) => state.markRefetched);
 
@@ -43,30 +45,40 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     );
   }, [objectivesRefetchPending, refetch, markRefetched]);
 
+  const hasCachedData = Boolean(data?.objectives?.items?.length);
+  const isInitialLoading =
+    loading &&
+    !hasCachedData &&
+    networkStatus === NetworkStatus.loading;
+
   return {
     objectives: data?.objectives?.items || [],
     meta: data?.objectives?.meta,
-    loading,
+    loading: isInitialLoading,
+    refreshing:
+      networkStatus === NetworkStatus.refetch ||
+      networkStatus === NetworkStatus.setVariables,
     error,
     refetch,
   };
 };
 
 export const useObjective = (variables: ObjectiveQueryVariables) => {
-  const { data, loading, error, refetch } = useQuery<
+  const { data, loading, error, refetch, networkStatus } = useQuery<
     GetObjectiveResponse,
     ObjectiveQueryVariables
   >(GET_OBJECTIVE, {
     variables,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
-    // Skip query if objectiveId is empty or undefined
     skip: !variables.objectiveId,
+    notifyOnNetworkStatusChange: true,
+    returnPartialData: true,
   });
 
   return {
     objective: data?.objective,
-    loading,
+    loading: loading && !data?.objective && networkStatus === NetworkStatus.loading,
     error,
     refetch,
   };

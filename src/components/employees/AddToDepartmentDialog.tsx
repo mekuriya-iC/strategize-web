@@ -46,7 +46,7 @@ const AddToDepartmentDialog: React.FC<AddToDepartmentDialogProps> = ({
     departments: PaginatedDepartments;
   }>(GET_DEPARTMENTS, {
     variables: { page: 1, limit: 100 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     skip: !open,
   });
 

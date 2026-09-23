@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   PencilIcon,
   TrashIcon,
-  FileIcon,
   LockIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -18,6 +17,7 @@ import {
 import { useMutation } from "@apollo/client";
 import { REMOVE_CHECKINOUT_TASK } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
+import { AttachmentTrigger } from "@/components/files/AttachmentTrigger";
 import { removeCheckinTask } from "./checkin-cache";
 import {
   getTaskBorderStyle,
@@ -114,8 +114,9 @@ export function CheckInTableCard({
     isSelectionEnabled && task.submissionStatus === "DRAFT";
   const latestRejection = getLatestPlanningRejection(task.planningReviewHistory);
   const canSubmitIndividually =
-    task.submissionStatus === "DRAFT" &&
-    (Boolean(task.isMidWeekTask) || Boolean(latestRejection));
+    (task.submissionStatus === "DRAFT" &&
+      (Boolean(task.isMidWeekTask) || Boolean(latestRejection))) ||
+    task.submissionStatus === "PERSONAL_TODO";
   const planningIsLocked = task.submissionStatus === "PENDING_APPROVAL";
   const isOverdueFulfilled =
     task.taskType === "KPI_FULFILLED" &&
@@ -287,9 +288,9 @@ export function CheckInTableCard({
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="ml-2"
+            className="ml-2 h-9 w-9 min-h-9 min-w-9 shrink-0 touch-manipulation"
             aria-label={isExpanded ? "Collapse task details" : "Expand task details"}
           >
             {isExpanded ? (
@@ -336,10 +337,7 @@ export function CheckInTableCard({
                 : ""}
             </Badge>
             {task.attachment && (
-              <div className="flex items-center gap-1 text-[#3838EC] text-xs">
-                <FileIcon className="w-3 h-3" />
-                <span>Attached</span>
-              </div>
+              <AttachmentTrigger url={task.attachment} />
             )}
           </div>
         </div>
@@ -427,6 +425,11 @@ export function CheckInTableCard({
                   onClick={() => onSubmitForApproval(task.id)}
                   disabled={submittingTaskForApproval || loading}
                   className="flex-1 gap-2 border-blue-600 text-blue-700 hover:bg-blue-50"
+                  title={
+                    task.submissionStatus === "PERSONAL_TODO"
+                      ? "Submit this personal to-do for planning approval"
+                      : "Submit this revised or midweek draft for planning approval"
+                  }
                 >
                   <SendIcon className="w-4 h-4" /> Submit for approval
                 </Button>

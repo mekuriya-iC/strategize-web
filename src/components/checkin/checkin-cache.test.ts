@@ -103,8 +103,8 @@ describe("check-in cache updates", () => {
       variables: { sessionId: "session-b", ...CHECKIN_TASKS_PAGE },
     })!;
     expect(updated.checkinoutTasks.items.map((item) => item.checkinoutTaskId)).toEqual([
-      "two",
       "one",
+      "two",
     ]);
     expect(updated.checkinoutTasks.meta.totalItems).toBe(2);
     expect(untouched.checkinoutTasks.items).toHaveLength(1);

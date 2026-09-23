@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   PencilIcon,
   TrashIcon,
-  FileIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import { format } from "date-fns";
 import type { FrontendLogbookItem } from "@/types/logbook";
 import type { KpiUnitType } from "@/types/graphql";
 import { calculateKpiResultPreview } from "@/utils/basisCalculation";
+import { AttachmentList } from "@/components/files/AttachmentTrigger";
 
 interface LogbookTableRowProps {
   item: FrontendLogbookItem;
@@ -148,37 +148,41 @@ export function LogbookTableRow({
 
         {/* Attachment */}
         <td className="px-4 py-4">
-          {item.attachmentUrl || item.evidenceItems?.length ? (
-            <div className="flex items-center gap-1 text-[#3838EC]">
-              <FileIcon className="w-4 h-4" />
-              <span className="text-xs">
-                {item.evidenceItems?.length || 1} evidence
-              </span>
-            </div>
-          ) : (
-            <span className="text-sm text-gray-400">None</span>
-          )}
+          <AttachmentList
+            items={
+              item.evidenceItems?.length
+                ? item.evidenceItems.map((evidence) => ({
+                    url: evidence.value,
+                    name: evidence.name,
+                    mimeType: evidence.mimeType,
+                    evidenceType: evidence.type,
+                  }))
+                : item.attachmentUrl
+                  ? [{ url: item.attachmentUrl }]
+                  : []
+            }
+          />
         </td>
 
         {/* Actions */}
         <td className="px-4 py-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 [&_button]:min-h-9 [&_button]:touch-manipulation">
             {canSubmit && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSubmitDialogOpen(true)}
                 disabled={loading}
-                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                className="min-h-9 text-green-600 hover:text-green-700 hover:bg-green-50"
               >
                 Submit
               </Button>
             )}
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-gray-600 hover:text-gray-700"
+              className="h-9 w-9 min-h-9 min-w-9 touch-manipulation text-gray-600 hover:text-gray-700"
             >
               {isExpanded ? (
                 <ChevronUpIcon className="w-4 h-4" />

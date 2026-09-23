@@ -164,7 +164,7 @@ export function CreateKpiDialog({
   // Fetch objectives for dropdown
   const { data: objData } = useQuery(GET_OBJECTIVES, {
     variables: { page: 1, limit: 500, organizationId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
   const objectives = (objData?.objectives?.items || []).map((o: any) => ({
     value: o.objectiveId,
@@ -175,7 +175,7 @@ export function CreateKpiDialog({
   // Fetch KPIs for parent selection
   const { data: kpiData } = useQuery(GET_KPIS, {
     variables: { page: 1, limit: 500 },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
   const allKpis = (kpiData?.kpis?.items || []) as Kpi[];
   const availableParentKpis = allKpis

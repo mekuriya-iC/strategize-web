@@ -13,7 +13,7 @@ import {
   SUBMIT_TASK_FOR_PLANNING_APPROVAL,
   SUBMIT_WEEKLY_TASKS,
 } from "@/lib/graphql/mutations/checkins";
-import { GET_ME } from "@/lib/graphql/queries/auth";
+import { useAuthStore } from "@/stores";
 import { CheckInTable } from "@/components/checkin/CheckInTable";
 import { AddTaskDialog } from "@/components/checkin/AddTaskDialog";
 import { FilterDialog, FilterState } from "@/components/checkin/FilterDialog";
@@ -134,18 +134,11 @@ function EmployeeTaskCard({
       limit: 100,
       page: 1,
     },
-    skip: !session.checkinoutSessionId,
+    // Avoid N+1: only fetch when the card is expanded. Collapsed cards reuse
+    // Apollo cache when re-opened (cache-first).
+    skip: !session.checkinoutSessionId || !isExpanded,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
-    onCompleted: (data) => {
-      console.log("📥 [EMPLOYEE CARD] Tasks query completed for session:", session.checkinoutSessionId);
-      console.log("📥 [EMPLOYEE CARD] Fetched tasks count:", data?.checkinoutTasks?.items?.length || 0);
-      console.log("📥 [EMPLOYEE CARD] Tasks data:", data?.checkinoutTasks?.items);
-    },
-    onError: (error) => {
-      console.error("❌ [EMPLOYEE CARD] Tasks query error for session:", session.checkinoutSessionId);
-      console.error("❌ [EMPLOYEE CARD] Error:", error);
-    },
   });
 
   const tasks = useMemo(() => {
@@ -250,7 +243,11 @@ function EmployeeTaskCard({
               </span>
               <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
               <span className="font-medium text-[#3838EC] dark:text-[#5B5BF7]">
-                {tasks.length} {tasks.length === 1 ? "Task" : "Tasks"}
+                {!isExpanded && !tasksData
+                  ? "View tasks"
+                  : tasksLoading
+                    ? "Loading…"
+                    : `${tasks.length} ${tasks.length === 1 ? "Task" : "Tasks"}`}
               </span>
             </div>
           </div>
@@ -475,9 +472,8 @@ export default function CheckInPage() {
     checkoutStatus: [],
   });
 
-  // Get current user
-  const { data: userData } = useQuery(GET_ME);
-  const currentUser = userData?.me;
+  // Get current user from auth store (no redundant GET_ME API call)
+  const currentUser = useAuthStore((state) => state.user);
   const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
 
   const [createMySession, { loading: creatingMySession }] = useMutation(
@@ -519,7 +515,7 @@ export default function CheckInPage() {
     loading: allSessionsLoading,
     refetch: refetchAllSessions,
   } = useQuery(GET_CHECKINOUT_SESSIONS, {
-    variables: { limit: 1000, page: 1 },
+    variables: { limit: 200, page: 1 },
     skip: !isSuperAdmin,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
@@ -736,20 +732,9 @@ export default function CheckInPage() {
       limit: 100,
       page: 1,
     },
-    skip: !currentWeekData?.id,
+    skip: !currentWeekData?.id || isManagerMode,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
-    onCompleted: (data) => {
-      console.log("📥 [CHECKIN PAGE] Main tasks query completed");
-      console.log("📥 [CHECKIN PAGE] Session ID:", currentWeekData?.id);
-      console.log("📥 [CHECKIN PAGE] Fetched tasks count:", data?.checkinoutTasks?.items?.length || 0);
-      console.log("📥 [CHECKIN PAGE] Tasks data:", data?.checkinoutTasks?.items);
-    },
-    onError: (error) => {
-      console.error("❌ [CHECKIN PAGE] Main tasks query error");
-      console.error("❌ [CHECKIN PAGE] Session ID:", currentWeekData?.id);
-      console.error("❌ [CHECKIN PAGE] Error:", error);
-    },
   });
 
   // Map tasks to frontend format
@@ -894,12 +879,20 @@ export default function CheckInPage() {
 
   const handleSingleTaskSubmission = async (taskId: string) => {
     const task = tasks.find((candidate: any) => candidate.id === taskId);
-    if (!task || task.submissionStatus !== "DRAFT" || sessionReadOnly) return;
+    if (
+      !task ||
+      sessionReadOnly ||
+      (task.submissionStatus !== "DRAFT" &&
+        task.submissionStatus !== "PERSONAL_TODO")
+    ) {
+      return;
+    }
     try {
       const result = await submitTaskForApproval({ variables: { taskId } });
       if (!result.data?.submitTaskForPlanningApproval) {
         throw new Error("The server did not confirm the planning submission.");
       }
+      await Promise.all([refetchTasks(), refetchPoolSummary()]);
       toast.success(
         `Task submitted for planning approval (revision ${result.data.submitTaskForPlanningApproval.planningRevision}).`,
       );
@@ -908,39 +901,38 @@ export default function CheckInPage() {
     }
   };
 
-  // Calculate if we can add mid-week tasks
+  // After the initial weekly batch (6–10), employees may add up to 3
+  // additional tasks for approval via the midweek / individual-submit path.
   const canAddMidWeekTask = useMemo(() => {
-    if (!currentWeekDataWithTasks) return false;
+    if (!currentWeekDataWithTasks || sessionReadOnly) return false;
 
-    const createdDate = new Date(currentWeekDataWithTasks.createdAt);
-    const today = new Date();
-    const createdDay = createdDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const currentDay = today.getDay();
-
-    // Not on creation day (Monday) and not Saturday (6)
-    const isNotCreationDay = currentDay !== createdDay;
-    const isNotSaturday = currentDay !== 6;
-
-    // Count mid-week tasks
-    const midWeekTaskCount =
+    const midWeekCount =
       currentWeekDataWithTasks.tasks?.filter((task: any) => task.isMidWeekTask)
         .length || 0;
-    const hasRoomForMore = midWeekTaskCount < 3;
+    if (midWeekCount >= 3) return false;
 
-    return isNotCreationDay && isNotSaturday && hasRoomForMore;
-  }, [currentWeekDataWithTasks]);
+    // Once the weekly batch exists, allow additional tasks any day of the week.
+    if (alreadySubmitted) return true;
 
-  // Show mid-week button (visible Tuesday-Friday)
+    // Before the first batch, midweek creates are blocked by the API anyway.
+    const createdDate = new Date(currentWeekDataWithTasks.createdAt);
+    const today = new Date();
+    const createdDay = createdDate.getDay();
+    const currentDay = today.getDay();
+    return currentDay !== createdDay && currentDay !== 6;
+  }, [alreadySubmitted, currentWeekDataWithTasks, sessionReadOnly]);
+
+  // Show the additional-task CTA after the first weekly submit, or on midweek days.
   const showMidWeekButton = useMemo(() => {
-    if (!currentWeekDataWithTasks) return false;
+    if (!currentWeekDataWithTasks || sessionReadOnly) return false;
+    if (alreadySubmitted) return true;
 
     const createdDate = new Date(currentWeekDataWithTasks.createdAt);
     const today = new Date();
     const createdDay = createdDate.getDay();
     const currentDay = today.getDay();
-
     return currentDay !== createdDay && currentDay !== 6;
-  }, [currentWeekDataWithTasks]);
+  }, [alreadySubmitted, currentWeekDataWithTasks, sessionReadOnly]);
 
   // Calculate team-wide statistics for managers
   const teamStatistics = useMemo(() => {
@@ -1174,13 +1166,13 @@ export default function CheckInPage() {
   return (
     <div className="h-full flex flex-col">
       {/* Header with Back Button and Session Selector */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBackToList}
-            className="gap-2"
+            className="w-fit gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Sessions
@@ -1194,7 +1186,7 @@ export default function CheckInPage() {
                 setSelectedSessionId(value);
               }}
             >
-              <SelectTrigger className="w-72">
+              <SelectTrigger className="w-full sm:w-72">
                 <SelectValue placeholder="Select week..." />
               </SelectTrigger>
               <SelectContent>
@@ -1221,26 +1213,26 @@ export default function CheckInPage() {
           <Button
             onClick={handleAddMyTaskClick}
             disabled={creatingMySession || sessionReadOnly}
-            className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white gap-2 shadow-sm"
+            className="w-full gap-2 bg-[#3838EC] shadow-sm hover:bg-[#2d2dbd] sm:w-auto"
           >
-            <PlusIcon className="w-4 h-4" />
+            <PlusIcon className="h-4 w-4" />
             {creatingMySession ? "Preparing..." : "Add My Task"}
           </Button>
         )}
       </div>
 
       {/* Original Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            Check In/Out - Current Week(Active)
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold text-gray-900 dark:text-white sm:gap-3 sm:text-2xl">
+            <span>Check In/Out - Current Week(Active)</span>
             {isManagerMode && (
-              <Badge className="bg-[#3838EC]/10 text-[#3838EC] border-[#3838EC]/20 gap-1">
-                <Users className="w-3 h-3" /> Team View
+              <Badge className="gap-1 border-[#3838EC]/20 bg-[#3838EC]/10 text-[#3838EC]">
+                <Users className="h-3 w-3" /> Team View
               </Badge>
             )}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {currentSession && (
               <>
                 Week:{" "}
@@ -1250,7 +1242,9 @@ export default function CheckInPage() {
             )}
           </p>
         </div>
-        <TaskColorLegend />
+        <div className="shrink-0 self-start">
+          <TaskColorLegend />
+        </div>
       </div>
 
       {employeeLoading || supervisorLoading || (isSuperAdmin && allSessionsLoading) ? (
@@ -1392,35 +1386,35 @@ export default function CheckInPage() {
           {isManagerMode ? (
             <div className="flex-1 flex flex-col">
               {/* Team View Search and Filter */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div className="relative flex-1 md:w-64">
-                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative w-full sm:max-w-xs sm:flex-1">
+                  <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     placeholder="Search name, major task..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-9"
+                    className="h-9 pl-10"
                   />
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <Button
                     onClick={handleAddMyTaskClick}
                     disabled={creatingMySession || sessionReadOnly}
-                    className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-4 h-9 rounded-lg flex items-center gap-2 shadow-sm"
+                    className="flex h-9 flex-1 items-center gap-2 rounded-lg bg-[#3838EC] px-4 text-white shadow-sm hover:bg-[#2d2dbd] sm:flex-none"
                   >
-                    <PlusIcon className="w-4 h-4" />
+                    <PlusIcon className="h-4 w-4" />
                     {creatingMySession ? "Preparing..." : "Add My Task"}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 relative h-9"
+                    className="relative h-9 gap-2"
                     onClick={() => setIsFilterOpen(true)}
                   >
-                    <FilterIcon className="w-4 h-4" />
+                    <FilterIcon className="h-4 w-4" />
                     Filter
                     {activeFiltersCount > 0 && (
-                      <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-[#3838EC] text-white text-xs rounded-full">
+                      <Badge className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#3838EC] p-0 text-xs text-white">
                         {activeFiltersCount}
                       </Badge>
                     )}
@@ -1459,7 +1453,7 @@ export default function CheckInPage() {
                   viewBox="0 0 300 300"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="opacity-80"
+                  className="h-auto w-full max-w-[240px] opacity-80 sm:max-w-[300px]"
                 >
                   <circle cx="150" cy="120" r="40" fill="#E0E7FF" />
                   <circle cx="140" cy="115" r="5" fill="#3838EC" />
@@ -1557,8 +1551,8 @@ export default function CheckInPage() {
             <div className="flex-1 flex flex-col">
               {/* Tasks Header with Search and Filter */}
               <div className="bg-white dark:bg-gray-800 rounded-t-lg border border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                       Tasks
                     </h2>
@@ -1567,44 +1561,55 @@ export default function CheckInPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex-1 md:w-64">
-                      <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="relative w-full sm:w-64">
+                      <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                       <Input
                         placeholder="Search name, major task..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-9"
+                        className="h-9 pl-10"
                       />
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
                     <Button
                       onClick={() => {
-                        setAddAsMidWeekTask(false);
+                        // After the first weekly batch, new approval tasks must
+                        // be midweek drafts (max 3). Never create PERSONAL_TODO
+                        // from this CTA — leftovers already show Submit.
+                        if (alreadySubmitted && !canAddMidWeekTask) {
+                          toast.error(
+                            "You can add at most 3 additional tasks for approval this week.",
+                          );
+                          return;
+                        }
+                        setAddAsMidWeekTask(Boolean(alreadySubmitted));
                         setTargetSessionId(
                           currentSession?.checkinoutSessionId || null,
                         );
                         setIsAddTaskOpen(true);
                       }}
                       disabled={sessionReadOnly}
-                      className="bg-[#3838EC] hover:bg-[#2d2dbd] text-white px-4 h-9 rounded-lg flex items-center gap-2 shadow-sm"
+                      className="flex h-9 flex-1 items-center gap-2 rounded-lg bg-[#3838EC] px-4 text-white shadow-sm hover:bg-[#2d2dbd] sm:flex-none"
                     >
-                      <PlusIcon className="w-4 h-4" />
+                      <PlusIcon className="h-4 w-4" />
                       Add a Task
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-2 relative h-9"
+                      className="relative h-9 gap-2"
                       onClick={() => setIsFilterOpen(true)}
                     >
-                      <FilterIcon className="w-4 h-4" />
+                      <FilterIcon className="h-4 w-4" />
                       Filter
                       {activeFiltersCount > 0 && (
-                        <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-[#3838EC] text-white text-xs rounded-full">
+                        <Badge className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#3838EC] p-0 text-xs text-white">
                           {activeFiltersCount}
                         </Badge>
                       )}
                     </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1653,9 +1658,9 @@ export default function CheckInPage() {
                 )}
               />
 
-              {/* Add Mid Week Task Button */}
+              {/* Additional tasks for approval (after initial weekly batch, max 3) */}
               {showMidWeekButton && (
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex flex-col items-center gap-2">
                   <Button
                     onClick={() => {
                       setAddAsMidWeekTask(true);
@@ -1668,8 +1673,17 @@ export default function CheckInPage() {
                     className="bg-white dark:bg-gray-800 border-2 border-dashed border-[#3838EC] text-[#3838EC] hover:bg-[#ECECFF] dark:hover:bg-[#3838EC]/10 px-6 py-2 rounded-lg flex items-center gap-2"
                   >
                     <PlusIcon className="w-4 h-4" />
-                    Add a Mid Week Task ({midWeekTaskCount}/3)
+                    {alreadySubmitted
+                      ? `Add additional task for approval (${midWeekTaskCount}/3)`
+                      : `Add a Mid Week Task (${midWeekTaskCount}/3)`}
                   </Button>
+                  {alreadySubmitted && (
+                    <p className="max-w-md text-center text-xs text-gray-500 dark:text-gray-400">
+                      After the first weekly batch of 6–10, you can send up to 3
+                      more tasks. Use <span className="font-semibold">Submit</span>{" "}
+                      on each draft row to send it for approval.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1687,12 +1701,14 @@ export default function CheckInPage() {
           if (!open) {
             setEditingTask(null);
             setTargetSessionId(null);
+            setAddAsMidWeekTask(false);
           }
         }}
         onSuccess={() => {
           setIsAddTaskOpen(false);
           setEditingTask(null);
           setTargetSessionId(null);
+          setAddAsMidWeekTask(false);
         }}
         sessionId={targetSessionId || undefined}
         editingTask={editingTask}

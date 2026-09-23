@@ -1,6 +1,8 @@
 import React from "react";
 import { TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
+import type { ColumnHeaderControls } from "@/hooks/table/useTableColumnControls";
 
 interface KPITableHeaderProps {
   showBulkActions: boolean;
@@ -10,6 +12,7 @@ interface KPITableHeaderProps {
   columnHeaders: { firstColumn: string; secondColumn: string | null };
   showReasonColumn: boolean;
   enableSorting?: boolean;
+  getHeaderProps: (key: string) => ColumnHeaderControls;
 }
 
 const KPITableHeader: React.FC<KPITableHeaderProps> = ({
@@ -20,6 +23,7 @@ const KPITableHeader: React.FC<KPITableHeaderProps> = ({
   columnHeaders,
   showReasonColumn,
   enableSorting = false,
+  getHeaderProps,
 }) => {
   return (
     <TableHeader>
@@ -38,34 +42,74 @@ const KPITableHeader: React.FC<KPITableHeaderProps> = ({
         )}
 
         <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-          {columnHeaders.firstColumn}
+          <SortableFilterableHeader
+            label={columnHeaders.firstColumn}
+            {...getHeaderProps("firstColumn")}
+          />
         </TableHead>
 
         {showLevelSpecificColumn && (
           <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-            {columnHeaders.secondColumn}
+            <SortableFilterableHeader
+              label={columnHeaders.secondColumn ?? ""}
+              {...getHeaderProps("secondColumn")}
+            />
           </TableHead>
         )}
 
         <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-          Baseline
+          <SortableFilterableHeader
+            label="Baseline"
+            filterable={false}
+            {...getHeaderProps("baseline")}
+          />
         </TableHead>
         <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-          Weight (%)
+          <SortableFilterableHeader
+            label="Weight (%)"
+            filterable={false}
+            {...getHeaderProps("weight")}
+          />
         </TableHead>
         <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-          Targets
+          <SortableFilterableHeader
+            label="Targets"
+            filterable={false}
+            {...getHeaderProps("targets")}
+          />
         </TableHead>
         <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-          Mode
+          <SortableFilterableHeader
+            label="Mode"
+            filterType="select"
+            filterOptions={[
+              { value: "AGGREGATED", label: "Aggregated" },
+              { value: "INDIVIDUAL", label: "Individual" },
+              { value: "HYBRID", label: "Hybrid" },
+            ]}
+            {...getHeaderProps("mode")}
+          />
         </TableHead>
         <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-          Status
+          <SortableFilterableHeader
+            label="Status"
+            filterType="select"
+            filterOptions={[
+              { value: "NOT_SUBMITTED", label: "Not Submitted" },
+              { value: "PENDING", label: "Pending" },
+              { value: "APPROVED", label: "Approved" },
+              { value: "REJECTED", label: "Rejected" },
+            ]}
+            {...getHeaderProps("status")}
+          />
         </TableHead>
 
         {showReasonColumn && (
           <TableHead className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider px-6 py-3">
-            Reason
+            <SortableFilterableHeader
+              label="Reason"
+              {...getHeaderProps("reason")}
+            />
           </TableHead>
         )}
 

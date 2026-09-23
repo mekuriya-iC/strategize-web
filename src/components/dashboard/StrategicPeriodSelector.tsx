@@ -178,7 +178,7 @@ export default function StrategicPeriodSelector({
     toast.success(`Switched to ${quarter} ${yearLabel}`);
   };
 
-  if (loading) {
+  if (loading && strategicPeriods.length === 0) {
     return (
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <Calendar className="w-4 h-4 text-gray-400" />

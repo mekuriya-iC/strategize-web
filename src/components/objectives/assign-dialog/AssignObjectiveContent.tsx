@@ -46,17 +46,6 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
         return objective.type || "CORPORATE";
     }, [objective]);
 
-    // Compute tabs count for grid layout
-    const getTabCount = () => {
-        let count = 0;
-        if (effectiveLevel === "CORPORATE") count += 2; // Division + Dept
-        if (effectiveLevel === "DIVISION") count += 2; // Dept + Personnel
-        if (effectiveLevel === "DEPARTMENT") count += 1; // Personnel
-        return count || 1;
-    };
-
-
-
     return (
         <div className="space-y-6">
             {/* Smart Assignment Info */}
@@ -71,7 +60,7 @@ export function AssignObjectiveContent({ onSuccess, onClose }: { onSuccess?: () 
                 value={assigneeType}
                 onValueChange={(value) => setAssigneeType(value as AssigneeType)}
             >
-                <TabsList className={`grid w-full grid-cols-${getTabCount()}`}>
+                <TabsList className="w-full [&>button]:flex-1">
                     {effectiveLevel === "CORPORATE" && (
                         <TabsTrigger value="DIVISION" className="flex items-center gap-2">
                             <Building2 className="w-4 h-4" />

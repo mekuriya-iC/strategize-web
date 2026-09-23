@@ -128,8 +128,8 @@ export function TaskRequestsView() {
     GET_PENDING_TASK_COLLABORATION_REQUESTS,
     {
       skip: true,
-      fetchPolicy: "cache-and-network",
-      pollInterval: 30_000,
+      fetchPolicy: "cache-first",
+      pollInterval: 120_000,
       notifyOnNetworkStatusChange: true,
     },
   );
@@ -137,8 +137,8 @@ export function TaskRequestsView() {
     GET_SENT_TASK_COLLABORATION_REQUESTS,
     {
       skip: true,
-      fetchPolicy: "cache-and-network",
-      pollInterval: 30_000,
+      fetchPolicy: "cache-first",
+      pollInterval: 120_000,
       notifyOnNetworkStatusChange: true,
     },
   );
@@ -249,7 +249,7 @@ export function TaskRequestsView() {
       </header>
 
       <Tabs defaultValue="received">
-        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:min-w-72">
+        <TabsList className="w-full [&>button]:flex-1 sm:w-auto sm:min-w-72 sm:[&>button]:flex-none">
           <TabsTrigger value="received">
             Received
             {!receivedQuery.loading && (

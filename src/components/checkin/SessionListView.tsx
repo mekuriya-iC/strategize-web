@@ -13,7 +13,7 @@ import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
 import { REMOVE_CHECKINOUT_SESSION, UPDATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 import {
-  getLeadershipCheckinoutSessions,
+  getSuperAdminCheckinoutSessions,
   groupCheckinoutSessionsByWeek,
   type CheckinoutSessionWeekGroup,
   type CheckinoutSessionLike,
@@ -163,11 +163,15 @@ export default function SessionListView({
     [ownData],
   );
   const allSessions = useMemo<CheckinoutSessionLike[]>(
-    () =>
-      (allData?.checkinoutSessions?.items || []).filter(
+    () => {
+      const sessions = (allData?.checkinoutSessions?.items || []).filter(
         (session: CheckinoutSessionLike) => session.employee,
-      ),
-    [allData],
+      );
+      return isSuperAdmin
+        ? getSuperAdminCheckinoutSessions(sessions, currentUser?.employeeId)
+        : sessions;
+    },
+    [allData, isSuperAdmin, currentUser?.employeeId],
   );
   const activeTeamSessions = useMemo(
     () =>
@@ -206,8 +210,10 @@ export default function SessionListView({
     );
   }, [allSessions, isAdminOrHR, ownSessions, teamSessions, today]);
   const activeLeadershipSessions = useMemo(
-    () => getLeadershipCheckinoutSessions(activeAllSessions),
-    [activeAllSessions],
+    () => activeAllSessions.filter(
+      (session) => session.employee?.employeeId !== currentUser?.employeeId,
+    ),
+    [activeAllSessions, currentUser?.employeeId],
   );
   const visibleTeamSessions = isSuperAdmin
     ? activeLeadershipSessions

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { NetworkStatus, useQuery } from "@apollo/client";
 import {
   GET_OBJECTIVES,
@@ -11,12 +11,22 @@ import {
   GetObjectiveResponse,
 } from "@/types/graphql";
 import { useCacheStore } from "@/stores/cacheStore";
+import { useAuthStore } from "@/stores";
+import {
+  isPersonalObjectiveAssignment,
+  usesPersonalObjectiveScope,
+} from "@/lib/objectives/personalObjectiveScope";
 
 export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
+  const user = useAuthStore((state) => state.user);
+  const personalOnly = usesPersonalObjectiveScope(user?.role);
   const queryVariables = {
     page: 1,
     limit: 10,
     ...variables,
+    ...(personalOnly
+      ? { assigneeId: user?.employeeId, organizationId: user?.organizationId }
+      : {}),
   };
 
   const { data, loading, error, refetch, networkStatus } = useQuery<
@@ -24,7 +34,8 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     ObjectivesQueryVariables
   >(GET_OBJECTIVES, {
     variables: queryVariables,
-    fetchPolicy: "cache-first",
+    skip: !user?.employeeId,
+    fetchPolicy: personalOnly ? "cache-and-network" : "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
     // Keep showing cached rows while a background refresh runs.
@@ -37,13 +48,20 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
   const markRefetched = useCacheStore((state) => state.markRefetched);
 
   useEffect(() => {
-    if (!objectivesRefetchPending) return;
+    if (!objectivesRefetchPending || !user?.employeeId) return;
 
     void refetch().then(
       () => markRefetched("objectives"),
       () => undefined,
     );
-  }, [objectivesRefetchPending, refetch, markRefetched]);
+  }, [objectivesRefetchPending, refetch, markRefetched, user?.employeeId]);
+
+  const visibleObjectives = useMemo(() => {
+    const rows = data?.objectives?.items || [];
+    return personalOnly
+      ? rows.filter((objective) => isPersonalObjectiveAssignment(objective, user?.employeeId))
+      : rows;
+  }, [data?.objectives?.items, personalOnly, user?.employeeId]);
 
   const hasCachedData = Boolean(data?.objectives?.items?.length);
   const isInitialLoading =
@@ -52,7 +70,7 @@ export const useObjectives = (variables: ObjectivesQueryVariables = {}) => {
     networkStatus === NetworkStatus.loading;
 
   return {
-    objectives: data?.objectives?.items || [],
+    objectives: visibleObjectives,
     meta: data?.objectives?.meta,
     loading: isInitialLoading,
     refreshing:

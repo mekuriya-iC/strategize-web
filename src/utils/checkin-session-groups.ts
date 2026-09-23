@@ -13,6 +13,7 @@ export type CheckinoutSessionLike = {
   supervisor?: {
     employeeId?: string | null;
     fullName?: string | null;
+    role?: string | null;
   } | null;
   strategicPeriod?: {
     strategicPeriodId?: string | null;
@@ -24,6 +25,19 @@ export type CheckinoutSessionWeekGroup<T extends CheckinoutSessionLike> = {
   key: string;
   representativeSession: T;
   participantSessions: T[];
+};
+
+/** Corporate sessions are identified by their supervisor, not participant rank. */
+export const getSuperAdminCheckinoutSessions = <T extends CheckinoutSessionLike>(
+  sessions: T[],
+  viewerId?: string | null,
+): T[] => {
+  if (!viewerId) return [];
+  return sessions.filter((session) =>
+    session.supervisor?.role === "SUPER_ADMIN" ||
+    session.supervisor?.employeeId === viewerId ||
+    session.employee?.employeeId === viewerId,
+  );
 };
 
 export const getLeadershipCheckinoutSessions = <

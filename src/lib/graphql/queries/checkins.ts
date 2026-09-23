@@ -46,6 +46,7 @@ export const GET_CHECKINOUT_SESSIONS = gql`
         }
         supervisor {
           employeeId
+          role
           fullName
           email
           role
@@ -115,6 +116,7 @@ export const GET_CHECKINOUT_SESSION = gql`
       }
       supervisor {
         employeeId
+        role
         fullName
         email
       }

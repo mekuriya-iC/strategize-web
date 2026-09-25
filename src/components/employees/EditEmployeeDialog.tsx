@@ -29,6 +29,7 @@ import {
   Employee,
 } from "@/types/graphql";
 import { useRoles } from "@/hooks/permissions/usePermissionManagement";
+import { ReportingManagerSelect } from './ReportingManagerSelect';
 
 interface EditEmployeeDialogProps {
   children: React.ReactNode;
@@ -69,6 +70,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
   onSuccess,
 }) => {
   const [open, setOpen] = useState(false);
+  const [managerId, setManagerId] = useState(employee.managerId || '');
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
@@ -92,6 +94,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
   // Initialize form data when employee prop changes or dialog opens
   useEffect(() => {
     if (employee && open) {
+      setManagerId(employee.managerId || '');
       // Format phone number (remove +251 prefix if present)
       const phoneNumber = employee.phoneNumber.startsWith("+251")
         ? employee.phoneNumber.slice(4)
@@ -248,6 +251,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
       picture: formData.picture,
       title: formData.title,
     };
+    if (managerId !== (employee.managerId || '')) input.managerId = managerId || null;
 
     // Only include password if it's provided
     if (formData.password.trim()) {
@@ -370,6 +374,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({
           </div>
 
           {/* Row 3: Role and Status */}
+          <ReportingManagerSelect employee={employee} value={managerId} onChange={setManagerId} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2 sm:space-y-3">
               <Label htmlFor="role">Role *</Label>

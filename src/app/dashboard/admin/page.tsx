@@ -1,4 +1,6 @@
 "use client";
+import CeoAdministration from "@/components/admin/CeoAdministration";
+import { useAuthStore } from "@/stores";
 
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
@@ -18,6 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Filter, ChevronDown, Shield, Users, Settings, Database, Calculator } from "lucide-react";
 
 export default function AdminPanelPage() {
+  const role = useAuthStore((state) => state.user?.role);
+  return role === 'CEO' ? <CeoAdministration initial="employees" /> : <AdminPanelPageContent />;
+}
+
+function AdminPanelPageContent() {
   const router = useRouter();
   const { admin, guards, isLoading: permissionsLoading } = usePermissions();
 
@@ -33,7 +40,7 @@ export default function AdminPanelPage() {
   const admins = useMemo(() => {
     if (!data?.employees?.items) return [];
     return data.employees.items.filter(
-      (emp: Employee) => emp.role === "ADMIN" || emp.role === "SUPER_ADMIN"
+      (emp: Employee) => emp.role === "ADMIN" || emp.role === "SUPER_ADMIN" || emp.role === "CEO"
     );
   }, [data]);
 

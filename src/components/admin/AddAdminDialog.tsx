@@ -180,6 +180,7 @@ export default function AddAdminDialog({ children, onAddSuccess }: AddAdminDialo
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="CEO">CEO (monitoring & leadership approvals)</SelectItem>
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -232,7 +233,6 @@ export default function AddAdminDialog({ children, onAddSuccess }: AddAdminDialo
     </Dialog>
   );
 }
-
 
 
 

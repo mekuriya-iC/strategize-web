@@ -127,6 +127,7 @@ const GET_TEAM_PERFORMANCE = gql`
       topPerformer {
         employeeId
         employee {
+          employeeId
           fullName
         }
         totalScore

@@ -182,6 +182,7 @@ export default function EditAdminDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="CEO">CEO (monitoring & leadership approvals)</SelectItem>
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -234,7 +235,6 @@ export default function EditAdminDialog({
     </Dialog>
   );
 }
-
 
 
 

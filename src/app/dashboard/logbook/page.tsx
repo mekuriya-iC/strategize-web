@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useAuthStore } from '@/stores';
+import { CeoLogbookMonitor } from '@/components/logbook/CeoLogbookMonitor';
 import { useQuery } from "@apollo/client";
 import { GET_LOGBOOK_ENTRIES } from "@/lib/graphql/queries/logbook";
 import { GET_ME } from "@/lib/graphql/queries/auth";
@@ -42,6 +44,11 @@ const mapEntryToFrontend = (entry: any): FrontendLogbookItem => ({
 });
 
 export default function LogbookPage() {
+  const role = useAuthStore((state) => state.user?.role);
+  return role === 'CEO' ? <CeoLogbookMonitor /> : <PersonalLogbookPage />;
+}
+
+function PersonalLogbookPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isAddEntryOpen, setIsAddEntryOpen] = useState(false);

@@ -10,12 +10,14 @@ import {
   AppearanceSettings,
 } from "@/components/settings";
 import { User, Shield, Bell, Palette } from "lucide-react";
+import { useAuthStore } from "@/stores";
 
 type SettingsTab = "profile" | "security" | "notifications" | "appearance";
 
 const validTabs: SettingsTab[] = ["profile", "security", "notifications", "appearance"];
 
 function SettingsContent() {
+  const isCeo = useAuthStore((state) => state.user?.role === "CEO");
   const searchParams = useSearchParams();
   const router = useRouter();
   const tabParam = searchParams.get("tab") as SettingsTab | null;
@@ -66,7 +68,7 @@ function SettingsContent() {
       icon: <Palette className="h-4 w-4" />,
       component: <AppearanceSettings />,
     },
-  ];
+  ].filter((tab) => !isCeo || tab.id === "security" || tab.id === "appearance");
 
   return (
     <div className="min-h-[70vh] flex flex-col gap-4 sm:gap-6">
@@ -80,7 +82,7 @@ function SettingsContent() {
 
       {/* Settings Content */}
       <Tabs
-        value={activeTab}
+        value={isCeo && !tabs.some((tab) => tab.id === activeTab) ? "security" : activeTab}
         onValueChange={handleTabChange}
         className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8"
       >
@@ -136,4 +138,3 @@ export default function SettingsPage() {
     </Suspense>
   );
 }
-

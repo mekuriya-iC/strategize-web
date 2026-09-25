@@ -42,6 +42,7 @@ export default function KpiWeightPage() {
   // Determine if user should see hierarchical view
   const canViewHierarchical = 
     currentUser.role === 'SUPER_ADMIN' || 
+    currentUser.role === 'CEO' ||
     currentUser.role === 'ADMIN' || 
     currentUser.role === 'DIRECTOR' ||
     currentUser.role === 'MANAGER';

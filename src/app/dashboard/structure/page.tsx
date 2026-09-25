@@ -34,6 +34,7 @@ function TemplatesPanel({ canManage }: { canManage: boolean }) {
 
 export default function StructurePage() {
   const { root, loading, error, refetch } = useOrgChart();
+  const isCeo = useAuthStore((state) => state.user?.role === "CEO");
   const canManageStructure = useAuthStore(
     (state) => state.user?.role === "SUPER_ADMIN",
   );
@@ -144,16 +145,20 @@ export default function StructurePage() {
 
         {error && !loading && (
           <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 sm:px-6">
-            Could not load live structure — showing sample data. {error.message}
+            {isCeo ? "Could not load organization structure." : "Could not load live structure — showing sample data."} {error.message}
           </div>
         )}
 
-        <StructureBuilder
+        {isCeo && !root ? (
+          <p className="p-6 text-sm text-muted-foreground" role="status">
+            {loading ? "Loading organization structure…" : error ? "Refresh to try again. No sample data is shown." : "No organization structure has been configured."}
+          </p>
+        ) : <StructureBuilder
           templateId="live"
           liveData={root}
           liveLoading={loading}
           canManage={canManageStructure}
-        />
+        />}
       </div>
     </div>
   );

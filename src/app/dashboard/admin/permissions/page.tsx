@@ -1,4 +1,6 @@
 "use client";
+import CeoAdministration from "@/components/admin/CeoAdministration";
+import { useAuthStore } from "@/stores";
 
 import { useState } from "react";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
@@ -13,6 +15,11 @@ import UserRoleAssignments from "@/components/admin/permissions/UserRoleAssignme
 import PermissionOverrides from "@/components/admin/permissions/PermissionOverrides";
 
 export default function PermissionsPage() {
+  const role = useAuthStore((state) => state.user?.role);
+  return role === 'CEO' ? <CeoAdministration initial="roles" /> : <PermissionsPageContent />;
+}
+
+function PermissionsPageContent() {
   const router = useRouter();
   const { admin, guards, isLoading } = usePermissions();
   const [activeTab, setActiveTab] = useState("roles");

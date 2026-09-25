@@ -58,6 +58,7 @@ const GET_REPORTS_SUMMARY = gql`
       lowestScore
       topPerformer {
         employee {
+          employeeId
           fullName
         }
         overallPercentage
@@ -161,12 +162,12 @@ function ReportsContent() {
     const raw = searchParams.get("tab");
     const paramTab =
       raw === "my-submissions" ? "submissions" : raw;
-    if (paramTab) return paramTab;
+    if (paramTab && !(user?.role === 'CEO' && paramTab === 'submissions')) return paramTab;
 
     if (hasFullAccess) return "kpi-performance";
     if (isManager) return "performance";
     return "individual";
-  }, [searchParams, hasFullAccess, isManager]);
+  }, [searchParams, hasFullAccess, isManager, user?.role]);
 
   const [activeTab, setActiveTab] = useState<string>(defaultTabValue);
   // Keep visited tab panels mounted so Apollo queries do not cold-restart
@@ -498,11 +499,11 @@ function ReportsContent() {
           </TabsTrigger>
 
           {/* My Submissions - All users */}
-          <TabsTrigger value="submissions" className="gap-2">
+          {user?.role !== 'CEO' && <TabsTrigger value="submissions" className="gap-2">
             <Send className="h-4 w-4" />
             <span className="hidden sm:inline">My Submissions</span>
             <span className="sm:hidden">Submissions</span>
-          </TabsTrigger>
+          </TabsTrigger>}
         </TabsList>
 
         {/* KPI Performance Analytics (Full Access Only) */}
@@ -575,7 +576,7 @@ function ReportsContent() {
         )}
 
         {/* My Submissions (All Users) */}
-        {visitedTabs.has("submissions") && (
+        {user?.role !== 'CEO' && visitedTabs.has("submissions") && (
           <TabsContent
             value="submissions"
             forceMount

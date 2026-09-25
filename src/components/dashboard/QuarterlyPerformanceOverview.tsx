@@ -29,7 +29,7 @@ const scopeLabels = {
 } as const;
 
 function primaryLevelForRole(role?: string): ScorecardLevel {
-  if (["SUPER_ADMIN", "ADMIN", "HR"].includes(role || "")) {
+  if (["SUPER_ADMIN", "ADMIN", "HR", "CEO"].includes(role || "")) {
     return "CORPORATE";
   }
   if (role === "DIRECTOR") return "DIVISION";

@@ -106,7 +106,7 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
   );
 
   const shouldMakeQueries = Boolean(
-    user &&
+    user && user.role !== 'CEO' &&
       (user.role === "SUPER_ADMIN" ||
         user.role === "ADMIN" ||
         approverRole === "DIVISION" ||
@@ -265,6 +265,7 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
     {
       variables: {
         entryStatus: "SUBMITTED",
+        approverUserId: user?.role === 'CEO' ? user.employeeId : undefined,
         limit: BADGE_LIMIT,
         page: 1,
       },
@@ -276,12 +277,13 @@ export function usePendingApprovalsCount(): PendingApprovalsCount {
   );
 
   const logbookCount = useMemo(() => {
+    if (user?.role === 'CEO') return logbookData?.logbookEntries?.meta?.totalItems ?? 0;
     const entries = logbookData?.logbookEntries?.items || [];
     return entries.filter(
       (e: { owner?: { employeeId?: string } }) =>
         e.owner?.employeeId !== user?.employeeId,
     ).length;
-  }, [logbookData, user?.employeeId]);
+  }, [logbookData, user?.employeeId, user?.role]);
 
   const submissionsLoading =
     divisionObj.loading ||

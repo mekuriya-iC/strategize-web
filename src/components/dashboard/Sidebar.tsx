@@ -1,5 +1,6 @@
 "use client";
 import Logo from "@/components/Logo";
+import { canCeoAccessRoute } from '@/lib/rbac/routePolicy';
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/stores";
@@ -760,12 +761,16 @@ function CollapsibleCategory({
   // Filter links based on permissions
   const filteredLinks = category.links
     .filter((link) => {
+      if (userRole === 'CEO' && !canCeoAccessRoute(link.href)) return false;
       if (!can(link.permission)) return false;
       if (link.managerOnly && !isManagerRole) return false;
       if (link.rolesOnly && !link.rolesOnly.includes(userRole || "")) return false;
       return true;
     })
     .map((link) =>
+      link.href === '/dashboard/approvals' && userRole === 'CEO'
+        ? { ...link, label: 'Leadership Logbook Approvals' }
+        :
       link.href === "/dashboard/approvals" &&
       (userRole === "ADMIN" || userRole === "SUPER_ADMIN")
         ? { ...link, label: "Approvals" }

@@ -265,6 +265,7 @@ export const GET_LOGBOOK_ENTRIES = gql`
         updatedAt
         owner {
           employeeId
+          managerId
           fullName
           email
           title
@@ -309,12 +310,14 @@ export const GET_LOGBOOK_ENTRIES = gql`
  */
 export const GET_LOGBOOK_PENDING_BADGE = gql`
   query GetLogbookPendingBadge(
+    $approverUserId: ID
     $entryStatus: LogbookEntryStatus
     $limit: Int!
     $page: Int!
   ) {
     logbookEntries(
       entryStatus: $entryStatus
+      approverUserId: $approverUserId
       limit: $limit
       page: $page
     ) {

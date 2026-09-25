@@ -1,4 +1,6 @@
 "use client";
+import CeoAdministration from "@/components/admin/CeoAdministration";
+import { useAuthStore } from "@/stores";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +69,11 @@ const TIMEZONES = [
 ];
 
 export default function SystemConfigPage() {
+  const role = useAuthStore((state) => state.user?.role);
+  return role === 'CEO' ? <CeoAdministration initial="configuration" /> : <SystemConfigPageContent />;
+}
+
+function SystemConfigPageContent() {
   const { user } = useAuth();
   // TODO: Get organizationId from proper source when organization field is added to Employee type
   const organizationId = user?.organizationId || "";

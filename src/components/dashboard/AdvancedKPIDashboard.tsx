@@ -54,6 +54,7 @@ const GET_TEAM_PERFORMANCE = gql`
       results {
         employeeId
         employee {
+          employeeId
           fullName
         }
         overallPercentage

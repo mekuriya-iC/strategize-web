@@ -54,6 +54,7 @@ export function canRoleAccessRoute(
   pathname: string,
 ): boolean {
   if (!userRole) return false;
+  if (userRole === 'CEO') return canCeoAccessRoute(pathname);
 
   const policy = getRoutePolicy(pathname);
   if (!policy) return true;
@@ -65,6 +66,20 @@ export function canRoleAccessRoute(
   const userLevel = ROLE_HIERARCHY[userRole] ?? -1;
   const requiredLevel = ROLE_HIERARCHY[policy.minimumRole] ?? Number.MAX_SAFE_INTEGER;
   return userLevel >= requiredLevel;
+}
+
+/** Deliberate observer surface, independent from the administrator hierarchy. */
+export function canCeoAccessRoute(path: string): boolean {
+  const [pathname, query] = path.split('?');
+  if (new URLSearchParams(query).get('tab') === 'submissions') return false;
+  const exact = [
+    '/dashboard', '/dashboard/structure', '/dashboard/task-completion',
+    '/dashboard/performance', '/dashboard/kpi-scorecard', '/dashboard/kpi-weight',
+    '/dashboard/flagged-kpis', '/dashboard/reports', '/dashboard/approvals', '/dashboard/logbook',
+    '/dashboard/admin', '/dashboard/admin/permissions', '/dashboard/admin/system-config',
+    '/dashboard/admin/logs', '/dashboard/settings',
+  ];
+  return exact.includes(pathname) || /^\/dashboard\/(kpis|objectives)\/[0-9a-f-]{36}$/.test(pathname);
 }
 
 export function getRouteRoleRequirement(pathname: string): string | null {

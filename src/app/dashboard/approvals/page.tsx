@@ -135,24 +135,25 @@ export default function ApprovalsPage() {
       : "objectives";
   });
   const [logbookStatusFilter, setLogbookStatusFilter] = useState("all");
+  const [logbookPage, setLogbookPage] = useState(1);
   const [selectedLogbookEntry, setSelectedLogbookEntry] =
     useState<LogbookReviewEntry | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
   // Get logbook entries for approval
-  // NOTE: Backend returns ALL entries (filtered by status), frontend should filter by hierarchy
-  // For now, we fetch all SUBMITTED entries and the user's role/permissions determine what they can approve
+  // The server enforces the approver's hierarchy; UI checks are an additional safeguard.
   const { data: departmentsData, loading: departmentsLoading } = useQuery(
     GET_LOGBOOK_REVIEW_DEPARTMENTS,
     {
       variables: { page: 1, limit: 1000 },
-      skip: !user?.employeeId,
+      skip: !user?.employeeId || user.role === 'CEO',
     },
   );
 
   const {
     data: logbookData,
     loading: logbookLoading,
+    error: logbookError,
     refetch: refetchLogbook,
   } = useQuery(GET_LOGBOOK_ENTRIES, {
     variables: {
@@ -162,7 +163,7 @@ export default function ApprovalsPage() {
           : undefined,
       approverUserId: user?.employeeId,
       limit: 100,
-      page: 1,
+      page: user?.role === 'CEO' ? logbookPage : 1,
     },
     skip: !user?.employeeId,
   });
@@ -206,7 +207,7 @@ export default function ApprovalsPage() {
   );
   const logbookEntries = useMemo(
     () =>
-      rawLogbookEntries.filter((entry) =>
+      user?.role === 'CEO' ? rawLogbookEntries : rawLogbookEntries.filter((entry) =>
         canReviewLogbookOwner(entry.owner, user, reviewDepartments),
       ),
     [rawLogbookEntries, user, reviewDepartments],
@@ -279,7 +280,7 @@ export default function ApprovalsPage() {
   // Coordinators and above can access approvals
   // NORMAL users can only view their own submissions
   const canAccessApprovals =
-    guards.isEmployee || guards.canApprove || guards.isCoordinator;
+    user?.role === 'CEO' || guards.isEmployee || guards.canApprove || guards.isCoordinator;
 
   if (!canAccessApprovals) {
     return (
@@ -443,22 +444,22 @@ export default function ApprovalsPage() {
           {/* Workflow Content - Tabbed View */}
           <div className="px-0 sm:px-6">
             <Tabs
-              value={activeTab}
+              value={user?.role === 'CEO' ? 'logbook' : activeTab}
               onValueChange={setActiveTab}
               className="w-full"
             >
               <TabsList className="w-full max-w-md [&>button]:flex-1">
-                <TabsTrigger value="objectives" className="text-xs sm:text-sm">
+                {user?.role !== 'CEO' && <TabsTrigger value="objectives" className="text-xs sm:text-sm">
                   Objectives & KPIs
-                </TabsTrigger>
+                </TabsTrigger>}
                 <TabsTrigger value="logbook" className="text-xs sm:text-sm">
                   Logbook Entries
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="objectives" className="mt-6">
+              {user?.role !== 'CEO' && <TabsContent value="objectives" className="mt-6">
                 <SubmissionApprovalsTable listMode="inbound" />
-              </TabsContent>
+              </TabsContent>}
 
               <TabsContent value="logbook" className="mt-6 space-y-4">
                 {/* Logbook Filter */}
@@ -469,7 +470,7 @@ export default function ApprovalsPage() {
                   </p>
                   <Select
                     value={logbookStatusFilter}
-                    onValueChange={setLogbookStatusFilter}
+                    onValueChange={(value) => { setLogbookStatusFilter(value); setLogbookPage(1); }}
                   >
                     <SelectTrigger className="w-full sm:w-40">
                       <SelectValue placeholder="All Status" />
@@ -485,7 +486,9 @@ export default function ApprovalsPage() {
                 </div>
 
                 {/* Logbook Table */}
-                {logbookLoading || departmentsLoading ? (
+                {user?.role === 'CEO' && logbookError ? (
+                  <p role="alert" className="text-destructive">Could not load leadership approvals. {logbookError.message}</p>
+                ) : logbookLoading || departmentsLoading ? (
                   <div className="bg-white dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-gray-800 p-12 text-center">
                     <div className="text-gray-500">Loading...</div>
                   </div>
@@ -609,6 +612,15 @@ export default function ApprovalsPage() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+                {user?.role === 'CEO' && (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">Page {logbookPage} · {logbookData?.logbookEntries?.meta?.totalItems ?? 0} leadership entries</p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" disabled={logbookLoading || logbookPage === 1} onClick={() => setLogbookPage(logbookPage - 1)}>Previous</Button>
+                      <Button variant="outline" disabled={logbookLoading || logbookPage >= (logbookData?.logbookEntries?.meta?.totalPages || 1)} onClick={() => setLogbookPage(logbookPage + 1)}>Next</Button>
+                    </div>
                   </div>
                 )}
               </TabsContent>

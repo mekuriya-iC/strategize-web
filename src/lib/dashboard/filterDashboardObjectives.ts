@@ -27,7 +27,7 @@ export function filterDashboardObjectives({
   }
 
   // Corporate landing view: only top-level corporate objectives (no assignee)
-  if ((userRole === "ADMIN" || userRole === "SUPER_ADMIN") && !selectedUnit) {
+  if ((userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "CEO") && !selectedUnit) {
     filtered = filtered.filter((obj) => !obj.assigneeType && !obj.assigneeId);
   }
 

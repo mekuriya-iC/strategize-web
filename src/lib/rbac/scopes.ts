@@ -34,6 +34,7 @@ export function getScopeLevel(role: EmployeeRole | string | undefined): ScopeLev
     case 'SUPER_ADMIN':
       return 'SYSTEM';
     case 'ADMIN':
+    case 'CEO':
       return 'CORPORATE';
     case 'DIRECTOR':
       return 'DIVISION';
@@ -338,4 +339,3 @@ export function getCreatableObjectiveTypes(
       return [];
   }
 }
-

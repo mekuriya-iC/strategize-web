@@ -11,13 +11,15 @@ import DepartmentScorecard from "./DepartmentScorecard";
 import DivisionScorecard from "./DivisionScorecard";
 import CorporateScorecard from "./CorporateScorecard";
 import CascadeMappingManager from "./CascadeMappingManager";
+import { useAuthStore } from '@/stores';
 
 export default function KpiScorecardDashboard() {
   const { can } = usePermissions();
-  const canManageKpis = true; // TODO: Add proper permission check
+  const role = useAuthStore((state) => state.user?.role);
+  const canManageKpis = role !== 'CEO'; // Preserve existing roles; CEO is an observer.
   const canReadAll = can("evaluations:read_all");
 
-  const [activeTab, setActiveTab] = useState("individual");
+  const [activeTab, setActiveTab] = useState(role === 'CEO' ? 'corporate' : 'individual');
   const [capFinalScore, setCapFinalScore] = useState(false);
 
   // Fetch active period for display
@@ -106,13 +108,12 @@ export default function KpiScorecardDashboard() {
           >
             Corporate
           </TabsTrigger>
-          <TabsTrigger
+          {canManageKpis && <TabsTrigger
             value="mappings"
-            disabled={!canManageKpis}
             className="shrink-0 text-xs sm:text-sm"
           >
             Mappings
-          </TabsTrigger>
+          </TabsTrigger>}
         </TabsList>
 
         <TabsContent value="individual" className="space-y-6">

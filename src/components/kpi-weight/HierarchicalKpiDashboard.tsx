@@ -105,7 +105,7 @@ export function HierarchicalKpiDashboard({ periodId }: HierarchicalKpiDashboardP
     const role = currentUser.role;
     const organizationId = currentUser.organizationId;
 
-    if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'CEO') {
       setInitialContext({
         level: 'CORPORATE',
         entityId: organizationId || '',

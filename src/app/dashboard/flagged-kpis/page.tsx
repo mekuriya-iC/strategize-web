@@ -55,6 +55,7 @@ export default function FlaggedKpisPage() {
     "HR",
     "ADMIN",
     "SUPER_ADMIN",
+    "CEO",
   ].includes(user?.role || "");
 
   const { data: myData, loading: myLoading, error: myError } = useQuery(GET_MY_FLAGGED_KPIS, {

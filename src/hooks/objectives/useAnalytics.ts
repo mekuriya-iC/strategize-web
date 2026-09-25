@@ -92,7 +92,7 @@ export const useAnalytics = (
 
   // Check if user has permission for global data queries
   const canAccessGlobalData =
-    userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+    userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "CEO";
 
   // Fetch real data from GraphQL - conditionally skip for managers
   const {

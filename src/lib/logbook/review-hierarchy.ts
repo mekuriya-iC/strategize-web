@@ -8,6 +8,7 @@ export type LogbookReviewDepartment = {
 };
 
 export type LogbookReviewUser = {
+  managerId?: string | null;
   employeeId?: string;
   role?: string | null;
   departments?: LogbookReviewDepartment[] | null;
@@ -31,6 +32,14 @@ export function canReviewLogbookOwner(
 
   const currentUserRole = String(currentUser.role || "").toUpperCase();
   const ownerRole = String(owner.role || "").toUpperCase();
+
+  if (currentUserRole === 'CEO') {
+    return owner.managerId === currentUser.employeeId && (
+      ownerRole === 'DIRECTOR' || departments.some(
+        (department) => department.head?.employeeId === owner.employeeId,
+      )
+    );
+  }
 
   if (["SUPER_ADMIN", "ADMIN"].includes(currentUserRole)) {
     if (ownerRole === "DIRECTOR") return true;

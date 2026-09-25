@@ -11,6 +11,7 @@ import type { EmployeeRole } from '@/types/graphql';
 
 // Role hierarchy levels (higher number = more privileges)
 export const ROLE_HIERARCHY: Record<EmployeeRole, number> = {
+  CEO: 0, // Observer role: never inherit administrator or manager write access.
   NORMAL: 0,
   COORDINATOR: 1,
   MANAGER: 2,
@@ -22,6 +23,7 @@ export const ROLE_HIERARCHY: Record<EmployeeRole, number> = {
 
 // Role display labels
 export const ROLE_LABELS: Record<EmployeeRole, string> = {
+  CEO: 'CEO',
   NORMAL: 'Employee',
   COORDINATOR: 'Coordinator',
   MANAGER: 'Manager',
@@ -33,6 +35,7 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
 
 // Role descriptions
 export const ROLE_DESCRIPTIONS: Record<EmployeeRole, string> = {
+  CEO: 'Organization-wide monitoring, read-only administration and direct-report leadership logbook review',
   NORMAL: 'Regular employee with access to personal objectives and KPIs',
   COORDINATOR: 'Department coordinator with limited management capabilities',
   MANAGER: 'Department manager with full department-level access',
@@ -47,6 +50,15 @@ export const ROLE_DESCRIPTIONS: Record<EmployeeRole, string> = {
  * Each role inherits all permissions from roles below it
  */
 const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
+  CEO: [
+    'employees:read_all', 'objectives:read_all', 'kpis:read_all',
+    'divisions:read_all', 'departments:read_all', 'strategic_periods:read',
+    'analytics:read_all', 'reports:read_all', 'reports:export',
+    'checkins:read_all', 'logbook:read_all', 'logbook:approve', 'evaluations:read_all',
+    'admin:access_panel', 'admin:view_audit_logs',
+    'nav:dashboard', 'nav:reports', 'nav:approvals', 'nav:admin', 'nav:settings',
+    'nav:divisions', 'nav:departments', 'nav:checkin', 'nav:logbook',
+  ],
   // ==================== NORMAL (Employee) ====================
   // Can only manage their own data
   NORMAL: [
@@ -328,6 +340,7 @@ const BASE_ROLE_PERMISSIONS: Record<EmployeeRole, Permission[]> = {
  * Uses cascading inheritance - each role gets all permissions from lower roles
  */
 export function getRolePermissions(role: EmployeeRole): Permission[] {
+  if (role === 'CEO') return [...BASE_ROLE_PERMISSIONS.CEO];
   const roleLevel = ROLE_HIERARCHY[role];
   const allPermissions = new Set<Permission>();
 
@@ -359,6 +372,7 @@ export function hasMinimumRole(
   minimumRole: EmployeeRole
 ): boolean {
   if (!userRole) return false;
+  if (minimumRole === 'CEO') return userRole === 'CEO';
   const userLevel = ROLE_HIERARCHY[userRole as EmployeeRole] ?? -1;
   const requiredLevel = ROLE_HIERARCHY[minimumRole];
   return userLevel >= requiredLevel;
@@ -370,9 +384,9 @@ export function hasMinimumRole(
 export function getAssignableRoles(assignerRole: EmployeeRole | string | undefined): EmployeeRole[] {
   switch (assignerRole) {
     case 'SUPER_ADMIN':
-      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR', 'ADMIN', 'SUPER_ADMIN'];
+      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'];
     case 'ADMIN':
-      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR'];
+      return ['NORMAL', 'COORDINATOR', 'MANAGER', 'DIRECTOR', 'HR', 'CEO'];
     case 'DIRECTOR':
       return ['NORMAL', 'COORDINATOR', 'MANAGER'];
     default:
@@ -407,4 +421,3 @@ export function isManagementLevel(role: EmployeeRole | string | undefined): bool
 export function canApprove(role: EmployeeRole | string | undefined): boolean {
   return hasMinimumRole(role, 'MANAGER');
 }
-

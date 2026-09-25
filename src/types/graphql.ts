@@ -1,5 +1,6 @@
 // GraphQL Enums
 export const EmployeeRole = {
+  CEO: "CEO",
   NORMAL: "NORMAL",
   COORDINATOR: "COORDINATOR",
   MANAGER: "MANAGER",
@@ -13,6 +14,7 @@ export type EmployeeRole = (typeof EmployeeRole)[keyof typeof EmployeeRole];
 
 // Role hierarchy for display and permissions
 export const ROLE_HIERARCHY = [
+  "CEO",
   "NORMAL",
   "COORDINATOR",
   "MANAGER",
@@ -24,6 +26,7 @@ export const ROLE_HIERARCHY = [
 
 // Human-readable role labels
 export const ROLE_LABELS: Record<EmployeeRole, string> = {
+  CEO: "CEO",
   NORMAL: "Employee",
   COORDINATOR: "Coordinator",
   MANAGER: "Manager",
@@ -55,6 +58,7 @@ export interface CreateEmployeeInput {
 }
 
 export interface UpdateEmployeeInput {
+  managerId?: string | null;
   employeeId: string;
   email?: string;
   fullName?: string;
@@ -109,6 +113,8 @@ export interface UpdateDepartmentInput {
 
 // GraphQL Response Types
 export interface Employee {
+  managerId?: string | null;
+  manager?: { employeeId: string; fullName: string } | null;
   employeeId: string;
   organizationId?: string;
   email: string;

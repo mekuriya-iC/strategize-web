@@ -7,7 +7,9 @@ import { gql } from "@apollo/client";
 export const EmployeesFragment = gql`
   fragment EmployeesFragment on Employee {
     employeeId
+    organizationId
     managerId
+    manager { employeeId fullName }
     fullName
     email
     role

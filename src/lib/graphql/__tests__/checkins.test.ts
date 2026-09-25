@@ -9,7 +9,9 @@ import {
   SUBMIT_WEEKLY_TASKS,
 } from "../mutations/checkins";
 import {
+  GET_CHECKINOUT_SESSIONS,
   GET_CHECKINOUT_TASKS,
+  GET_CHECKINOUT_WEEK_TASK_TYPE_SUMMARY,
   GET_PENDING_TASK_PLANNING_APPROVALS,
   GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES,
   GET_TASK_PLANNING_REVIEW_HISTORY,
@@ -63,6 +65,32 @@ describe("check-in draft pool GraphQL operations", () => {
     ]) {
       expect(query).toContain(field);
     }
+  });
+
+  it("keeps the week task-type summary document ready for API deploy", () => {
+    const query = print(GET_CHECKINOUT_WEEK_TASK_TYPE_SUMMARY);
+
+    expect(query).toContain("checkinoutWeekTaskTypeSummary(");
+    for (const field of [
+      "totalTasks",
+      "totalKpiTasks",
+      "nonKpiTasks",
+      "kpiFulfilled",
+      "kpiUnmet",
+      "overdueKpiFulfilled",
+      "kpiFulfilledPercentage",
+      "kpiUnmetPercentage",
+    ]) {
+      expect(query).toContain(field);
+    }
+  });
+
+  it("uses production-compatible session list args (no undeployed week filters)", () => {
+    const query = print(GET_CHECKINOUT_SESSIONS);
+    expect(query).not.toContain("$weekStartDate");
+    expect(query).not.toContain("$weekEndDate");
+    expect(query).toContain("supervisorUserId");
+    expect(query).toContain("strategicPeriodId");
   });
 
   it("uses the server-authoritative super-admin session candidate list", () => {

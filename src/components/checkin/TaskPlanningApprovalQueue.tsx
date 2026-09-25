@@ -50,11 +50,13 @@ const errorMessage = (error: unknown, fallback: string) =>
 interface TaskPlanningApprovalQueueProps {
   sessionId: string;
   canReview: boolean;
+  onReviewComplete?: () => void;
 }
 
 export function TaskPlanningApprovalQueue({
   sessionId,
   canReview,
+  onReviewComplete,
 }: TaskPlanningApprovalQueueProps) {
   const [rejectingTask, setRejectingTask] = useState<PendingPlanningTask | null>(null);
   const [reason, setReason] = useState("");
@@ -100,6 +102,7 @@ export function TaskPlanningApprovalQueue({
     try {
       await approve({ variables: { taskId } });
       toast.success("Task planning approved and added to the official list.");
+      onReviewComplete?.();
     } catch (error: unknown) {
       toast.error(errorMessage(error, "Could not approve task planning."));
     }
@@ -118,6 +121,7 @@ export function TaskPlanningApprovalQueue({
       toast.success("Task returned to the employee as an editable draft.");
       setRejectingTask(null);
       setReason("");
+      onReviewComplete?.();
     } catch (error: unknown) {
       toast.error(errorMessage(error, "Could not reject task planning."));
     }

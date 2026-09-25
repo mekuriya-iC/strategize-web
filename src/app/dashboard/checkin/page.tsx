@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   GET_CHECKINOUT_SESSIONS,
+  GET_CHECKINOUT_SESSION,
   GET_CHECKINOUT_TASKS,
   GET_CHECKINOUT_TASK,
   GET_TASK_POOL_SUMMARY,
@@ -508,8 +509,7 @@ export default function CheckInPage() {
     skip: !currentUser?.employeeId,
   });
 
-  // The API scopes this shared list to super-admin supervisors. Also filter
-  // cached rows locally so a pre-upgrade organization-wide result cannot leak.
+  // Super Admin shared list: used for list navigation, not opened-week participants.
   const {
     data: allSessionsData,
     loading: allSessionsLoading,
@@ -554,15 +554,94 @@ export default function CheckInPage() {
     [employeeSessions, isSuperAdmin, organizationSessions, supervisedSessions],
   );
 
+  // Anchor the opened session even when it falls outside list pagination
+  // (e.g. calendar click into a week whose peers were outside the first page).
+  const { data: selectedSessionData } = useQuery(GET_CHECKINOUT_SESSION, {
+    variables: { checkinoutSessionId: selectedSessionId },
+    skip: !selectedSessionId || view !== "detail",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+  });
+
+  const selectedSessionAnchor = useMemo(() => {
+    if (!selectedSessionId) return null;
+    return (
+      allSessions.find(
+        (session) => session.checkinoutSessionId === selectedSessionId,
+      ) ||
+      selectedSessionData?.checkinoutSession ||
+      null
+    );
+  }, [allSessions, selectedSessionData, selectedSessionId]);
+
+  const weekScope = useMemo(() => {
+    const session = selectedSessionAnchor;
+    if (!session) return null;
+    const supervisorUserId = session.supervisor?.employeeId;
+    const strategicPeriodId = session.strategicPeriod?.strategicPeriodId;
+    const weekStartDate = session.weekStartDate?.slice(0, 10);
+    const weekEndDate = session.weekEndDate?.slice(0, 10);
+    if (!supervisorUserId || !strategicPeriodId || !weekStartDate || !weekEndDate) {
+      return null;
+    }
+    return { supervisorUserId, strategicPeriodId, weekStartDate, weekEndDate };
+  }, [selectedSessionAnchor]);
+
+  // Opened-week participants: load by supervisor + period (production-compatible),
+  // then filter to the selected week client-side. Avoids the cross-week list
+  // pagination hole without requiring undeployed weekStartDate/weekEndDate args.
+  const canLoadWeekParticipants = Boolean(
+    view === "detail" &&
+      weekScope &&
+      currentUser?.employeeId &&
+      (isSuperAdmin ||
+        weekScope.supervisorUserId === currentUser.employeeId),
+  );
+
+  const {
+    data: weekSessionsData,
+    refetch: refetchWeekSessions,
+  } = useQuery(GET_CHECKINOUT_SESSIONS, {
+    variables: {
+      supervisorUserId: weekScope?.supervisorUserId,
+      strategicPeriodId: weekScope?.strategicPeriodId,
+      page: 1,
+      limit: 500,
+    },
+    skip: !canLoadWeekParticipants,
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
+  });
+
+  const weekParticipantSessions = useMemo<CheckinoutSessionLike[]>(() => {
+    if (!weekScope) return [];
+    return (weekSessionsData?.checkinoutSessions?.items || []).filter(
+      (session: CheckinoutSessionLike) =>
+        Boolean(session?.employee) &&
+        session.weekStartDate?.slice(0, 10) === weekScope.weekStartDate &&
+        session.weekEndDate?.slice(0, 10) === weekScope.weekEndDate,
+    );
+  }, [weekScope, weekSessionsData]);
+
   // Current session logic
   const currentSession = useMemo(() => {
     if (selectedSessionId) {
-      return allSessions.find(
-        (s: any) => s.checkinoutSessionId === selectedSessionId,
+      return (
+        weekParticipantSessions.find(
+          (session) => session.checkinoutSessionId === selectedSessionId,
+        ) ||
+        selectedSessionAnchor ||
+        null
       );
     }
     return employeeSessions[0] || supervisedSessions[0] || null;
-  }, [allSessions, employeeSessions, supervisedSessions, selectedSessionId]);
+  }, [
+    employeeSessions,
+    selectedSessionAnchor,
+    selectedSessionId,
+    supervisedSessions,
+    weekParticipantSessions,
+  ]);
 
   // isManagerMode: True ONLY if the current user is the supervisor of the current session
   // This determines whether to show team view or individual view
@@ -575,6 +654,9 @@ export default function CheckInPage() {
         currentSession.supervisor?.employeeId === currentUser.employeeId)
     );
   }, [currentSession, currentUser, isSuperAdmin]);
+
+  const [weekTaskTypeSummary, setWeekTaskTypeSummary] =
+    useState<TaskTypeSummary | null>(null);
 
   // Helper to normalize dates for comparison (ignoring time components)
   const normalizeDate = (dateStr: string) => {
@@ -591,6 +673,16 @@ export default function CheckInPage() {
 
     const isCurrentSessionSupervisor =
       currentSession.supervisor?.employeeId === currentUser.employeeId;
+
+    if (isManagerMode && weekParticipantSessions.length > 0) {
+      if (isSuperAdmin) {
+        return weekParticipantSessions.filter(
+          (session) =>
+            session.employee?.employeeId !== currentUser.employeeId,
+        );
+      }
+      return weekParticipantSessions;
+    }
 
     // Super admins share corporate-supervised groups, not division team groups.
     if (isSuperAdmin) {
@@ -609,7 +701,7 @@ export default function CheckInPage() {
       return myOwnSession ? [myOwnSession] : [];
     }
 
-    // If supervisor, show all participant sessions in this exact week group.
+    // Fallback while the week-scoped query is still loading.
     const selectedWeekKey = getCheckinoutSessionWeekKey(currentSession);
     return supervisedSessions.filter(
       (session: any) =>
@@ -620,9 +712,74 @@ export default function CheckInPage() {
     employeeSessions,
     currentSession,
     currentUser,
+    isManagerMode,
     isSuperAdmin,
     leadershipSessions,
+    weekParticipantSessions,
   ]);
+
+  const teamSessionIdsKey = useMemo(
+    () =>
+      teamSessions
+        .map((session) => session.checkinoutSessionId)
+        .filter(Boolean)
+        .sort()
+        .join("|"),
+    [teamSessions],
+  );
+
+  const loadWeekTaskTypeSummary = useCallback(async () => {
+    if (!isManagerMode || !currentUser?.employeeId || !teamSessions.length) {
+      setWeekTaskTypeSummary(null);
+      return;
+    }
+
+    try {
+      const results = await Promise.all(
+        teamSessions.map((session) =>
+          apolloClient.query({
+            query: GET_CHECKINOUT_TASKS,
+            variables: {
+              sessionId: session.checkinoutSessionId,
+              limit: 100,
+              page: 1,
+            },
+            fetchPolicy: "network-only",
+          }),
+        ),
+      );
+
+      const visibleTasks = results.flatMap((result, index) => {
+        const session = teamSessions[index];
+        const items = result.data?.checkinoutTasks?.items || [];
+        return items.filter(
+          (task: { submissionStatus?: string | null }) =>
+            session.employee?.employeeId === currentUser.employeeId ||
+            isOfficialTaskStatus(task.submissionStatus),
+        );
+      });
+
+      setWeekTaskTypeSummary(
+        summarizeTaskTypes(
+          visibleTasks.map(
+            (task: {
+              taskLinkType?: string | null;
+              logbookStatus?: string | null;
+            }) => ({
+              taskType: task.taskLinkType,
+              logbookStatus: task.logbookStatus,
+            }),
+          ),
+        ),
+      );
+    } catch {
+      // Keep the previous summary if a refresh fails; cards still load on expand.
+    }
+  }, [apolloClient, currentUser?.employeeId, isManagerMode, teamSessions]);
+
+  useEffect(() => {
+    void loadWeekTaskTypeSummary();
+  }, [loadWeekTaskTypeSummary, teamSessionIdsKey]);
 
   const selectableSessionGroups = useMemo(
     () =>
@@ -721,6 +878,8 @@ export default function CheckInPage() {
       const supervisorResult = await refetchSupervisorSessions();
       console.log("✅ [CHECKIN PAGE] Supervisor sessions refetched:", supervisorResult.data?.checkinoutSessions?.items?.length || 0);
       if (isSuperAdmin) await refetchAllSessions();
+      if (canLoadWeekParticipants) await refetchWeekSessions();
+      if (isManagerMode) await loadWeekTaskTypeSummary();
     } catch (error) {
       console.error("❌ [CHECKIN PAGE] Error during refetchAll:", error);
     }
@@ -960,46 +1119,23 @@ export default function CheckInPage() {
     };
   }, [isManagerMode, teamSessions]);
 
-  const teamAggregatedStats = useMemo(() => {
-    if (!isManagerMode || !teamSessions.length) return null;
-    let totalTasks = 0;
-    let totalKpiTasks = 0;
-    let nonKpiTasks = 0;
-    let kpiFulfilled = 0;
-    let kpiUnmet = 0;
-    let overdueKpiFulfilled = 0;
-    for (const session of teamSessions) {
-      const sessionId = session?.checkinoutSessionId;
-      if (!sessionId) continue;
-      const summary = teamTaskSummaries[sessionId];
-      if (!summary) continue;
-      totalTasks += summary.totalTasks;
-      totalKpiTasks += summary.totalKpiTasks;
-      nonKpiTasks += summary.nonKpiTasks;
-      kpiFulfilled += summary.kpiFulfilled;
-      kpiUnmet += summary.kpiUnmet;
-      overdueKpiFulfilled += summary.overdueKpiFulfilled;
-    }
-    return {
-      totalTasks,
-      totalKpiTasks,
-      nonKpiTasks,
-      kpiFulfilled,
-      kpiUnmet,
-      overdueKpiFulfilled,
-      kpiFulfilledPercentage:
-        totalKpiTasks > 0
-          ? Math.round((kpiFulfilled / totalKpiTasks) * 100)
-          : 0,
-      kpiUnmetPercentage:
-        totalKpiTasks > 0 ? Math.round((kpiUnmet / totalKpiTasks) * 100) : 0,
-    };
-  }, [isManagerMode, teamSessions, teamTaskSummaries]);
-
   const statistics = useMemo(() => {
-    if (isManagerMode && teamAggregatedStats) return teamAggregatedStats;
+    if (isManagerMode) {
+      return (
+        weekTaskTypeSummary || {
+          totalTasks: 0,
+          totalKpiTasks: 0,
+          nonKpiTasks: 0,
+          kpiFulfilled: 0,
+          kpiUnmet: 0,
+          overdueKpiFulfilled: 0,
+          kpiFulfilledPercentage: 0,
+          kpiUnmetPercentage: 0,
+        }
+      );
+    }
     return summarizeTaskTypes(currentWeekDataWithTasks?.tasks || []);
-  }, [currentWeekDataWithTasks, isManagerMode, teamAggregatedStats]);
+  }, [currentWeekDataWithTasks, isManagerMode, weekTaskTypeSummary]);
 
   // Force open the add task modal with a specific session ID
   const handleOpenAddTask = (sessionId: string | null) => {
@@ -1661,6 +1797,9 @@ export default function CheckInPage() {
                    currentUser?.role === "ADMIN" || 
                    (currentSession?.supervisor?.employeeId === currentUser?.employeeId))
                 )}
+                onReviewComplete={() => {
+                  void loadWeekTaskTypeSummary();
+                }}
               />
 
               {/* Additional tasks for approval (after initial weekly batch, max 3) */}

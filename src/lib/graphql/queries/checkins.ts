@@ -373,3 +373,28 @@ export const GET_TASK_POOL_SUMMARY = gql`
     }
   }
 `;
+
+export const GET_CHECKINOUT_WEEK_TASK_TYPE_SUMMARY = gql`
+  query CheckinoutWeekTaskTypeSummary(
+    $supervisorUserId: ID!
+    $strategicPeriodId: ID!
+    $weekStartDate: String!
+    $weekEndDate: String!
+  ) {
+    checkinoutWeekTaskTypeSummary(
+      supervisorUserId: $supervisorUserId
+      strategicPeriodId: $strategicPeriodId
+      weekStartDate: $weekStartDate
+      weekEndDate: $weekEndDate
+    ) {
+      totalTasks
+      totalKpiTasks
+      nonKpiTasks
+      kpiFulfilled
+      kpiUnmet
+      overdueKpiFulfilled
+      kpiFulfilledPercentage
+      kpiUnmetPercentage
+    }
+  }
+`;

@@ -55,7 +55,7 @@ function hasRequiredRole(pathname: string, userRole: string): boolean {
   return true;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes

@@ -21,7 +21,7 @@ const session = (
 });
 
 describe("check-in/out session week grouping", () => {
-  it("excludes directors' staff and manager sessions from every super-admin list, including history", () => {
+  it("returns every session for super-admin, including manager/director team sessions", () => {
     const rows = [
       session({ checkinoutSessionId: "corporate", supervisor: { employeeId: "admin-2", role: "SUPER_ADMIN" } }),
       session({ checkinoutSessionId: "staff", supervisor: { employeeId: "director", role: "DIRECTOR" }, overallStatus: "CLOSED" }),
@@ -31,8 +31,16 @@ describe("check-in/out session week grouping", () => {
       session({ checkinoutSessionId: "unresolved-supervisor", supervisor: null }),
     ];
     expect(getSuperAdminCheckinoutSessions(rows, "admin-1").map((row) => row.checkinoutSessionId))
-      .toEqual(["corporate", "own", "cached-own-team"]);
-    expect(getSuperAdminCheckinoutSessions(rows, undefined)).toEqual([]);
+      .toEqual([
+        "corporate",
+        "staff",
+        "manager-under-director",
+        "own",
+        "cached-own-team",
+        "unresolved-supervisor",
+      ]);
+    expect(getSuperAdminCheckinoutSessions(rows, undefined).map((row) => row.checkinoutSessionId))
+      .toEqual(rows.map((row) => row.checkinoutSessionId));
   });
   it("groups participant sessions for the same manager, period, and week", () => {
     const groups = groupCheckinoutSessionsByWeek([

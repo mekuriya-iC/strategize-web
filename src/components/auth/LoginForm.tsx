@@ -77,7 +77,7 @@ export default function LoginForm() {
       toast.success("Login Successful!");
 
       const navigateAfterLogin = (path: string) => {
-        // Full navigation ensures the auth cookie is visible to middleware on first login
+        // Full navigation ensures the auth cookie is visible to proxy on first login
         window.location.assign(path);
       };
 

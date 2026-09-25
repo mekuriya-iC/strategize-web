@@ -27,18 +27,14 @@ export type CheckinoutSessionWeekGroup<T extends CheckinoutSessionLike> = {
   participantSessions: T[];
 };
 
-/** Corporate sessions are identified by their supervisor, not participant rank. */
+/**
+ * Super Admin sees the full shared session list (all users), same as ADMIN.
+ * Kept as a named helper so call sites stay explicit about the role path.
+ */
 export const getSuperAdminCheckinoutSessions = <T extends CheckinoutSessionLike>(
   sessions: T[],
-  viewerId?: string | null,
-): T[] => {
-  if (!viewerId) return [];
-  return sessions.filter((session) =>
-    session.supervisor?.role === "SUPER_ADMIN" ||
-    session.supervisor?.employeeId === viewerId ||
-    session.employee?.employeeId === viewerId,
-  );
-};
+  _viewerId?: string | null,
+): T[] => sessions;
 
 export const getLeadershipCheckinoutSessions = <
   T extends CheckinoutSessionLike,

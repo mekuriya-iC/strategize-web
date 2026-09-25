@@ -90,7 +90,8 @@ function ObjectivesApprovalTableContent() {
   const isDirector = guards.isDirector;
   const isManager = guards.isManager;
   const isCoordinator = guards.isCoordinator;
-  const isEmployee = guards.isEmployee;
+  // Every personal view must use personal assignment filtering, not just NORMAL.
+  const isEmployee = !showTabs;
 
   // Determine the assigneeId based on the user role and selected organizational unit
   const getAssigneeId = (): string | undefined => {

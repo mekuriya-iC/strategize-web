@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isPersonalObjectiveAssignment } from "./personalObjectiveScope";
+import { isPersonalObjectiveAssignment, usesPersonalObjectiveScope } from "./personalObjectiveScope";
 
 describe("personal objective ownership", () => {
+  it("scopes all personal-view roles and unresolved identity, without changing management views", () => {
+    for (const role of ["NORMAL", "HR", undefined]) expect(usesPersonalObjectiveScope(role)).toBe(true);
+    for (const role of ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGER", "COORDINATOR"]) expect(usesPersonalObjectiveScope(role)).toBe(false);
+  });
   const rows = [
     {
       objectiveId: "personal-1",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCheckinoutSessionWeekKey,
   getLeadershipCheckinoutSessions,
+  getSuperAdminCheckinoutSessions,
   groupCheckinoutSessionsByWeek,
   type CheckinoutSessionLike,
 } from "./checkin-session-groups";
@@ -20,6 +21,19 @@ const session = (
 });
 
 describe("check-in/out session week grouping", () => {
+  it("excludes directors' staff and manager sessions from every super-admin list, including history", () => {
+    const rows = [
+      session({ checkinoutSessionId: "corporate", supervisor: { employeeId: "admin-2", role: "SUPER_ADMIN" } }),
+      session({ checkinoutSessionId: "staff", supervisor: { employeeId: "director", role: "DIRECTOR" }, overallStatus: "CLOSED" }),
+      session({ checkinoutSessionId: "manager-under-director", employee: { employeeId: "manager", role: "MANAGER" }, supervisor: { employeeId: "director", role: "DIRECTOR" } }),
+      session({ checkinoutSessionId: "own", employee: { employeeId: "admin-1" } }),
+      session({ checkinoutSessionId: "cached-own-team", supervisor: { employeeId: "admin-1" } }),
+      session({ checkinoutSessionId: "unresolved-supervisor", supervisor: null }),
+    ];
+    expect(getSuperAdminCheckinoutSessions(rows, "admin-1").map((row) => row.checkinoutSessionId))
+      .toEqual(["corporate", "own", "cached-own-team"]);
+    expect(getSuperAdminCheckinoutSessions(rows, undefined)).toEqual([]);
+  });
   it("groups participant sessions for the same manager, period, and week", () => {
     const groups = groupCheckinoutSessionsByWeek([
       session({

@@ -61,7 +61,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   getCheckinoutSessionWeekKey,
-  getLeadershipCheckinoutSessions,
+  getSuperAdminCheckinoutSessions,
   groupCheckinoutSessionsByWeek,
   type CheckinoutSessionLike,
 } from "@/utils/checkin-session-groups";
@@ -508,8 +508,8 @@ export default function CheckInPage() {
     skip: !currentUser?.employeeId,
   });
 
-  // Super Admin needs the unscoped session set to view leadership sessions
-  // created by any supervisor, not only sessions where they are supervisor.
+  // The API scopes this shared list to super-admin supervisors. Also filter
+  // cached rows locally so a pre-upgrade organization-wide result cannot leak.
   const {
     data: allSessionsData,
     loading: allSessionsLoading,
@@ -530,12 +530,17 @@ export default function CheckInPage() {
     [supervisorData],
   );
   const organizationSessions = useMemo<CheckinoutSessionLike[]>(
-    () => allSessionsData?.checkinoutSessions?.items || [],
-    [allSessionsData],
+    () => getSuperAdminCheckinoutSessions(
+      allSessionsData?.checkinoutSessions?.items || [],
+      currentUser?.employeeId,
+    ),
+    [allSessionsData, currentUser?.employeeId],
   );
   const leadershipSessions = useMemo(
-    () => getLeadershipCheckinoutSessions(organizationSessions),
-    [organizationSessions],
+    () => organizationSessions.filter(
+      (session) => session.employee?.employeeId !== currentUser?.employeeId,
+    ),
+    [organizationSessions, currentUser?.employeeId],
   );
 
   // Combine all relevant sessions for the list and selected detail view.
@@ -587,7 +592,7 @@ export default function CheckInPage() {
     const isCurrentSessionSupervisor =
       currentSession.supervisor?.employeeId === currentUser.employeeId;
 
-    // Super Admin can inspect leadership groups created by any supervisor.
+    // Super admins share corporate-supervised groups, not division team groups.
     if (isSuperAdmin) {
       const selectedWeekKey = getCheckinoutSessionWeekKey(currentSession);
       return leadershipSessions.filter(

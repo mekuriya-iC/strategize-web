@@ -27,6 +27,8 @@ export function ScheduleCalendar({ currentUser, onSelectSession }: ScheduleCalen
   const [generateOpen, setGenerateOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+  const isManager = currentUser?.role === "MANAGER" || currentUser?.role === "DIRECTOR";
+  const canGenerateSchedule = isSuperAdmin || isManager;
   const { data, loading, error, refetch } = useQuery(GET_CHECKINOUT_SCHEDULES, {
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
@@ -70,7 +72,7 @@ export function ScheduleCalendar({ currentUser, onSelectSession }: ScheduleCalen
     <section className="mb-6 rounded-2xl border bg-card p-4 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div><h2 className="flex items-center gap-2 text-lg font-bold"><CalendarRange className="h-5 w-5 text-[#3838EC]" />Schedule calendar</h2><p className="mt-1 text-sm text-muted-foreground">Planned check-in/out weeks. Future draft tasks remain private to each employee.</p></div>
-        {isSuperAdmin && <Button onClick={() => setGenerateOpen(true)} className="gap-2"><Plus className="h-4 w-4" />Generate schedule</Button>}
+        {canGenerateSchedule && <Button onClick={() => setGenerateOpen(true)} className="gap-2"><Plus className="h-4 w-4" />Generate schedule</Button>}
       </div>
       <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)} className="mt-5">
         <TabsList><TabsTrigger value="current">Current</TabsTrigger><TabsTrigger value="upcoming">Upcoming</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList>
@@ -95,7 +97,7 @@ export function ScheduleCalendar({ currentUser, onSelectSession }: ScheduleCalen
           </div>
         ))}
       </div>
-      {isSuperAdmin && <GenerateScheduleDialog open={generateOpen} onOpenChange={setGenerateOpen} onGenerated={async () => { await refetch(); }} />}
+      {canGenerateSchedule && <GenerateScheduleDialog open={generateOpen} onOpenChange={setGenerateOpen} onGenerated={async () => { await refetch(); }} />}
     </section>
   );
 }

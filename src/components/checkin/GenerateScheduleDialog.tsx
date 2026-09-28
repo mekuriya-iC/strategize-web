@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { AlertTriangle, CalendarDays, Check, Users } from "lucide-react";
 import { toast } from "sonner";
-import { GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES } from "@/lib/graphql/queries/checkins";
+import { GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES, GET_MANAGER_CHECKINOUT_SESSION_CANDIDATES } from "@/lib/graphql/queries/checkins";
 import { GENERATE_CHECKINOUT_SCHEDULE, PREVIEW_CHECKINOUT_SCHEDULE } from "@/lib/graphql/checkinout-schedules";
 import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
+import { useAuthStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +23,11 @@ type Step = "details" | "participants" | "preview";
 type RangeMode = "entire" | "fiscal-years" | "custom";
 
 export function GenerateScheduleDialog({ open, onOpenChange, onGenerated }: GenerateScheduleDialogProps) {
+  const user = useAuthStore((state) => state.user);
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const isManager = user?.role === "MANAGER" || user?.role === "DIRECTOR";
+  const canGenerateSchedule = isSuperAdmin || isManager;
+  
   const [step, setStep] = useState<Step>("details");
   const [title, setTitle] = useState("");
   const [rangeMode, setRangeMode] = useState<RangeMode>("entire");
@@ -58,8 +64,19 @@ export function GenerateScheduleDialog({ open, onOpenChange, onGenerated }: Gene
       ? { start: firstMondayOnOrAfter(selectedAnnualPeriods[0].startDate), end: selectedAnnualPeriods[selectedAnnualPeriods.length - 1].endDate.slice(0, 10) }
       : { start: rangeStartDate, end: rangeEndDate };
 
-  const { data: candidatesData, loading: candidatesLoading } = useQuery(GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES, { skip: !open });
-  const candidates = useMemo<ScheduleEmployee[]>(() => (candidatesData?.superAdminCheckinoutSessionCandidates ?? []).filter((candidate: ScheduleEmployee & { status?: string }) => candidate.status !== "INACTIVE"), [candidatesData]);
+  const { data: candidatesData, loading: candidatesLoading } = useQuery(
+    isSuperAdmin ? GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES : GET_MANAGER_CHECKINOUT_SESSION_CANDIDATES,
+    { skip: !open || !canGenerateSchedule }
+  );
+  const candidates = useMemo<ScheduleEmployee[]>(
+    () => {
+      const items = isSuperAdmin 
+        ? (candidatesData?.superAdminCheckinoutSessionCandidates ?? [])
+        : (candidatesData?.managerCheckinoutSessionCandidates ?? []);
+      return items.filter((candidate: ScheduleEmployee & { status?: string }) => candidate.status !== "INACTIVE");
+    },
+    [candidatesData, isSuperAdmin]
+  );
   const [loadPreview, { data: previewData, loading: previewLoading }] = useLazyQuery(PREVIEW_CHECKINOUT_SCHEDULE, { fetchPolicy: "network-only" });
   const [generate, { loading: generating }] = useMutation(GENERATE_CHECKINOUT_SCHEDULE, {
     refetchQueries: ["CheckinoutSchedules"],

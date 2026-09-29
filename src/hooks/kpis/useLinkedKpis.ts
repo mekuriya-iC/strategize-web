@@ -64,7 +64,8 @@ export function useLinkedKpis<T extends LinkedKpiItem>({
               limit: 100,
               strategicPeriodId,
               status,
-              assignedOnly: true,
+              // Don't use assignedOnly - include both cascaded AND self-created KPIs
+              // assignedOnly: true,  // ← REMOVED
             },
             fetchPolicy: "network-only",
           });

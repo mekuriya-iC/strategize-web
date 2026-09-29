@@ -344,12 +344,14 @@ export const GET_MY_KPIS = gql`
     $limit: Int
     $strategicPeriodId: ID
     $status: KpiStatus
+    $assignedOnly: Boolean
   ) {
     myKpis(
       page: $page
       limit: $limit
       strategicPeriodId: $strategicPeriodId
       status: $status
+      assignedOnly: $assignedOnly
     ) {
       items {
         kpiId

@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
 import { cn } from "@/lib/utils";
-import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
+import { linkedKpiLabel, useLinkedKpis } from "@/hooks/kpis/useLinkedKpis";
 import {
   GET_KPI_RESULT_ENTRY_CONTEXT,
   GET_LOGBOOK_FORMULA_FOR_CONTEXT,
@@ -44,8 +44,7 @@ import {
   type LogbookFormulaForContextQueryVariables,
   type KpiResultEntryContextQueryData,
   type KpiResultEntryContextQueryVariables,
-  type LogbookKpisQueryData,
-  type LogbookKpisQueryVariables,
+  type LogbookKpiOption,
   type LogbookMetricFormulaSource,
 } from "@/types/logbook";
 import { useOrgUnitStore, useStrategicPeriodStore, useUser } from "@/stores";
@@ -130,19 +129,13 @@ export function LogbookEntryDialog({
     (state) => state.selectedPeriod,
   );
 
-  const { data: kpisData } = useQuery<
-    LogbookKpisQueryData,
-    LogbookKpisQueryVariables
-  >(GET_MY_KPIS, {
-    variables: {
-      page: 1,
-      limit: 200,
-      strategicPeriodId: selectedPeriod?.strategicPeriodId,
-    },
-    skip: !open || !selectedPeriod?.strategicPeriodId,
+  const { items: assignedKpis, loading: kpisLoading, error: kpisError } = useLinkedKpis<LogbookKpiOption>({
+    open,
+    userId: currentUser?.employeeId,
+    strategicPeriodId: selectedPeriod?.strategicPeriodId,
   });
 
-  const availableKpis = (kpisData?.myKpis?.items || []).filter((kpi) => {
+  const availableKpis = assignedKpis.filter((kpi) => {
     const mode = kpi.kpiMode || "AGGREGATED";
     const assigneeType = kpi.assigneeType || kpi.objective?.type;
 
@@ -694,10 +687,13 @@ export function LogbookEntryDialog({
                 onValueChange={handleKpiChange}
               >
                 <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Select KPI" />
+                  <SelectValue placeholder={kpisLoading ? "Loading your KPIs..." : "Select KPI"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No KPI linked</SelectItem>
+                  {kpisLoading && <SelectItem value="loading-kpis" disabled>Loading your KPIs...</SelectItem>}
+                  {kpisError && <SelectItem value="error-kpis" disabled>Could not load your KPIs. Close and reopen to retry.</SelectItem>}
+                  {!kpisLoading && !kpisError && availableKpis.length === 0 && <SelectItem value="empty-kpis" disabled>No eligible KPIs assigned for this period</SelectItem>}
                   {availableKpis.map((kpi) => {
                     const mode = kpi.kpiMode || "AGGREGATED";
                     const suffix =
@@ -709,7 +705,7 @@ export function LogbookEntryDialog({
 
                     return (
                       <SelectItem key={kpi.kpiId} value={kpi.kpiId}>
-                        {kpi.name}
+                        {linkedKpiLabel(kpi, availableKpis)}
                         {suffix}
                       </SelectItem>
                     );

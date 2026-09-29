@@ -7,7 +7,7 @@ import {
   UPDATE_CHECKINOUT_TASK,
 } from "@/lib/graphql/mutations/checkins";
 
-import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
+import { linkedKpiLabel, useLinkedKpis } from "@/hooks/kpis/useLinkedKpis";
 import { GET_INITIATIVES } from "@/lib/graphql/queries/initiatives";
 import { GET_EMPLOYEES } from "@/lib/graphql/queries/employees";
 import { useAuthStore, useOrgUnitStore, useStrategicPeriodStore } from "@/stores";
@@ -169,58 +169,30 @@ export function AddTaskDialog({
 
   const mutationLoading = creating || updating;
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
-  const currentUserId = user?.employeeId;
-  // KPIs are seeded on quarterly periods (Q1–Q4). Filtering by the annual
-  // "Year 2026" period returns zero rows — only pass true quarters.
-  const selectedQuarterPeriodId =
-    selectedPeriod &&
-    String(selectedPeriod.periodType || "").toLowerCase() === "quarterly"
-      ? selectedPeriod.strategicPeriodId
-      : undefined;
-
-  // Queries — network-only so newly seeded/approved KPIs appear immediately.
   const {
-    data: kpisData,
+    items: assignedKpis,
     loading: kpisLoading,
     error: kpisError,
-  } = useQuery(GET_MY_KPIS, {
-    variables: {
-      page: 1,
-      limit: 100,
-      status: "APPROVED",
-      ...(selectedQuarterPeriodId
-        ? { strategicPeriodId: selectedQuarterPeriodId }
-        : {}),
-    },
-    skip: !open,
-    fetchPolicy: "network-only",
-    nextFetchPolicy: "network-only",
+  } = useLinkedKpis<{
+    kpiId: string;
+    name: string;
+    status?: string;
+    quarterPlans?: Array<{ status?: string }>;
+  }>({
+    open,
+    userId: user?.employeeId,
+    strategicPeriodId: selectedPeriod?.strategicPeriodId,
+    status: "APPROVED",
   });
 
   const linkedKpiOptions = useMemo(() => {
-    const items = (kpisData?.myKpis?.items ?? []) as Array<{
-      kpiId: string;
-      name: string;
-      assigneeId?: string | null;
-      status?: string;
-      quarterPlans?: Array<{ status?: string }>;
-    }>;
-    const preferred = currentUserId
-      ? items.filter((kpi) => kpi.assigneeId === currentUserId)
-      : items;
-    const source = preferred.length > 0 ? preferred : items;
-    const byName = new Map<string, { value: string; label: string }>();
-    for (const kpi of source) {
-      if (byName.has(kpi.name)) continue;
-      byName.set(kpi.name, {
+    return assignedKpis.map((kpi) => ({
         value: kpi.kpiId,
         label: isKpiReadyForAchievementSubmission(kpi)
-          ? kpi.name
-          : `${kpi.name} — quarter plan not approved`,
-      });
-    }
-    return [...byName.values()];
-  }, [currentUserId, kpisData?.myKpis?.items]);
+          ? linkedKpiLabel(kpi, assignedKpis)
+          : `${linkedKpiLabel(kpi, assignedKpis)} — quarter plan not approved`,
+    }));
+  }, [assignedKpis]);
 
   const { data: initiativesData } = useQuery(GET_INITIATIVES, {
     variables: { page: 1, limit: 100 },
@@ -833,8 +805,7 @@ export function AddTaskDialog({
                   )}
                   {!kpisLoading && !kpisError && linkedKpiOptions.length === 0 && (
                     <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                      No approved KPIs found. Select a 2026 quarter (Q1–Q4) in
-                      the header, or keep Year 2026 — KPIs should still load.
+                      No approved KPIs are assigned to you for the selected period.
                     </p>
                   )}
                   {isPlanningForm && linkedKpiOptions.length > 0 && (

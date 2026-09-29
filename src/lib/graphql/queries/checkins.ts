@@ -92,6 +92,29 @@ export const GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES = gql`
   }
 `;
 
+export const GET_MANAGER_CHECKINOUT_SESSION_CANDIDATES = gql`
+  query ManagerCheckinoutSessionCandidates {
+    managerCheckinoutSessionCandidates {
+      employeeId
+      managerId
+      fullName
+      email
+      title
+      role
+      status
+      picture
+      departments {
+        departmentId
+        name
+        division {
+          divisionId
+          name
+        }
+      }
+    }
+  }
+`;
+
 // Get single check-in session
 export const GET_CHECKINOUT_SESSION = gql`
   query GetCheckinoutSession($checkinoutSessionId: ID!) {

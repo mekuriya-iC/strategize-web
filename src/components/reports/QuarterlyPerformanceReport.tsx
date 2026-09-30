@@ -51,6 +51,7 @@ import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import { GET_KPI_QUARTER_PERFORMANCE_REPORT } from "@/lib/graphql/queries/quarterly-performance";
 import { exportReport } from "@/lib/utils/exportReport";
+import { summaryAchievement } from "@/lib/dashboard/performanceDashboard";
 import { useStrategicPeriodStore } from "@/stores";
 import type {
   KpiMode,
@@ -58,6 +59,7 @@ import type {
   KpiQuarterPlanStatus,
   KpiQuarterReportRow,
   KpiQuarterReportRollup,
+  KpiQuarterReportSummary,
   KpiQuarterResultStatus,
   ScorecardLevel,
 } from "@/types/graphql";
@@ -167,15 +169,15 @@ export default function QuarterlyPerformanceReport() {
       },
       {
         id: "achievement",
-        accessor: (row: KpiQuarterReportRollup) => row.averageAchievementRate,
+        accessor: (row: KpiQuarterReportRollup) => weightedAchievement(row),
       },
       {
         id: "contribution",
         accessor: (row: KpiQuarterReportRollup) => row.annualContribution,
       },
       {
-        id: "carry",
-        accessor: (row: KpiQuarterReportRollup) => row.carryOut,
+        id: "coverage",
+        accessor: (row: KpiQuarterReportRollup) => row.resultCoverageRate,
       },
     ],
     [],
@@ -574,15 +576,19 @@ export default function QuarterlyPerformanceReport() {
               icon={<Target className="h-4 w-4" />}
             />
             <SummaryCard
-              label="Average achievement"
-              value={formatPercent(report.summary.averageAchievementRate)}
-              description="Across calculated results"
+              label={
+                filters.quarter === ALL
+                  ? "Annual weighted achievement"
+                  : `Q${filters.quarter} weighted achievement`
+              }
+              value={formatWeightedAchievement(report.summary)}
+              description={`${formatNumber(report.summary.achievedContributionWeight)} of ${formatNumber(report.summary.plannedContributionWeight)} planned score weight`}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <SummaryCard
               label="Annual contribution"
-              value={`${formatNumber(report.summary.annualContribution)}%`}
-              description="Weighted contribution in this view"
+              value={formatContribution(report.summary)}
+              description="Earned annual score weight in this view"
               icon={<BarChart3 className="h-4 w-4" />}
             />
             <SummaryCard
@@ -593,11 +599,34 @@ export default function QuarterlyPerformanceReport() {
             />
           </div>
 
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              Weighted achievement is earned score weight divided by planned score
+              weight. Pending KPIs remain in the plan; “—” means no calculated
+              result, while 0% is a measured zero.
+              {filters.quarter === ALL
+                ? " The annual card includes all four quarters, including future quarters. Compare a quarter card with the dashboard for the same quarter and KPI scope."
+                : " Compare with the dashboard using the same quarter and KPI scope."}
+            </p>
+            <p>
+              Reported-result average (unweighted):{" "}
+              <span className="font-medium text-foreground">
+                {hasCalculatedResults(report.summary)
+                  ? formatPercent(report.summary.averageAchievementRate)
+                  : "—"}
+              </span>
+              . This excludes pending results and is not the overall weighted
+              achievement.
+            </p>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {report.quarterSummaries.map((quarter) => (
               <button
                 type="button"
                 key={quarter.quarterNumber}
+                aria-label={`View Q${quarter.quarterNumber} performance`}
+                aria-pressed={filters.quarter === String(quarter.quarterNumber)}
                 className="rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() =>
                   updateFilter("quarter", String(quarter.quarterNumber))
@@ -624,25 +653,28 @@ export default function QuarterlyPerformanceReport() {
                   </CardHeader>
                   <CardContent className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Achievement</span>
+                      <span className="text-muted-foreground">
+                        Weighted achievement
+                      </span>
                       <span className="font-medium">
-                        {formatPercent(quarter.averageAchievementRate)}
+                        {formatWeightedAchievement(quarter)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        Contribution
+                        Annual contribution
                       </span>
                       <span className="font-medium">
-                        {formatNumber(quarter.annualContribution)}%
+                        {formatContribution(quarter)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        Carry balance
+                        Result coverage
                       </span>
-                      <span className={carryClass(quarter.carryOut)}>
-                        {formatSigned(quarter.carryOut)}
+                      <span>
+                        {formatPercent(quarter.resultCoverageRate)} ·{" "}
+                        {quarter.pendingResultCount} pending
                       </span>
                     </div>
                   </CardContent>
@@ -693,7 +725,7 @@ export default function QuarterlyPerformanceReport() {
                       </TableHead>
                       <TableHead className="text-right">
                         <SortableFilterableHeader
-                          label="Achievement"
+                          label="Weighted achievement"
                           align="right"
                           filterable={false}
                           {...getRollupHeaderProps("achievement")}
@@ -709,10 +741,10 @@ export default function QuarterlyPerformanceReport() {
                       </TableHead>
                       <TableHead className="text-right">
                         <SortableFilterableHeader
-                          label="Carry"
+                          label="Result coverage"
                           align="right"
                           filterable={false}
-                          {...getRollupHeaderProps("carry")}
+                          {...getRollupHeaderProps("coverage")}
                         />
                       </TableHead>
                     </TableRow>
@@ -743,15 +775,13 @@ export default function QuarterlyPerformanceReport() {
                           {rollup.kpiCount}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatPercent(rollup.averageAchievementRate)}
+                          {formatWeightedAchievement(rollup)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatNumber(rollup.annualContribution)}%
+                          {formatContribution(rollup)}
                         </TableCell>
-                        <TableCell
-                          className={`text-right ${carryClass(rollup.carryOut)}`}
-                        >
-                          {formatSigned(rollup.carryOut)}
+                        <TableCell className="text-right">
+                          {formatPercent(rollup.resultCoverageRate)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -774,9 +804,10 @@ export default function QuarterlyPerformanceReport() {
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               </CardTitle>
               <CardDescription>
-                Target totals can combine different measurement units. Use each
-                KPI row and weighted annual contribution as the authoritative
-                performance view.
+                Targets and carry values can use different measurement units and
+                are shown per KPI, not added across KPIs. Summary achievement uses
+                planned score weights across the full filtered result, not just
+                this page.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1343,6 +1374,30 @@ function formatNumber(value: number): string {
 
 function formatPercent(rate: number): string {
   return `${formatNumber(Number(rate) * 100)}%`;
+}
+
+function hasCalculatedResults(summary: KpiQuarterReportSummary): boolean {
+  return summary.finalCount + summary.provisionalCount > 0;
+}
+
+function weightedAchievement(summary: KpiQuarterReportSummary): number | null {
+  if (!hasCalculatedResults(summary) || summary.plannedContributionWeight <= 0) {
+    return null;
+  }
+  // Share the dashboard calculation. Do not average row percentages or use
+  // paginated rows: pending plans must remain in the weighted denominator.
+  return summaryAchievement(summary);
+}
+
+function formatWeightedAchievement(summary: KpiQuarterReportSummary): string {
+  const value = weightedAchievement(summary);
+  return value == null ? "—" : `${formatNumber(value)}%`;
+}
+
+function formatContribution(summary: KpiQuarterReportSummary): string {
+  return hasCalculatedResults(summary)
+    ? `${formatNumber(summary.achievedContributionWeight)}%`
+    : "—";
 }
 
 function formatSigned(value: number): string {

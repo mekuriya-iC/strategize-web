@@ -48,7 +48,7 @@ function toPercent(rate: number): number {
 }
 
 export function getPerformanceStatus(achievement: number): PerformanceStatus {
-  if (achievement >= 100) return "On track";
+  if (achievement > 90) return "On track";
   if (achievement >= 75) return "Close to target";
   return "Needs attention";
 }

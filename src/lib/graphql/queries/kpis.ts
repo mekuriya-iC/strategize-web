@@ -345,6 +345,7 @@ export const GET_MY_KPIS = gql`
     $strategicPeriodId: ID
     $status: KpiStatus
     $assignedOnly: Boolean
+    $linkPurpose: KpiLinkPurpose
   ) {
     myKpis(
       page: $page
@@ -352,6 +353,7 @@ export const GET_MY_KPIS = gql`
       strategicPeriodId: $strategicPeriodId
       status: $status
       assignedOnly: $assignedOnly
+      linkPurpose: $linkPurpose
     ) {
       items {
         kpiId
@@ -390,12 +392,18 @@ export const GET_MY_KPIS = gql`
         targetStatus
         isActive
         createdAt
+        parent {
+          kpiId
+          name
+        }
         objective {
           objectiveId
           title
           level
           status
           type
+          assigneeType
+          assigneeId
         }
         targets {
           timeline

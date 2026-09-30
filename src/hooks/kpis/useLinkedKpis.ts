@@ -7,6 +7,9 @@ import { GET_MY_KPIS } from "@/lib/graphql/queries/kpis";
 export interface LinkedKpiItem {
   kpiId: string;
   name: string;
+  parent?: { kpiId: string } | null;
+  assigneeType?: string | null;
+  objective?: { assigneeType?: string | null; type?: string | null } | null;
 }
 
 export function uniqueLinkedKpis<T extends LinkedKpiItem>(items: T[]): T[] {
@@ -23,7 +26,11 @@ export function linkedKpiLabel(
     (candidate) =>
       candidate.name.trim().toLowerCase() === item.name.trim().toLowerCase(),
   );
-  return sameName.length > 1 ? `${item.name} · ${item.kpiId}` : item.name;
+  const level =
+    item.assigneeType || item.objective?.assigneeType || item.objective?.type;
+  const origin = item.parent?.kpiId ? "Cascaded" : "Standalone";
+  const context = level ? ` · ${origin} · ${level.toLowerCase()}` : "";
+  return `${item.name}${context}${sameName.length > 1 ? ` · ${item.kpiId}` : ""}`;
 }
 
 export function useLinkedKpis<T extends LinkedKpiItem>({
@@ -31,14 +38,22 @@ export function useLinkedKpis<T extends LinkedKpiItem>({
   userId,
   strategicPeriodId,
   status,
+  purpose = "TASK",
 }: {
   open: boolean;
   userId?: string;
   strategicPeriodId?: string;
   status?: "APPROVED";
+  purpose?: "TASK" | "LOGBOOK";
 }) {
   const client = useApolloClient();
-  const scope = JSON.stringify([open, userId, strategicPeriodId, status]);
+  const scope = JSON.stringify([
+    open,
+    userId,
+    strategicPeriodId,
+    status,
+    purpose,
+  ]);
   const [state, setState] = useState<{
     scope: string;
     items: T[];
@@ -64,8 +79,8 @@ export function useLinkedKpis<T extends LinkedKpiItem>({
               limit: 100,
               strategicPeriodId,
               status,
-              // Don't use assignedOnly - include both cascaded AND self-created KPIs
-              // assignedOnly: true,  // ← REMOVED
+              assignedOnly: true,
+              linkPurpose: purpose,
             },
             fetchPolicy: "network-only",
           });
@@ -92,7 +107,7 @@ export function useLinkedKpis<T extends LinkedKpiItem>({
     return () => {
       cancelled = true;
     };
-  }, [client, open, userId, strategicPeriodId, status, scope]);
+  }, [client, open, userId, strategicPeriodId, status, purpose, scope]);
 
   // Never expose results from the previous user or planning period.
   return state.scope === scope

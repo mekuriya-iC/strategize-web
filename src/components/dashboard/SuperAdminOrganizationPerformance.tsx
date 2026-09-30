@@ -93,7 +93,7 @@ function CorporateGauge({
   pendingCount: number;
 }) {
   const status =
-    achievement >= 100
+    achievement > 90
       ? ("On track" as const)
       : achievement >= 75
         ? ("Close to target" as const)
@@ -435,9 +435,9 @@ export default function SuperAdminOrganizationPerformance({ report }: Props) {
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           {(
             [
-              ["On track", "≥100%"],
-              ["Close to target", "75–99%"],
-              ["Needs attention", "<75%"],
+              ["On track", ">90%"],
+              ["Close to target", "75–90%"],
+              ["Needs attention", "0–75%"],
             ] as Array<[PerformanceStatus, string]>
           ).map(([status, range]) => (
             <span key={status} className="flex items-center gap-1.5">

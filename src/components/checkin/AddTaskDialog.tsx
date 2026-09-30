@@ -186,13 +186,21 @@ export function AddTaskDialog({
   });
 
   const linkedKpiOptions = useMemo(() => {
-    return assignedKpis.map((kpi) => ({
+    const options = assignedKpis.map((kpi) => ({
         value: kpi.kpiId,
         label: isKpiReadyForAchievementSubmission(kpi)
           ? linkedKpiLabel(kpi, assignedKpis)
           : `${linkedKpiLabel(kpi, assignedKpis)} — quarter plan not approved`,
     }));
-  }, [assignedKpis]);
+    // Keep historical links visible without offering them as new assignments.
+    if (editingTask?.linkedKpiId && !options.some((option) => option.value === editingTask.linkedKpiId)) {
+      options.push({
+        value: editingTask.linkedKpiId,
+        label: `${editingTask.linkedKpi?.name || "Previously linked KPI"} — existing link`,
+      });
+    }
+    return options;
+  }, [assignedKpis, editingTask]);
 
   const { data: initiativesData } = useQuery(GET_INITIATIVES, {
     variables: { page: 1, limit: 100 },

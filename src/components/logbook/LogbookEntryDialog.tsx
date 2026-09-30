@@ -133,21 +133,11 @@ export function LogbookEntryDialog({
     open,
     userId: currentUser?.employeeId,
     strategicPeriodId: selectedPeriod?.strategicPeriodId,
+    purpose: "LOGBOOK",
   });
 
-  const availableKpis = assignedKpis.filter((kpi) => {
-    const mode = kpi.kpiMode || "AGGREGATED";
-    const assigneeType = kpi.assigneeType || kpi.objective?.type;
-
-    // Personnel KPIs are loggable by the assigned employee even when the stored mode defaults to AGGREGATED.
-    if (assigneeType === "PERSONNEL") return true;
-
-    // Unit-level DIRECT/HYBRID KPIs are loggable by the unit head for retained/direct achievement.
-    if (mode === "DIRECT" || mode === "HYBRID") return true;
-
-    // Unit-level AGGREGATED KPIs should be achieved by subordinate child KPIs, not direct manager logs.
-    return false;
-  });
+  // The API applies the same ownership and mode rules when listing and saving.
+  const availableKpis = assignedKpis;
 
   // Mutations
   const [createEntryMutation, { loading: creating }] = useMutation(
@@ -693,6 +683,11 @@ export function LogbookEntryDialog({
                   <SelectItem value="none">No KPI linked</SelectItem>
                   {kpisLoading && <SelectItem value="loading-kpis" disabled>Loading your KPIs...</SelectItem>}
                   {kpisError && <SelectItem value="error-kpis" disabled>Could not load your KPIs. Close and reopen to retry.</SelectItem>}
+                  {linkedKpiId && !availableKpis.some((kpi) => kpi.kpiId === linkedKpiId) && (
+                    <SelectItem value={linkedKpiId} disabled>
+                      {editingEntry?.linkedKpi?.name || "Previously linked KPI"} · existing link
+                    </SelectItem>
+                  )}
                   {!kpisLoading && !kpisError && availableKpis.length === 0 && <SelectItem value="empty-kpis" disabled>No eligible KPIs assigned for this period</SelectItem>}
                   {availableKpis.map((kpi) => {
                     const mode = kpi.kpiMode || "AGGREGATED";

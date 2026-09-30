@@ -53,6 +53,7 @@ describe("linked KPI picker", () => {
           strategicPeriodId: "annual-1",
           status: "APPROVED",
           assignedOnly: true,
+          linkPurpose: "TASK",
         },
       }),
     );
@@ -70,6 +71,42 @@ describe("linked KPI picker", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.items).toEqual([]);
     expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it("requests logbook eligibility from the server instead of filtering by role or mode locally", async () => {
+    query.mockResolvedValue(response(["self-created", "cascaded"]));
+    const { result } = renderHook(() =>
+      useLinkedKpis({
+        open: true,
+        userId: "manager",
+        strategicPeriodId: "annual-1",
+        purpose: "LOGBOOK",
+      }),
+    );
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          assignedOnly: true,
+          linkPurpose: "LOGBOOK",
+        }),
+      }),
+    );
+  });
+
+  it("labels the cascade level without merging different assignments by name", () => {
+    const own = { ...item("own"), assigneeType: "DEPARTMENT" };
+    const cascaded = {
+      ...item("cascade"),
+      parent: { kpiId: "parent" },
+      assigneeType: "PERSONNEL",
+    };
+    expect(linkedKpiLabel(own, [own, cascaded])).toContain(
+      "Standalone · department",
+    );
+    expect(linkedKpiLabel(cascaded, [own, cascaded])).toContain(
+      "Cascaded · personnel",
+    );
   });
 
   it("ignores a previous user/period request that finishes late", async () => {

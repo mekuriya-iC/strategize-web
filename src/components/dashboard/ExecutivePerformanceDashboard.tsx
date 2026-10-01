@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   buildCorporateObjectives,
   buildSupportPerformance,
+  performanceTrafficStatus,
   reportQuarterAchievement,
   summaryAchievement,
 } from "@/lib/dashboard/performanceDashboard";
@@ -144,7 +145,8 @@ function QuarterHistory({
 }
 
 function performanceTone(value: number | null) {
-  if (value == null) {
+  const status = performanceTrafficStatus(value);
+  if (status === "NO_DATA") {
     return {
       label: "Awaiting data",
       text: "text-slate-600 dark:text-slate-300",
@@ -152,7 +154,7 @@ function performanceTone(value: number | null) {
       fill: "#94a3b8",
     };
   }
-  if (value >= 100) {
+  if (status === "GREEN") {
     return {
       label: "On track",
       text: "text-emerald-700 dark:text-emerald-300",
@@ -160,7 +162,7 @@ function performanceTone(value: number | null) {
       fill: "#059669",
     };
   }
-  if (value >= 80) {
+  if (status === "AMBER") {
     return {
       label: "Watch",
       text: "text-amber-700 dark:text-amber-300",
@@ -340,7 +342,9 @@ function CorporateScorecards({
                         {hasResult
                           ? `${formatPercent(objective.achievement)} `
                           : ""}
-                        {tone.label}
+                        {objective.kpis.every((kpi) => kpi.isNotDue)
+                          ? "Not due this quarter"
+                          : tone.label}
                       </Badge>
                       <Badge variant="secondary">Direct</Badge>
                     </div>
@@ -430,7 +434,7 @@ function CorporateScorecards({
                               />
                               <MetricValue
                                 label="Actual"
-                                value={formatMetricValue(
+                                value={kpi.isNotDue ? "—" : formatMetricValue(
                                   kpi.actual,
                                   kpi.measurementUnit,
                                   kpi.customUnitLabel,
@@ -441,10 +445,14 @@ function CorporateScorecards({
                                 value={
                                   kpi.resultCount > 0
                                     ? formatPercent(kpi.achievement)
-                                    : "Pending"
+                                    : kpi.isNotDue
+                                      ? "Not due this quarter"
+                                      : "Pending"
                                 }
                                 className={kpiTone.text}
-                                detail={`${numberFormatter.format(kpi.resultCoverage)}% data coverage`}
+                                detail={kpi.isNotDue
+                                  ? "Excluded from expected results"
+                                  : `${numberFormatter.format(kpi.resultCoverage)}% data coverage`}
                               />
                             </div>
                           </div>
@@ -769,6 +777,8 @@ export default function ExecutivePerformanceDashboard({
     primaryReport.summary.finalCount + primaryReport.summary.provisionalCount >
     0;
   const coverage = Number(primaryReport.summary.resultCoverageRate || 0) * 100;
+  const allNotDue = primaryReport.summary.rowCount > 0 &&
+    primaryReport.summary.notDueCount === primaryReport.summary.rowCount;
   const objectives = new Set(
     primaryReport.kpiRollups.flatMap((item) =>
       item.objectiveId ? [item.objectiveId] : [],
@@ -809,7 +819,9 @@ export default function ExecutivePerformanceDashboard({
           <PulseCard
             eyebrow="Direct achievement"
             value={
-              hasDirectResult ? formatPercent(directAchievement) : "Pending"
+              hasDirectResult
+                ? formatPercent(directAchievement)
+                : allNotDue ? "Not due" : "Pending"
             }
             detail={`${numberFormatter.format(primaryReport.summary.achievedContributionWeight)} of ${numberFormatter.format(primaryReport.summary.plannedContributionWeight)} planned score weight`}
             icon={<TrendingUp className="h-4 w-4" />}
@@ -833,7 +845,7 @@ export default function ExecutivePerformanceDashboard({
           <PulseCard
             eyebrow="Result coverage"
             value={formatPercent(coverage)}
-            detail={`${primaryReport.summary.pendingResultCount} result${primaryReport.summary.pendingResultCount === 1 ? "" : "s"} pending`}
+            detail={`${primaryReport.summary.pendingResultCount} result${primaryReport.summary.pendingResultCount === 1 ? "" : "s"} pending${primaryReport.summary.notDueCount ? ` · ${primaryReport.summary.notDueCount} not due` : ""}`}
             icon={<Activity className="h-4 w-4" />}
             progress={coverage}
             accent="#4f46e5"

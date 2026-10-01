@@ -622,6 +622,7 @@ export interface KpiQuarterReportSummary {
   finalCount: number;
   provisionalCount: number;
   pendingResultCount: number;
+  notDueCount?: number;
 }
 
 export interface KpiQuarterReportQuarterSummary extends KpiQuarterReportSummary {
@@ -657,6 +658,7 @@ export interface KpiQuarterReportKpiRollup {
   resultCoverageRate: number;
   planCount: number;
   resultCount: number;
+  notDueCount?: number;
 }
 
 export interface KpiQuarterReportKpiQuarterRollup
@@ -722,6 +724,7 @@ export interface KpiQuarterReportRow {
   teamCarryIn?: number | null;
   teamEffectiveTarget?: number | null;
   planStatus: KpiQuarterPlanStatus;
+  isNotDue?: boolean;
   directActual?: number | null;
   directAchievementRate?: number | null;
   aggregateActual?: number | null;

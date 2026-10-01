@@ -45,6 +45,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         finalCount
         provisionalCount
         pendingResultCount
+        notDueCount
       }
       quarterSummaries {
         quarterNumber
@@ -64,6 +65,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         finalCount
         provisionalCount
         pendingResultCount
+        notDueCount
       }
       rollups {
         level
@@ -85,6 +87,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         finalCount
         provisionalCount
         pendingResultCount
+        notDueCount
       }
       kpiRollups {
         kpiId
@@ -109,6 +112,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         resultCoverageRate
         planCount
         resultCount
+        notDueCount
       }
       entityQuarterRollups {
         quarterNumber
@@ -131,6 +135,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         finalCount
         provisionalCount
         pendingResultCount
+        notDueCount
       }
       kpiQuarterRollups {
         quarterNumber
@@ -156,6 +161,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         resultCoverageRate
         planCount
         resultCount
+        notDueCount
       }
       entityKpiRollups {
         quarterNumber
@@ -181,6 +187,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         resultCoverageRate
         planCount
         resultCount
+        notDueCount
         level
         entityId
         entityName
@@ -231,6 +238,7 @@ export const GET_KPI_QUARTER_PERFORMANCE_REPORT = gql`
         teamCarryIn
         teamEffectiveTarget
         planStatus
+        isNotDue
         directActual
         directAchievementRate
         directAchievementRateExact

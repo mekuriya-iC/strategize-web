@@ -682,6 +682,20 @@ export default function ApprovalsPage() {
                 </div>
               </div>
 
+              {/* Linked KPI */}
+              {selectedLogbookEntry.linkedKpi && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Linked KPI
+                  </Label>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                      {selectedLogbookEntry.linkedKpi.name}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Activity Description */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">

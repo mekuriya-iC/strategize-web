@@ -83,6 +83,16 @@ export function LogbookTableCard({
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
                 {item.activity}
               </h3>
+              {item.linkedKpi && (
+                <div className="mb-2 flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-900/20 px-2 py-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">KPI:</span> {item.linkedKpi.name}
+                  </span>
+                </div>
+              )}
               <span className="inline-flex mb-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                 {normalizedStatus === "SUBMITTED"
                   ? "Pending Approval"
@@ -140,6 +150,17 @@ export function LogbookTableCard({
       {/* Expanded Details */}
       {isExpanded && (
         <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 bg-gray-50 dark:bg-gray-900/50">
+          {item.linkedKpi && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Linked KPI
+              </label>
+              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-1">
+                {item.linkedKpi.name}
+              </p>
+            </div>
+          )}
+          
           {item.description && (
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">

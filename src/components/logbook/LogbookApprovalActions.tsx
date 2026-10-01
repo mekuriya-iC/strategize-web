@@ -21,6 +21,7 @@ interface LogbookApprovalActionsProps {
   logbookEntryId: string;
   activityDescription: string;
   currentStatus: string;
+  linkedKpiName?: string | null;
   onSuccess?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function LogbookApprovalActions({
   logbookEntryId,
   activityDescription,
   currentStatus,
+  linkedKpiName,
   onSuccess,
 }: LogbookApprovalActionsProps) {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -138,6 +140,16 @@ export function LogbookApprovalActions({
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {activityDescription}
             </p>
+            {linkedKpiName && (
+              <>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-3 mb-1">
+                  Linked KPI:
+                </p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                  {linkedKpiName}
+                </p>
+              </>
+            )}
           </div>
 
           <DialogFooter>
@@ -180,6 +192,16 @@ export function LogbookApprovalActions({
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {activityDescription}
             </p>
+            {linkedKpiName && (
+              <>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-3 mb-1">
+                  Linked KPI:
+                </p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                  {linkedKpiName}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -238,9 +238,9 @@ export default function QuarterlyPerformanceReport() {
       {
         id: "status",
         accessor: (row: KpiQuarterReportRow) =>
-          row.resultStatus ?? row.planStatus ?? "",
+          row.isNotDue ? "Not due this quarter" : row.resultStatus ?? row.planStatus ?? "",
         filterFn: (row: KpiQuarterReportRow, value: string) =>
-          (row.resultStatus ?? row.planStatus ?? "") === value,
+          (row.isNotDue ? "Not due this quarter" : row.resultStatus ?? row.planStatus ?? "") === value,
       },
     ],
     [],
@@ -361,7 +361,7 @@ export default function QuarterlyPerformanceReport() {
       kpi: row.kpiName,
       mode: row.kpiMode,
       planStatus: row.planStatus,
-      resultStatus: row.resultStatus ?? "NOT_CALCULATED",
+      resultStatus: row.isNotDue ? "NOT_DUE" : row.resultStatus ?? "NOT_CALCULATED",
       originalTarget: row.originalTarget,
       carryIn: row.carryIn,
       effectiveTarget: row.effectiveTarget,
@@ -594,7 +594,7 @@ export default function QuarterlyPerformanceReport() {
             <SummaryCard
               label="Result status"
               value={`${report.summary.finalCount} final`}
-              description={`${report.summary.provisionalCount} provisional · ${report.summary.pendingResultCount} pending`}
+              description={`${report.summary.provisionalCount} provisional · ${report.summary.pendingResultCount} pending${report.summary.notDueCount ? ` · ${report.summary.notDueCount} not due` : ""}`}
               icon={<BarChart3 className="h-4 w-4" />}
             />
           </div>
@@ -604,6 +604,7 @@ export default function QuarterlyPerformanceReport() {
               Weighted achievement is earned score weight divided by planned score
               weight. Pending KPIs remain in the plan; “—” means no calculated
               result, while 0% is a measured zero.
+              {" "}Approved unscheduled additive quarters are marked “Not due this quarter” and excluded from coverage and scheduled score weight. Drafts and valid zero goals remain applicable.
               {filters.quarter === ALL
                 ? " The annual card includes all four quarters, including future quarters. Compare a quarter card with the dashboard for the same quarter and KPI scope."
                 : " Compare with the dashboard using the same quarter and KPI scope."}
@@ -647,7 +648,9 @@ export default function QuarterlyPerformanceReport() {
                           quarter.finalCount > 0 ? "default" : "secondary"
                         }
                       >
-                        {quarter.finalCount}/{quarter.rowCount} final
+                        {quarter.rowCount > 0 && quarter.notDueCount === quarter.rowCount
+                          ? "Not due this quarter"
+                          : `${quarter.finalCount}/${quarter.rowCount - (quarter.notDueCount ?? 0)} final`}
                       </Badge>
                     </CardTitle>
                   </CardHeader>
@@ -675,6 +678,7 @@ export default function QuarterlyPerformanceReport() {
                       <span>
                         {formatPercent(quarter.resultCoverageRate)} ·{" "}
                         {quarter.pendingResultCount} pending
+                        {Boolean(quarter.notDueCount) && ` · ${quarter.notDueCount} not due`}
                       </span>
                     </div>
                   </CardContent>
@@ -1088,6 +1092,7 @@ function MetricCell({
 }
 
 function ResultStatus({ row }: { row: KpiQuarterReportRow }) {
+  if (row.isNotDue) return <Badge variant="secondary">Not due this quarter</Badge>;
   if (row.resultStatus === "FINAL") return <Badge>Final</Badge>;
   if (row.resultStatus === "PROVISIONAL") {
     return <Badge variant="secondary">Provisional</Badge>;
@@ -1163,7 +1168,7 @@ function QuarterDetailDialog({
           />
           <DetailCard
             label="Result status"
-            value={row.resultStatus ?? "Not calculated"}
+            value={row.isNotDue ? "Not due this quarter" : row.resultStatus ?? "Not calculated"}
           />
         </div>
         {row.achievementRateExact && (

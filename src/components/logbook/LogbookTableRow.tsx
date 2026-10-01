@@ -128,6 +128,16 @@ export function LogbookTableRow({
             <span className="text-sm font-medium text-gray-900 dark:text-white">
               {item.activity}
             </span>
+            {item.linkedKpi && (
+              <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  KPI: {item.linkedKpi.name}
+                </span>
+              </div>
+            )}
             <div>{getStatusBadge()}</div>
           </div>
         </td>
@@ -199,6 +209,16 @@ export function LogbookTableRow({
         <tr className="bg-gray-50 dark:bg-gray-900/50">
           <td colSpan={7} className="px-4 py-4">
             <div className="space-y-3 text-sm">
+              {item.linkedKpi && (
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Linked KPI:
+                  </span>
+                  <p className="mt-1 text-blue-600 dark:text-blue-400 font-medium">
+                    {item.linkedKpi.name}
+                  </p>
+                </div>
+              )}
               {item.description && (
                 <div>
                   <span className="font-medium text-gray-700 dark:text-gray-300">

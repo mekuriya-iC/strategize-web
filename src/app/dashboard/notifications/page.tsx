@@ -88,6 +88,9 @@ export default function NotificationsPage() {
   const { user } = useAuthContext();
   const router = useRouter();
 
+  // Debug logging
+  console.log('📧 Notifications page - Current user:', user?.employeeId, user?.fullName);
+
   const { data, loading, refetch } = useQuery(GET_NOTIFICATIONS, {
     variables: {
       page,
@@ -97,6 +100,18 @@ export default function NotificationsPage() {
     },
     skip: !user?.employeeId,
     pollInterval: 30000, // Poll every 30 seconds
+    fetchPolicy: 'network-only', // Always fetch from network, not cache
+    onCompleted: (data) => {
+      console.log('📧 Notifications query completed:', {
+        requestedUser: user?.employeeId,
+        receivedCount: data?.notifications?.items?.length,
+        items: data?.notifications?.items?.map((n: any) => ({
+          id: n.notificationId,
+          recipient: n.recipient?.fullName,
+          recipientId: n.recipient?.employeeId,
+        })),
+      });
+    },
   });
 
   const [updateNotification] = useMutation(UPDATE_NOTIFICATION);

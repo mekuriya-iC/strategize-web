@@ -59,6 +59,7 @@ type ReviewLogbookEntry = {
   activityDescription?: string | null;
   entryStatus?: string | null;
   kpiCompletionPercent?: number | null;
+  linkedKpi?: { name?: string | null } | null;
   owner?:
     | (ReviewEmployee & { fullName?: string | null; title?: string | null })
     | null;
@@ -257,9 +258,19 @@ export default function LogbookApprovalsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 max-w-md truncate">
-                      {entry.activityDescription}
-                    </p>
+                    <div>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 max-w-md truncate">
+                        {entry.activityDescription}
+                      </p>
+                      {entry.linkedKpi?.name && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          <span>KPI: {entry.linkedKpi.name}</span>
+                        </p>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {entry.kpiCompletionPercent ? (
@@ -287,6 +298,7 @@ export default function LogbookApprovalsPage() {
                     <LogbookApprovalActions
                       logbookEntryId={entry.logbookEntryId}
                       activityDescription={entry.activityDescription || ""}
+                      linkedKpiName={entry.linkedKpi?.name}
                       currentStatus={entry.entryStatus || ""}
                       onSuccess={() => refetch()}
                     />

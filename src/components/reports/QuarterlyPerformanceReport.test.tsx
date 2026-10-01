@@ -107,6 +107,15 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("quarterly report achievement semantics", () => {
+  it("shows not-due quarters separately from pending results and final-result coverage", () => {
+    report.quarterSummaries[0] = { ...report.quarterSummaries[0], provisionalCount: 9, pendingResultCount: 3, notDueCount: 2, resultCoverageRate: 0.75 };
+    report.quarterSummaries[1] = { ...report.quarterSummaries[1], pendingResultCount: 0, notDueCount: 14 };
+    render(<QuarterlyPerformanceReport />);
+    const q1 = within(screen.getByRole("button", { name: "View Q1 performance" }));
+    expect(q1.getByText("75% · 3 pending · 2 not due")).toBeTruthy();
+    expect(q1.getByText("0/12 final")).toBeTruthy();
+    expect(within(screen.getByRole("button", { name: "View Q2 performance" })).getByText("Not due this quarter")).toBeTruthy();
+  });
   it("matches the dashboard weighted quarter measure and labels the simple mean separately", () => {
     render(<QuarterlyPerformanceReport />);
     const q1 = within(screen.getByRole("button", { name: "View Q1 performance" }));

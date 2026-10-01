@@ -20,6 +20,7 @@ export interface DashboardKpiPerformance {
   customUnitLabel?: string | null;
   resultCount: number;
   resultCoverage: number;
+  isNotDue: boolean;
 }
 
 export interface DashboardObjectivePerformance {
@@ -67,8 +68,8 @@ export function performanceTrafficStatus(
   pace: number | null,
 ): PerformanceTrafficStatus {
   if (pace == null || !Number.isFinite(pace)) return "NO_DATA";
-  if (pace >= 100) return "GREEN";
-  if (pace >= 80) return "AMBER";
+  if (pace > 90) return "GREEN";
+  if (pace >= 75) return "AMBER";
   return "RED";
 }
 
@@ -98,6 +99,8 @@ export function calculateDashboardPace(
     0,
   );
   const planCount = rollups.reduce((sum, item) => sum + item.planCount, 0);
+  const notDueCount = rollups.reduce((sum, item) => sum + (item.notDueCount ?? 0), 0);
+  const applicableCount = planCount - notDueCount;
   const resultCount = rollups.reduce((sum, item) => sum + item.resultCount, 0);
   const progress = Math.min(Math.max(activeQuarterProgress, 0), 1);
   const expectedWeight = rollups.reduce((sum, item) => {
@@ -123,7 +126,7 @@ export function calculateDashboardPace(
     plannedWeight,
     achievedWeight,
     expectedWeight,
-    resultCoverage: planCount > 0 ? (resultCount / planCount) * 100 : 0,
+    resultCoverage: applicableCount > 0 ? (resultCount / applicableCount) * 100 : 0,
   };
 }
 
@@ -160,6 +163,7 @@ export function buildCorporateObjectives(
         customUnitLabel: item.customUnitLabel,
         resultCount: item.resultCount,
         resultCoverage: number(item.resultCoverageRate) * 100,
+        isNotDue: item.planCount > 0 && item.notDueCount === item.planCount,
       }));
       const plannedWeight = members.reduce(
         (sum, item) => sum + number(item.plannedContributionWeight),

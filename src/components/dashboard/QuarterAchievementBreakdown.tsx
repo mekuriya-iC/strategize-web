@@ -150,7 +150,11 @@ export function QuarterStrip({
           <p className="text-sm text-muted-foreground">
             Approved target-allocation results. Trends use percentage-point
             change. “—” means no calculated result yet; a measured zero appears
-            as 0%.
+            as 0%. Not-due quarters are excluded from expected results.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Red: below 75% · Amber: 75–90% · Green: above 90%.
+            Current-quarter colour uses pace against expected progress.
           </p>
         </div>
         {selectedQuarterPeriod && (
@@ -185,6 +189,9 @@ export function QuarterStrip({
             (item) => item.quarterNumber === quarterNumber,
           );
           const coverage = Number(summary?.resultCoverageRate ?? 0) * 100;
+          const isNotDue = Boolean(
+            summary && summary.rowCount > 0 && summary.notDueCount === summary.rowCount,
+          );
 
           return (
             <Card
@@ -199,7 +206,9 @@ export function QuarterStrip({
                       <Badge variant="outline">Selected</Badge>
                     )}
                   </div>
-                  <TrafficBadge status={status} />
+                  {isNotDue
+                    ? <Badge variant="secondary">Not due this quarter</Badge>
+                    : <TrafficBadge status={status} />}
                 </div>
                 <p
                   className={`mt-4 text-3xl font-bold tabular-nums ${tone.text}`}
@@ -234,6 +243,7 @@ export function QuarterStrip({
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                   {percent(coverage)} result coverage ·{" "}
                   {summary?.pendingResultCount ?? 0} pending
+                  {Boolean(summary?.notDueCount) && ` · ${summary?.notDueCount} not due`}
                 </p>
               </CardContent>
             </Card>
@@ -500,7 +510,11 @@ function ContributorNode({
         </div>
         <div>
           <p className={`text-sm font-bold tabular-nums ${tone.text}`}>
-            {achievement == null ? "Pending" : percent(achievement)}
+            {achievement == null
+              ? item.planCount > 0 && item.notDueCount === item.planCount
+                ? "Not due this quarter"
+                : "Pending"
+              : percent(achievement)}
           </p>
           <p className="text-xs text-muted-foreground">local achievement</p>
         </div>

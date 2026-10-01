@@ -161,6 +161,14 @@ const quarterPeriod = {
 afterEach(cleanup);
 
 describe("QuarterAchievementBreakdown", () => {
+  it("distinguishes not due from pending in quarter coverage", () => {
+    const primary = report();
+    primary.quarterSummaries[0] = { ...primary.quarterSummaries[0], rowCount: 14, provisionalCount: 9, pendingResultCount: 3, notDueCount: 2, resultCoverageRate: 0.75 };
+    primary.quarterSummaries[1] = { ...primary.quarterSummaries[1], rowCount: 2, notDueCount: 2 };
+    render(<QuarterAchievementBreakdown primaryReport={primary} hierarchyReport={report()} selectedQuarter={1} selectedQuarterPeriod={quarterPeriod} />);
+    expect(screen.getByText("75% result coverage · 3 pending · 2 not due")).toBeTruthy();
+    expect(screen.getByText("Not due this quarter")).toBeTruthy();
+  });
   it("renders all quarters, nested departments, and CEO-direct departments", () => {
     const primary = report();
     const hierarchy = report();

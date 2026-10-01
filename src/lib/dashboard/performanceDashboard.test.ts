@@ -188,8 +188,21 @@ describe("performance dashboard calculations", () => {
         },
       ]).status,
     ).toBe("NO_DATA");
-    expect(performanceTrafficStatus(79.99)).toBe("RED");
+    expect(performanceTrafficStatus(74.99)).toBe("RED");
+    expect(performanceTrafficStatus(75)).toBe("AMBER");
+    expect(performanceTrafficStatus(75.6)).toBe("AMBER");
+    expect(performanceTrafficStatus(90)).toBe("AMBER");
+    expect(performanceTrafficStatus(90.01)).toBe("GREEN");
+    expect(performanceTrafficStatus(Number.NaN)).toBe("NO_DATA");
     expect(performanceTrafficStatus(100)).toBe("GREEN");
+  });
+
+  it("excludes not-due quarters from coverage, without treating them as results", () => {
+    const pace = calculateDashboardPace([{ ...corporateKpi, planCount: 14, resultCount: 9, notDueCount: 2 }]);
+    expect(pace.resultCoverage).toBe(75);
+    const unscheduled = { ...corporateKpi, planCount: 1, resultCount: 0, notDueCount: 1, plannedContributionWeight: 0, achievedContributionWeight: 0 };
+    expect(calculateDashboardPace([unscheduled])).toMatchObject({ resultCoverage: 0, status: "NO_DATA" });
+    expect(buildCorporateObjectives([unscheduled])[0].kpis[0].isNotDue).toBe(true);
   });
 
   it("calculates deterministic quarter progress", () => {

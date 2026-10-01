@@ -12,5 +12,7 @@ describe("quarterly performance GraphQL shape", () => {
     expect(printed).toContain("parentKpiId");
     expect(printed).toContain("divisionId");
     expect(printed).toContain("departmentId");
+    expect(printed.match(/notDueCount/g)).toHaveLength(7);
+    expect(printed).toContain("isNotDue");
   });
 });

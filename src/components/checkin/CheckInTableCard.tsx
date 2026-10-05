@@ -111,7 +111,9 @@ export function CheckInTableCard({
   const borderStyle = getTaskBorderStyle(task.taskType);
   const submissionStatus = getSubmissionStatusMeta(task.submissionStatus);
   const canSelect =
-    isSelectionEnabled && task.submissionStatus === "DRAFT";
+    isSelectionEnabled &&
+    task.submissionStatus === "DRAFT" &&
+    !task.isMidWeekTask;
   const latestRejection = getLatestPlanningRejection(task.planningReviewHistory);
   const canSubmitIndividually =
     (task.submissionStatus === "DRAFT" &&

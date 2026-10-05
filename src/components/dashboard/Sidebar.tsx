@@ -340,7 +340,7 @@ const navCategories: NavCategory[] = [
       {
         label: "Task Requests",
         href: "/dashboard/task-requests",
-        permission: "nav:checkin",
+        permission: "nav:dashboard", // Changed from nav:checkin - everyone should see collaboration requests
         icon: (
           <svg
             width="16"
@@ -886,7 +886,7 @@ export default function Sidebar({
   const { count: pendingApprovalsCount } = usePendingApprovalsBadge();
   const { count: flaggedKpiCount } = useFlaggedKpiCount();
   const { pendingCount: pendingTaskRequestCount } =
-    usePendingTaskCollaborationCount();
+    usePendingTaskCollaborationCount({ skip: !userRole });
 
   const badgeCounts: Record<string, number> = {
     "/dashboard/approvals": pendingApprovalsCount,

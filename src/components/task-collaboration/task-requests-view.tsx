@@ -122,13 +122,11 @@ export function TaskRequestsView() {
   const [submitting, setSubmitting] = useState(false);
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
 
-  // NOTE: Task collaboration is not yet implemented on the backend.
-  // Skip both queries until the backend supports these operations.
   const receivedQuery = useQuery<PendingTaskCollaborationRequestsData>(
     GET_PENDING_TASK_COLLABORATION_REQUESTS,
     {
-      skip: true,
-      fetchPolicy: "cache-first",
+      fetchPolicy: "cache-and-network",
+      nextFetchPolicy: "cache-first",
       pollInterval: 120_000,
       notifyOnNetworkStatusChange: true,
     },
@@ -136,8 +134,8 @@ export function TaskRequestsView() {
   const sentQuery = useQuery<SentTaskCollaborationRequestsData>(
     GET_SENT_TASK_COLLABORATION_REQUESTS,
     {
-      skip: true,
-      fetchPolicy: "cache-first",
+      fetchPolicy: "cache-and-network",
+      nextFetchPolicy: "cache-first",
       pollInterval: 120_000,
       notifyOnNetworkStatusChange: true,
     },

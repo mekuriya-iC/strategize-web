@@ -480,17 +480,25 @@ export function LogbookEntryDialog({
         entryData.kpiAchievedValue = isBasisDrivenKpi
           ? Number(resultPreview.numeratorExact)
           : achieved;
-        entryData.kpiActualDenominator = isBasisDrivenKpi
-          ? Number(resolvedBasisExact)
-          : null;
+        // Only user-entered bases belong in the mutation. Approved and linked
+        // bases are authoritative server values and are resolved again when
+        // the entry is saved.
+        entryData.kpiActualDenominator =
+          isBasisDrivenKpi && actualBasisSource === "ENTER_ACTUAL_BASIS"
+            ? Number(kpiActualBasisExact)
+            : null;
         entryData.kpiResultInputMode = isBasisDrivenKpi
           ? kpiResultInputMode
           : null;
-        
+
         // For ratio formula KPIs, send numerator and denominator
-        if (selectedKpi?.calculationType === "RATIO_FORMULA" && !isBasisDrivenKpi) {
+        if (
+          selectedKpi?.calculationType === "RATIO_FORMULA" &&
+          !isBasisDrivenKpi
+        ) {
           entryData.kpiActualNumeratorExact = kpiActualNumeratorExact || null;
-          entryData.kpiActualDenominatorExact = kpiActualDenominatorExact || null;
+          entryData.kpiActualDenominatorExact =
+            kpiActualDenominatorExact || null;
         } else if (isBasisDrivenKpi) {
           // For basis-driven KPIs
           entryData.kpiActualNumeratorExact =
@@ -498,7 +506,7 @@ export function LogbookEntryDialog({
               ? kpiActualNumeratorExact
               : null;
         }
-        
+
         entryData.kpiActualRateExact = isBasisDrivenKpi
           ? kpiResultInputMode === "RATE_AND_BASIS"
             ? kpiActualRateExact

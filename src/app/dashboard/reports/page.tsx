@@ -32,6 +32,10 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useAuthStore, useStrategicPeriodStore } from "@/stores";
 import { Button } from "@/components/ui/button";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
+import { GET_KPI_QUARTER_PERFORMANCE_REPORT } from "@/lib/graphql/queries/quarterly-performance";
+import { resolveReportingPeriodContext } from "@/lib/reports/reportingPeriodContext";
+import type { KpiQuarterPerformanceReport } from "@/types/graphql";
 
 // GraphQL Queries for Dashboard Metrics
 const GET_REPORTS_SUMMARY = gql`
@@ -67,29 +71,16 @@ const GET_REPORTS_SUMMARY = gql`
   }
 `;
 
-const GET_CORPORATE_SCORECARD = gql`
-  query GetCorporateScorecard($organizationId: ID!, $periodId: ID!) {
-    realtimeCorporateScorecard(
-      organizationId: $organizationId
-      periodId: $periodId
-      capFinalScore: false
-    ) {
-      totalScore
-      maxPossibleScore
-      percentageAchieved
-      kpiScores {
-        level
-        achievementRate
-      }
-    }
-  }
-`;
-
 // Wrap the main content in a component to use useSearchParams
 function ReportsContent() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const { selectedPeriod } = useStrategicPeriodStore();
+  const { strategicPeriods } = useActiveStrategicPlanPeriods();
+  const reportContext = useMemo(
+    () => resolveReportingPeriodContext(selectedPeriod, strategicPeriods),
+    [selectedPeriod, strategicPeriods],
+  );
 
   const fullAccessRoles = new Set(["SUPER_ADMIN", "ADMIN", "HR", "CEO"]);
   const hasFullAccess =
@@ -111,25 +102,42 @@ function ReportsContent() {
     nextFetchPolicy: "cache-first",
   });
 
-  // Fetch corporate scorecard for KPI metrics
-  const { data: scorecardData, loading: scorecardLoading } = useQuery(GET_CORPORATE_SCORECARD, {
+  // Use the same quarterly result engine as the detailed report and dashboard.
+  const { data: scorecardData } = useQuery<{
+    kpiQuarterPerformanceReport: KpiQuarterPerformanceReport;
+  }>(GET_KPI_QUARTER_PERFORMANCE_REPORT, {
     variables: {
-      organizationId: user?.organizationId,
-      periodId: selectedPeriod?.strategicPeriodId,
+      filters: {
+        annualStrategicPeriodId:
+          reportContext?.annualPeriod.strategicPeriodId,
+        quarterNumber: reportContext?.quarterNumber,
+        level: "CORPORATE",
+        cascadeType: "TARGET_ALLOCATION",
+        page: 1,
+        limit: 1,
+      },
     },
-    skip: !hasFullAccess || !selectedPeriod?.strategicPeriodId,
+    skip:
+      !hasFullAccess ||
+      !reportContext?.annualPeriod.strategicPeriodId,
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
   });
 
   const teamPerformance = summaryData?.unifiedTeamPerformance;
-  const scorecard = scorecardData?.realtimeCorporateScorecard;
+  const scorecard = scorecardData?.kpiQuarterPerformanceReport;
 
   // Calculate metrics
   const totalEmployees = teamPerformance?.results?.length || 0;
   const avgPerformance = teamPerformance?.averageScore || 0;
   const topPerformerScore = teamPerformance?.highestScore || 0;
-  const kpiAchievement = scorecard?.percentageAchieved || 0;
+  const hasKpiResults =
+    (scorecard?.summary.finalCount || 0) +
+      (scorecard?.summary.provisionalCount || 0) >
+    0;
+  const kpiAchievement = scorecard
+    ? scorecard.summary.weightedAchievementRate * 100
+    : 0;
 
   // Calculate rating distribution (memoized)
   const ratingDistribution = useMemo(() => {
@@ -315,12 +323,14 @@ function ReportsContent() {
             <CardContent>
               <div className="flex items-baseline gap-2">
                 <div className={`text-3xl font-bold ${getScoreColor(kpiAchievement)}`}>
-                  {kpiAchievement.toFixed(1)}%
+                  {hasKpiResults ? `${kpiAchievement.toFixed(1)}%` : "—"}
                 </div>
-                {getTrendIcon(kpiAchievement)}
+                {hasKpiResults && getTrendIcon(kpiAchievement)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Corporate scorecard
+                {hasKpiResults
+                  ? "Calculated quarter-plan results"
+                  : "Awaiting calculated KPI results"}
               </p>
             </CardContent>
           </Card>
@@ -516,6 +526,7 @@ function ReportsContent() {
             }
           >
             <KPIPerformanceAnalytics
+              key={selectedPeriod?.strategicPeriodId ?? "no-period"}
               onExport={(data) => handleExport(data, "kpi-performance-analytics")}
             />
           </TabsContent>

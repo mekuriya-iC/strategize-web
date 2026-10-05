@@ -14,18 +14,16 @@ export interface UsePendingTaskCollaborationCountOptions {
 export function usePendingTaskCollaborationCount(
   options: UsePendingTaskCollaborationCountOptions = {},
 ) {
-  // NOTE: Task collaboration feature is not yet implemented on the backend.
-  // The query is permanently skipped until the backend supports
-  // pendingTaskCollaborationRequests and TaskCollaborationRequest type.
-  const { skip = true, pollInterval = 30_000 } = options;
+  const { skip = false, pollInterval = 30_000 } = options;
   const { data, loading, error, refetch } =
     useQuery<PendingTaskCollaborationRequestsData>(
       GET_PENDING_TASK_COLLABORATION_REQUESTS,
       {
         skip,
         pollInterval,
-        fetchPolicy: "cache-first",
+        fetchPolicy: "cache-and-network",
         nextFetchPolicy: "cache-first",
+        notifyOnNetworkStatusChange: true,
       },
     );
 

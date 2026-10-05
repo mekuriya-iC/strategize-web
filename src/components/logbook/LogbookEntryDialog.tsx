@@ -1,6 +1,9 @@
 "use client";
 
 import { getLogbookPeriodFields } from "./logbook-entry-period";
+import { FormulaConfigurationCard } from "./FormulaConfigurationCard";
+import { RatioFormulaInputSection } from "./RatioFormulaInputSection";
+import { DirectValueInputSection } from "./DirectValueInputSection";
 
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
@@ -173,6 +176,7 @@ export function LogbookEntryDialog({
   const [kpiResultInputMode, setKpiResultInputMode] =
     useState<KpiResultInputMode>("NUMERATOR");
   const [kpiActualNumeratorExact, setKpiActualNumeratorExact] = useState("");
+  const [kpiActualDenominatorExact, setKpiActualDenominatorExact] = useState("");
   const [kpiActualRateExact, setKpiActualRateExact] = useState("");
   const [kpiActualBasisExact, setKpiActualBasisExact] = useState("");
   const [kpiTargetValue, setKpiTargetValue] = useState("");
@@ -476,17 +480,33 @@ export function LogbookEntryDialog({
         entryData.kpiAchievedValue = isBasisDrivenKpi
           ? Number(resultPreview.numeratorExact)
           : achieved;
-        entryData.kpiActualDenominator = isBasisDrivenKpi
-          ? Number(resolvedBasisExact)
-          : null;
+        // Only user-entered bases belong in the mutation. Approved and linked
+        // bases are authoritative server values and are resolved again when
+        // the entry is saved.
+        entryData.kpiActualDenominator =
+          isBasisDrivenKpi && actualBasisSource === "ENTER_ACTUAL_BASIS"
+            ? Number(kpiActualBasisExact)
+            : null;
         entryData.kpiResultInputMode = isBasisDrivenKpi
           ? kpiResultInputMode
           : null;
-        entryData.kpiActualNumeratorExact = isBasisDrivenKpi
-          ? kpiResultInputMode === "NUMERATOR"
-            ? kpiActualNumeratorExact
-            : null
-          : null;
+
+        // For ratio formula KPIs, send numerator and denominator
+        if (
+          selectedKpi?.calculationType === "RATIO_FORMULA" &&
+          !isBasisDrivenKpi
+        ) {
+          entryData.kpiActualNumeratorExact = kpiActualNumeratorExact || null;
+          entryData.kpiActualDenominatorExact =
+            kpiActualDenominatorExact || null;
+        } else if (isBasisDrivenKpi) {
+          // For basis-driven KPIs
+          entryData.kpiActualNumeratorExact =
+            kpiResultInputMode === "NUMERATOR"
+              ? kpiActualNumeratorExact
+              : null;
+        }
+
         entryData.kpiActualRateExact = isBasisDrivenKpi
           ? kpiResultInputMode === "RATE_AND_BASIS"
             ? kpiActualRateExact
@@ -806,8 +826,22 @@ export function LogbookEntryDialog({
                   )}
                 </div>
               ) : linkedKpiId ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Formula Configuration Card - Show guidance for all KPI types */}
+                  {selectedKpi?.calculationType && (
+                    <FormulaConfigurationCard
+                      calculationType={selectedKpi.calculationType as any}
+                      formula={boundFormula}
+                      unitType={selectedKpi.unitType || undefined}
+                      measurementUnit={selectedKpi.measurementUnit || undefined}
+                      numeratorLabel={selectedKpi.numeratorLabel || undefined}
+                      denominatorLabel={selectedKpi.denominatorLabel || undefined}
+                    />
+                  )}
+
+                  {/* Conditional Input Sections based on Calculation Type */}
                   {isBasisDrivenKpi ? (
+                    // Existing basis-driven KPI fields
                     <KpiResultEntryFields
                       unitType={(selectedKpi?.unitType || "PERCENT") as KpiUnitType}
                       inputMode={kpiResultInputMode}
@@ -825,7 +859,50 @@ export function LogbookEntryDialog({
                       fallbackDenominatorLabel={selectedKpi?.denominatorLabel}
                       fallbackBasisUnitType={selectedKpi?.basisUnitType}
                     />
+                  ) : selectedKpi?.calculationType === "RATIO_FORMULA" ? (
+                    // Ratio Formula: Numerator/Denominator input
+                    <RatioFormulaInputSection
+                      numeratorValue={kpiActualNumeratorExact || ""}
+                      denominatorValue={kpiActualDenominatorExact || ""}
+                      numeratorLabel={selectedKpi?.numeratorLabel || undefined}
+                      denominatorLabel={selectedKpi?.denominatorLabel || undefined}
+                      onNumeratorChange={(value) => {
+                        setKpiActualNumeratorExact(value);
+                        // Auto-calculate achieved value when both are provided
+                        const num = parseFloat(value);
+                        const den = parseFloat(kpiActualDenominatorExact || "0");
+                        if (!isNaN(num) && !isNaN(den) && den !== 0) {
+                          const multiplier = boundFormula?.multiplier || 100;
+                          const result = (num / den) * multiplier;
+                          setKpiAchievedValue(result.toFixed(2));
+                        }
+                      }}
+                      onDenominatorChange={(value) => {
+                        setKpiActualDenominatorExact(value);
+                        // Auto-calculate achieved value when both are provided
+                        const num = parseFloat(kpiActualNumeratorExact || "0");
+                        const den = parseFloat(value);
+                        if (!isNaN(num) && !isNaN(den) && den !== 0) {
+                          const multiplier = boundFormula?.multiplier || 100;
+                          const result = (num / den) * multiplier;
+                          setKpiAchievedValue(result.toFixed(2));
+                        }
+                      }}
+                      multiplier={boundFormula?.multiplier}
+                      unitType={selectedKpi?.unitType || undefined}
+                    />
+                  ) : selectedKpi?.calculationType === "MANUAL_VALUE" ? (
+                    // Direct Value Entry
+                    <DirectValueInputSection
+                      value={kpiAchievedValue}
+                      onChange={setKpiAchievedValue}
+                      targetValue={parseFloat(kpiTargetValue) || selectedKpi?.targetValue || undefined}
+                      unitType={selectedKpi?.unitType || undefined}
+                      measurementUnit={selectedKpi?.measurementUnit || undefined}
+                      label="Achievement Value"
+                    />
                   ) : (
+                    // Fallback to old grid layout for other types
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="space-y-2">
                         <Label className="text-xs text-gray-600 dark:text-gray-400">

@@ -2,15 +2,22 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
-import { AlertTriangle, CheckCircle2, Loader2, Network, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Network, ShieldCheck, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
 import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
+import { useActiveStrategicPlanPeriods } from "@/hooks/strategic-periods/useActiveStrategicPlanPeriods";
 import { GET_SUPPORT_PERFORMANCE_REPORT } from "@/lib/graphql/queries/support-performance";
+import { resolveReportingPeriodContext } from "@/lib/reports/reportingPeriodContext";
 import { useStrategicPeriodStore } from "@/stores";
-import type { SupportPerformanceReportData, SupportPerformanceRow, SupportQuarterOutcome } from "@/types/support-performance";
+import type {
+  SupportPerformanceReportData,
+  SupportPerformanceRow,
+  SupportPerformanceSourceSummary,
+  SupportQuarterOutcome,
+} from "@/types/support-performance";
 
 const scopeLabels: Record<string, string> = {
   SELF: "My scope",
@@ -21,6 +28,7 @@ const scopeLabels: Record<string, string> = {
 
 const number = (value: number) =>
   new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
 function outcomeText(value: number | null | undefined, suffix = "") {
   return value == null ? "Pending / not calculated" : `${number(value)}${suffix}`;
@@ -48,7 +56,14 @@ function QuarterOutcome({ outcome }: { outcome?: SupportQuarterOutcome }) {
   );
 }
 
-function SupportUnitTable({ rows }: { rows: SupportPerformanceRow[] }) {
+function SupportUnitTable({
+  rows,
+  selectedQuarter,
+}: {
+  rows: SupportPerformanceRow[];
+  selectedQuarter?: number;
+}) {
+  const visibleQuarters = selectedQuarter ? [selectedQuarter] : [1, 2, 3, 4];
   const columns = useMemo(
     () => [
       {
@@ -58,10 +73,15 @@ function SupportUnitTable({ rows }: { rows: SupportPerformanceRow[] }) {
       },
       {
         id: "annual",
-        accessor: (row: SupportPerformanceRow) => row.annualContribution ?? -1,
+        accessor: (row: SupportPerformanceRow) =>
+          selectedQuarter
+            ? (row.quarters.find(
+                (quarter) => quarter.quarterNumber === selectedQuarter,
+              )?.contribution ?? -1)
+            : (row.annualContribution ?? -1),
       },
     ],
-    [],
+    [selectedQuarter],
   );
 
   const { processedRows, getHeaderProps } = useTableColumnControls({
@@ -79,12 +99,12 @@ function SupportUnitTable({ rows }: { rows: SupportPerformanceRow[] }) {
               {...getHeaderProps("localKpi")}
             />
           </TableHead>
-          {[1, 2, 3, 4].map((q) => (
+          {visibleQuarters.map((q) => (
             <TableHead key={q}>Q{q}</TableHead>
           ))}
           <TableHead>
             <SortableFilterableHeader
-              label="Annual contribution"
+              label={selectedQuarter ? `Q${selectedQuarter} outcome` : "Annual outcome"}
               filterable={false}
               {...getHeaderProps("annual")}
             />
@@ -96,6 +116,8 @@ function SupportUnitTable({ rows }: { rows: SupportPerformanceRow[] }) {
           <SupportRow
             key={`${row.objectiveSupportSourceId}-${row.localKpiId ?? "unplanned"}`}
             row={row}
+            visibleQuarters={visibleQuarters}
+            selectedQuarter={selectedQuarter}
           />
         ))}
       </TableBody>
@@ -105,13 +127,26 @@ function SupportUnitTable({ rows }: { rows: SupportPerformanceRow[] }) {
 
 export default function SupportPerformanceReport() {
   const selectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
-  const isAnnual = !selectedPeriod?.periodType || selectedPeriod.periodType.toLowerCase() === "annual";
+  const { strategicPeriods, loading: periodsLoading } =
+    useActiveStrategicPlanPeriods();
+  const context = useMemo(
+    () => resolveReportingPeriodContext(selectedPeriod, strategicPeriods),
+    [selectedPeriod, strategicPeriods],
+  );
   const { data, loading, error } = useQuery<{ supportPerformanceReport: SupportPerformanceReportData }>(
     GET_SUPPORT_PERFORMANCE_REPORT,
     {
-      variables: { filters: { annualStrategicPeriodId: selectedPeriod?.strategicPeriodId } },
-      skip: !selectedPeriod?.strategicPeriodId || !isAnnual,
-      fetchPolicy: "cache-first",
+      variables: {
+        filters: {
+          annualStrategicPeriodId: context?.annualPeriod.strategicPeriodId,
+          quarterNumber: context?.quarterNumber,
+          page: 1,
+          limit: 200,
+        },
+      },
+      skip: !context?.annualPeriod.strategicPeriodId,
+      fetchPolicy: "cache-and-network",
+      nextFetchPolicy: "cache-first",
       notifyOnNetworkStatusChange: true,
     },
   );
@@ -128,8 +163,9 @@ export default function SupportPerformanceReport() {
     return [...grouped.entries()];
   }, [report?.rows]);
 
-  if (!selectedPeriod) return <Message title="Select an annual strategic period" detail="Choose a period to load support performance." />;
-  if (!isAnnual) return <Message title="Annual period required" detail="Support performance is reported against the selected annual period." />;
+  if (!selectedPeriod) return <Message title="Select a reporting period" detail="Choose an annual period or quarter to load support performance." />;
+  if (periodsLoading && !context) return <div className="flex h-48 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (!context) return <Message title="Reporting period unavailable" detail="The selected quarter could not be matched to its annual plan." warning />;
   if (loading && !report) return <div className="flex h-48 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (error) return <Message title="Support performance is unavailable" detail={error.message} warning />;
   if (!report) return null;
@@ -140,6 +176,9 @@ export default function SupportPerformanceReport() {
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xl font-semibold">Support performance</h2>
         <Badge variant="secondary">{scopeLabels[report.scope] || report.scope}</Badge>
+        <Badge variant="outline">
+          {context.quarterNumber ? `Q${context.quarterNumber}` : "Annual"}
+        </Badge>
       </div>
 
       <Card>
@@ -158,8 +197,30 @@ export default function SupportPerformanceReport() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Support contribution summary</CardTitle>
+          <CardDescription>
+            Achievement and contribution from the departments and divisions assigned to support each corporate KPI. These values remain separate from the direct target-allocation score.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {report.sourceSummaries.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+              No linked support KPI plans are available for this scope.
+            </div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {report.sourceSummaries.map((summary) => (
+                <SourceSummary key={summary.sourceCorporateKpiId} summary={summary} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2"><Network className="h-5 w-5" />Support outcomes</CardTitle>
-          <CardDescription>Server-returned local KPI results. No corporate outcome or combined support score is calculated here.</CardDescription>
+          <CardDescription>Authoritative local KPI results for each supporting unit, including achievement and weighted contribution.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           {groups.length === 0 ? (
@@ -171,7 +232,10 @@ export default function SupportPerformanceReport() {
                 <div key={unitId} className="border-t">
                   <div className="px-4 py-2 text-sm"><span className="text-muted-foreground">Supported by unit:</span> <span className="font-medium">{unit.name}</span></div>
                   <div>
-                    <SupportUnitTable rows={unit.rows} />
+                    <SupportUnitTable
+                      rows={unit.rows}
+                      selectedQuarter={context.quarterNumber}
+                    />
                   </div>
                 </div>
               ))}
@@ -183,8 +247,92 @@ export default function SupportPerformanceReport() {
   );
 }
 
-function SupportRow({ row }: { row: SupportPerformanceRow }) {
-  return <TableRow><TableCell className="min-w-52"><p className="font-medium">{row.localKpiName || "No local KPI yet"}</p><Badge variant="outline" className="mt-1 text-[10px]">{row.readinessStatus.replaceAll("_", " ")}</Badge></TableCell>{[1,2,3,4].map((quarter) => <TableCell key={quarter} className="align-top"><QuarterOutcome outcome={row.quarters.find((item) => item.quarterNumber === quarter)} /></TableCell>)}<TableCell className="align-top font-medium">{outcomeText(row.annualContribution)}</TableCell></TableRow>;
+function SupportRow({
+  row,
+  visibleQuarters,
+  selectedQuarter,
+}: {
+  row: SupportPerformanceRow;
+  visibleQuarters: number[];
+  selectedQuarter?: number;
+}) {
+  const selectedOutcome = selectedQuarter
+    ? row.quarters.find((item) => item.quarterNumber === selectedQuarter)
+    : undefined;
+  const achievement = selectedQuarter
+    ? selectedOutcome?.achievement
+    : row.annualAchievement;
+  const contribution = selectedQuarter
+    ? selectedOutcome?.contribution
+    : row.annualContribution;
+  return (
+    <TableRow>
+      <TableCell className="min-w-52">
+        <p className="font-medium">{row.localKpiName || "No local KPI yet"}</p>
+        <Badge variant="outline" className="mt-1 text-[10px]">
+          {row.readinessStatus.replaceAll("_", " ")}
+        </Badge>
+      </TableCell>
+      {visibleQuarters.map((quarter) => (
+        <TableCell key={quarter} className="align-top">
+          <QuarterOutcome
+            outcome={row.quarters.find(
+              (item) => item.quarterNumber === quarter,
+            )}
+          />
+        </TableCell>
+      ))}
+      <TableCell className="min-w-36 align-top text-xs">
+        <p>
+          <span className="text-muted-foreground">Achievement:</span>{" "}
+          {achievement == null ? "Pending" : percent(achievement)}
+        </p>
+        <p className="mt-1 font-medium">
+          <span className="text-muted-foreground">Contribution:</span>{" "}
+          {outcomeText(contribution)}
+        </p>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function SourceSummary({
+  summary,
+}: {
+  summary: SupportPerformanceSourceSummary;
+}) {
+  const hasResults = summary.resultCount > 0;
+  return (
+    <article className="rounded-xl border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold">{summary.sourceCorporateKpiName}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {summary.sourceCorporateObjectiveTitle}
+          </p>
+        </div>
+        <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+          {hasResults ? percent(summary.achievementRate) : "—"}
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+        <div className="rounded-lg bg-muted/50 p-2">
+          <p className="text-muted-foreground">Local KPIs</p>
+          <p className="mt-1 font-semibold">{summary.localKpiCount}</p>
+        </div>
+        <div className="rounded-lg bg-muted/50 p-2">
+          <p className="text-muted-foreground">Coverage</p>
+          <p className="mt-1 font-semibold">{percent(summary.resultCoverageRate)}</p>
+        </div>
+        <div className="rounded-lg bg-muted/50 p-2">
+          <p className="text-muted-foreground">Contribution</p>
+          <p className="mt-1 font-semibold">
+            {number(summary.achievedContributionWeight)} / {number(summary.plannedContributionWeight)}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function ReadinessMetric({ label, value, positive = false }: { label: string; value: number; positive?: boolean }) {

@@ -148,22 +148,24 @@ export default function AnalyticsSummary() {
   }
 
   return (
-    <section className="space-y-3" aria-labelledby="portfolio-overview-heading">
-      <div>
-        <h1 id="portfolio-overview-heading" className="text-xl font-semibold tracking-tight">
-          Portfolio overview
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Real records in your authorized scope for the selected planning period.
-        </p>
+    <section className="space-y-3.5" aria-labelledby="portfolio-overview-heading">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 id="portfolio-overview-heading" className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-100 sm:text-2xl">
+            Portfolio overview
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
+            Real records in your authorized scope for the selected planning period.
+          </p>
+        </div>
       </div>
 
       {analytics.error ? (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive shadow-sm">
           Portfolio metrics could not be loaded. Performance data below remains available.
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
           {metrics.map((metric) => (
             <AnalyticsCard key={metric.title} {...metric} />
           ))}
@@ -172,3 +174,4 @@ export default function AnalyticsSummary() {
     </section>
   );
 }
+

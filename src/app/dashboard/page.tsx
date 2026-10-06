@@ -138,27 +138,29 @@ export default function DashboardPage() {
       : "Department performance";
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-7 pb-8">
       <AnalyticsSummary />
 
       {/* Approved, server-scoped quarterly performance is the dashboard authority. */}
       <QuarterlyPerformanceOverview />
 
       {isLeadershipRole && teamPerformance && (
-        <details className="group/people overflow-hidden rounded-2xl border bg-card [--muted-foreground:#526175] dark:[--muted-foreground:#a8b4c5]">
-          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 focus-visible:outline-2 focus-visible:outline-ring sm:p-5 [&::-webkit-details-marker]:hidden">
-            <Users className="size-5 shrink-0 text-primary" />
+        <details className="group/people overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-slate-300 dark:border-white/[0.08] dark:bg-zinc-900/90">
+          <summary className="flex cursor-pointer list-none items-center gap-3.5 p-5 transition-colors hover:bg-slate-50/60 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:bg-zinc-800/40 sm:p-6 [&::-webkit-details-marker]:hidden">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+              <Users className="h-5 w-5" />
+            </span>
             <div className="min-w-0 flex-1">
-              <h2 id="team-performance-heading" className="text-lg font-semibold tracking-tight">
+              <h2 id="team-performance-heading" className="text-lg font-bold tracking-tight text-slate-900 dark:text-zinc-100">
                 People performance
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
                 Current unified performance within your authorized scope.
               </p>
             </div>
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open/people:rotate-180" />
+            <ChevronDown className="h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 group-open/people:rotate-180" />
           </summary>
-          <div className="border-t bg-muted/20 p-4 sm:p-5">
+          <div className="border-t border-slate-100 bg-slate-50/60 p-5 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-6">
             <div className="max-w-md">
               <OrganizationalHealthCard
                 title={performanceScopeTitle}
@@ -173,16 +175,22 @@ export default function DashboardPage() {
       )}
 
       {canLoadOrganizationHeatMap && organizationId && (
-        <details className="group/comparison overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm [--muted-foreground:#526175] dark:[--muted-foreground:#a8b4c5]">
-          <summary className="flex cursor-pointer list-none items-center gap-3 bg-gradient-to-r from-primary/10 via-violet-500/5 to-card p-4 focus-visible:outline-2 focus-visible:outline-ring sm:p-5 [&::-webkit-details-marker]:hidden">
-            <span className="rounded-xl bg-primary/10 p-2.5"><Users className="size-5 shrink-0 text-primary" /></span>
+        <details className="group/comparison overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-slate-300 dark:border-white/[0.08] dark:bg-zinc-900/90">
+          <summary className="flex cursor-pointer list-none items-center gap-3.5 p-5 transition-colors hover:bg-slate-50/60 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:bg-zinc-800/40 sm:p-6 [&::-webkit-details-marker]:hidden">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+              <Users className="h-5 w-5" />
+            </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold tracking-tight">People performance by department</h2>
-              <p className="text-sm text-muted-foreground">Explore the organization’s team performance comparison.</p>
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-zinc-100">
+                People performance by department
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
+                Explore the organization’s team performance comparison.
+              </p>
             </div>
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open/comparison:rotate-180" />
+            <ChevronDown className="h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 group-open/comparison:rotate-180" />
           </summary>
-          <div className="border-t bg-muted/20 p-3 sm:p-5">
+          <div className="border-t border-slate-100 bg-slate-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-6">
             <OrganizationDepartmentComparison
               organizationId={organizationId}
               teamPerformance={teamPerformance}
@@ -195,6 +203,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 function OrganizationDepartmentComparison({
   organizationId,

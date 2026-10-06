@@ -173,42 +173,64 @@ export default function SupportPerformanceReport() {
   const readiness = report.readiness;
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-xl font-semibold">Support performance</h2>
-        <Badge variant="secondary">{scopeLabels[report.scope] || report.scope}</Badge>
-        <Badge variant="outline">
-          {context.quarterNumber ? `Q${context.quarterNumber}` : "Annual"}
-        </Badge>
+      {/* Scope Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
+            Support Performance Matrix
+          </h2>
+          <Badge className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+            {scopeLabels[report.scope] || report.scope}
+          </Badge>
+          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-semibold">
+            {context.quarterNumber ? `Quarter ${context.quarterNumber}` : "Annual Overview"}
+          </Badge>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Support readiness</CardTitle>
-          <CardDescription>Operational readiness is shown separately and is not a performance outcome.</CardDescription>
+      {/* Support Readiness Console */}
+      <Card className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
+        <CardHeader className="p-0 pb-5">
+          <CardTitle className="flex items-center gap-2.5 text-base font-bold text-slate-900 dark:text-zinc-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            Support Readiness Status
+          </CardTitle>
+          <CardDescription className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+            Operational planning and approval readiness are tracked separately from calculated performance outcomes.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <CardContent className="grid gap-3 p-0 sm:grid-cols-2 lg:grid-cols-5">
           <ReadinessMetric label="Assignments" value={readiness.totalAssignments} />
-          <ReadinessMetric label="Ready" value={readiness.ready} positive />
-          <ReadinessMetric label="No local KPI" value={readiness.noLocalKpi} />
-          <ReadinessMetric label="Planning incomplete" value={readiness.planningIncomplete} />
-          <ReadinessMetric label="Pending approval" value={readiness.pendingApproval} />
+          <ReadinessMetric label="Fully Ready" value={readiness.ready} positive />
+          <ReadinessMetric label="Missing Local KPI" value={readiness.noLocalKpi} />
+          <ReadinessMetric label="Planning Incomplete" value={readiness.planningIncomplete} />
+          <ReadinessMetric label="Pending Approval" value={readiness.pendingApproval} />
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Support contribution summary</CardTitle>
-          <CardDescription>
-            Achievement and contribution from the departments and divisions assigned to support each corporate KPI. These values remain separate from the direct target-allocation score.
+      {/* Support Contribution Summary */}
+      <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
+        <CardHeader className="p-0 pb-5">
+          <CardTitle className="flex items-center gap-2.5 text-base font-bold text-slate-900 dark:text-zinc-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+              <Target className="h-4 w-4" />
+            </div>
+            Corporate Support Contribution
+          </CardTitle>
+          <CardDescription className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+            Achievement and contribution from departments and divisions assigned to support each corporate KPI.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {report.sourceSummaries.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs font-medium text-slate-400 dark:border-zinc-800">
               No linked support KPI plans are available for this scope.
             </div>
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               {report.sourceSummaries.map((summary) => (
                 <SourceSummary key={summary.sourceCorporateKpiId} summary={summary} />
               ))}
@@ -217,21 +239,42 @@ export default function SupportPerformanceReport() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Network className="h-5 w-5" />Support outcomes</CardTitle>
-          <CardDescription>Authoritative local KPI results for each supporting unit, including achievement and weighted contribution.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      {/* Support Outcomes Table Card */}
+      <Card className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90">
+        <div className="border-b border-slate-100 p-6 dark:border-zinc-800">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400">
+              <Network className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                Detailed Support Outcomes
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+                Authoritative local KPI results for each supporting unit, including achievement and weighted contribution.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 p-6">
           {groups.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No support relationships are available in this scope.</div>
+            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs font-medium text-slate-400 dark:border-zinc-800">
+              No support relationships are available in this scope.
+            </div>
           ) : groups.map(([corporateId, corporate]) => (
-            <section key={corporateId} className="overflow-hidden rounded-lg border">
-              <div className="bg-muted/50 px-4 py-3"><p className="text-xs font-medium uppercase text-muted-foreground">Corporate KPI</p><h3 className="font-semibold">{corporate.name}</h3></div>
+            <section key={corporateId} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
+              <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Corporate Target KPI</span>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100">{corporate.name}</h4>
+              </div>
               {[...corporate.units.entries()].map(([unitId, unit]) => (
-                <div key={unitId} className="border-t">
-                  <div className="px-4 py-2 text-sm"><span className="text-muted-foreground">Supported by unit:</span> <span className="font-medium">{unit.name}</span></div>
-                  <div>
+                <div key={unitId} className="border-t border-slate-100 first:border-t-0 dark:border-zinc-800">
+                  <div className="bg-slate-50/30 px-5 py-2.5 text-xs dark:bg-zinc-800/20">
+                    <span className="text-slate-400">Supporting Unit:</span>{" "}
+                    <span className="font-bold text-slate-800 dark:text-zinc-200">{unit.name}</span>
+                  </div>
+                  <div className="overflow-x-auto">
                     <SupportUnitTable
                       rows={unit.rows}
                       selectedQuarter={context.quarterNumber}
@@ -241,7 +284,7 @@ export default function SupportPerformanceReport() {
               ))}
             </section>
           ))}
-        </CardContent>
+        </div>
       </Card>
     </div>
   );
@@ -266,10 +309,10 @@ function SupportRow({
     ? selectedOutcome?.contribution
     : row.annualContribution;
   return (
-    <TableRow>
-      <TableCell className="min-w-52">
-        <p className="font-medium">{row.localKpiName || "No local KPI yet"}</p>
-        <Badge variant="outline" className="mt-1 text-[10px]">
+    <TableRow className="transition-colors hover:bg-slate-50/80 dark:hover:bg-zinc-800/50">
+      <TableCell className="min-w-56 font-semibold text-slate-900 dark:text-zinc-100">
+        <div>{row.localKpiName || "No local KPI yet"}</div>
+        <Badge variant="outline" className="mt-1 rounded-full text-[10px] font-medium">
           {row.readinessStatus.replaceAll("_", " ")}
         </Badge>
       </TableCell>
@@ -282,14 +325,16 @@ function SupportRow({
           />
         </TableCell>
       ))}
-      <TableCell className="min-w-36 align-top text-xs">
-        <p>
-          <span className="text-muted-foreground">Achievement:</span>{" "}
-          {achievement == null ? "Pending" : percent(achievement)}
+      <TableCell className="min-w-40 align-top text-xs">
+        <p className="font-semibold text-slate-700 dark:text-zinc-300">
+          <span className="text-slate-400">Achievement:</span>{" "}
+          <span className="font-bold tabular-nums text-slate-900 dark:text-zinc-100">
+            {achievement == null ? "Pending" : percent(achievement)}
+          </span>
         </p>
-        <p className="mt-1 font-medium">
-          <span className="text-muted-foreground">Contribution:</span>{" "}
-          {outcomeText(contribution)}
+        <p className="mt-1 font-semibold text-indigo-600 dark:text-indigo-400">
+          <span className="text-slate-400">Contribution:</span>{" "}
+          <span className="font-bold tabular-nums">{outcomeText(contribution)}</span>
         </p>
       </TableCell>
     </TableRow>
@@ -303,30 +348,32 @@ function SourceSummary({
 }) {
   const hasResults = summary.resultCount > 0;
   return (
-    <article className="rounded-xl border p-4">
+    <article className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-semibold">{summary.sourceCorporateKpiName}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="font-bold text-slate-900 group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-indigo-400">
+            {summary.sourceCorporateKpiName}
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
             {summary.sourceCorporateObjectiveTitle}
           </p>
         </div>
-        <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+        <span className="text-xl font-black tabular-nums text-indigo-600 dark:text-indigo-400">
           {hasResults ? percent(summary.achievementRate) : "—"}
         </span>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-        <div className="rounded-lg bg-muted/50 p-2">
-          <p className="text-muted-foreground">Local KPIs</p>
-          <p className="mt-1 font-semibold">{summary.localKpiCount}</p>
+        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-zinc-800/60 dark:bg-zinc-800/40">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase">Local KPIs</p>
+          <p className="mt-1 font-bold tabular-nums text-slate-800 dark:text-zinc-200">{summary.localKpiCount}</p>
         </div>
-        <div className="rounded-lg bg-muted/50 p-2">
-          <p className="text-muted-foreground">Coverage</p>
-          <p className="mt-1 font-semibold">{percent(summary.resultCoverageRate)}</p>
+        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-zinc-800/60 dark:bg-zinc-800/40">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase">Coverage</p>
+          <p className="mt-1 font-bold tabular-nums text-slate-800 dark:text-zinc-200">{percent(summary.resultCoverageRate)}</p>
         </div>
-        <div className="rounded-lg bg-muted/50 p-2">
-          <p className="text-muted-foreground">Contribution</p>
-          <p className="mt-1 font-semibold">
+        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-zinc-800/60 dark:bg-zinc-800/40">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase">Contribution</p>
+          <p className="mt-1 font-bold tabular-nums text-indigo-600 dark:text-indigo-400">
             {number(summary.achievedContributionWeight)} / {number(summary.plannedContributionWeight)}
           </p>
         </div>
@@ -336,9 +383,27 @@ function SourceSummary({
 }
 
 function ReadinessMetric({ label, value, positive = false }: { label: string; value: number; positive?: boolean }) {
-  return <div className="rounded-lg border p-3"><div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">{label}</p>{positive && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>;
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-800/30 dark:hover:bg-zinc-800/50">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">{label}</p>
+        {positive && <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+      </div>
+      <p className="mt-2 text-2xl font-black tabular-nums text-slate-900 dark:text-zinc-100">{value}</p>
+    </div>
+  );
 }
 
 function Message({ title, detail, warning = false }: { title: string; detail: string; warning?: boolean }) {
-  return <Card className="border-dashed"><CardContent className="flex items-start gap-3 p-6">{warning && <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />}<div><p className="font-medium">{title}</p><p className="mt-1 text-sm text-muted-foreground">{detail}</p></div></CardContent></Card>;
+  return (
+    <Card className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900/60">
+      <CardContent className="flex items-start gap-3.5 p-0">
+        {warning && <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600 shrink-0" />}
+        <div>
+          <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">{title}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">{detail}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

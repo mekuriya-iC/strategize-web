@@ -298,163 +298,191 @@ export default function KPIPerformanceAnalytics({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
-        <div className="flex flex-wrap gap-3">
-          <Badge variant="outline" className="h-9 px-3 text-sm font-normal">
-            {globalContext.annualPeriod.name}
-          </Badge>
+      {/* Scope & Filter Console */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white/70 p-4 shadow-2xs backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-900/70 sm:p-5">
+        <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="flex items-center gap-1.5 rounded-xl border border-indigo-200/80 bg-indigo-50/80 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <Building2 className="h-3.5 w-3.5" />
+              {globalContext.annualPeriod.name}
+            </span>
 
-          <Select
-            value={selectedQuarter}
-            onValueChange={setSelectedQuarterOverride}
-          >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="All quarters" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All quarters</SelectItem>
-              {[1, 2, 3, 4].map((quarter) => (
-                <SelectItem key={quarter} value={String(quarter)}>
-                  Q{quarter}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={selectedQuarter}
+              onValueChange={setSelectedQuarterOverride}
+            >
+              <SelectTrigger className="h-9 w-36 rounded-xl border border-slate-200/90 bg-white/80 px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-200">
+                <SelectValue placeholder="All quarters" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200/80 bg-white/95 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95">
+                <SelectItem value={ALL} className="rounded-lg text-xs font-medium">All quarters</SelectItem>
+                {[1, 2, 3, 4].map((quarter) => (
+                  <SelectItem key={quarter} value={String(quarter)} className="rounded-lg text-xs font-medium">
+                    Quarter {quarter}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={selectedDivisionId}
-            onValueChange={(value) => {
-              setSelectedDivisionId(value);
-              setSelectedDepartmentId(ALL);
-              setSelectedEmployeeId(ALL);
-            }}
-          >
-            <SelectTrigger className="w-52">
-              <SelectValue placeholder="All divisions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All divisions</SelectItem>
-              {report.availableFilters.divisions.map((division) => (
-                <SelectItem key={division.id} value={division.id}>
-                  {division.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={selectedDivisionId}
+              onValueChange={(value) => {
+                setSelectedDivisionId(value);
+                setSelectedDepartmentId(ALL);
+                setSelectedEmployeeId(ALL);
+              }}
+            >
+              <SelectTrigger className="h-9 w-48 rounded-xl border border-slate-200/90 bg-white/80 px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-200">
+                <SelectValue placeholder="All divisions" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200/80 bg-white/95 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95">
+                <SelectItem value={ALL} className="rounded-lg text-xs font-medium">All divisions</SelectItem>
+                {report.availableFilters.divisions.map((division) => (
+                  <SelectItem key={division.id} value={division.id} className="rounded-lg text-xs font-medium">
+                    {division.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={selectedDepartmentId}
-            onValueChange={(value) => {
-              setSelectedDepartmentId(value);
-              setSelectedEmployeeId(ALL);
-            }}
-          >
-            <SelectTrigger className="w-52">
-              <SelectValue placeholder="All departments" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All departments</SelectItem>
-              {departments.map((department) => (
-                <SelectItem key={department.id} value={department.id}>
-                  {department.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={selectedDepartmentId}
+              onValueChange={(value) => {
+                setSelectedDepartmentId(value);
+                setSelectedEmployeeId(ALL);
+              }}
+            >
+              <SelectTrigger className="h-9 w-48 rounded-xl border border-slate-200/90 bg-white/80 px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-200">
+                <SelectValue placeholder="All departments" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200/80 bg-white/95 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95">
+                <SelectItem value={ALL} className="rounded-lg text-xs font-medium">All departments</SelectItem>
+                {departments.map((department) => (
+                  <SelectItem key={department.id} value={department.id} className="rounded-lg text-xs font-medium">
+                    {department.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={selectedEmployeeId}
-            onValueChange={setSelectedEmployeeId}
+            <Select
+              value={selectedEmployeeId}
+              onValueChange={setSelectedEmployeeId}
+            >
+              <SelectTrigger className="h-9 w-48 rounded-xl border border-slate-200/90 bg-white/80 px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-200">
+                <SelectValue placeholder="All employees" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200/80 bg-white/95 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95">
+                <SelectItem value={ALL} className="rounded-lg text-xs font-medium">All employees</SelectItem>
+                {employees.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id} className="rounded-lg text-xs font-medium">
+                    {employee.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="h-9 rounded-xl border-slate-200/90 text-xs font-bold shadow-2xs transition-all hover:bg-slate-50 dark:border-zinc-800"
           >
-            <SelectTrigger className="w-52">
-              <SelectValue placeholder="All employees" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All employees</SelectItem>
-              {employees.map((employee) => (
-                <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Download className="mr-2 h-3.5 w-3.5 text-slate-500" />
+            Export Scope Data
+          </Button>
         </div>
-
-        <Button onClick={handleExport} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export Report
-        </Button>
       </div>
 
-      <Card className="overflow-hidden border-2 border-indigo-200 shadow-sm dark:border-indigo-900/40">
-        <CardHeader className="border-b border-indigo-100 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-indigo-900/30 dark:from-blue-950/20 dark:to-indigo-950/20">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-indigo-500 p-2 text-white">
+      {/* Primary Scope Performance Card */}
+      <Card className="relative overflow-hidden rounded-3xl border border-indigo-200/80 bg-white shadow-sm dark:border-indigo-500/20 dark:bg-zinc-900/90">
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-400" />
+        <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-indigo-50/20 to-slate-50/80 p-6 dark:border-zinc-800 dark:from-zinc-900/90 dark:via-indigo-950/20 dark:to-zinc-900/90 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-xl">{title}</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
+                  {title}
+                </CardTitle>
+                <CardDescription className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
                   Target-allocation quarter plans and calculated results
                   {selectedQuarter === ALL
-                    ? " across the annual period"
-                    : ` for Q${selectedQuarter}`}
+                    ? " across the entire annual period"
+                    : ` for Quarter ${selectedQuarter}`}
                   .
                 </CardDescription>
               </div>
             </div>
             {summary.kpiCount > 0 && (
-              <Badge className={`border px-3 py-1 ${tone.badge}`}>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${tone.badge}`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
                 {tone.label}
-              </Badge>
+              </span>
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
+
+        <CardContent className="space-y-7 p-6 sm:p-7">
           {summary.kpiCount === 0 ? (
-            <div className="rounded-xl border border-dashed p-8 text-center">
-              <Target className="mx-auto mb-3 h-7 w-7 text-muted-foreground" />
-              <p className="font-medium">No applicable KPI plans</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                No target-allocation KPI quarter plans exist for this
-                level and filter selection. This is no data, not 0% achievement.
+            <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center dark:border-zinc-800">
+              <Target className="mx-auto mb-3 h-8 w-8 text-slate-400" />
+              <p className="font-bold text-slate-800 dark:text-zinc-200">No applicable KPI plans</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                No target-allocation KPI quarter plans exist for this level and filter selection.
               </p>
             </div>
           ) : (
             <>
-              <div>
-                <div className="mb-2 flex items-end justify-between gap-3">
+              {/* Primary Score Progress */}
+              <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-5 dark:border-zinc-800 dark:bg-zinc-800/30">
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Weighted achievement
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {number(summary.achievedContributionWeight)} of {number(summary.plannedContributionWeight)} planned score weight
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                      Weighted Achievement
+                    </span>
+                    <p className="mt-1 text-xs font-medium text-slate-500 dark:text-zinc-400">
+                      <span className="font-bold text-slate-700 dark:text-zinc-200">{number(summary.achievedContributionWeight)}</span> of <span className="font-bold text-slate-700 dark:text-zinc-200">{number(summary.plannedContributionWeight)}</span> planned score weight
                     </p>
                   </div>
-                  <span className={`text-4xl font-bold ${tone.text}`}>
+                  <span className={`text-4xl font-black tracking-tight tabular-nums sm:text-5xl ${tone.text}`}>
                     {hasResults ? `${achievement.toFixed(1)}%` : "—"}
                   </span>
                 </div>
-                <Progress
-                  value={hasResults ? Math.min(100, Math.max(0, achievement)) : 0}
-                  className="h-3"
-                />
-                <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                  <span>{percent(summary.resultCoverageRate)} result coverage</span>
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700"
+                    style={{
+                      width: `${hasResults ? Math.min(100, Math.max(0, achievement)) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                    {percent(summary.resultCoverageRate)} result coverage
+                  </span>
                   <span>
                     {summary.pendingResultCount} pending · {summary.notDueCount || 0} not due
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Target className="h-4 w-4" />
-                  KPI breakdown
-                </h3>
-                <div className="grid gap-3 lg:grid-cols-2">
+              {/* KPI Breakdown Matrix */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-zinc-100">
+                    <Target className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    Strategic KPI Breakdown
+                  </h3>
+                  <Badge variant="secondary" className="rounded-full text-xs font-semibold">
+                    {report.kpiRollups.length} KPIs
+                  </Badge>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
                   {report.kpiRollups.map((kpi) => {
                     const kpiHasResults = kpi.resultCount > 0;
                     const kpiAchievement = kpi.achievementRate * 100;
@@ -465,22 +493,25 @@ export default function KPIPerformanceAnalytics({
                     return (
                       <article
                         key={kpi.kpiId}
-                        className="rounded-xl border bg-card p-4 shadow-sm"
+                        className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-zinc-700"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold">{kpi.kpiName}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {kpi.objectiveTitle || "Strategic KPI"}
+                            <p className="font-bold text-slate-900 group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-indigo-400">
+                              {kpi.kpiName}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                              {kpi.objectiveTitle || "Strategic Priority KPI"}
                             </p>
                           </div>
-                          <span className={`font-bold ${kpiTone.text}`}>
+                          <span className={`text-lg font-extrabold tabular-nums ${kpiTone.text}`}>
                             {kpiHasResults
                               ? `${kpiAchievement.toFixed(1)}%`
                               : "—"}
                           </span>
                         </div>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
                           <Metric
                             label="Target"
                             value={`${number(kpi.target)} ${kpiUnit(kpi)}`.trim()}
@@ -498,10 +529,13 @@ export default function KPIPerformanceAnalytics({
                             value={number(kpi.achievedContributionWeight)}
                           />
                         </div>
-                        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{percent(kpi.resultCoverageRate)} coverage</span>
-                          <span>
-                            {kpi.resultCount}/{Math.max(0, kpi.planCount - (kpi.notDueCount || 0))} applicable results
+
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-zinc-800/80 dark:text-zinc-400">
+                          <span className="font-semibold text-slate-600 dark:text-zinc-300">
+                            {percent(kpi.resultCoverageRate)} coverage
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-zinc-800 dark:text-zinc-400">
+                            {kpi.resultCount}/{Math.max(0, kpi.planCount - (kpi.notDueCount || 0))} results
                           </span>
                         </div>
                       </article>
@@ -514,15 +548,17 @@ export default function KPIPerformanceAnalytics({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance insights</CardTitle>
-          <CardDescription>
-            Support relationships remain visible in the Support tab and are not
-            mixed into the direct target-allocation score.
+      {/* Performance Insights */}
+      <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
+        <CardHeader className="p-0 pb-5">
+          <CardTitle className="text-base font-bold text-slate-900 dark:text-zinc-100">
+            Performance Insights & Health Check
+          </CardTitle>
+          <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+            Support relationships remain visible in the Support tab and are not mixed into the direct target-allocation score.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <CardContent className="grid gap-3 p-0 sm:grid-cols-2 xl:grid-cols-5">
           <Insight label="Applicable KPIs" value={summary.kpiCount} />
           <Insight label="KPIs with results" value={reportedKpis.length} />
           <Insight
@@ -543,9 +579,11 @@ export default function KPIPerformanceAnalytics({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-muted/50 p-2">
-      <p className="text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate font-medium" title={value}>
+    <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-zinc-800/60 dark:bg-zinc-800/40">
+      <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase dark:text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-xs font-bold tabular-nums text-slate-800 dark:text-zinc-200" title={value}>
         {value}
       </p>
     </div>
@@ -562,12 +600,12 @@ function Insight({
   positive?: boolean;
 }) {
   return (
-    <div className="rounded-xl border p-4">
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-800/30 dark:hover:bg-zinc-800/50">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {positive && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+        <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">{label}</p>
+        {positive && <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
       </div>
-      <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-2 text-2xl font-black tabular-nums text-slate-900 dark:text-zinc-100">{value}</p>
     </div>
   );
 }
@@ -582,14 +620,14 @@ function Message({
   warning?: boolean;
 }) {
   return (
-    <Card className="border-dashed">
-      <CardContent className="flex items-start gap-3 p-6">
+    <Card className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900/60">
+      <CardContent className="flex items-start gap-3.5 p-0">
         {warning && (
-          <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
+          <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600 shrink-0" />
         )}
         <div>
-          <p className="font-medium">{title}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+          <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">{title}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">{detail}</p>
         </div>
       </CardContent>
     </Card>

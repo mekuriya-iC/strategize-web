@@ -74,17 +74,17 @@ export function OrganizationalHealthCard({
 
   if (loading) {
     return (
-      <Card className="border border-slate-200 dark:border-slate-800">
-        <CardHeader className="pb-3">
+      <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-900/90">
+        <CardHeader className="p-0 pb-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-slate-400 animate-pulse" />
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">{title}</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-4">
-            <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
+        <CardContent className="p-0">
+          <div className="animate-pulse space-y-3">
+            <div className="h-14 bg-slate-100 dark:bg-zinc-800 rounded-xl" />
+            <div className="h-2 bg-slate-100 dark:bg-zinc-800 rounded-full w-3/4" />
           </div>
         </CardContent>
       </Card>
@@ -92,69 +92,69 @@ export function OrganizationalHealthCard({
   }
 
   return (
-    <Card className="border border-slate-200 dark:border-slate-800 hover:shadow-sm transition-shadow">
-      <CardHeader className="pb-2 pt-4 px-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-              {title}
-            </CardTitle>
-          </div>
-          {trend !== undefined && (
-            <div className={`flex items-center gap-1 text-xs font-medium ${getTrendColor()}`}>
-              {getTrendIcon()}
-              <span>{getTrendText()}</span>
-            </div>
-          )}
+    <Card className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-5 shadow-sm backdrop-blur-md transition-all duration-200 hover:shadow-md dark:border-white/[0.08] dark:bg-zinc-900/90">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+            <Building2 className="h-3.5 w-3.5" />
+          </span>
+          <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+            {title}
+          </CardTitle>
         </div>
-      </CardHeader>
+        {trend !== undefined && (
+          <div className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${getTrendColor()}`}>
+            {getTrendIcon()}
+            <span>{getTrendText()}</span>
+          </div>
+        )}
+      </div>
 
-      <CardContent className="px-5 pb-5">
+      <div className="mt-4">
         {/* Main Score */}
-        <div className="mb-5">
-          <div className={`text-4xl font-bold tracking-tight ${getScoreColor(currentScore)}`}>
+        <div>
+          <div className={`text-4xl font-extrabold tracking-tight tabular-nums ${getScoreColor(currentScore)}`}>
             {currentScore.toFixed(1)}%
           </div>
           {previousScore !== undefined && (
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+            <p className="mt-0.5 text-xs font-medium text-slate-400 dark:text-zinc-500">
               Previous period: {previousScore.toFixed(1)}%
             </p>
           )}
         </div>
 
         {/* Progress Track */}
-        <div className="mb-5">
-          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div className="mt-3">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
             <div
-              className="h-full rounded-full bg-slate-700 dark:bg-slate-300 transition-all duration-500"
+              className="h-full rounded-full bg-indigo-600 dark:bg-indigo-400 transition-all duration-500"
               style={{ width: `${Math.min(currentScore, 100)}%` }}
             />
           </div>
         </div>
 
         {/* Status Message */}
-        <div className="flex items-center gap-2 mb-5">
-          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${status.dot}`} />
-          <p className="text-xs text-slate-500 dark:text-slate-400">{status.text}</p>
+        <div className="mt-3 flex items-center gap-2">
+          <div className={`h-2 w-2 flex-shrink-0 rounded-full ${status.dot}`} />
+          <p className="text-xs font-medium text-slate-600 dark:text-zinc-400">{status.text}</p>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Users className="h-3.5 w-3.5 text-slate-400" />
-              <span className="text-xs text-slate-500">Team Size</span>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-800/40">
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
+              <Users className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Team Size</span>
             </div>
-            <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">{totalEmployees}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-zinc-100">{totalEmployees}</p>
           </div>
 
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 mb-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
-              <span className="text-xs text-slate-500">Meeting Goals</span>
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-800/40">
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Meeting Goals</span>
             </div>
-            <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+            <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-zinc-100">
               {teamMeetingExpectations.toFixed(0)}%
             </p>
           </div>
@@ -162,13 +162,14 @@ export function OrganizationalHealthCard({
 
         <Button
           variant="outline"
-          className="w-full h-8 text-xs border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-indigo-50 hover:text-indigo-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-indigo-400"
           onClick={() => router.push('/dashboard/performance')}
         >
-          View detailed breakdown
-          <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+          <span>View detailed breakdown</span>
+          <ArrowRight className="h-3.5 w-3.5" />
         </Button>
-      </CardContent>
+      </div>
     </Card>
   );
 }
+

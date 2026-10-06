@@ -52,6 +52,55 @@ export function canSubmitWeeklyTasks(
   );
 }
 
+export interface BulkDraftTaskCandidate {
+  id: string;
+  submissionStatus?: string | null;
+  taskType?: string | null;
+  isMidWeekTask?: boolean | null;
+  carryoverGeneration?: number | null;
+}
+
+export function getBulkDraftTaskIds(
+  tasks: BulkDraftTaskCandidate[],
+  maximumSubmissionCount = DEFAULT_MAXIMUM_SUBMISSION_COUNT,
+): string[] {
+  const eligible = tasks.filter(
+    (task) =>
+      task.submissionStatus === "DRAFT" && !Boolean(task.isMidWeekTask),
+  );
+  const requiredCarryovers = eligible.filter(
+    (task) => (task.carryoverGeneration ?? 0) > 0,
+  );
+  const optionalDrafts = eligible.filter(
+    (task) => (task.carryoverGeneration ?? 0) === 0,
+  );
+  const selected = [...requiredCarryovers, ...optionalDrafts].slice(
+    0,
+    maximumSubmissionCount,
+  );
+
+  if (
+    selected.length === maximumSubmissionCount &&
+    !selected.some((task) => task.taskType === "KPI_FULFILLED")
+  ) {
+    const fulfilledTask = eligible
+      .filter((task) => !selected.includes(task))
+      .find((task) => task.taskType === "KPI_FULFILLED");
+    let replacementIndex = selected.length - 1;
+    while (
+      replacementIndex >= 0 &&
+      (selected[replacementIndex].carryoverGeneration ?? 0) > 0
+    ) {
+      replacementIndex -= 1;
+    }
+    if (fulfilledTask && replacementIndex >= 0) {
+      selected[replacementIndex] = fulfilledTask;
+    }
+  }
+
+  return selected.map((task) => task.id);
+}
+
 export function getSubmissionStatusMeta(
   status?: TaskSubmissionStatus | null,
 ): SubmissionStatusMeta {

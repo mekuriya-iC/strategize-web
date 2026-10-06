@@ -277,12 +277,12 @@ export default function UnifiedPerformanceReport({
 
   const periodSelector = (
     <Select value={selectedPeriodId} onValueChange={handlePeriodChange}>
-      <SelectTrigger className="w-[250px]">
-        <SelectValue placeholder="Select period" />
+      <SelectTrigger className="h-9 w-full sm:w-[260px] rounded-xl border border-slate-200/90 bg-white/80 px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-200">
+        <SelectValue placeholder="Select strategic period" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="rounded-xl border border-slate-200/80 bg-white/95 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95">
         {periods.map((period: any) => (
-          <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId}>
+          <SelectItem key={period.strategicPeriodId} value={period.strategicPeriodId} className="rounded-lg text-xs font-medium">
             {period.name}
           </SelectItem>
         ))}
@@ -293,12 +293,10 @@ export default function UnifiedPerformanceReport({
   // Show loading only on initial load
   if (loading && !performanceData) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading performance data...</p>
-          </div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-3 border-indigo-600 border-t-transparent mx-auto mb-3"></div>
+          <p className="text-xs font-medium text-slate-500 dark:text-zinc-400">Loading performance data...</p>
         </div>
       </div>
     );
@@ -306,14 +304,12 @@ export default function UnifiedPerformanceReport({
 
   if (error) {
     return (
-      <Card className="border-rose-200 dark:border-rose-900">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
-            <AlertTriangle className="h-5 w-5" />
-            <div>
-              <p className="font-semibold">Failed to load performance data</p>
-              <p className="text-sm">{error.message}</p>
-            </div>
+      <Card className="rounded-3xl border border-rose-200/80 bg-rose-50/50 p-6 shadow-xs dark:border-rose-900/40 dark:bg-rose-950/20">
+        <CardContent className="flex items-center gap-3.5 p-0 text-rose-600 dark:text-rose-400">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="text-sm font-bold">Failed to load performance data</p>
+            <p className="mt-0.5 text-xs text-rose-500">{error.message}</p>
           </div>
         </CardContent>
       </Card>
@@ -323,17 +319,17 @@ export default function UnifiedPerformanceReport({
   if (!selectedPeriodId) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {periodSelector}
-          <Button onClick={handleExport} variant="outline" disabled>
-            <Download className="mr-2 h-4 w-4" />
+          <Button onClick={handleExport} variant="outline" disabled className="h-9 rounded-xl border-slate-200 text-xs font-bold dark:border-zinc-800">
+            <Download className="mr-2 h-3.5 w-3.5" />
             Export Report
           </Button>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-gray-600 dark:text-gray-400">
-              Please select a period to view performance data.
+        <Card className="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-10 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-900/60">
+          <CardContent className="p-0">
+            <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
+              Please select a strategic period from the dropdown to load performance data.
             </p>
           </CardContent>
         </Card>
@@ -343,10 +339,10 @@ export default function UnifiedPerformanceReport({
 
   if (!performanceData) {
     return (
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-center text-gray-600 dark:text-gray-400">
-            No performance data available for the selected period.
+      <Card className="rounded-3xl border border-slate-200/80 bg-white p-8 text-center shadow-xs dark:border-white/[0.08] dark:bg-zinc-900/90">
+        <CardContent className="p-0">
+          <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
+            No performance evaluation records found for this period.
           </p>
         </CardContent>
       </Card>
@@ -360,156 +356,166 @@ export default function UnifiedPerformanceReport({
     return (
       <div className="space-y-6">
         {/* Header & Filters */}
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {periodSelector}
 
-          <Button onClick={handleExport} variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="h-9 rounded-xl border-slate-200/90 text-xs font-bold shadow-2xs transition-all hover:bg-slate-50 dark:border-zinc-800"
+          >
+            <Download className="mr-2 h-3.5 w-3.5 text-slate-500" />
+            Export Evaluation Report
           </Button>
         </div>
 
         {/* Overall Performance Card */}
-        <Card className="border-2 border-blue-200 dark:border-blue-900/40 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-b">
-            <div className="flex items-center justify-between">
+        <Card className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400" />
+          <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-indigo-50/20 to-slate-50/80 p-6 dark:border-zinc-800 dark:from-zinc-900/90 dark:via-indigo-950/20 dark:to-zinc-900/90 sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-2xl">{performanceData.employee.fullName}</CardTitle>
-                <CardDescription className="text-base mt-1">
-                  {performanceData.employee.title}
+                <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
+                  {performanceData.employee.fullName}
+                </CardTitle>
+                <CardDescription className="mt-1 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                  {performanceData.employee.title} · {performanceData.employee.email}
                 </CardDescription>
               </div>
-              <Badge className={`text-lg py-2 px-4 ${badge.color}`}>
+              <Badge className={`rounded-full px-4 py-1.5 text-xs font-bold shadow-xs ${badge.color}`}>
                 {badge.label}
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            {/* Overall Score */}
-            <div className="mb-6">
-              <div className="flex items-baseline justify-between mb-3">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Overall Performance Score
+          <CardContent className="space-y-6 p-6 sm:p-7">
+            {/* Overall Score Meter */}
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-5 dark:border-zinc-800 dark:bg-zinc-800/30">
+              <div className="mb-3 flex items-baseline justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                  Overall Composite Performance Score
                 </span>
                 <div className="flex items-center gap-2">
                   {getTrendIcon(performanceData.overallPercentage)}
-                  <span className={`text-5xl font-bold ${getPerformanceColor(performanceData.overallPercentage)}`}>
+                  <span className={`text-4xl font-black tracking-tight tabular-nums sm:text-5xl ${getPerformanceColor(performanceData.overallPercentage)}`}>
                     {performanceData.overallPercentage.toFixed(1)}%
                   </span>
                 </div>
               </div>
-              <Progress value={performanceData.overallPercentage} className="h-4 mb-2" />
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                <span>Score: {performanceData.totalScore.toFixed(2)}</span>
-                <span>Max Possible: {performanceData.maxPossibleScore.toFixed(2)}</span>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 transition-all duration-700"
+                  style={{ width: `${Math.min(Math.max(performanceData.overallPercentage, 0), 100)}%` }}
+                />
+              </div>
+              <div className="mt-3 flex justify-between text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                <span>Earned Score: <strong className="text-slate-800 dark:text-zinc-200">{performanceData.totalScore.toFixed(2)}</strong></span>
+                <span>Max Benchmark: <strong className="text-slate-800 dark:text-zinc-200">{performanceData.maxPossibleScore.toFixed(2)}</strong></span>
               </div>
             </div>
 
-            {/* Performance Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Performance Component Breakdown */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {/* KPI Score */}
-              <Card className="border-2 border-blue-100 dark:border-blue-900/30">
-                <CardHeader className="pb-3">
+              <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80">
+                <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <CardTitle className="text-sm font-semibold">KPI Performance</CardTitle>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                      <Target className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-zinc-100">KPI Performance</span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {performanceData.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
-                  </div>
-                  <Progress
-                    value={performanceData.breakdown.kpiScore.percentageAchieved}
-                    className="h-2 mb-2"
+                  <span className="text-xs font-semibold text-slate-400">{performanceData.breakdown.kpiScore.weight}% weight</span>
+                </div>
+                <div className="text-3xl font-black tracking-tight tabular-nums text-blue-600 dark:text-blue-400">
+                  {performanceData.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
+                </div>
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                    style={{ width: `${Math.min(Math.max(performanceData.breakdown.kpiScore.percentageAchieved, 0), 100)}%` }}
                   />
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    {performanceData.breakdown.kpiScore.rawScore.toFixed(2)} / {performanceData.breakdown.kpiScore.maxScore.toFixed(2)}
-                    <span className="ml-2">({performanceData.breakdown.kpiScore.weight}% weight)</span>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="mt-2 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+                  {performanceData.breakdown.kpiScore.rawScore.toFixed(2)} / {performanceData.breakdown.kpiScore.maxScore.toFixed(2)} raw score
+                </div>
+              </div>
 
               {/* Competency Score (360°) */}
-              <Card className="border-2 border-purple-100 dark:border-purple-900/30">
-                <CardHeader className="pb-3">
+              <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80">
+                <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                    <CardTitle className="text-sm font-semibold">Competency (360°)</CardTitle>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400">
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-zinc-100">360° Competency</span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                    {performanceData.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
-                  </div>
-                  <Progress
-                    value={performanceData.breakdown.competencyScore.percentageAchieved}
-                    className="h-2 mb-2"
+                  <span className="text-xs font-semibold text-slate-400">{performanceData.breakdown.competencyScore.weight}% weight</span>
+                </div>
+                <div className="text-3xl font-black tracking-tight tabular-nums text-purple-600 dark:text-purple-400">
+                  {performanceData.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
+                </div>
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-purple-500 transition-all duration-500"
+                    style={{ width: `${Math.min(Math.max(performanceData.breakdown.competencyScore.percentageAchieved, 0), 100)}%` }}
                   />
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    {performanceData.breakdown.competencyScore.rawScore.toFixed(2)} / {performanceData.breakdown.competencyScore.maxScore.toFixed(2)}
-                    <span className="ml-2">({performanceData.breakdown.competencyScore.weight}% weight)</span>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="mt-2 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+                  {performanceData.breakdown.competencyScore.rawScore.toFixed(2)} / {performanceData.breakdown.competencyScore.maxScore.toFixed(2)} raw score
+                </div>
+              </div>
 
               {/* Activity Score */}
-              <Card className="border-2 border-emerald-100 dark:border-emerald-900/30">
-                <CardHeader className="pb-3">
+              <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80">
+                <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    <CardTitle className="text-sm font-semibold">Activity Metrics</CardTitle>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                      <Activity className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-zinc-100">Operational Activity</span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                    {performanceData.breakdown.activityScore.percentageAchieved.toFixed(1)}%
-                  </div>
-                  <Progress
-                    value={performanceData.breakdown.activityScore.percentageAchieved}
-                    className="h-2 mb-2"
+                  <span className="text-xs font-semibold text-slate-400">{performanceData.breakdown.activityScore.weight}% weight</span>
+                </div>
+                <div className="text-3xl font-black tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {performanceData.breakdown.activityScore.percentageAchieved.toFixed(1)}%
+                </div>
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${Math.min(Math.max(performanceData.breakdown.activityScore.percentageAchieved, 0), 100)}%` }}
                   />
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    {performanceData.breakdown.activityScore.rawScore.toFixed(2)} / {performanceData.breakdown.activityScore.maxScore.toFixed(2)}
-                    <span className="ml-2">({performanceData.breakdown.activityScore.weight}% weight)</span>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="mt-2 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+                  {performanceData.breakdown.activityScore.rawScore.toFixed(2)} / {performanceData.breakdown.activityScore.maxScore.toFixed(2)} raw score
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Performance Rating Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-amber-600" />
-              Performance Rating
-            </CardTitle>
-            <CardDescription>Your overall performance rating for this period</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-4">
-              <div className="text-5xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                {performanceData.rating}
-              </div>
-              {performanceData.trendChange !== null && performanceData.trendChange !== undefined && (
-                <div className={`flex items-center justify-center gap-2 text-sm ${
-                  performanceData.trendChange > 0 ? 'text-emerald-600' : 
-                  performanceData.trendChange < 0 ? 'text-rose-600' : 
-                  'text-gray-600'
-                }`}>
-                  {performanceData.trendChange > 0 ? <TrendingUp className="h-4 w-4" /> : 
-                   performanceData.trendChange < 0 ? <TrendingDown className="h-4 w-4" /> : 
-                   <Minus className="h-4 w-4" />}
-                  <span>
-                    {performanceData.trendChange > 0 ? '+' : ''}{performanceData.trendChange.toFixed(1)}% 
-                    from previous period
-                  </span>
-                </div>
-              )}
+        {/* Performance Rating Summary */}
+        <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 text-center shadow-xs dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+            <Award className="h-6 w-6" />
+          </div>
+          <h3 className="mt-3 text-sm font-bold text-slate-900 dark:text-zinc-100">Official Period Rating Tier</h3>
+          <div className="mt-2 text-4xl font-black tracking-tight text-slate-900 dark:text-zinc-100">
+            {performanceData.rating}
+          </div>
+          {performanceData.trendChange !== null && performanceData.trendChange !== undefined && (
+            <div className={`mt-2 flex items-center justify-center gap-1.5 text-xs font-bold ${
+              performanceData.trendChange > 0 ? 'text-emerald-600 dark:text-emerald-400' : 
+              performanceData.trendChange < 0 ? 'text-rose-600 dark:text-rose-400' : 
+              'text-slate-500'
+            }`}>
+              {performanceData.trendChange > 0 ? <TrendingUp className="h-4 w-4" /> : 
+               performanceData.trendChange < 0 ? <TrendingDown className="h-4 w-4" /> : 
+               <Minus className="h-4 w-4" />}
+              <span>
+                {performanceData.trendChange > 0 ? '+' : ''}{performanceData.trendChange.toFixed(1)}% vs previous evaluation cycle
+              </span>
             </div>
-          </CardContent>
+          )}
         </Card>
       </div>
     );
@@ -521,67 +527,86 @@ export default function UnifiedPerformanceReport({
   return (
     <div className="space-y-6">
       {/* Header & Filters */}
-      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {periodSelector}
 
-        <Button onClick={handleExport} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export Report
+        <Button
+          onClick={handleExport}
+          variant="outline"
+          className="h-9 rounded-xl border-slate-200/90 text-xs font-bold shadow-2xs transition-all hover:bg-slate-50 dark:border-zinc-800"
+        >
+          <Download className="mr-2 h-3.5 w-3.5 text-slate-500" />
+          Export Team Analytics
         </Button>
       </div>
 
       {/* Team Summary Card */}
-      <Card className="border-2 border-purple-200 dark:border-purple-900/40 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-b">
-          <CardTitle className="text-2xl flex items-center gap-2">
-            <Users className="h-6 w-6 text-purple-600" />
-            Team Performance Summary
-          </CardTitle>
-          <CardDescription className="text-base">
-            {results.length} team members
-          </CardDescription>
+      <Card className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90">
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500" />
+        <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-purple-50/20 to-slate-50/80 p-6 dark:border-zinc-800 dark:from-zinc-900/90 dark:via-purple-950/20 dark:to-zinc-900/90 sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-600/20">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
+                  Team Performance Summary
+                </CardTitle>
+                <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+                  Aggregated evaluation metrics for {results.length} team members
+                </CardDescription>
+              </div>
+            </div>
+            <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold">
+              {results.length} Members Evaluated
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent className="pt-6">
+
+        <CardContent className="space-y-6 p-6 sm:p-7">
           {/* Average Scores Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30">
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Average Score</div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Average Score</div>
+              <div className="mt-1 text-2xl font-black tabular-nums text-blue-700 dark:text-blue-300">
                 {performanceData.averageScore.toFixed(1)}%
               </div>
             </div>
-            <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/30">
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Median Score</div>
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4 dark:border-purple-900/40 dark:bg-purple-950/20">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Median Score</div>
+              <div className="mt-1 text-2xl font-black tabular-nums text-purple-700 dark:text-purple-300">
                 {performanceData.medianScore.toFixed(1)}%
               </div>
             </div>
-            <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30">
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Highest Score</div>
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Highest Score</div>
+              <div className="mt-1 text-2xl font-black tabular-nums text-emerald-700 dark:text-emerald-300">
                 {performanceData.highestScore.toFixed(1)}%
               </div>
             </div>
-            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30">
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Lowest Score</div>
-              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Lowest Score</div>
+              <div className="mt-1 text-2xl font-black tabular-nums text-amber-700 dark:text-amber-300">
                 {performanceData.lowestScore.toFixed(1)}%
               </div>
             </div>
           </div>
 
-          {/* Top Performer */}
+          {/* Top Performer Card */}
           {performanceData.topPerformer && (
-            <div className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-2 border-amber-200 dark:border-amber-900/30">
-              <div className="flex items-center gap-3">
-                <Award className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+            <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-amber-50/80 p-5 dark:border-amber-900/40 dark:from-amber-950/20 dark:via-orange-950/10 dark:to-amber-950/20">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20">
+                  <Award className="h-6 w-6" />
+                </div>
                 <div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Top Performer</div>
-                  <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Top Overall Performer</div>
+                  <div className="text-base font-bold text-slate-900 dark:text-zinc-100">
                     {performanceData.topPerformer.employee.fullName}
                   </div>
-                  <div className="text-sm text-amber-600 dark:text-amber-400">
-                    {performanceData.topPerformer.totalScore.toFixed(1)}% overall score
+                  <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    {performanceData.topPerformer.totalScore.toFixed(1)}% benchmark overall score
                   </div>
                 </div>
               </div>
@@ -590,74 +615,88 @@ export default function UnifiedPerformanceReport({
         </CardContent>
       </Card>
 
-      {/* Individual Team Member Results */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Team Member Performance</CardTitle>
-          <CardDescription>Individual performance scores for all team members</CardDescription>
+      {/* Individual Team Member Ranking */}
+      <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
+        <CardHeader className="p-0 pb-5">
+          <CardTitle className="text-base font-bold text-slate-900 dark:text-zinc-100">
+            Team Member Performance Rankings
+          </CardTitle>
+          <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+            Ranked by overall composite score across KPI, competency, and operational activity.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[...results]
-              .sort((a: any, b: any) => b.overallPercentage - a.overallPercentage)
-              .map((result: any, index: number) => {
-                const badge = getPerformanceBadge(result.overallPercentage);
-                return (
-                  <div
-                    key={result.employeeId}
-                    className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          index === 0
-                            ? "bg-amber-100 text-amber-700"
-                            : index === 1
-                            ? "bg-gray-200 text-gray-700"
-                            : index === 2
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-blue-50 text-blue-700"
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div>
-                          <h5 className="font-semibold text-gray-900 dark:text-gray-100">
-                            {result.employee.fullName}
-                          </h5>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {result.employee.title}
-                          </p>
-                        </div>
+        <CardContent className="space-y-3.5 p-0">
+          {[...results]
+            .sort((a: any, b: any) => b.overallPercentage - a.overallPercentage)
+            .map((result: any, index: number) => {
+              const badge = getPerformanceBadge(result.overallPercentage);
+              return (
+                <div
+                  key={result.employeeId}
+                  className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-xs dark:border-zinc-800 dark:bg-zinc-800/20 dark:hover:bg-zinc-800/40"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black shadow-xs ${
+                        index === 0
+                          ? "bg-amber-400 text-amber-950"
+                          : index === 1
+                          ? "bg-slate-300 text-slate-800 dark:bg-zinc-700 dark:text-zinc-200"
+                          : index === 2
+                          ? "bg-amber-600/30 text-amber-900 dark:text-amber-300"
+                          : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400"
+                      }`}>
+                        #{index + 1}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge className={badge.color}>{result.rating}</Badge>
-                        <span className={`text-2xl font-bold ${getPerformanceColor(result.overallPercentage)}`}>
-                          {result.overallPercentage.toFixed(1)}%
-                        </span>
+                      <div>
+                        <h5 className="font-bold text-slate-900 dark:text-zinc-100">
+                          {result.employee.fullName}
+                        </h5>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400">
+                          {result.employee.title}
+                        </p>
                       </div>
                     </div>
-                    <Progress value={result.overallPercentage} className="h-2 mb-3" />
-                    <div className="grid grid-cols-3 gap-3 text-xs">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-3 w-3 text-blue-500" />
-                        <span className="text-gray-600 dark:text-gray-400">KPI:</span>
-                        <span className="font-semibold">{result.breakdown.kpiScore.percentageAchieved.toFixed(1)}%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-3 w-3 text-purple-500" />
-                        <span className="text-gray-600 dark:text-gray-400">Competency:</span>
-                        <span className="font-semibold">{result.breakdown.competencyScore.percentageAchieved.toFixed(1)}%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-3 w-3 text-emerald-500" />
-                        <span className="text-gray-600 dark:text-gray-400">Activity:</span>
-                        <span className="font-semibold">{result.breakdown.activityScore.percentageAchieved.toFixed(1)}%</span>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.color}`}>
+                        {result.rating}
+                      </Badge>
+                      <span className={`text-2xl font-black tabular-nums ${getPerformanceColor(result.overallPercentage)}`}>
+                        {result.overallPercentage.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-          </div>
+
+                  <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all duration-500"
+                      style={{ width: `${Math.min(Math.max(result.overallPercentage, 0), 100)}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="flex items-center justify-between rounded-lg bg-white/70 px-2.5 py-1.5 dark:bg-zinc-900/60">
+                      <span className="text-slate-400">KPI:</span>
+                      <span className="font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                        {result.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-white/70 px-2.5 py-1.5 dark:bg-zinc-900/60">
+                      <span className="text-slate-400">Competency:</span>
+                      <span className="font-bold tabular-nums text-purple-600 dark:text-purple-400">
+                        {result.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-white/70 px-2.5 py-1.5 dark:bg-zinc-900/60">
+                      <span className="text-slate-400">Activity:</span>
+                      <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {result.breakdown.activityScore.percentageAchieved.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
         </CardContent>
       </Card>
     </div>

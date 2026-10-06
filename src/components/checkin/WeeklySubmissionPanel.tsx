@@ -45,10 +45,15 @@ interface WeeklySubmissionPanelProps {
   summary?: TaskPoolSummary;
   selectedCount: number;
   selectedKpiFulfilledCount: number;
+  draftTaskCount?: number;
+  bulkSelectableCount?: number;
+  requiredCarryoverCount?: number;
+  allBulkDraftsSelected?: boolean;
   alreadySubmitted: boolean;
   sessionReadOnly?: boolean;
   loading?: boolean;
   submitting?: boolean;
+  onToggleAllDrafts?: () => void;
   onSubmit: () => void | Promise<void>;
 }
 
@@ -56,10 +61,15 @@ export function WeeklySubmissionPanel({
   summary,
   selectedCount,
   selectedKpiFulfilledCount,
+  draftTaskCount = 0,
+  bulkSelectableCount = 0,
+  requiredCarryoverCount = 0,
+  allBulkDraftsSelected = false,
   alreadySubmitted,
   sessionReadOnly = false,
   loading = false,
   submitting = false,
+  onToggleAllDrafts,
   onSubmit,
 }: WeeklySubmissionPanelProps) {
   const minimum = summary?.minimumSubmissionCount ?? 6;
@@ -80,6 +90,18 @@ export function WeeklySubmissionPanel({
     alreadySubmitted ||
     sessionReadOnly ||
     !selectionIsValid;
+  const selectAllDisabled =
+    loading ||
+    submitting ||
+    alreadySubmitted ||
+    sessionReadOnly ||
+    bulkSelectableCount === 0 ||
+    !onToggleAllDrafts;
+  const selectAllLabel = allBulkDraftsSelected
+    ? "Clear selection"
+    : draftTaskCount > maximum
+      ? `Select maximum (${maximum})`
+      : `Select all drafts (${bulkSelectableCount})`;
 
   return (
     <section
@@ -133,9 +155,22 @@ export function WeeklySubmissionPanel({
       </div>
 
       <div className="mt-4 grid gap-2 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900/40">
-        <p className="font-semibold text-gray-900 dark:text-white">
-          Submission checklist
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-semibold text-gray-900 dark:text-white">
+            Submission checklist
+          </p>
+          {!alreadySubmitted && !sessionReadOnly && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={selectAllDisabled}
+              onClick={onToggleAllDrafts}
+            >
+              {selectAllLabel}
+            </Button>
+          )}
+        </div>
         <p className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           {countIsValid ? (
             <CheckCircle2Icon className="h-4 w-4 text-green-600" aria-hidden="true" />
@@ -157,6 +192,15 @@ export function WeeklySubmissionPanel({
           does not need Monday submission or approval, but you must submit it by
           session end.
         </p>
+        {requiredCarryoverCount > 0 && (
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+            {requiredCarryoverCount} carried-over task
+            {requiredCarryoverCount === 1 ? " is" : "s are"} required and
+            preselected. {requiredCarryoverCount === 1 ? "It" : "They"} count
+            toward the {maximum}-task maximum and cannot become a private
+            personal to-do.
+          </p>
+        )}
       </div>
 
       <div className="mt-4 flex flex-col gap-3 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/40 md:flex-row md:items-center md:justify-between">
@@ -174,7 +218,8 @@ export function WeeklySubmissionPanel({
               <span className="font-semibold">PERSONAL_TODO</span> rows now have{" "}
               <span className="font-semibold">Submit</span> (up to 3 additional).
               You can also add midweek drafts and submit those the same way —
-              the weekly bulk submit stays locked for this week.
+              the weekly bulk submit stays locked for this week. Rejected tasks
+              return to DRAFT and can be corrected and submitted individually.
             </p>
           ) : (
             <>

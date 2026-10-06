@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WeeklySubmissionPanel } from "./WeeklySubmissionPanel";
 import {
@@ -92,6 +92,64 @@ describe("weekly task submission", () => {
         name: "Submit weekly tasks",
       }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  it("lets the employee select or clear all eligible drafts", () => {
+    const onToggleAllDrafts = vi.fn();
+    const { rerender } = render(
+      <WeeklySubmissionPanel
+        summary={summary}
+        selectedCount={0}
+        selectedKpiFulfilledCount={0}
+        draftTaskCount={7}
+        bulkSelectableCount={7}
+        allBulkDraftsSelected={false}
+        alreadySubmitted={false}
+        onToggleAllDrafts={onToggleAllDrafts}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select all drafts (7)" }));
+    expect(onToggleAllDrafts).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <WeeklySubmissionPanel
+        summary={summary}
+        selectedCount={7}
+        selectedKpiFulfilledCount={1}
+        draftTaskCount={7}
+        bulkSelectableCount={7}
+        allBulkDraftsSelected
+        alreadySubmitted={false}
+        onToggleAllDrafts={onToggleAllDrafts}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Clear selection" }),
+    ).toBeTruthy();
+  });
+
+  it("explains that carried-over drafts are mandatory", () => {
+    render(
+      <WeeklySubmissionPanel
+        summary={summary}
+        selectedCount={1}
+        selectedKpiFulfilledCount={0}
+        draftTaskCount={11}
+        bulkSelectableCount={10}
+        requiredCarryoverCount={1}
+        alreadySubmitted={false}
+        onToggleAllDrafts={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/1 carried-over task is required and preselected/i),
+    ).toBeTruthy();
+    expect(screen.getByText(/counts toward the 10-task maximum/i)).toBeTruthy();
   });
 
   it("provides explicit status privacy and visibility text", () => {

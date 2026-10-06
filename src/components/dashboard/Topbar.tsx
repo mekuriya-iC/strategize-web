@@ -65,61 +65,57 @@ export default function Topbar() {
   };
 
   return (
-    <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E2E8F0] dark:bg-[#18181b] dark:border-gray-800">
-      <header className="flex w-full items-center justify-between py-3 px-3 sm:py-4 sm:px-6">
+    <div className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-900/80">
+      <header className="flex w-full items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3.5">
         {/* Left: Breadcrumbs and filter */}
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
-          <nav className="flex min-w-0 items-center text-sm text-gray-500 dark:text-gray-400">
+          <nav className="flex min-w-0 items-center text-sm">
             {/* Sidebar toggle - hamburger on mobile, collapse control on desktop */}
             <button
-              className="mr-1 flex-shrink-0 rounded-md p-2 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#3838EC] dark:hover:bg-gray-800 sm:mr-2"
+              className="mr-1 flex-shrink-0 rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-indigo-400 sm:mr-2"
               aria-label="Toggle sidebar"
               onClick={toggleSidebar}
             >
               {open ? (
                 <SidebarClose
-                  className="h-5 w-5 text-gray-700 dark:text-gray-300"
-                  size={20}
-                  strokeWidth={1.5}
-                  color="#3838EC"
+                  className="h-5 w-5"
+                  strokeWidth={1.75}
                 />
               ) : (
                 <SidebarOpen
-                  className="h-5 w-5 text-gray-700 dark:text-gray-300"
-                  size={20}
-                  strokeWidth={1.5}
-                  color="#3838EC"
+                  className="h-5 w-5"
+                  strokeWidth={1.75}
                 />
               )}
             </button>
-            <span className="truncate font-medium text-gray-700 dark:text-gray-100">
+            <span className="truncate font-bold text-slate-900 dark:text-zinc-100">
               {getPageName(pathname)}
             </span>
             {/* Strategic Period Selector — tablet+ */}
-            <div className="ml-4 hidden md:block">
+            <div className="ml-3 hidden md:block">
               <StrategicPeriodSelector />
             </div>
-            <div className="hidden lg:block">
+            <div className="hidden lg:block ml-2">
               <OrgUnitSelector />
             </div>
             <div className="hidden lg:block">
-              <DepartmentSelector className="ml-4" />
+              <DepartmentSelector className="ml-2" />
             </div>
           </nav>
         </div>
         {/* Right: Icons, language, user */}
-        <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
+        <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2.5">
           <NotificationDropdown />
 
           <button
-            className="rounded-full bg-gray-50 p-2 transition-colors hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 sm:p-3"
+            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-2 text-slate-600 shadow-2xs transition-all hover:bg-slate-100 hover:text-slate-900 dark:border-white/[0.08] dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 sm:p-2.5"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
           >
             {theme === "dark" ? (
-              <Sun className="h-4 w-4 text-gray-600 dark:text-gray-300 sm:h-5 sm:w-5" />
+              <Sun className="h-4 w-4 text-amber-400" />
             ) : (
-              <Moon className="h-4 w-4 text-gray-600 dark:text-gray-300 sm:h-5 sm:w-5" />
+              <Moon className="h-4 w-4 text-slate-700" />
             )}
           </button>
 
@@ -127,20 +123,19 @@ export default function Topbar() {
           <div className="hidden sm:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-full bg-gray-50 px-3 py-2 transition-colors hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 sm:px-4 sm:py-3">
-                  <Globe className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Eng
-                  </span>
-                  <ChevronRight className="h-4 w-4 rotate-90 text-gray-500 dark:text-gray-400" />
+                <button className="flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-100 hover:text-slate-900 dark:border-white/[0.08] dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-800">
+                  <Globe className="h-3.5 w-3.5 text-slate-500 dark:text-zinc-400" />
+                  <span>Eng</span>
+                  <ChevronRight className="h-3.5 w-3.5 rotate-90 text-slate-400 dark:text-zinc-500" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>English</DropdownMenuItem>
-                <DropdownMenuItem>French</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-900/95">
+                <DropdownMenuItem className="rounded-xl text-xs font-medium">English</DropdownMenuItem>
+                <DropdownMenuItem className="rounded-xl text-xs font-medium">French</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

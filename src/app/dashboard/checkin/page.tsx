@@ -26,6 +26,7 @@ import { ScheduleCalendar } from "@/components/checkin/ScheduleCalendar";
 import { TaskPlanningApprovalQueue } from "@/components/checkin/TaskPlanningApprovalQueue";
 import {
   canSubmitWeeklyTasks,
+  getBulkDraftTaskIds,
   isOfficialTaskStatus,
 } from "@/components/checkin/weekly-submission";
 import { upsertCheckinTask } from "@/components/checkin/checkin-cache";
@@ -955,15 +956,48 @@ export default function CheckInPage() {
     Boolean(currentSession?.isLocked) ||
     (currentSession ? isClosedCheckinoutSession(currentSession) : false);
 
+  const maximumSubmissionCount =
+    poolSummary?.maximumSubmissionCount ?? 10;
+  const eligibleDraftTasks = useMemo(
+    () =>
+      tasks.filter(
+        (task: any) =>
+          task.submissionStatus === "DRAFT" && !Boolean(task.isMidWeekTask),
+      ),
+    [tasks],
+  );
+  const bulkDraftTaskIds = useMemo(
+    () => getBulkDraftTaskIds(eligibleDraftTasks, maximumSubmissionCount),
+    [eligibleDraftTasks, maximumSubmissionCount],
+  );
+  const requiredCarryoverTaskIds = useMemo(
+    () =>
+      eligibleDraftTasks
+        .filter((task: any) => (task.carryoverGeneration ?? 0) > 0)
+        .map((task: any) => task.id),
+    [eligibleDraftTasks],
+  );
+
   const validSelectedTaskIds = useMemo(() => {
     if (alreadySubmitted) return new Set<string>();
     const draftIds = new Set(
-      tasks
-        .filter((task: any) => task.submissionStatus === "DRAFT")
-        .map((task: any) => task.id),
+      eligibleDraftTasks.map((task: any) => task.id),
     );
-    return new Set([...selectedTaskIds].filter((taskId) => draftIds.has(taskId)));
-  }, [alreadySubmitted, selectedTaskIds, tasks]);
+    const selected = new Set(
+      [...selectedTaskIds].filter((taskId) => draftIds.has(taskId)),
+    );
+    requiredCarryoverTaskIds.forEach((taskId: string) => selected.add(taskId));
+    return selected;
+  }, [
+    alreadySubmitted,
+    eligibleDraftTasks,
+    requiredCarryoverTaskIds,
+    selectedTaskIds,
+  ]);
+
+  const allBulkDraftsSelected =
+    bulkDraftTaskIds.length > 0 &&
+    bulkDraftTaskIds.every((taskId) => validSelectedTaskIds.has(taskId));
 
   const selectedKpiFulfilledCount = useMemo(
     () =>
@@ -978,7 +1012,13 @@ export default function CheckInPage() {
   const handleTaskSelectionChange = (taskId: string, selected: boolean) => {
     if (alreadySubmitted || sessionReadOnly) return;
     const task = tasks.find((candidate: any) => candidate.id === taskId);
-    if (task?.submissionStatus !== "DRAFT") return;
+    if (task?.submissionStatus !== "DRAFT" || task.isMidWeekTask) return;
+    if (!selected && (task.carryoverGeneration ?? 0) > 0) {
+      toast.error(
+        "Carried-over tasks are required in this week's official submission.",
+      );
+      return;
+    }
 
     setSelectedTaskIds((previous) => {
       const next = new Set(previous);
@@ -986,6 +1026,13 @@ export default function CheckInPage() {
       else next.delete(taskId);
       return next;
     });
+  };
+
+  const handleToggleAllDrafts = () => {
+    if (alreadySubmitted || sessionReadOnly) return;
+    setSelectedTaskIds(
+      allBulkDraftsSelected ? new Set() : new Set(bulkDraftTaskIds),
+    );
   };
 
   const handleWeeklySubmission = async () => {
@@ -1516,10 +1563,15 @@ export default function CheckInPage() {
               summary={poolSummary}
               selectedCount={validSelectedTaskIds.size}
               selectedKpiFulfilledCount={selectedKpiFulfilledCount}
+              draftTaskCount={eligibleDraftTasks.length}
+              bulkSelectableCount={bulkDraftTaskIds.length}
+              requiredCarryoverCount={requiredCarryoverTaskIds.length}
+              allBulkDraftsSelected={allBulkDraftsSelected}
               alreadySubmitted={alreadySubmitted}
               sessionReadOnly={sessionReadOnly}
               loading={poolSummaryLoading}
               submitting={submittingWeeklyTasks}
+              onToggleAllDrafts={handleToggleAllDrafts}
               onSubmit={handleWeeklySubmission}
             />
           )}

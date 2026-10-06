@@ -180,9 +180,9 @@ export default function StrategicPeriodSelector({
 
   if (loading && strategicPeriods.length === 0) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <Calendar className="w-4 h-4 text-gray-400" />
-        <span className="text-sm text-gray-500">Loading...</span>
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 dark:border-white/[0.08] dark:bg-zinc-800/80">
+        <Calendar className="h-4 w-4 animate-pulse text-indigo-500" />
+        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">Loading...</span>
       </div>
     );
   }
@@ -196,63 +196,63 @@ export default function StrategicPeriodSelector({
       {/* Year Selector */}
       <Select value={selectedYear} onValueChange={handleYearChange}>
         <SelectTrigger
-          className={`flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border-none hover:bg-gray-100 dark:hover:bg-gray-700 w-32 ${className}`}
+          className={`flex items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-800 shadow-2xs transition-all hover:bg-slate-100 hover:border-slate-300 dark:border-white/[0.08] dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-800 w-32.5 ${className}`}
         >
-          <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+          <Calendar className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <SelectValue placeholder="Year" />
         </SelectTrigger>
-        <SelectContent>
-          <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
-            Select Year
+        <SelectContent className="rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-900/95">
+          <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+            Strategic Year
           </div>
           {availableYears.map(({ label }) => (
-            <SelectItem key={label} value={label}>
-              <div className="flex items-center justify-between w-full gap-3">
+            <SelectItem key={label} value={label} className="rounded-xl text-xs font-medium">
+              <div className="flex w-full items-center justify-between gap-3">
                 <span>{label}</span>
                 {selectedYear === label && (
-                  <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
-                    Selected
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                    Active
                   </span>
                 )}
               </div>
             </SelectItem>
           ))}
-          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+          <div className="my-1 border-t border-slate-100 dark:border-zinc-800"></div>
           <SelectItem
             value="manage-periods"
-            className="text-primary font-medium"
+            className="rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400"
           >
             <div className="flex items-center gap-2">
-              {canManagePeriods ? <Plus size={16} /> : <Calendar size={16} />}
+              {canManagePeriods ? <Plus size={14} /> : <Calendar size={14} />}
               {canManagePeriods ? "Manage Periods" : "View All Periods"}
             </div>
           </SelectItem>
         </SelectContent>
       </Select>
 
-      {/* Quarter Selector - Only show if there are quarters for selected year */}
+      {/* Quarter Selector */}
       {availableQuarters.length > 0 && (
         <Select value={selectedQuarter} onValueChange={handleQuarterChange}>
-          <SelectTrigger className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border-none hover:bg-gray-100 dark:hover:bg-gray-700 w-28">
+          <SelectTrigger className="flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-800 shadow-2xs transition-all hover:bg-slate-100 hover:border-slate-300 dark:border-white/[0.08] dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-800 w-28">
             <SelectValue placeholder="Quarter" />
           </SelectTrigger>
-          <SelectContent>
-            <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
-              Select Quarter
+          <SelectContent className="rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-900/95">
+            <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+              Reporting Quarter
             </div>
-            <SelectItem value={ANNUAL_PERIOD_VALUE}>
-              <div className="flex items-center justify-between w-full gap-3">
+            <SelectItem value={ANNUAL_PERIOD_VALUE} className="rounded-xl text-xs font-medium">
+              <div className="flex w-full items-center justify-between gap-3">
                 <span>Annual period</span>
               </div>
             </SelectItem>
             {availableQuarters.map((quarter) => {
               const status = getPeriodTimeStatus(quarter.period);
               return (
-                <SelectItem key={quarter.value} value={quarter.value}>
-                  <div className="flex items-center justify-between w-full gap-3">
+                <SelectItem key={quarter.value} value={quarter.value} className="rounded-xl text-xs font-medium">
+                  <div className="flex w-full items-center justify-between gap-3">
                     <span>{quarter.label}</span>
                     {status === "current" && (
-                      <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
                         Current
                       </span>
                     )}
@@ -266,3 +266,4 @@ export default function StrategicPeriodSelector({
     </div>
   );
 }
+

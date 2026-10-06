@@ -49,6 +49,7 @@ import {
 import { TimePicker } from "@/components/ui/time-picker";
 import { CheckboxSelect } from "@/components/ui/checkbox-select";
 import { cn } from "@/lib/utils";
+import { TimeAvailabilityView } from "./TimeAvailabilityView";
 import {
   DEFAULT_TASK_TYPE,
   TASK_TYPES,
@@ -245,6 +246,7 @@ export function AddTaskDialog({
   const [isMidWeekTask, setIsMidWeekTask] = useState(initialIsMidWeek);
   const [midWeekTaskCount, setMidWeekTaskCount] = useState(0);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [showAvailability, setShowAvailability] = useState(false);
   const evidenceUploadRequestId = useRef(0);
 
   // ✅ Track popover open states separately so they don't conflict
@@ -343,6 +345,7 @@ export function AddTaskDialog({
       setEndDate(new Date(date));
       setScheduleError(null);
       setStartDateOpen(false);
+      setShowAvailability(true); // Show availability when date changes
     }
   };
 
@@ -1156,17 +1159,60 @@ export function AddTaskDialog({
             {scheduleError && (
               <div
                 role="alert"
-                className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-red-900 sm:col-span-2 lg:col-span-3 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+                className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 sm:col-span-2 lg:col-span-3 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
               >
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">Schedule conflict</p>
-                  <p className="mt-1 text-sm">{scheduleError}</p>
-                  <p className="mt-1 text-xs opacity-80">
-                    The task was not created. All other information in this form
-                    has been preserved.
-                  </p>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-semibold">Time slot unavailable</p>
+                  <div className="text-sm whitespace-pre-line">{scheduleError}</div>
+                  {scheduleError.includes("Available times:") && (
+                    <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/50">
+                      <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+                        💡 Quick Tip
+                      </p>
+                      <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">
+                        Click on any green time slot below to automatically select an available time.
+                      </p>
+                    </div>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {/* Time Availability View - Shows existing tasks and available slots */}
+            {isPlanningForm && (showAvailability || scheduleError) && (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <TimeAvailabilityView
+                  date={startDate}
+                  existingTasks={(session?.tasks || []).filter(
+                    (t: any) =>
+                      t.checkinoutTaskId !== editingTask?.id &&
+                      !t.isDeleted &&
+                      new Date(t.taskStartDate).toDateString() === startDate.toDateString()
+                  )}
+                  selectedStart={buildDateTime(startDate, startTime)}
+                  selectedEnd={buildDateTime(endDate, endTime)}
+                  onTimeSlotClick={(hour) => {
+                    // Quick-select available time slot
+                    const newStart = new Date(startDate);
+                    newStart.setHours(hour, 0, 0, 0);
+                    setStartTime({
+                      hour: String(hour % 12 || 12).padStart(2, "0"),
+                      minute: "00",
+                      period: hour >= 12 ? "PM" : "AM",
+                    });
+                    
+                    const newEnd = new Date(startDate);
+                    newEnd.setHours(hour + 1, 0, 0, 0);
+                    setEndDate(newStart);
+                    setEndTime({
+                      hour: String((hour + 1) % 12 || 12).padStart(2, "0"),
+                      minute: "00",
+                      period: (hour + 1) >= 12 ? "PM" : "AM",
+                    });
+                    setScheduleError(null);
+                  }}
+                />
               </div>
             )}
 

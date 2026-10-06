@@ -232,9 +232,15 @@ export const useAuth = ({ bootstrap = false }: UseAuthOptions = {}) => {
     setTokenExpiresIn(null);
 
     try {
+      // Clear Apollo cache and persisted storage
       await apolloClient.clearStore();
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem("strategize-apollo-cache");
+        // Call the global cache clearing function if available
+        if (typeof (window as any).__clearApolloCache === "function") {
+          await (window as any).__clearApolloCache();
+          authLogger.info("Apollo persisted cache cleared");
+        }
       }
     } catch (error) {
       authLogger.warn("Apollo clearStore during logout", error);

@@ -149,7 +149,7 @@ const apolloClient = new ApolloClient({
         keyFields: ["scheduleWeekCoverageId"],
       },
       ...paginatedResultPolicies,
-      // KPI quarter plans - proper array merge
+      // KPI with all nested relationships properly merged
       Kpi: {
         keyFields: ["kpiId"],
         fields: {
@@ -157,6 +157,85 @@ const apolloClient = new ApolloClient({
             merge(_existing = [], incoming = []) {
               void _existing;
               return incoming; // Replace with fresh data from server
+            },
+          },
+          quarterResults: {
+            merge(_existing = [], incoming = []) {
+              void _existing;
+              return incoming; // Replace with fresh data from server
+            },
+          },
+          logbookEntries: {
+            merge(_existing = [], incoming = []) {
+              void _existing;
+              return incoming; // Replace with fresh data from server
+            },
+          },
+          updates: {
+            merge(_existing = [], incoming = []) {
+              void _existing;
+              return incoming; // Replace with fresh data from server
+            },
+          },
+          sharedKpiParticipants: {
+            merge(_existing = [], incoming = []) {
+              void _existing;
+              return incoming; // Replace with fresh data from server
+            },
+          },
+        },
+      },
+      // CheckinoutSession with nested relationships
+      CheckinoutSession: {
+        keyFields: ["checkinoutSessionId"],
+        fields: {
+          tasks: {
+            merge(_existing = [], incoming = []) {
+              void _existing;
+              return incoming;
+            },
+          },
+        },
+      },
+      // Query root fields with cache invalidation strategy
+      Query: {
+        fields: {
+          // User-specific queries should refresh more frequently
+          me: {
+            read(existing, { canRead }) {
+              return canRead(existing) ? existing : undefined;
+            },
+          },
+          myFlaggedKpis: {
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          myFlaggedKpiCount: {
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          teamFlaggedKpis: {
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          teamFlaggedKpiCount: {
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          // Notification queries with proper merge
+          notifications: {
+            keyArgs: ["recipientId", "isRead"],
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          unreadNotificationCount: {
+            merge(_existing, incoming) {
+              return incoming;
             },
           },
         },
@@ -169,18 +248,19 @@ const apolloClient = new ApolloClient({
   defaultOptions: {
     watchQuery: {
       errorPolicy: "all",
-      fetchPolicy: "cache-first",
+      fetchPolicy: "cache-and-network", // Changed from cache-first
       nextFetchPolicy: "cache-first",
     },
     query: {
       errorPolicy: "all",
-      fetchPolicy: "cache-first",
+      fetchPolicy: "cache-and-network", // Changed from cache-first
     },
     // Mutations must reject GraphQL errors. Using "all" here caused callers
     // to receive data: undefined and show success even when the API rejected
     // the write.
     mutate: {
       errorPolicy: "none",
+      fetchPolicy: "network-only", // Ensure mutations always hit the network
     },
   },
 });

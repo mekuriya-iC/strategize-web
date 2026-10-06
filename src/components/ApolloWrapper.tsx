@@ -16,23 +16,39 @@ interface ApolloWrapperProps {
  * Restores the Apollo cache from sessionStorage before mounting the tree so
  * dashboard lists (objectives, KPIs, etc.) reappear instantly on navigation
  * and soft refresh. Mutations that invalidate cache still fetch only what changed.
+ * 
+ * Cache is automatically cleared on logout via clearCacheOnLogout function.
  */
 export function ApolloWrapper({ children }: ApolloWrapperProps) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let persistor: CachePersistor<object> | null = null;
 
     const restore = async () => {
       try {
-        const persistor = new CachePersistor({
+        persistor = new CachePersistor({
           cache: apolloClient.cache,
           storage: new SessionStorageWrapper(window.sessionStorage),
           key: CACHE_KEY,
-          debounce: 500,
-          maxSize: 4_485_760, // ~4.2MB — stay under typical sessionStorage limits
+          debounce: 300, // Reduced from 500ms for faster persistence
+          maxSize: 3_145_728, // Reduced to 3MB from 4.2MB to prevent storage quota issues
         });
         await persistor.restore();
+
+        // Expose cache clearing function globally for logout
+        if (typeof window !== "undefined") {
+          (window as any).__clearApolloCache = async () => {
+            try {
+              await persistor?.purge();
+              await apolloClient.clearStore();
+              console.log("Apollo cache cleared successfully");
+            } catch (error) {
+              console.warn("Cache clear failed:", error);
+            }
+          };
+        }
       } catch (error) {
         console.warn("Apollo cache restore skipped:", error);
       } finally {

@@ -199,7 +199,7 @@ const apolloClient = new ApolloClient({
       // Query root fields with cache invalidation strategy
       Query: {
         fields: {
-          // User-specific queries should refresh more frequently
+          // User-specific queries should use cache-first for performance
           me: {
             read(existing, { canRead }) {
               return canRead(existing) ? existing : undefined;
@@ -237,6 +237,19 @@ const apolloClient = new ApolloClient({
               return incoming;
             },
           },
+          // Dashboard and performance queries - cache-friendly
+          unifiedPerformance: {
+            keyArgs: ["employeeId", "strategicPeriodId"],
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          teamUnifiedPerformance: {
+            keyArgs: ["managerId", "strategicPeriodId"],
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
         },
       },
       // Query fields intentionally use Apollo's default keyArgs behavior. Every
@@ -247,12 +260,12 @@ const apolloClient = new ApolloClient({
   defaultOptions: {
     watchQuery: {
       errorPolicy: "all",
-      fetchPolicy: "cache-and-network", // Changed from cache-first
-      nextFetchPolicy: "cache-first",
+      fetchPolicy: "cache-first", // Prioritize cache for better performance
+      nextFetchPolicy: "cache-first", // Keep using cache after initial load
     },
     query: {
       errorPolicy: "all",
-      fetchPolicy: "network-only", // Changed from cache-first to ensure fresh data
+      fetchPolicy: "cache-first", // Use cache for fast initial loads in production
     },
     // Mutations must reject GraphQL errors. Using "all" here caused callers
     // to receive data: undefined and show success even when the API rejected

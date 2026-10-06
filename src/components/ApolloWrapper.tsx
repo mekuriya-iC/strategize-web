@@ -24,7 +24,7 @@ export function ApolloWrapper({ children }: ApolloWrapperProps) {
 
   useEffect(() => {
     let cancelled = false;
-    let persistor: CachePersistor<object> | null = null;
+    let persistor: CachePersistor<any> | null = null;
 
     const restore = async () => {
       try {

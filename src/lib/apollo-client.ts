@@ -141,7 +141,6 @@ const apolloClient = new ApolloClient({
       KpiUpdate: { keyFields: ["kpiUpdateId"] },
       KpiQuarterPlan: { keyFields: ["kpiQuarterPlanId"] },
       KpiQuarterResult: { keyFields: ["kpiQuarterResultId"] },
-      CheckinoutSession: { keyFields: ["checkinoutSessionId"] },
       CheckinoutTask: { keyFields: ["checkinoutTaskId"] },
       CheckinoutSchedule: { keyFields: ["scheduleId"] },
       CheckinoutScheduleWeek: { keyFields: ["scheduleWeekId"] },
@@ -253,7 +252,7 @@ const apolloClient = new ApolloClient({
     },
     query: {
       errorPolicy: "all",
-      fetchPolicy: "cache-and-network", // Changed from cache-first
+      fetchPolicy: "network-only", // Changed from cache-first to ensure fresh data
     },
     // Mutations must reject GraphQL errors. Using "all" here caused callers
     // to receive data: undefined and show success even when the API rejected

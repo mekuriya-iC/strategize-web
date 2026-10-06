@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Minus,
   Network,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,30 +42,34 @@ const formatter = new Intl.NumberFormat(undefined, {
 
 const trafficStyles: Record<
   PerformanceTrafficStatus,
-  { label: string; text: string; surface: string; fill: string }
+  { label: string; text: string; surface: string; border: string; fill: string }
 > = {
   GREEN: {
     label: "On track",
     text: "text-emerald-700 dark:text-emerald-300",
-    surface: "bg-emerald-50 dark:bg-emerald-950/30",
-    fill: "#059669",
+    surface: "bg-emerald-50 dark:bg-emerald-950/40",
+    border: "border-emerald-200 dark:border-emerald-800/50",
+    fill: "#10b981",
   },
   AMBER: {
     label: "Watch",
     text: "text-amber-700 dark:text-amber-300",
-    surface: "bg-amber-50 dark:bg-amber-950/30",
-    fill: "#d97706",
+    surface: "bg-amber-50 dark:bg-amber-950/40",
+    border: "border-amber-200 dark:border-amber-800/50",
+    fill: "#f59e0b",
   },
   RED: {
     label: "Needs attention",
-    text: "text-red-700 dark:text-red-300",
-    surface: "bg-red-50 dark:bg-red-950/30",
-    fill: "#dc2626",
+    text: "text-rose-700 dark:text-rose-300",
+    surface: "bg-rose-50 dark:bg-rose-950/40",
+    border: "border-rose-200 dark:border-rose-800/50",
+    fill: "#f43f5e",
   },
   NO_DATA: {
     label: "Awaiting data",
     text: "text-slate-600 dark:text-slate-300",
-    surface: "bg-slate-100 dark:bg-slate-900/50",
+    surface: "bg-slate-100 dark:bg-zinc-800",
+    border: "border-slate-200 dark:border-zinc-700",
     fill: "#94a3b8",
   },
 };
@@ -76,7 +81,9 @@ function percent(value: number) {
 function TrafficBadge({ status }: { status: PerformanceTrafficStatus }) {
   const tone = trafficStyles[status];
   return (
-    <Badge className={`${tone.surface} ${tone.text} border-0`}>
+    <Badge
+      className={`rounded-full ${tone.surface} ${tone.text} border-0 px-2.5 py-0.5 text-xs font-semibold shadow-2xs`}
+    >
       {tone.label}
     </Badge>
   );
@@ -91,22 +98,25 @@ function Trend({
 }) {
   if (delta == null || !Number.isFinite(delta)) {
     return (
-      <span className="inline-flex items-center gap-1 text-slate-500">
+      <span className="inline-flex items-center gap-1 font-medium text-slate-400 dark:text-zinc-500">
         <Minus className="h-3.5 w-3.5" /> No prior quarter
       </span>
     );
   }
   const Icon =
     delta > 0.05 ? ArrowUpRight : delta < -0.05 ? ArrowDownRight : ArrowRight;
-  const color =
-    delta > 0.05
-      ? "text-emerald-600"
-      : delta < -0.05
-        ? "text-red-600"
-        : "text-slate-500";
+  const isPositive = delta > 0.05;
+  const isNegative = delta < -0.05;
+  const color = isPositive
+    ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900"
+    : isNegative
+      ? "text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-900"
+      : "text-slate-600 bg-slate-100 dark:bg-zinc-800 dark:text-zinc-400 border-slate-200 dark:border-zinc-700";
   const sign = delta > 0 ? "+" : "";
   return (
-    <span className={`inline-flex items-center gap-1 ${color}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${color}`}
+    >
       <Icon className="h-3.5 w-3.5" /> {sign}
       {formatter.format(delta)}pp {label}
     </span>
@@ -141,29 +151,42 @@ export function QuarterStrip({
   const activeProgress = quarterProgressRate(selectedQuarterPeriod);
 
   return (
-    <section aria-labelledby="quarter-strip-heading" className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+    <section aria-labelledby="quarter-strip-heading" className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 id="quarter-strip-heading" className="text-lg font-semibold">
+          <h3
+            id="quarter-strip-heading"
+            className="text-lg font-bold tracking-tight text-slate-900 dark:text-zinc-100"
+          >
             Quarter achievement
           </h3>
-          <p className="text-sm text-muted-foreground">
-            Approved target-allocation results. Trends use percentage-point
-            change. “—” means no calculated result yet; a measured zero appears
-            as 0%. Not-due quarters are excluded from expected results.
+          <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
+            Approved target-allocation results. Trends use percentage-point change.
+            “—” means no calculated result yet; not-due quarters are excluded from expected results.
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Red: below 75% · Amber: 75–90% · Green: above 90%.
-            Current-quarter colour uses pace against expected progress.
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-zinc-400">
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-rose-500" /> Below 75%
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-500" /> 75–90%
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" /> Above 90%
+            </span>
+          </div>
         </div>
         {selectedQuarterPeriod && (
-          <p className="text-xs text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="rounded-full border-indigo-200 bg-indigo-50/70 px-3 py-1 text-xs font-semibold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+          >
             Q{selectedQuarter} time elapsed: {percent(activeProgress * 100)}
-          </p>
+          </Badge>
         )}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[1, 2, 3, 4].map((quarterNumber) => {
           const kpis = allKpiQuarters.filter(
             (item) => item.quarterNumber === quarterNumber,
@@ -190,34 +213,62 @@ export function QuarterStrip({
           );
           const coverage = Number(summary?.resultCoverageRate ?? 0) * 100;
           const isNotDue = Boolean(
-            summary && summary.rowCount > 0 && summary.notDueCount === summary.rowCount,
+            summary &&
+              summary.rowCount > 0 &&
+              summary.notDueCount === summary.rowCount,
           );
+          const isSelected = quarterNumber === selectedQuarter;
 
           return (
             <Card
               key={quarterNumber}
-              className={`min-w-0 gap-3 rounded-xl border-primary/15 bg-gradient-to-br from-primary/[0.06] to-card py-4 shadow-none ${quarterNumber === selectedQuarter ? "border-primary/50 from-primary/[0.12] ring-1 ring-primary/20" : ""}`}
+              className={`group relative flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl border p-5 shadow-sm backdrop-blur-sm transition-all duration-300 ${
+                isSelected
+                  ? "border-indigo-500/50 bg-gradient-to-b from-indigo-50/80 via-white to-indigo-50/30 shadow-md ring-2 ring-indigo-500/20 dark:border-indigo-400/50 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-indigo-950/20"
+                  : "border-slate-200/80 bg-white/90 hover:border-slate-300 hover:shadow-md dark:border-white/[0.08] dark:bg-zinc-900/90"
+              }`}
             >
-              <CardContent className="px-4">
+              {/* Top Accent Stripe */}
+              <div
+                className={`absolute inset-x-0 top-0 h-[3px] transition-opacity ${
+                  isSelected
+                    ? "bg-gradient-to-r from-indigo-500 to-violet-500 opacity-100"
+                    : "bg-slate-200 dark:bg-zinc-800 opacity-60 group-hover:opacity-100"
+                }`}
+              />
+
+              <div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold">Q{quarterNumber}</p>
-                    {quarterNumber === selectedQuarter && (
-                      <Badge variant="outline">Selected</Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                      Q{quarterNumber}
+                    </span>
+                    {isSelected && (
+                      <Badge className="rounded-full border-0 bg-indigo-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white dark:bg-indigo-500">
+                        Selected
+                      </Badge>
                     )}
                   </div>
-                  {isNotDue
-                    ? <Badge variant="secondary">Not due this quarter</Badge>
-                    : <TrafficBadge status={status} />}
+                  {isNotDue ? (
+                    <Badge variant="secondary" className="rounded-full text-xs font-semibold">
+                      Not due
+                    </Badge>
+                  ) : (
+                    <TrafficBadge status={status} />
+                  )}
                 </div>
-                <p
-                  className={`mt-4 text-3xl font-bold tabular-nums ${tone.text}`}
-                >
-                  {achievement == null ? "—" : percent(achievement)}
-                </p>
-                <div className="mt-2 text-xs">
+
+                <div className="mt-4">
+                  <p
+                    className={`text-3xl font-extrabold tracking-tight tabular-nums ${tone.text} sm:text-4xl`}
+                  >
+                    {achievement == null ? "—" : percent(achievement)}
+                  </p>
+                </div>
+
+                <div className="mt-2.5">
                   {achievement == null ? (
-                    <span className="text-muted-foreground">
+                    <span className="text-xs font-medium text-slate-400 dark:text-zinc-500">
                       Trend available after results
                     </span>
                   ) : (
@@ -230,8 +281,11 @@ export function QuarterStrip({
                     />
                   )}
                 </div>
+              </div>
+
+              <div className="mt-5">
                 <Progress
-                  className="mt-3 h-1.5"
+                  className="h-2 rounded-full"
                   value={
                     achievement == null
                       ? 0
@@ -240,12 +294,15 @@ export function QuarterStrip({
                   fillColor={tone.fill}
                   trackColor={`${tone.fill}20`}
                 />
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  {percent(coverage)} result coverage ·{" "}
-                  {summary?.pendingResultCount ?? 0} pending
-                  {Boolean(summary?.notDueCount) && ` · ${summary?.notDueCount} not due`}
+                <p className="mt-2.5 text-xs font-medium leading-relaxed text-slate-500 dark:text-zinc-400">
+                  <span className="font-semibold text-slate-700 dark:text-zinc-300">
+                    {percent(coverage)}
+                  </span>{" "}
+                  coverage · {summary?.pendingResultCount ?? 0} pending
+                  {Boolean(summary?.notDueCount) &&
+                    ` · ${summary?.notDueCount} not due`}
                 </p>
-              </CardContent>
+              </div>
             </Card>
           );
         })}
@@ -278,12 +335,12 @@ function UnitQuarterCells({
         return (
           <div
             key={quarterNumber}
-            className={`rounded-md px-2 py-1 text-center ${tone.surface}`}
+            className={`rounded-xl border px-2 py-1 text-center transition-all ${tone.surface} ${tone.border || "border-transparent"}`}
           >
-            <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Q{quarterNumber}
             </p>
-            <p className={`text-xs font-semibold tabular-nums ${tone.text}`}>
+            <p className={`text-xs font-bold tabular-nums ${tone.text}`}>
               {achievement == null ? "—" : percent(achievement)}
             </p>
           </div>
@@ -338,29 +395,41 @@ function UnitRow({
 
   return (
     <div
-      className={`grid min-w-0 gap-3 rounded-xl border px-3 py-3 sm:grid-cols-2 sm:px-4 2xl:grid-cols-[minmax(180px,1fr)_130px_150px_230px] 2xl:items-center ${nested ? "ml-3 border-l-2 border-l-primary/25 bg-muted/25 sm:ml-6" : "bg-background"}`}
+      className={`grid min-w-0 gap-3.5 rounded-2xl border px-4 py-3.5 shadow-2xs transition-all sm:grid-cols-2 sm:px-5 2xl:grid-cols-[minmax(200px,1fr)_140px_160px_240px] 2xl:items-center ${
+        nested
+          ? "ml-3 border-l-3 border-l-indigo-500 bg-slate-50/60 dark:border-l-indigo-400 dark:bg-zinc-800/40 sm:ml-6"
+          : "border-slate-200/80 bg-white/95 dark:border-white/[0.08] dark:bg-zinc-900/90"
+      }`}
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="break-words text-sm font-semibold">
+          <span className="break-words text-sm font-bold text-slate-900 dark:text-zinc-100">
             {entityName}
           </span>
-          {directToCeo && <Badge variant="secondary">Reports to CEO</Badge>}
+          {directToCeo && (
+            <Badge variant="secondary" className="rounded-full text-[10px] font-semibold">
+              Reports to CEO
+            </Badge>
+          )}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-zinc-400">
           {currentRollup?.kpiCount ?? 0} KPI
           {currentRollup?.kpiCount === 1 ? "" : "s"} ·{" "}
-          {percent(Number(currentRollup?.resultCoverageRate ?? 0) * 100)}{" "}
+          <span className="font-semibold text-slate-700 dark:text-zinc-300">
+            {percent(Number(currentRollup?.resultCoverageRate ?? 0) * 100)}
+          </span>{" "}
           coverage
         </p>
       </div>
       <div>
-        <p className={`text-xl font-bold tabular-nums ${tone.text}`}>
+        <p className={`text-2xl font-extrabold tabular-nums ${tone.text}`}>
           {achievement == null ? "—" : percent(achievement)}
         </p>
-        <TrafficBadge status={status} />
+        <div className="mt-1">
+          <TrafficBadge status={status} />
+        </div>
       </div>
-      <div className="text-xs">
+      <div>
         <Trend
           delta={
             achievement != null && previous != null
@@ -393,24 +462,23 @@ export function OrganizationAchievement({
   return (
     <section
       aria-labelledby="organization-achievement-heading"
-      className="space-y-3"
+      className="space-y-4"
     >
       <div>
         <h3
           id="organization-achievement-heading"
-          className="text-lg font-semibold"
+          className="text-lg font-bold tracking-tight text-slate-900 dark:text-zinc-100"
         >
           Division and department achievement
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Departments without a division are shown as top-level units reporting
-          to the CEO.
+        <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
+          Departments without a parent division are shown as top-level units reporting to the CEO.
         </p>
       </div>
-      <Card className="gap-3 py-4">
-        <CardContent className="space-y-3 px-4">
+      <Card className="rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90">
+        <CardContent className="space-y-4 p-0">
           {divisions.map((division) => (
-            <div key={division.id} className="space-y-2">
+            <div key={division.id} className="space-y-2.5">
               <UnitRow
                 level="DIVISION"
                 entityId={division.id}
@@ -448,7 +516,7 @@ export function OrganizationAchievement({
             />
           ))}
           {divisions.length === 0 && directDepartments.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-10 text-center text-sm font-medium text-slate-500 dark:text-zinc-400">
               No active divisions or departments are available in this scope.
             </p>
           )}
@@ -487,21 +555,21 @@ function ContributorNode({
   return (
     <>
       <div
-        className="grid gap-2 rounded-lg border px-3 py-2 md:grid-cols-[minmax(180px,1fr)_130px_150px] md:items-center"
-        style={{ marginLeft: Math.min(depth, 3) * 10 }}
+        className="grid gap-2.5 rounded-xl border border-slate-200/80 bg-white/95 px-4 py-3 shadow-2xs transition-all dark:border-white/[0.06] dark:bg-zinc-900/90 md:grid-cols-[minmax(200px,1fr)_140px_160px] md:items-center"
+        style={{ marginLeft: Math.min(depth, 3) * 14 }}
       >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {item.level === "DIVISION" ? (
-              <Building2 className="h-3.5 w-3.5 text-indigo-500" />
+              <Building2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             ) : (
-              <Network className="h-3.5 w-3.5 text-slate-500" />
+              <Network className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
             )}
-            <p className="break-words text-sm font-semibold">
+            <p className="break-words text-sm font-bold text-slate-900 dark:text-zinc-100">
               {item.entityName}
             </p>
           </div>
-          <p className="mt-1 break-words text-xs text-muted-foreground">
+          <p className="mt-0.5 break-words text-xs text-slate-500 dark:text-zinc-400">
             {item.kpiName}
             {item.level === "DEPARTMENT" && !item.divisionId
               ? " · Reports to CEO"
@@ -509,26 +577,28 @@ function ContributorNode({
           </p>
         </div>
         <div>
-          <p className={`text-sm font-bold tabular-nums ${tone.text}`}>
+          <p className={`text-sm font-extrabold tabular-nums ${tone.text}`}>
             {achievement == null
               ? item.planCount > 0 && item.notDueCount === item.planCount
-                ? "Not due this quarter"
+                ? "Not due"
                 : "Pending"
               : percent(achievement)}
           </p>
-          <p className="text-xs text-muted-foreground">local achievement</p>
+          <p className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+            local achievement
+          </p>
         </div>
-        <div className="text-xs text-muted-foreground md:text-right">
+        <div className="text-xs text-slate-500 dark:text-zinc-400 md:text-right">
           {impact ? (
             <>
-              <p className="font-semibold tabular-nums text-foreground">
+              <p className="font-bold tabular-nums text-slate-900 dark:text-zinc-100">
                 {formatter.format(impact.achievedContributionWeight)} /{" "}
                 {formatter.format(impact.plannedContributionWeight)}
               </p>
-              <p>corporate score weight</p>
+              <p className="text-[11px]">corporate score weight</p>
             </>
           ) : (
-            <p>Contributes through parent KPI</p>
+            <p className="text-[11px] italic">Contributes via parent KPI</p>
           )}
         </div>
       </div>
@@ -575,21 +645,20 @@ export function CorporateContributors({
   return (
     <section
       aria-labelledby="corporate-contributors-heading"
-      className="space-y-3"
+      className="space-y-4"
     >
       <div>
         <h3
           id="corporate-contributors-heading"
-          className="text-lg font-semibold"
+          className="text-lg font-bold tracking-tight text-slate-900 dark:text-zinc-100"
         >
           Corporate KPI contributors
         </h3>
-        <p className="text-sm text-muted-foreground">
-          The KPI cascade is shown once. Immediate recipients carry corporate
-          score weight; lower levels contribute through their parent KPI.
+        <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
+          The KPI cascade is shown once. Immediate recipients carry corporate score weight; lower levels contribute through their parent KPI.
         </p>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {primaryReport.kpiRollups.map((root) => {
           const children = childrenByParent.get(root.kpiId) ?? [];
           const impactByEntity = new Map(
@@ -600,31 +669,33 @@ export function CorporateContributors({
           return (
             <details
               key={root.kpiId}
-              className="group/contributor overflow-hidden rounded-xl border bg-card"
+              className="group/contributor overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm transition-all dark:border-white/[0.08] dark:bg-zinc-900/90"
             >
-              <summary className="flex cursor-pointer list-none items-center gap-3 p-4 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center gap-3 p-4 transition-colors hover:bg-slate-50/60 focus-visible:outline-2 focus-visible:outline-indigo-500 sm:px-5 sm:py-4.5 [&::-webkit-details-marker]:hidden">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 flex-1 basis-48">
-                    <p className="break-words text-xs font-medium text-muted-foreground">
+                    <p className="break-words text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
                       {root.objectiveTitle || "Corporate objective"}
                     </p>
-                    <h4 className="mt-1 break-words text-sm font-semibold">
+                    <h4 className="mt-1 break-words text-sm font-bold text-slate-900 dark:text-zinc-100">
                       {root.kpiName}
                     </h4>
                   </div>
-                  <Badge variant="outline">
+                  <Badge
+                    variant="outline"
+                    className="rounded-full font-semibold"
+                  >
                     {root.resultCount > 0
                       ? `${percent(root.achievementRate * 100)} achievement`
                       : "Awaiting data"}
                   </Badge>
                 </div>
-                <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-open/contributor:rotate-180" />
+                <ChevronDown className="ml-auto size-4 shrink-0 text-slate-400 transition-transform duration-200 group-open/contributor:rotate-180" />
               </summary>
-              <div className="space-y-2 border-t bg-muted/20 p-3 sm:p-4">
+              <div className="space-y-2.5 border-t border-slate-100 bg-slate-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-5">
                 {children.length === 0 ? (
-                  <p className="rounded-lg bg-muted/40 px-3 py-4 text-center text-xs text-muted-foreground">
-                    No target-allocation contributor results are available for Q
-                    {selectedQuarter}.
+                  <p className="rounded-xl bg-white/70 px-4 py-5 text-center text-xs font-medium text-slate-500 dark:bg-zinc-900/50 dark:text-zinc-400">
+                    No target-allocation contributor results are available for Q{selectedQuarter}.
                   </p>
                 ) : (
                   children.map((child) => (
@@ -674,3 +745,4 @@ export default function QuarterAchievementBreakdown({
     </div>
   );
 }
+

@@ -890,6 +890,7 @@ export function LogbookEntryDialog({
                       }}
                       multiplier={boundFormula?.multiplier}
                       unitType={selectedKpi?.unitType || undefined}
+                      targetValue={parseFloat(kpiTargetValue) || selectedKpi?.targetValue || undefined}
                     />
                   ) : selectedKpi?.calculationType === "MANUAL_VALUE" ? (
                     // Direct Value Entry

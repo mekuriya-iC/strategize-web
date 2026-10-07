@@ -106,6 +106,12 @@ export function NotificationList({
         case 'approval':
           url = `/dashboard/approvals`;
           break;
+        case 'logbook_evidence_approval':
+          url = '/dashboard/evidence-requests';
+          break;
+        case 'logbook_evidence_result':
+          url = '/dashboard/logbook';
+          break;
         default:
           url = '/dashboard';
       }

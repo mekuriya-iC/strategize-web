@@ -127,6 +127,12 @@ export const UPDATE_LOGBOOK_ENTRY = gql`
       submittedAt
       approvedAt
       rejectionReason
+      evidenceApprovalRequired
+      evidenceApprovalStatus
+      evidenceApproverId
+      evidenceApprovalRevision
+      evidenceReviewedAt
+      evidenceRejectionReason
       updatedAt
       owner {
         employeeId
@@ -135,6 +141,43 @@ export const UPDATE_LOGBOOK_ENTRY = gql`
       approvedBy {
         employeeId
         fullName
+      }
+    }
+  }
+`;
+
+export const CONFIGURE_EVIDENCE_APPROVER = gql`
+  mutation ConfigureEvidenceApprover($employeeId: ID!, $isActive: Boolean!) {
+    configureEvidenceApprover(employeeId: $employeeId, isActive: $isActive) {
+      evidenceApproverAuthorizationId
+      isActive
+      revokedAt
+      employee {
+        employeeId
+        fullName
+        email
+        title
+        role
+      }
+      configuredBy {
+        employeeId
+        fullName
+      }
+    }
+  }
+`;
+
+export const REVIEW_LOGBOOK_EVIDENCE = gql`
+  mutation ReviewLogbookEvidence($input: ReviewLogbookEvidenceInput!) {
+    reviewLogbookEvidence(input: $input) {
+      logbookEvidenceApprovalId
+      status
+      rejectionReason
+      reviewedAt
+      logbookEntry {
+        logbookEntryId
+        entryStatus
+        evidenceApprovalStatus
       }
     }
   }

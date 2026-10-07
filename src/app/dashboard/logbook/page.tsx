@@ -38,6 +38,13 @@ const mapEntryToFrontend = (entry: any): FrontendLogbookItem => ({
   contributionUnit: entry.contributionUnit || "",
   strategicPeriodId: entry.strategicPeriod?.strategicPeriodId || "",
   rejectionReason: entry.rejectionReason || "",
+  evidenceApprovalRequired: entry.evidenceApprovalRequired ?? false,
+  evidenceApprovalStatus: entry.evidenceApprovalStatus ?? null,
+  evidenceApproverId: entry.evidenceApproverId ?? null,
+  evidenceApprover: entry.evidenceApprover ?? null,
+  evidenceApprovalRevision: entry.evidenceApprovalRevision ?? 0,
+  evidenceReviewedAt: entry.evidenceReviewedAt ?? null,
+  evidenceRejectionReason: entry.evidenceRejectionReason ?? null,
   createdAt: entry.createdAt,
   updatedAt: entry.updatedAt,
   employee: entry.owner,
@@ -117,7 +124,11 @@ function PersonalLogbookPage() {
   };
 
   const handleEditEntry = (entry: FrontendLogbookItem) => {
-    if (entry.status === "SUBMITTED" || entry.status === "APPROVED") return;
+    if (
+      entry.status === "SUBMITTED" ||
+      entry.status === "APPROVED" ||
+      entry.evidenceApprovalStatus === "PENDING"
+    ) return;
     setEditingEntry(entry);
     setIsAddEntryOpen(true);
   };

@@ -13,6 +13,7 @@ type RoutePolicy =
   | { allowedRoles: readonly string[] };
 
 const ROUTE_POLICIES: Record<string, RoutePolicy> = {
+  "/dashboard/admin/evidence-approvers": { allowedRoles: ["SUPER_ADMIN"] },
   "/dashboard/admin": { minimumRole: "ADMIN" },
   "/dashboard/employees": { minimumRole: "MANAGER" },
   "/dashboard/positions": { allowedRoles: ["HR", "SUPER_ADMIN"] },
@@ -76,6 +77,7 @@ export function canCeoAccessRoute(path: string): boolean {
     '/dashboard', '/dashboard/structure', '/dashboard/task-completion',
     '/dashboard/performance', '/dashboard/kpi-scorecard', '/dashboard/kpi-weight',
     '/dashboard/flagged-kpis', '/dashboard/reports', '/dashboard/approvals', '/dashboard/logbook',
+    '/dashboard/evidence-requests',
     '/dashboard/admin', '/dashboard/admin/permissions', '/dashboard/admin/system-config',
     '/dashboard/admin/logs', '/dashboard/settings',
   ];

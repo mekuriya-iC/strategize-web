@@ -63,9 +63,12 @@ export function LogbookTableCard({
   };
 
   const normalizedStatus = String(item.status || "DRAFT").toUpperCase();
+  const evidencePending = item.evidenceApprovalStatus === "PENDING";
   const canSubmit =
-    ["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status;
-  const isLocked = ["SUBMITTED", "APPROVED"].includes(normalizedStatus);
+    !evidencePending &&
+    (["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status);
+  const isLocked =
+    evidencePending || ["SUBMITTED", "APPROVED"].includes(normalizedStatus);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -94,7 +97,9 @@ export function LogbookTableCard({
                 </div>
               )}
               <span className="inline-flex mb-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {normalizedStatus === "SUBMITTED"
+                {evidencePending
+                  ? "Evidence Review Pending"
+                  : normalizedStatus === "SUBMITTED"
                   ? "Pending Approval"
                   : normalizedStatus}
               </span>
@@ -179,6 +184,17 @@ export function LogbookTableCard({
               </label>
               <p className="text-sm text-red-600 dark:text-red-300 mt-1">
                 {item.rejectionReason}
+              </p>
+            </div>
+          )}
+
+          {item.evidenceApprovalStatus === "REJECTED" && item.evidenceRejectionReason && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3">
+              <label className="text-xs font-medium uppercase text-red-700">
+                Evidence correction requested
+              </label>
+              <p className="mt-1 text-sm text-red-700">
+                {item.evidenceRejectionReason}
               </p>
             </div>
           )}

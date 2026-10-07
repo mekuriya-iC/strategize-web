@@ -65,8 +65,10 @@ export function LogbookTableRow({
   };
 
   const normalizedStatus = String(item.status || "DRAFT").toUpperCase();
+  const evidencePending = item.evidenceApprovalStatus === "PENDING";
   const canSubmit =
-    ["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status;
+    !evidencePending &&
+    (["DRAFT", "REJECTED"].includes(normalizedStatus) || !item.status);
   const isBasisDriven =
     item.linkedKpi?.calculationBasisSource === "DIRECT_VALUE" ||
     item.linkedKpi?.calculationBasisSource === "LINKED_KPI";
@@ -87,6 +89,13 @@ export function LogbookTableRow({
     : null;
 
   const getStatusBadge = () => {
+    if (evidencePending) {
+      return (
+        <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+          Evidence Review Pending
+        </Badge>
+      );
+    }
     const status = normalizedStatus;
     const classes: Record<string, string> = {
       DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",

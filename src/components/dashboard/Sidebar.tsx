@@ -14,6 +14,11 @@ import { useAuthStore } from "@/stores";
 import { usePendingApprovalsBadge } from "@/providers/PendingApprovalsProvider";
 import { useFlaggedKpiCount } from "@/hooks/kpis/useFlaggedKpiCount";
 import { usePendingTaskCollaborationCount } from "@/hooks/tasks/usePendingTaskCollaborationCount";
+import { useQuery } from "@apollo/client";
+import {
+  GET_EVIDENCE_APPROVAL_INBOX,
+  GET_MY_EVIDENCE_APPROVER_AUTHORIZATION,
+} from "@/lib/graphql/queries/logbook";
 
 interface NavLink {
   label: string;
@@ -24,6 +29,8 @@ interface NavLink {
   managerOnly?: boolean;
   /** Shown only for specific roles */
   rolesOnly?: string[];
+  /** Shown only to users explicitly authorized to review logbook evidence. */
+  evidenceApproverOnly?: boolean;
 }
 
 interface NavCategory {
@@ -407,6 +414,18 @@ const navCategories: NavCategory[] = [
         ),
       },
       {
+        label: "Evidence Requests",
+        href: "/dashboard/evidence-requests",
+        permission: "nav:dashboard",
+        evidenceApproverOnly: true,
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M6 2.5H14A1.5 1.5 0 0115.5 4v12A1.5 1.5 0 0114 17.5H6A1.5 1.5 0 014.5 16V4A1.5 1.5 0 016 2.5Z" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M7 7h6M7 10h3M8 14l1.3 1.3L12.5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ),
+      },
+      {
         label: "Evaluate",
         href: "/dashboard/evaluations",
         permission: "nav:dashboard",
@@ -673,6 +692,18 @@ const navCategories: NavCategory[] = [
         ),
       },
       {
+        label: "Evidence Approvers",
+        href: "/dashboard/admin/evidence-approvers",
+        permission: "nav:admin",
+        rolesOnly: ["SUPER_ADMIN"],
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-current">
+            <path d="M10 10a3 3 0 100-6 3 3 0 000 6ZM4 17a6 6 0 0112 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="m13.5 12.5 1.2 1.2 2.3-2.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ),
+      },
+      {
         label: "Semi-Annual Config",
         href: "/dashboard/semi-annual-config",
         permission: "nav:admin",
@@ -743,6 +774,7 @@ function CollapsibleCategory({
   currentSearch,
   can,
   userRole,
+  isEvidenceApprover,
   openSidebar,
 }: {
   category: NavCategory;
@@ -753,6 +785,7 @@ function CollapsibleCategory({
   currentSearch: string;
   can: (permission: Permission) => boolean;
   userRole?: string;
+  isEvidenceApprover: boolean;
   openSidebar: () => void;
 }) {
   const searchParams = new URLSearchParams(currentSearch);
@@ -765,6 +798,7 @@ function CollapsibleCategory({
       if (!can(link.permission)) return false;
       if (link.managerOnly && !isManagerRole) return false;
       if (link.rolesOnly && !link.rolesOnly.includes(userRole || "")) return false;
+      if (link.evidenceApproverOnly && !isEvidenceApprover) return false;
       return true;
     })
     .map((link) =>
@@ -887,11 +921,25 @@ export default function Sidebar({
   const { count: flaggedKpiCount } = useFlaggedKpiCount();
   const { pendingCount: pendingTaskRequestCount } =
     usePendingTaskCollaborationCount({ skip: !userRole });
+  const { data: evidenceAuthorizationData } = useQuery(
+    GET_MY_EVIDENCE_APPROVER_AUTHORIZATION,
+    { skip: !userRole, fetchPolicy: "cache-and-network" },
+  );
+  const isEvidenceApprover = Boolean(
+    evidenceAuthorizationData?.myEvidenceApproverAuthorization?.isActive,
+  );
+  const { data: evidenceInboxData } = useQuery(GET_EVIDENCE_APPROVAL_INBOX, {
+    variables: { page: 1, limit: 1, status: "PENDING" },
+    skip: !isEvidenceApprover,
+    fetchPolicy: "cache-and-network",
+  });
 
   const badgeCounts: Record<string, number> = {
     "/dashboard/approvals": pendingApprovalsCount,
     "/dashboard/flagged-kpis": flaggedKpiCount,
     "/dashboard/task-requests": pendingTaskRequestCount,
+    "/dashboard/evidence-requests":
+      evidenceInboxData?.evidenceApprovalInbox?.meta?.totalItems || 0,
   };
 
   const isLinkActive = (href: string) => {
@@ -948,6 +996,7 @@ export default function Sidebar({
             currentSearch={currentSearch}
             can={can}
             userRole={userRole}
+            isEvidenceApprover={isEvidenceApprover}
             openSidebar={openSidebar}
           />
         ))}

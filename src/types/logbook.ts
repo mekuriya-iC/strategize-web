@@ -437,6 +437,17 @@ export interface FrontendLogbookItem {
   evidenceItems?: LogbookEvidence[];
   status?: string;
   rejectionReason?: string;
+  evidenceApprovalRequired?: boolean;
+  evidenceApprovalStatus?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | null;
+  evidenceApproverId?: string | null;
+  evidenceApprover?: {
+    employeeId: string;
+    fullName: string;
+    title?: string | null;
+  } | null;
+  evidenceApprovalRevision?: number;
+  evidenceReviewedAt?: string | null;
+  evidenceRejectionReason?: string | null;
   createdAt: string;
   updatedAt: string;
   employee?: {

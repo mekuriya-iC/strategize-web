@@ -6,6 +6,7 @@ import { UPDATE_LOGBOOK_ENTRY } from "@/lib/graphql/mutations/logbook";
 import {
   GET_LOGBOOK_ENTRY,
   GET_LOGBOOK_FORMULA_FOR_CONTEXT,
+  GET_ELIGIBLE_EVIDENCE_APPROVERS,
 } from "@/lib/graphql/queries/logbook";
 import { getAccessToken } from "@/lib/auth-utils";
 import { toast } from "sonner";
@@ -169,6 +170,18 @@ export function SubmitApprovalDialog({
     item.description || item.activity || "",
   );
   const [remark, setRemark] = useState(item.outcome || "");
+  const [evidenceApproverId, setEvidenceApproverId] = useState("");
+  const { data: approverData, loading: approversLoading } = useQuery(
+    GET_ELIGIBLE_EVIDENCE_APPROVERS,
+    { skip: !open, fetchPolicy: "cache-and-network" },
+  );
+  const eligibleApprovers = (
+    approverData?.eligibleEvidenceApprovers || []
+  ).filter(
+    (authorization: { employee?: { employeeId?: string } }) =>
+      authorization.employee?.employeeId &&
+      authorization.employee.employeeId !== currentUser?.employeeId,
+  );
   const {
     data: currentEntryData,
     loading: currentEntryLoading,
@@ -262,6 +275,7 @@ export function SubmitApprovalDialog({
         ? existingEvidence
         : [createEmptyEvidenceItem()],
     );
+    setEvidenceApproverId("");
   }, [item.attachmentUrl, item.evidenceItems, item.id, open]);
 
   const addEvidenceItem = () => {
@@ -355,6 +369,11 @@ export function SubmitApprovalDialog({
       return;
     }
 
+    if (!evidenceApproverId) {
+      toast.error("Select the person who will verify this evidence.");
+      return;
+    }
+
     const invalidEvidenceIndex = evidenceItems.findIndex((evidence) => {
       if (evidence.type === "email") return !evidence.value.trim();
       if (evidence.type === "link") return !isHttpUrl(evidence.value.trim());
@@ -403,6 +422,7 @@ export function SubmitApprovalDialog({
         evidenceDescription: description.trim() || null,
         evidenceItems: structuredEvidence,
         decisionsMade: remark.trim() || null,
+        evidenceApproverId,
       };
 
       const firstEvidenceUrl = structuredEvidence.find(
@@ -419,7 +439,10 @@ export function SubmitApprovalDialog({
         throw new Error("The server did not confirm the logbook submission.");
       }
 
-      toast.success("Logbook entry submitted for approval");
+      toast.success("Evidence submitted for verification", {
+        description:
+          "After the evidence reviewer approves it, the entry will automatically move to final approval.",
+      });
       onSuccess();
       onOpenChange(false);
     } catch (error: unknown) {
@@ -599,6 +622,45 @@ export function SubmitApprovalDialog({
                 className="min-h-[120px] resize-none"
               />
             </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <Label htmlFor="evidence-approver" className="text-sm font-semibold text-indigo-950">
+              Evidence approval person <span className="text-red-600">*</span>
+            </Label>
+            <p className="text-xs text-indigo-700">
+              This person verifies the attached evidence before your normal hierarchy approver receives the logbook.
+            </p>
+            <select
+              id="evidence-approver"
+              value={evidenceApproverId}
+              onChange={(event) => setEvidenceApproverId(event.target.value)}
+              disabled={approversLoading}
+              className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+            >
+              <option value="">
+                {approversLoading ? "Loading authorized reviewers…" : "Select evidence reviewer"}
+              </option>
+              {eligibleApprovers.map(
+                (authorization: {
+                  evidenceApproverAuthorizationId: string;
+                  employee: { employeeId: string; fullName: string; title?: string; email?: string };
+                }) => (
+                  <option
+                    key={authorization.evidenceApproverAuthorizationId}
+                    value={authorization.employee.employeeId}
+                  >
+                    {authorization.employee.fullName}
+                    {authorization.employee.title ? ` — ${authorization.employee.title}` : ""}
+                  </option>
+                ),
+              )}
+            </select>
+            {!approversLoading && eligibleApprovers.length === 0 && (
+              <p className="text-sm text-red-700">
+                No evidence approver is configured. Ask a super administrator to authorize at least one reviewer.
+              </p>
+            )}
           </div>
 
           {!currentEntryLoading && readinessUnavailable && (
@@ -932,6 +994,8 @@ export function SubmitApprovalDialog({
               currentEntryLoading ||
               readinessUnavailable ||
               !hasRecordedKpiResult ||
+              !evidenceApproverId ||
+              approversLoading ||
               Boolean(quarterPlanSubmissionBlock)
             }
             title={

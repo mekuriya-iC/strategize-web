@@ -123,6 +123,12 @@ export default function NotificationDropdown() {
         case "logbookentry":
           url = `/dashboard/approvals?tab=logbook`;
           break;
+        case "logbook_evidence_approval":
+          url = "/dashboard/evidence-requests";
+          break;
+        case "logbook_evidence_result":
+          url = "/dashboard/logbook";
+          break;
         default:
           url = "/dashboard";
       }

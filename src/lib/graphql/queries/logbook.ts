@@ -261,6 +261,17 @@ export const GET_LOGBOOK_ENTRIES = gql`
         submittedAt
         approvedAt
         rejectionReason
+        evidenceApprovalRequired
+        evidenceApprovalStatus
+        evidenceApproverId
+        evidenceApprovalRevision
+        evidenceReviewedAt
+        evidenceRejectionReason
+        evidenceApprover {
+          employeeId
+          fullName
+          title
+        }
         createdAt
         updatedAt
         owner {
@@ -395,6 +406,17 @@ export const GET_LOGBOOK_ENTRY = gql`
       submittedAt
       approvedAt
       rejectionReason
+      evidenceApprovalRequired
+      evidenceApprovalStatus
+      evidenceApproverId
+      evidenceApprovalRevision
+      evidenceReviewedAt
+      evidenceRejectionReason
+      evidenceApprover {
+        employeeId
+        fullName
+        title
+      }
       createdAt
       updatedAt
       owner {
@@ -425,6 +447,119 @@ export const GET_LOGBOOK_ENTRY = gql`
       strategicPeriod {
         strategicPeriodId
         name
+      }
+    }
+  }
+`;
+
+export const GET_ELIGIBLE_EVIDENCE_APPROVERS = gql`
+  query GetEligibleEvidenceApprovers {
+    eligibleEvidenceApprovers {
+      evidenceApproverAuthorizationId
+      isActive
+      employee {
+        employeeId
+        fullName
+        email
+        title
+        role
+      }
+    }
+  }
+`;
+
+export const GET_EVIDENCE_APPROVER_AUTHORIZATIONS = gql`
+  query GetEvidenceApproverAuthorizations {
+    evidenceApproverAuthorizations {
+      evidenceApproverAuthorizationId
+      isActive
+      revokedAt
+      createdAt
+      updatedAt
+      employee {
+        employeeId
+        fullName
+        email
+        title
+        role
+      }
+      configuredBy {
+        employeeId
+        fullName
+      }
+    }
+  }
+`;
+
+export const GET_MY_EVIDENCE_APPROVER_AUTHORIZATION = gql`
+  query GetMyEvidenceApproverAuthorization {
+    myEvidenceApproverAuthorization {
+      evidenceApproverAuthorizationId
+      isActive
+    }
+  }
+`;
+
+export const GET_EVIDENCE_APPROVAL_INBOX = gql`
+  query GetEvidenceApprovalInbox(
+    $page: Int!
+    $limit: Int!
+    $status: EvidenceApprovalStatus
+  ) {
+    evidenceApprovalInbox(page: $page, limit: $limit, status: $status) {
+      items {
+        logbookEvidenceApprovalId
+        revision
+        status
+        rejectionReason
+        evidenceDescriptionSnapshot
+        evidenceUrlSnapshot
+        evidenceItemsSnapshot {
+          type
+          value
+          name
+          mimeType
+          size
+        }
+        submittedAt
+        reviewedAt
+        submittedBy {
+          employeeId
+          fullName
+          title
+        }
+        assignedApprover {
+          employeeId
+          fullName
+        }
+        reviewedBy {
+          employeeId
+          fullName
+        }
+        logbookEntry {
+          logbookEntryId
+          entryDate
+          activityDescription
+          decisionsMade
+          entryStatus
+          linkedKpi {
+            kpiId
+            name
+          }
+          owner {
+            employeeId
+            fullName
+            email
+            title
+          }
+        }
+      }
+      meta {
+        currentPage
+        totalPages
+        totalItems
+        itemsPerPage
+        itemCount
       }
     }
   }

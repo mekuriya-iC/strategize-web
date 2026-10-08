@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {
   Network,
@@ -76,12 +75,16 @@ interface ScorecardData {
 
 export default function DivisionScorecard({
   capFinalScore = false,
+  scopeDivisionId,
+  scopeDivisionName,
 }: {
   capFinalScore?: boolean;
+  scopeDivisionId?: string;
+  scopeDivisionName?: string;
 }) {
-  const { user } = useAuth();
   const { can } = usePermissions();
   const canReadAll = can("evaluations:read_all");
+  const canViewScorecard = canReadAll || Boolean(scopeDivisionId);
 
   // Use the global strategic period store instead of local state
   const globalSelectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
@@ -117,12 +120,15 @@ export default function DivisionScorecard({
 
   const divisions = divisionsData?.divisions?.items || [];
 
-  // Set first division as default
+  // Administrators may switch divisions. A director uses the selected
+  // authenticated unit directly rather than copying it into local state.
   useEffect(() => {
-    if (divisions.length > 0 && !selectedDivisionId) {
+    if (!scopeDivisionId && divisions.length > 0 && !selectedDivisionId) {
       setSelectedDivisionId(divisions[0].divisionId);
     }
-  }, [divisions, selectedDivisionId]);
+  }, [divisions, selectedDivisionId, scopeDivisionId]);
+
+  const effectiveDivisionId = scopeDivisionId || selectedDivisionId;
 
   // Fetch scorecard data
   const {
@@ -131,11 +137,11 @@ export default function DivisionScorecard({
     error: scorecardError,
   } = useQuery(GET_REALTIME_DIVISION_SCORECARD, {
       variables: {
-        divisionId: selectedDivisionId,
+        divisionId: effectiveDivisionId,
         periodId: selectedPeriodId,
         capFinalScore,
       },
-      skip: !selectedDivisionId || !selectedPeriodId,
+      skip: !effectiveDivisionId || !selectedPeriodId,
       fetchPolicy: "cache-and-network",
       nextFetchPolicy: "cache-first",
   });
@@ -195,14 +201,14 @@ export default function DivisionScorecard({
   };
 
   const selectedDivision = divisions.find(
-    (d: any) => d.divisionId === selectedDivisionId,
+    (d: any) => d.divisionId === effectiveDivisionId,
   );
 
   const selectedPeriod = periods.find(
     (p: any) => p.strategicPeriodId === selectedPeriodId,
   );
 
-  if (!canReadAll) {
+  if (!canViewScorecard) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -237,21 +243,27 @@ export default function DivisionScorecard({
             {/* Division Selector */}
             <div>
               <label className="text-sm font-medium mb-2 block">Division</label>
-              <Select
-                value={selectedDivisionId}
-                onValueChange={setSelectedDivisionId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select division" />
-                </SelectTrigger>
-                <SelectContent>
-                  {divisions.map((div: any) => (
-                    <SelectItem key={div.divisionId} value={div.divisionId}>
-                      {div.name} ({div.departments?.length || 0} departments)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {scopeDivisionId ? (
+                <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm">
+                  {scopeDivisionName || selectedDivision?.name || "My division"}
+                </div>
+              ) : (
+                <Select
+                  value={selectedDivisionId}
+                  onValueChange={setSelectedDivisionId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select division" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divisions.map((div: any) => (
+                      <SelectItem key={div.divisionId} value={div.divisionId}>
+                        {div.name} ({div.departments?.length || 0} departments)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Period Selector */}

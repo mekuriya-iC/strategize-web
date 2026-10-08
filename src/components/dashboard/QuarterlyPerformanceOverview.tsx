@@ -90,10 +90,18 @@ export default function QuarterlyPerformanceOverview() {
   }, [selectedPeriod, strategicPeriods]);
 
   const annualStrategicPeriodId = context?.annualPeriod.strategicPeriodId;
+  // A support KPI is still an owned, scored KPI for the assigned department
+  // or division. Corporate monitoring keeps TARGET_ALLOCATION isolated to
+  // avoid counting the same support contribution twice at enterprise level.
+  const includeOwnedSupportKpis = ["MANAGER", "DIRECTOR"].includes(
+    user?.role || "",
+  );
   const sharedDirectFilters = {
     annualStrategicPeriodId,
     quarterNumber: context?.quarterNumber,
-    cascadeType: "TARGET_ALLOCATION",
+    ...(includeOwnedSupportKpis
+      ? {}
+      : { cascadeType: "TARGET_ALLOCATION" }),
     page: 1,
     limit: 1,
   };
@@ -169,7 +177,7 @@ export default function QuarterlyPerformanceOverview() {
           <div>
             <p className="font-medium">Performance dashboard is unavailable</p>
             <p className="text-muted-foreground">
-              Direct KPI data could not be loaded. The Portfolio Overview above is
+              KPI data could not be loaded. The Portfolio Overview above is
               unaffected.
             </p>
           </div>
@@ -187,8 +195,8 @@ export default function QuarterlyPerformanceOverview() {
       {supportError && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Support KPI results are temporarily unavailable. Direct achievement is
-          still complete and remains unaffected.
+          Support network details are temporarily unavailable. The owned KPI
+          achievement above remains unaffected.
         </div>
       )}
       <ExecutivePerformanceDashboard

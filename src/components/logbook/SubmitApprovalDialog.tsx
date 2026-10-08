@@ -369,11 +369,6 @@ export function SubmitApprovalDialog({
       return;
     }
 
-    if (!evidenceApproverId) {
-      toast.error("Select the person who will verify this evidence.");
-      return;
-    }
-
     const invalidEvidenceIndex = evidenceItems.findIndex((evidence) => {
       if (evidence.type === "email") return !evidence.value.trim();
       if (evidence.type === "link") return !isHttpUrl(evidence.value.trim());
@@ -422,7 +417,7 @@ export function SubmitApprovalDialog({
         evidenceDescription: description.trim() || null,
         evidenceItems: structuredEvidence,
         decisionsMade: remark.trim() || null,
-        evidenceApproverId,
+        evidenceApproverId: evidenceApproverId || null,
       };
 
       const firstEvidenceUrl = structuredEvidence.find(
@@ -439,10 +434,16 @@ export function SubmitApprovalDialog({
         throw new Error("The server did not confirm the logbook submission.");
       }
 
-      toast.success("Evidence submitted for verification", {
-        description:
-          "After the evidence reviewer approves it, the entry will automatically move to final approval.",
-      });
+      toast.success(
+        evidenceApproverId
+          ? "Evidence submitted for verification"
+          : "Logbook submitted for approval",
+        {
+          description: evidenceApproverId
+            ? "After the evidence reviewer approves it, the entry will automatically move to final approval."
+            : "No evidence reviewer was selected, so the entry was sent directly to the normal hierarchy approver.",
+        },
+      );
       onSuccess();
       onOpenChange(false);
     } catch (error: unknown) {
@@ -626,10 +627,10 @@ export function SubmitApprovalDialog({
 
           <div className="space-y-2 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
             <Label htmlFor="evidence-approver" className="text-sm font-semibold text-indigo-950">
-              Evidence approval person <span className="text-red-600">*</span>
+              Evidence approval person (optional)
             </Label>
             <p className="text-xs text-indigo-700">
-              This person verifies the attached evidence before your normal hierarchy approver receives the logbook.
+              Select a reviewer when this evidence needs verification. Choose None to send the logbook directly to its normal hierarchy approver.
             </p>
             <select
               id="evidence-approver"
@@ -639,7 +640,7 @@ export function SubmitApprovalDialog({
               className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
             >
               <option value="">
-                {approversLoading ? "Loading authorized reviewers…" : "Select evidence reviewer"}
+                None — continue directly to normal approval
               </option>
               {eligibleApprovers.map(
                 (authorization: {
@@ -656,9 +657,14 @@ export function SubmitApprovalDialog({
                 ),
               )}
             </select>
+            {approversLoading && (
+              <p className="text-xs text-indigo-700">
+                Loading authorized evidence reviewers…
+              </p>
+            )}
             {!approversLoading && eligibleApprovers.length === 0 && (
-              <p className="text-sm text-red-700">
-                No evidence approver is configured. Ask a super administrator to authorize at least one reviewer.
+              <p className="text-xs text-indigo-700">
+                No optional evidence reviewers are configured. None remains available.
               </p>
             )}
           </div>
@@ -994,8 +1000,6 @@ export function SubmitApprovalDialog({
               currentEntryLoading ||
               readinessUnavailable ||
               !hasRecordedKpiResult ||
-              !evidenceApproverId ||
-              approversLoading ||
               Boolean(quarterPlanSubmissionBlock)
             }
             title={

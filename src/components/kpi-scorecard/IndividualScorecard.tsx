@@ -32,6 +32,7 @@ import { stickyFirstColumnTableClassName } from "@/components/ui/table";
 import type { KpiQuarterPlan, KpiQuarterResult } from "@/types/graphql";
 import { SortableFilterableHeader } from "@/components/ui/sortable-filterable-header";
 import { useTableColumnControls } from "@/hooks/table/useTableColumnControls";
+import { useStrategicPeriodStore } from "@/stores";
 
 interface KpiScore {
   aggregatedKpiScoreId: string;
@@ -73,6 +74,9 @@ export default function IndividualScorecard({
   const { can } = usePermissions();
   const canReadAll = can("evaluations:read_all");
 
+  // Use the global strategic period store instead of local state
+  const globalSelectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
     user?.employeeId || "",
   );
@@ -93,17 +97,23 @@ export default function IndividualScorecard({
   const periods = periodsData?.strategicPeriods?.items || [];
   const activePeriod = periods.find((p: any) => p.status === "ACTIVE");
 
-  // Prefer the parent-selected period, otherwise fall back to the active period.
+  // Prefer the parent-selected period, then global store, otherwise fall back to the active period.
   useEffect(() => {
     if (strategicPeriodId && strategicPeriodId !== selectedPeriodId) {
       setSelectedPeriodId(strategicPeriodId);
       return;
     }
 
+    // Use the global store's selected period (same as Dashboard)
+    if (globalSelectedPeriod && globalSelectedPeriod.strategicPeriodId !== selectedPeriodId) {
+      setSelectedPeriodId(globalSelectedPeriod.strategicPeriodId);
+      return;
+    }
+
     if (activePeriod && !selectedPeriodId) {
       setSelectedPeriodId(activePeriod.strategicPeriodId);
     }
-  }, [activePeriod, selectedPeriodId, strategicPeriodId]);
+  }, [activePeriod, selectedPeriodId, strategicPeriodId, globalSelectedPeriod]);
 
   // Fetch employees (for HR/Admin)
   const { data: employeesData } = useQuery(GET_EMPLOYEES, {

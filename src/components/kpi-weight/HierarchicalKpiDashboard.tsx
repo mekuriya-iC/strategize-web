@@ -471,7 +471,21 @@ export function HierarchicalKpiDashboard({ periodId }: HierarchicalKpiDashboardP
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load KPI contribution data. {error.message}
+            {error.message?.includes('Quarter plan') || error.message?.includes('quarterly') ? (
+              <div className="space-y-2">
+                <p className="font-medium">Missing Quarterly Plans</p>
+                <p>
+                  Quarterly plans have not been created for this period. To view KPI weight achievement:
+                </p>
+                <ul className="list-disc list-inside space-y-1 mt-2">
+                  <li>Create quarterly plans for the selected period first</li>
+                  <li>Wait for quarterly results to be calculated</li>
+                  <li>Or select an annual period if quarterly data is not needed</li>
+                </ul>
+              </div>
+            ) : (
+              <>Failed to load KPI contribution data. {error.message}</>
+            )}
           </AlertDescription>
         </Alert>
       ) : currentData && currentData.kpis.length > 0 ? (

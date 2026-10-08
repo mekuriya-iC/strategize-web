@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
-import { GET_TOTAL_SCORECARD_SCORE } from "@/lib/graphql/queries/kpi-scorecard";
+import { GET_REALTIME_CORPORATE_SCORECARD } from "@/lib/graphql/queries/kpi-scorecard";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
+import { useStrategicPeriodStore } from "@/stores";
 import {
   Select,
   SelectContent,
@@ -39,6 +40,10 @@ interface KpiScore {
     quarterResults?: KpiQuarterResult[];
   };
   actualValue: number;
+  actualAvailable?: boolean;
+  resultAvailable?: boolean;
+  isNotDue?: boolean;
+  reportingBasis?: string;
   targetValue: number;
   weight: number;
   cap: number;
@@ -70,6 +75,10 @@ export default function CorporateScorecard({
   const { can } = usePermissions();
   const canReadAll = can("evaluations:read_all");
   const organizationId = useOrganizationId();
+  
+  // Use the global strategic period store instead of local state
+  const globalSelectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+  
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
 
   const { data: periodsData } = useQuery(GET_STRATEGIC_PERIODS, {
@@ -79,29 +88,36 @@ export default function CorporateScorecard({
   const periods: StrategicPeriod[] = periodsData?.strategicPeriods?.items || [];
   const activePeriod = periods.find((period) => period.isActive);
 
+  // Set period from global store, then fall back to active period
   useEffect(() => {
+    // Use the global store's selected period (same as Dashboard)
+    if (globalSelectedPeriod && globalSelectedPeriod.strategicPeriodId !== selectedPeriodId) {
+      setSelectedPeriodId(globalSelectedPeriod.strategicPeriodId);
+      return;
+    }
+
     if (activePeriod && !selectedPeriodId) {
       setSelectedPeriodId(activePeriod.strategicPeriodId);
     }
-  }, [activePeriod, selectedPeriodId]);
+  }, [activePeriod, selectedPeriodId, globalSelectedPeriod]);
 
-  const { data: scorecardData, loading: scorecardLoading } = useQuery(
-    GET_TOTAL_SCORECARD_SCORE,
-    {
+  const {
+    data: scorecardData,
+    loading: scorecardLoading,
+    error: scorecardError,
+  } = useQuery(GET_REALTIME_CORPORATE_SCORECARD, {
       variables: {
-        level: "CORPORATE",
-        entityId: organizationId,
+        organizationId,
         periodId: selectedPeriodId,
         capFinalScore,
       },
       skip: !organizationId || !selectedPeriodId,
-      fetchPolicy: "cache-first",
+      fetchPolicy: "cache-and-network",
       nextFetchPolicy: "cache-first",
-    },
-  );
+  });
 
   const scorecard: ScorecardData | undefined =
-    scorecardData?.totalScorecardScore;
+    scorecardData?.realtimeCorporateScorecard;
 
   const scorecardColumns = useMemo(
     () => [
@@ -221,7 +237,19 @@ export default function CorporateScorecard({
         </Card>
       )}
 
-      {!scorecardLoading && !scorecard && selectedPeriodId && (
+      {!scorecardLoading && scorecardError && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="font-medium">Corporate scorecard is unavailable.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {scorecardError.message}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!scorecardLoading && !scorecardError && !scorecard && selectedPeriodId && (
         <Card>
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -415,15 +443,27 @@ export default function CorporateScorecard({
                           />
                         </td>
                         <td className="text-right p-3 font-medium">
-                          {formatNumber(kpiScore.actualValue)}
+                          {kpiScore.isNotDue
+                            ? "Not due"
+                            : kpiScore.actualAvailable
+                              ? formatNumber(kpiScore.actualValue)
+                              : "—"}
                         </td>
                         <td className="text-right p-3">
                           {formatNumber(kpiScore.targetValue)}
                         </td>
                         <td
-                          className={`text-right p-3 font-medium ${getAchievementColor(kpiScore.achievementRate)}`}
+                          className={`text-right p-3 font-medium ${
+                            kpiScore.resultAvailable
+                              ? getAchievementColor(kpiScore.achievementRate)
+                              : "text-muted-foreground"
+                          }`}
                         >
-                          {formatPercentage(kpiScore.achievementRate)}
+                          {kpiScore.isNotDue
+                            ? "Not due"
+                            : kpiScore.resultAvailable
+                              ? formatPercentage(kpiScore.achievementRate)
+                              : "Awaiting result"}
                         </td>
                         <td className="text-right p-3">
                           {formatNumber(kpiScore.weight)}%
@@ -432,7 +472,11 @@ export default function CorporateScorecard({
                           {formatPercentage(kpiScore.cap)}
                         </td>
                         <td className="text-right p-3 font-bold text-primary">
-                          {formatNumber(kpiScore.score)}%
+                          {kpiScore.isNotDue
+                            ? "Not due"
+                            : kpiScore.resultAvailable
+                              ? `${formatNumber(kpiScore.score)}%`
+                              : "—"}
                         </td>
                       </tr>
                     ))}

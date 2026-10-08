@@ -77,6 +77,124 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
   }
 `;
 
+const REALTIME_HIERARCHICAL_SCORECARD_FIELDS = gql`
+  fragment RealtimeHierarchicalScorecardFields on TotalScorecardResult {
+    totalScore
+    uncappedTotalScore
+    maxPossibleScore
+    finalScoreCapApplied
+    percentageAchieved
+    kpiScores {
+      aggregatedKpiScoreId
+      kpi {
+        kpiId
+        name
+        description
+        kpiMode
+        managerRetentionPercent
+        quarterPlans {
+          kpiQuarterPlanId
+          quarterNumber
+          originalTarget
+          carryIn
+          effectiveTarget
+          directBasisTarget
+          status
+        }
+        quarterResults {
+          kpiQuarterResultId
+          quarterPlanId
+          calculationMode
+          calculationStatus
+          directActual
+          aggregateActual
+          rollupNumeratorExact
+          rollupDenominatorExact
+          finalActual
+          finalAchievementRate
+          weightedScore
+          carryOut
+          managerCarryOut
+          teamCarryOut
+          status
+          calculatedAt
+          finalizedAt
+        }
+      }
+      level
+      actualValue
+      actualAvailable
+      resultAvailable
+      isNotDue
+      reportingBasis
+      targetValue
+      weight
+      cap
+      achievementRate
+      cappedRate
+      score
+      calculatedAt
+      managerActual
+      managerTarget
+      teamActual
+      teamTarget
+      managerAchievementRate
+      teamAchievementRate
+    }
+  }
+`;
+
+export const GET_REALTIME_DEPARTMENT_SCORECARD = gql`
+  query GetRealtimeDepartmentScorecard(
+    $departmentId: ID!
+    $periodId: ID!
+    $capFinalScore: Boolean
+  ) {
+    realtimeDepartmentScorecard(
+      departmentId: $departmentId
+      periodId: $periodId
+      capFinalScore: $capFinalScore
+    ) {
+      ...RealtimeHierarchicalScorecardFields
+    }
+  }
+  ${REALTIME_HIERARCHICAL_SCORECARD_FIELDS}
+`;
+
+export const GET_REALTIME_DIVISION_SCORECARD = gql`
+  query GetRealtimeDivisionScorecard(
+    $divisionId: ID!
+    $periodId: ID!
+    $capFinalScore: Boolean
+  ) {
+    realtimeDivisionScorecard(
+      divisionId: $divisionId
+      periodId: $periodId
+      capFinalScore: $capFinalScore
+    ) {
+      ...RealtimeHierarchicalScorecardFields
+    }
+  }
+  ${REALTIME_HIERARCHICAL_SCORECARD_FIELDS}
+`;
+
+export const GET_REALTIME_CORPORATE_SCORECARD = gql`
+  query GetRealtimeCorporateScorecard(
+    $organizationId: ID!
+    $periodId: ID!
+    $capFinalScore: Boolean
+  ) {
+    realtimeCorporateScorecard(
+      organizationId: $organizationId
+      periodId: $periodId
+      capFinalScore: $capFinalScore
+    ) {
+      ...RealtimeHierarchicalScorecardFields
+    }
+  }
+  ${REALTIME_HIERARCHICAL_SCORECARD_FIELDS}
+`;
+
 export const FINALIZE_KPI_QUARTER = gql`
   mutation FinalizeKpiQuarter($kpiId: ID!, $quarterNumber: Int!) {
     finalizeKpiQuarter(kpiId: $kpiId, quarterNumber: $quarterNumber) {

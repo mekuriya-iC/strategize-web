@@ -1,5 +1,6 @@
 "use client";
 
+import { AchievementDisplay, AchievementBadge } from "@/components/ui/achievement-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
@@ -60,6 +61,9 @@ interface ScorecardData {
   totalScore: number;
   maxPossibleScore: number;
   percentageAchieved: number;
+  displayAchievement: number;
+  bonusEligiblePercentage: number;
+  isBonusEligible: boolean;
   kpiScores: KpiScore[];
 }
 
@@ -375,20 +379,22 @@ export default function IndividualScorecard({
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div
-                  className={`text-2xl font-bold ${getAchievementColor(scorecard.percentageAchieved / 100)}`}
-                >
-                  {formatNumber(scorecard.percentageAchieved)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
+                <AchievementDisplay
+                  displayAchievement={scorecard.displayAchievement}
+                  bonusEligiblePercentage={scorecard.bonusEligiblePercentage}
+                  isBonusEligible={scorecard.isBonusEligible}
+                  size="xl"
+                  className={getAchievementColor(scorecard.displayAchievement / 100)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
                   of weighted targets
                 </p>
                 <div className="mt-2">
                   <Badge
-                    {...getAchievementBadge(scorecard.percentageAchieved / 100)}
+                    {...getAchievementBadge(scorecard.displayAchievement / 100)}
                   >
                     {
-                      getAchievementBadge(scorecard.percentageAchieved / 100)
+                      getAchievementBadge(scorecard.displayAchievement / 100)
                         .label
                     }
                   </Badge>

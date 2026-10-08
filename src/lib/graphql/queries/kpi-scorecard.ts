@@ -20,6 +20,9 @@ export const GET_REALTIME_INDIVIDUAL_SCORECARD = gql`
       maxPossibleScore
       finalScoreCapApplied
       percentageAchieved
+      displayAchievement
+      bonusEligiblePercentage
+      isBonusEligible
       kpiScores {
         aggregatedKpiScoreId
         kpi {
@@ -84,6 +87,9 @@ const REALTIME_HIERARCHICAL_SCORECARD_FIELDS = gql`
     maxPossibleScore
     finalScoreCapApplied
     percentageAchieved
+    displayAchievement
+    bonusEligiblePercentage
+    isBonusEligible
     kpiScores {
       aggregatedKpiScoreId
       kpi {
@@ -253,6 +259,9 @@ export const GET_TOTAL_SCORECARD_SCORE = gql`
       maxPossibleScore
       finalScoreCapApplied
       percentageAchieved
+      displayAchievement
+      bonusEligiblePercentage
+      isBonusEligible
       kpiScores {
         aggregatedKpiScoreId
         kpi {

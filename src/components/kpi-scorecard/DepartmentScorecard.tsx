@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/auth/useAuth";
 import { usePermissions } from "@/hooks/permissions/usePermissions";
 import {
   Building2,
@@ -76,12 +75,16 @@ interface ScorecardData {
 
 export default function DepartmentScorecard({
   capFinalScore = false,
+  scopeDepartmentId,
+  scopeDepartmentName,
 }: {
   capFinalScore?: boolean;
+  scopeDepartmentId?: string;
+  scopeDepartmentName?: string;
 }) {
-  const { user } = useAuth();
   const { can } = usePermissions();
   const canReadAll = can("evaluations:read_all");
+  const canViewScorecard = canReadAll || Boolean(scopeDepartmentId);
 
   // Use the global strategic period store instead of local state
   const globalSelectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
@@ -117,12 +120,16 @@ export default function DepartmentScorecard({
 
   const departments = departmentsData?.departments?.items || [];
 
-  // Set first department as default
+  // Administrators retain the existing ability to switch departments. A
+  // manager uses the selected authenticated unit directly rather
+  // than copying it into local state.
   useEffect(() => {
-    if (departments.length > 0 && !selectedDepartmentId) {
+    if (!scopeDepartmentId && departments.length > 0 && !selectedDepartmentId) {
       setSelectedDepartmentId(departments[0].departmentId);
     }
-  }, [departments, selectedDepartmentId]);
+  }, [departments, selectedDepartmentId, scopeDepartmentId]);
+
+  const effectiveDepartmentId = scopeDepartmentId || selectedDepartmentId;
 
   // Fetch scorecard data
   const {
@@ -131,11 +138,11 @@ export default function DepartmentScorecard({
     error: scorecardError,
   } = useQuery(GET_REALTIME_DEPARTMENT_SCORECARD, {
       variables: {
-        departmentId: selectedDepartmentId,
+        departmentId: effectiveDepartmentId,
         periodId: selectedPeriodId,
         capFinalScore,
       },
-      skip: !selectedDepartmentId || !selectedPeriodId,
+      skip: !effectiveDepartmentId || !selectedPeriodId,
       fetchPolicy: "cache-and-network",
       nextFetchPolicy: "cache-first",
   });
@@ -195,14 +202,14 @@ export default function DepartmentScorecard({
   };
 
   const selectedDepartment = departments.find(
-    (d: any) => d.departmentId === selectedDepartmentId,
+    (d: any) => d.departmentId === effectiveDepartmentId,
   );
 
   const selectedPeriod = periods.find(
     (p: any) => p.strategicPeriodId === selectedPeriodId,
   );
 
-  if (!canReadAll) {
+  if (!canViewScorecard) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -239,24 +246,30 @@ export default function DepartmentScorecard({
               <label className="text-sm font-medium mb-2 block">
                 Department
               </label>
-              <Select
-                value={selectedDepartmentId}
-                onValueChange={setSelectedDepartmentId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept: any) => (
-                    <SelectItem
-                      key={dept.departmentId}
-                      value={dept.departmentId}
-                    >
-                      {dept.name} - {dept.division?.name || "No Division"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {scopeDepartmentId ? (
+                <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm">
+                  {scopeDepartmentName || selectedDepartment?.name || "My department"}
+                </div>
+              ) : (
+                <Select
+                  value={selectedDepartmentId}
+                  onValueChange={setSelectedDepartmentId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept: any) => (
+                      <SelectItem
+                        key={dept.departmentId}
+                        value={dept.departmentId}
+                      >
+                        {dept.name} - {dept.division?.name || "No Division"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Period Selector */}

@@ -11,16 +11,31 @@ import DepartmentScorecard from "./DepartmentScorecard";
 import DivisionScorecard from "./DivisionScorecard";
 import CorporateScorecard from "./CorporateScorecard";
 import CascadeMappingManager from "./CascadeMappingManager";
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useOrgUnitStore } from "@/stores";
+
+function defaultScorecardTab(role?: string) {
+  if (role === "CEO") return "corporate";
+  if (role === "DIRECTOR") return "division";
+  if (role === "MANAGER") return "department";
+  return "individual";
+}
 
 export default function KpiScorecardDashboard() {
   const { can } = usePermissions();
   const role = useAuthStore((state) => state.user?.role);
+  const selectedUnit = useOrgUnitStore((state) => state.selectedUnit);
   const canManageKpis = role !== 'CEO'; // Preserve existing roles; CEO is an observer.
   const canReadAll = can("evaluations:read_all");
+  const isOwnDepartmentScope =
+    role === "MANAGER" && selectedUnit?.type === "department";
+  const isOwnDivisionScope =
+    role === "DIRECTOR" && selectedUnit?.type === "division";
+  const canViewDepartment = canReadAll || isOwnDepartmentScope;
+  const canViewDivision = canReadAll || isOwnDivisionScope;
 
-  const [activeTab, setActiveTab] = useState(role === 'CEO' ? 'corporate' : 'individual');
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [capFinalScore, setCapFinalScore] = useState(false);
+  const displayedTab = activeTab ?? defaultScorecardTab(role);
 
   // Fetch active period for display
   const { data: periodsData } = useQuery(GET_STRATEGIC_PERIODS, {
@@ -79,7 +94,7 @@ export default function KpiScorecardDashboard() {
 
       {/* Tabs for Different Scorecard Views */}
       <Tabs
-        value={activeTab}
+        value={displayedTab}
         onValueChange={setActiveTab}
         className="space-y-6"
       >
@@ -89,14 +104,14 @@ export default function KpiScorecardDashboard() {
           </TabsTrigger>
           <TabsTrigger
             value="department"
-            disabled={!canReadAll}
+            disabled={!canViewDepartment}
             className="shrink-0 text-xs sm:text-sm"
           >
             Department
           </TabsTrigger>
           <TabsTrigger
             value="division"
-            disabled={!canReadAll}
+            disabled={!canViewDivision}
             className="shrink-0 text-xs sm:text-sm"
           >
             Division
@@ -121,8 +136,16 @@ export default function KpiScorecardDashboard() {
         </TabsContent>
 
         <TabsContent value="department" className="space-y-6">
-          {canReadAll ? (
-            <DepartmentScorecard capFinalScore={capFinalScore} />
+          {canViewDepartment ? (
+            <DepartmentScorecard
+              capFinalScore={capFinalScore}
+              scopeDepartmentId={
+                isOwnDepartmentScope ? selectedUnit?.id : undefined
+              }
+              scopeDepartmentName={
+                isOwnDepartmentScope ? selectedUnit?.name : undefined
+              }
+            />
           ) : (
             <Card>
               <CardContent className="p-12 text-center">
@@ -136,8 +159,14 @@ export default function KpiScorecardDashboard() {
         </TabsContent>
 
         <TabsContent value="division" className="space-y-6">
-          {canReadAll ? (
-            <DivisionScorecard capFinalScore={capFinalScore} />
+          {canViewDivision ? (
+            <DivisionScorecard
+              capFinalScore={capFinalScore}
+              scopeDivisionId={isOwnDivisionScope ? selectedUnit?.id : undefined}
+              scopeDivisionName={
+                isOwnDivisionScope ? selectedUnit?.name : undefined
+              }
+            />
           ) : (
             <Card>
               <CardContent className="p-12 text-center">

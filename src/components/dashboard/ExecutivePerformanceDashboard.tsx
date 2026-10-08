@@ -322,6 +322,9 @@ function CorporateScorecards({
 }) {
   const objectives = buildCorporateObjectives(report.kpiRollups);
   const quarterRollups = report.kpiQuarterRollups ?? [];
+  const includesSupportKpis = report.kpiRollups.some(
+    (item) => item.cascadeType === "SUPPORT",
+  );
 
   return (
     <section
@@ -336,10 +339,14 @@ function CorporateScorecards({
           >
             {report.scope === "ORGANIZATION"
               ? "Corporate scorecards"
-              : "Direct scorecards"}
+              : includesSupportKpis
+                ? "Owned scorecards"
+                : "Direct scorecards"}
           </h3>
           <p className="text-xs text-slate-500 dark:text-zinc-400 sm:text-sm">
-            Weighted results from the approved target-allocation chain.
+            {includesSupportKpis
+              ? "Weighted results from approved target-allocation and local support KPIs."
+              : "Weighted results from the approved target-allocation chain."}
           </p>
         </div>
         <Badge
@@ -353,7 +360,7 @@ function CorporateScorecards({
       {objectives.length === 0 ? (
         <Card className="rounded-2xl border-dashed py-10 text-center">
           <CardContent className="text-sm font-medium text-slate-500 dark:text-zinc-400">
-            No direct KPI results are available for this period.
+            No KPI results are available for this period.
           </CardContent>
         </Card>
       ) : (
@@ -1040,6 +1047,10 @@ export default function ExecutivePerformanceDashboard({
     ),
   );
   const readiness = supportReport?.readiness;
+  const includesSupportKpis = primaryReport.kpiRollups.some(
+    (item) => item.cascadeType === "SUPPORT",
+  );
+  const ownershipLabel = includesSupportKpis ? "Owned" : "Direct";
 
   return (
     <section
@@ -1076,7 +1087,7 @@ export default function ExecutivePerformanceDashboard({
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5 [&>div:first-child]:col-span-2 md:[&>div:first-child]:col-span-1">
           <PulseCard
-            eyebrow="Direct achievement"
+            eyebrow={`${ownershipLabel} achievement`}
             value={
               hasDirectResult
                 ? formatPercent(directAchievement)
@@ -1094,12 +1105,12 @@ export default function ExecutivePerformanceDashboard({
           <PulseCard
             eyebrow="Strategic goals"
             value={`${objectives.size}`}
-            detail="Objectives represented by direct KPIs"
+            detail={`Objectives represented by ${ownershipLabel.toLowerCase()} KPIs`}
             icon={<Target className="h-5 w-5" />}
             accent="#8b5cf6"
           />
           <PulseCard
-            eyebrow="Direct KPIs"
+            eyebrow={`${ownershipLabel} KPIs`}
             value={`${primaryReport.summary.kpiCount}`}
             detail={`${primaryReport.summary.finalCount} final · ${primaryReport.summary.provisionalCount} live`}
             icon={<BarChart3 className="h-5 w-5" />}
@@ -1232,8 +1243,9 @@ export default function ExecutivePerformanceDashboard({
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-5 py-3.5 text-xs text-slate-600 dark:border-white/[0.08] dark:bg-zinc-900/60 dark:text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
         <span className="flex items-center gap-2 font-medium">
           <Building2 className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-          Direct and support results are intentionally reported as separate
-          performance streams.
+          {includesSupportKpis
+            ? "Your unit score includes the support KPIs it owns; the Support tab keeps their corporate impact separately auditable."
+            : "Direct and support results are intentionally reported as separate performance streams."}
         </span>
         <Link
           href="/dashboard/reports"
@@ -1245,4 +1257,3 @@ export default function ExecutivePerformanceDashboard({
     </section>
   );
 }
-

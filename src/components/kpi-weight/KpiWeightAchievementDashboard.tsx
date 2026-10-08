@@ -110,13 +110,15 @@ export function KpiWeightAchievementDashboard({
                 {individualError.message}
               </AlertDescription>
             </Alert>
-          ) : individualData ? (
+          ) : individualData?.kpis?.length ? (
             <IndividualAchievementView data={individualData} />
           ) : (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                No KPI assignments found for the selected period.
+                No individual KPI assignments were found for the selected
+                period. Department-owned support KPIs are shown in
+                Hierarchical View.
               </AlertDescription>
             </Alert>
           )}

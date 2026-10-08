@@ -155,6 +155,7 @@ export default function IndividualScorecard({
 
   const scorecard: ScorecardData | undefined =
     scorecardData?.realtimeIndividualScorecard;
+  const hasIndividualKpis = Boolean(scorecard?.kpiScores?.length);
 
   const assignments = assignmentsData?.kpiAssignmentsEmployee?.items || [];
 
@@ -322,27 +323,27 @@ export default function IndividualScorecard({
       )}
 
       {/* No Data State */}
-      {!scorecardLoading && !scorecard && selectedPeriodId && (
+      {!scorecardLoading && !hasIndividualKpis && selectedPeriodId && (
         <Card>
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              No KPI assignments found for this period.
+              No individual KPI assignments were found for this period.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              KPIs must be assigned to you with targets and weights to see your
-              scorecard.
+              Department-owned support KPIs are shown in the Department
+              scorecard, not as personal KPIs.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Scores are calculated automatically from your approved logbook
-              entries.
+              An individual score will appear after a KPI with targets and
+              weights is assigned directly to the selected employee.
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* Scorecard Summary */}
-      {!scorecardLoading && scorecard && (
+      {!scorecardLoading && scorecard && hasIndividualKpis && (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

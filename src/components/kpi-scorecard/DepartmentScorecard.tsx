@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client";
-import { GET_TOTAL_SCORECARD_SCORE } from "@/lib/graphql/queries/kpi-scorecard";
+import { GET_REALTIME_DEPARTMENT_SCORECARD } from "@/lib/graphql/queries/kpi-scorecard";
 import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
+import { useStrategicPeriodStore } from "@/stores";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,10 @@ interface KpiScore {
   };
   level: string;
   actualValue: number;
+  actualAvailable?: boolean;
+  resultAvailable?: boolean;
+  isNotDue?: boolean;
+  reportingBasis?: string;
   targetValue: number;
   weight: number;
   cap: number;
@@ -78,6 +83,9 @@ export default function DepartmentScorecard({
   const { can } = usePermissions();
   const canReadAll = can("evaluations:read_all");
 
+  // Use the global strategic period store instead of local state
+  const globalSelectedPeriod = useStrategicPeriodStore((state) => state.selectedPeriod);
+
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
 
@@ -89,12 +97,18 @@ export default function DepartmentScorecard({
   const periods = periodsData?.strategicPeriods?.items || [];
   const activePeriod = periods.find((p: any) => p.isActive);
 
-  // Set active period as default
+  // Set period from global store, then fall back to active period
   useEffect(() => {
+    // Use the global store's selected period (same as Dashboard)
+    if (globalSelectedPeriod && globalSelectedPeriod.strategicPeriodId !== selectedPeriodId) {
+      setSelectedPeriodId(globalSelectedPeriod.strategicPeriodId);
+      return;
+    }
+
     if (activePeriod && !selectedPeriodId) {
       setSelectedPeriodId(activePeriod.strategicPeriodId);
     }
-  }, [activePeriod, selectedPeriodId]);
+  }, [activePeriod, selectedPeriodId, globalSelectedPeriod]);
 
   // Fetch departments
   const { data: departmentsData } = useQuery(GET_DEPARTMENTS, {
@@ -111,23 +125,23 @@ export default function DepartmentScorecard({
   }, [departments, selectedDepartmentId]);
 
   // Fetch scorecard data
-  const { data: scorecardData, loading: scorecardLoading } = useQuery(
-    GET_TOTAL_SCORECARD_SCORE,
-    {
+  const {
+    data: scorecardData,
+    loading: scorecardLoading,
+    error: scorecardError,
+  } = useQuery(GET_REALTIME_DEPARTMENT_SCORECARD, {
       variables: {
-        level: "DEPARTMENT",
-        entityId: selectedDepartmentId,
+        departmentId: selectedDepartmentId,
         periodId: selectedPeriodId,
         capFinalScore,
       },
       skip: !selectedDepartmentId || !selectedPeriodId,
-      fetchPolicy: "cache-first",
+      fetchPolicy: "cache-and-network",
       nextFetchPolicy: "cache-first",
-    },
-  );
+  });
 
   const scorecard: ScorecardData | undefined =
-    scorecardData?.totalScorecardScore;
+    scorecardData?.realtimeDepartmentScorecard;
 
   const scorecardColumns = useMemo(
     () => [
@@ -282,8 +296,20 @@ export default function DepartmentScorecard({
         </Card>
       )}
 
+      {!scorecardLoading && scorecardError && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="font-medium">Department scorecard is unavailable.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {scorecardError.message}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* No Data State */}
-      {!scorecardLoading && !scorecard && selectedPeriodId && (
+      {!scorecardLoading && !scorecardError && !scorecard && selectedPeriodId && (
         <Card>
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -575,18 +601,32 @@ export default function DepartmentScorecard({
                             />
                           </td>
                           <td className="text-right p-3 font-medium">
-                            {formatNumber(kpiScore.actualValue)}
-                            <p className="text-xs text-muted-foreground">
-                              (from individuals)
-                            </p>
+                            {kpiScore.isNotDue
+                              ? "Not due"
+                              : kpiScore.actualAvailable
+                                ? formatNumber(kpiScore.actualValue)
+                                : "—"}
+                            {!kpiScore.isNotDue && kpiScore.actualAvailable && (
+                              <p className="text-xs text-muted-foreground">
+                                (from individuals)
+                              </p>
+                            )}
                           </td>
                           <td className="text-right p-3">
                             {formatNumber(kpiScore.targetValue)}
                           </td>
                           <td
-                            className={`text-right p-3 font-medium ${getAchievementColor(kpiScore.achievementRate)}`}
+                            className={`text-right p-3 font-medium ${
+                              kpiScore.resultAvailable
+                                ? getAchievementColor(kpiScore.achievementRate)
+                                : "text-muted-foreground"
+                            }`}
                           >
-                            {formatPercentage(kpiScore.achievementRate)}
+                            {kpiScore.isNotDue
+                              ? "Not due"
+                              : kpiScore.resultAvailable
+                                ? formatPercentage(kpiScore.achievementRate)
+                                : "Awaiting result"}
                           </td>
                           <td className="text-right p-3">
                             {formatNumber(kpiScore.weight)}%
@@ -595,10 +635,15 @@ export default function DepartmentScorecard({
                             {formatPercentage(kpiScore.cap)}
                           </td>
                           <td className="text-right p-3 font-bold text-primary">
-                            {formatNumber(kpiScore.score)}%
+                            {kpiScore.isNotDue
+                              ? "Not due"
+                              : kpiScore.resultAvailable
+                                ? `${formatNumber(kpiScore.score)}%`
+                                : "—"}
                           </td>
                           <td className="text-right p-3">
-                            <div className="flex items-center justify-end gap-2">
+                            {kpiScore.resultAvailable && !kpiScore.isNotDue ? (
+                              <div className="flex items-center justify-end gap-2">
                               <Progress
                                 value={Math.min(achievementPercent, 100)}
                                 className="w-20"
@@ -606,7 +651,12 @@ export default function DepartmentScorecard({
                               <span className="text-xs text-muted-foreground w-12">
                                 {formatNumber(achievementPercent)}%
                               </span>
-                            </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {kpiScore.isNotDue ? "Not due" : "Awaiting result"}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );

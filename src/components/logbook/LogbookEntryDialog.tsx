@@ -4,6 +4,7 @@ import { getLogbookPeriodFields } from "./logbook-entry-period";
 import { FormulaConfigurationCard } from "./FormulaConfigurationCard";
 import { RatioFormulaInputSection } from "./RatioFormulaInputSection";
 import { DirectValueInputSection } from "./DirectValueInputSection";
+import { normalizeMetricObservationValue } from "./metric-observation-value";
 
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
@@ -331,7 +332,8 @@ export function LogbookEntryDialog({
         Object.fromEntries(
           (editingEntry.metricObservations || []).map((observation) => [
             observation.metricDefinitionId,
-            String(observation.value),
+            normalizeMetricObservationValue(String(observation.value)) ??
+              String(observation.value),
           ]),
         ),
       );
@@ -434,7 +436,7 @@ export function LogbookEntryDialog({
       const invalidSource = metricSources.find((source) => {
         const value =
           metricObservationValues[source.metricDefinitionId] ?? "";
-        return !/^-?\d+(?:\.\d+)?$/.test(value);
+        return normalizeMetricObservationValue(value) === null;
       });
       if (invalidSource) {
         toast.error(
@@ -467,7 +469,9 @@ export function LogbookEntryDialog({
         metricObservations: isFormulaKpi
           ? metricSources.map((source) => ({
               metricDefinitionId: source.metricDefinitionId,
-              value: metricObservationValues[source.metricDefinitionId],
+              value: normalizeMetricObservationValue(
+                metricObservationValues[source.metricDefinitionId],
+              )!,
               observedAt: format(entryDate, "yyyy-MM-dd"),
             }))
           : [],
@@ -779,21 +783,21 @@ export function LogbookEntryDialog({
                               <Label className="text-xs text-gray-700">
                                 Observed metric value
                               </Label>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
+                              <FormattedNumberInput
                                 autoComplete="off"
                                 value={
                                   metricObservationValues[
                                     source.metricDefinitionId
                                   ] || ""
                                 }
-                                onChange={(event) =>
+                                onValueChange={(value) =>
                                   setMetricObservationValues((current) => ({
                                     ...current,
-                                    [source.metricDefinitionId]:
-                                      event.target.value,
+                                    [source.metricDefinitionId]: value,
                                   }))
+                                }
+                                currency={
+                                  source.metricDefinition?.unitType === "CURRENCY"
                                 }
                                 placeholder="Exact decimal value"
                                 className="h-10 bg-white font-mono text-sm"
@@ -830,7 +834,7 @@ export function LogbookEntryDialog({
                   {/* Formula Configuration Card - Show guidance for all KPI types */}
                   {selectedKpi?.calculationType && (
                     <FormulaConfigurationCard
-                      calculationType={selectedKpi.calculationType as any}
+                      calculationType={selectedKpi.calculationType}
                       formula={boundFormula}
                       unitType={selectedKpi.unitType || undefined}
                       measurementUnit={selectedKpi.measurementUnit || undefined}

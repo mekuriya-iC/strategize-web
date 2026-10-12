@@ -7,10 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Calendar, Users, Search, Plus, Eye, Trash2, Lock, Unlock } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Search,
+  Plus,
+  Eye,
+  Trash2,
+  Lock,
+  Unlock,
+  Pencil,
+} from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_CHECKINOUT_SESSIONS } from "@/lib/graphql/queries/checkins";
-import { REMOVE_CHECKINOUT_SESSION, UPDATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
+import {
+  REMOVE_CHECKINOUT_SESSION,
+  UPDATE_CHECKINOUT_SESSION,
+} from "@/lib/graphql/mutations/checkins";
 import { toast } from "sonner";
 import {
   getSuperAdminCheckinoutSessions,
@@ -24,6 +37,7 @@ import {
   isClosedCheckinoutSession,
   isHistoricalCheckinoutSession,
 } from "@/utils/checkin-session-history";
+import { RescheduleSessionDialog } from "./RescheduleSessionDialog";
 
 interface SessionListViewProps {
   currentUser: any;
@@ -44,11 +58,16 @@ export default function SessionListView({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(
     null,
   );
+  const [reschedulingSessions, setReschedulingSessions] = useState<
+    CheckinoutSessionLike[]
+  >([]);
 
   const isManager = ["MANAGER", "DIRECTOR", "ADMIN", "SUPER_ADMIN"].includes(
     currentUser?.role,
   );
-  const isAdminOrHR = ["ADMIN", "SUPER_ADMIN", "HR"].includes(currentUser?.role);
+  const isAdminOrHR = ["ADMIN", "SUPER_ADMIN", "HR"].includes(
+    currentUser?.role,
+  );
   const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
 
   // Query for team sessions (as supervisor)
@@ -162,17 +181,14 @@ export default function SessionListView({
       ),
     [ownData],
   );
-  const allSessions = useMemo<CheckinoutSessionLike[]>(
-    () => {
-      const sessions = (allData?.checkinoutSessions?.items || []).filter(
-        (session: CheckinoutSessionLike) => session.employee,
-      );
-      return isSuperAdmin
-        ? getSuperAdminCheckinoutSessions(sessions, currentUser?.employeeId)
-        : sessions;
-    },
-    [allData, isSuperAdmin, currentUser?.employeeId],
-  );
+  const allSessions = useMemo<CheckinoutSessionLike[]>(() => {
+    const sessions = (allData?.checkinoutSessions?.items || []).filter(
+      (session: CheckinoutSessionLike) => session.employee,
+    );
+    return isSuperAdmin
+      ? getSuperAdminCheckinoutSessions(sessions, currentUser?.employeeId)
+      : sessions;
+  }, [allData, isSuperAdmin, currentUser?.employeeId]);
   const activeTeamSessions = useMemo(
     () =>
       teamSessions.filter(
@@ -210,9 +226,10 @@ export default function SessionListView({
     );
   }, [allSessions, isAdminOrHR, ownSessions, teamSessions, today]);
   const activeLeadershipSessions = useMemo(
-    () => activeAllSessions.filter(
-      (session) => session.employee?.employeeId !== currentUser?.employeeId,
-    ),
+    () =>
+      activeAllSessions.filter(
+        (session) => session.employee?.employeeId !== currentUser?.employeeId,
+      ),
     [activeAllSessions, currentUser?.employeeId],
   );
   const visibleTeamSessions = isSuperAdmin
@@ -342,7 +359,10 @@ export default function SessionListView({
     }
   };
 
-  const handleToggleLock = async (sessionId: string, currentLockState: boolean) => {
+  const handleToggleLock = async (
+    sessionId: string,
+    currentLockState: boolean,
+  ) => {
     try {
       await updateSession({
         variables: {
@@ -355,6 +375,10 @@ export default function SessionListView({
     } catch (error) {
       console.error("Failed to toggle lock:", error);
     }
+  };
+
+  const refreshSessionLists = async () => {
+    await Promise.all([refetchTeam(), refetchOwn(), refetchAll()]);
   };
 
   const filterSessions = (sessions: any[]) => {
@@ -401,11 +425,17 @@ export default function SessionListView({
     // Handle null employee gracefully
     const employeeName = session.employee?.fullName || "Unknown Employee";
     const supervisorName = session.supervisor?.fullName || "Unknown Supervisor";
-    const isSessionOwner = session.supervisor?.employeeId === currentUser?.employeeId;
+    const isSessionOwner =
+      session.supervisor?.employeeId === currentUser?.employeeId;
     const isClosed = isClosedCheckinoutSession(session);
     const isHistorical = isHistoricalCheckinoutSession(session, today);
     const isLocked = Boolean(session.isLocked) || isClosed;
     const displayStatus = getEffectiveCheckinoutSessionStatus(session);
+    const canReschedule =
+      (isAdminOrHR || isSessionOwner) &&
+      !isHistorical &&
+      !isClosed &&
+      !session.scheduleWeekId;
 
     return (
       <Card
@@ -479,6 +509,25 @@ export default function SessionListView({
               <Eye className="h-4 w-4 mr-2" />
               View Session
             </Button>
+            {canReschedule && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setReschedulingSessions([session])}
+                disabled={Boolean(session.hasApprovedTasks)}
+                title={
+                  session.hasApprovedTasks
+                    ? "Dates are fixed because this session contains an approved task"
+                    : "Edit session dates"
+                }
+              >
+                {session.hasApprovedTasks ? (
+                  <Lock className="h-4 w-4" />
+                ) : (
+                  <Pencil className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             {isSessionOwner && !isHistorical && (
               <Button
                 size="sm"
@@ -495,9 +544,7 @@ export default function SessionListView({
                   )
                 }
                 title={
-                  Boolean(session.isLocked)
-                    ? "Unlock session"
-                    : "Lock session"
+                  Boolean(session.isLocked) ? "Unlock session" : "Lock session"
                 }
                 disabled={isClosed}
               >
@@ -548,6 +595,21 @@ export default function SessionListView({
         getEffectiveCheckinoutSessionStatus(participant) === "LOCKED" ||
         getEffectiveCheckinoutSessionStatus(participant) === "CLOSED",
     ).length;
+    const groupIsHistorical = group.participantSessions.some((participant) =>
+      isHistoricalCheckinoutSession(participant, today),
+    );
+    const groupIsClosed = group.participantSessions.some((participant) =>
+      isClosedCheckinoutSession(participant),
+    );
+    const groupHasApprovedTasks = group.participantSessions.some(
+      (participant) => participant.hasApprovedTasks,
+    );
+    const ownsEverySession = group.participantSessions.every(
+      (participant) =>
+        participant.supervisor?.employeeId === currentUser?.employeeId,
+    );
+    const canRescheduleGroup =
+      (isAdminOrHR || ownsEverySession) && !groupIsHistorical && !groupIsClosed;
 
     return (
       <Card key={group.key} className="hover:shadow-md transition-shadow">
@@ -696,14 +758,38 @@ export default function SessionListView({
             })}
           </div>
 
-          <Button
-            size="sm"
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => onSelectSession(session.checkinoutSessionId)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Week
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => onSelectSession(session.checkinoutSessionId)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Week
+            </Button>
+            {canRescheduleGroup && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setReschedulingSessions(group.participantSessions)
+                }
+                disabled={groupHasApprovedTasks}
+                title={
+                  groupHasApprovedTasks
+                    ? "Dates are fixed because this week contains an approved task"
+                    : "Edit dates for every participant in this week"
+                }
+              >
+                {groupHasApprovedTasks ? (
+                  <Lock className="mr-2 h-4 w-4" />
+                ) : (
+                  <Pencil className="mr-2 h-4 w-4" />
+                )}
+                Edit dates
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -835,6 +921,14 @@ export default function SessionListView({
   // Manager/Admin view (with tabs)
   return (
     <div className="space-y-6">
+      <RescheduleSessionDialog
+        open={reschedulingSessions.length > 0}
+        sessions={reschedulingSessions}
+        onOpenChange={(open) => {
+          if (!open) setReschedulingSessions([]);
+        }}
+        onUpdated={refreshSessionLists}
+      />
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">

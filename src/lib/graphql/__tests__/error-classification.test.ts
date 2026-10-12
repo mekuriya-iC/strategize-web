@@ -10,6 +10,14 @@ describe("GraphQL error classification", () => {
     ).toBe(true);
   });
 
+  it("classifies an existing check-in session as expected form validation", () => {
+    expect(
+      isExpectedGraphqlBusinessError(
+        'Cannot create session for employee "employee-1": non-closed session "session-1" overlaps from 2026-10-12 to 2026-10-17.',
+      ),
+    ).toBe(true);
+  });
+
   it("classifies unapproved quarter plans as expected governance errors", () => {
     expect(
       isExpectedGraphqlBusinessError(

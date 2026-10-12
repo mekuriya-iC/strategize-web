@@ -27,7 +27,7 @@ import { GET_DEPARTMENTS } from "@/lib/graphql/queries/departments";
 import { GET_DIVISIONS } from "@/lib/graphql/queries/divisions";
 import { GET_STRATEGIC_PERIODS } from "@/lib/graphql/queries/strategicPeriods";
 import {
-  GET_CHECKINOUT_SESSIONS,
+  GET_CHECKINOUT_SESSION_CONFLICTS,
   GET_SUPER_ADMIN_CHECKINOUT_SESSION_CANDIDATES,
 } from "@/lib/graphql/queries/checkins";
 import { CREATE_CHECKINOUT_SESSION } from "@/lib/graphql/mutations/checkins";
@@ -35,9 +35,23 @@ import { GET_ME } from "@/lib/graphql/queries/auth";
 import { useOrganizationId } from "@/hooks/useOrganizationId";
 import { toast } from "sonner";
 import {
-  getEmployeesWithOverlappingOpenSessions,
+  formatManualSessionConflict,
   sortSessionCandidates,
 } from "./session-candidate-availability";
+
+interface SessionConflict {
+  employeeId: string;
+  existingSessionId: string;
+  weekStartDate: string;
+  weekEndDate: string;
+  supervisorId: string;
+  supervisorName?: string | null;
+}
+
+interface CreationIssue {
+  employeeName: string;
+  message: string;
+}
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -58,6 +72,7 @@ export default function CreateSessionDialog({
   const [weekEndDate, setWeekEndDate] = useState("");
   const [sprintTitle, setSprintTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [creationIssues, setCreationIssues] = useState<CreationIssue[]>([]);
 
   const organizationId = useOrganizationId();
 
@@ -121,21 +136,6 @@ export default function CreateSessionDialog({
     },
   );
 
-  // Get existing sessions for this supervisor to find their direct reports
-  const { data: existingSessionsData, loading: sessionsLoading } = useQuery(
-    GET_CHECKINOUT_SESSIONS,
-    {
-      variables: {
-        supervisorUserId: isSuperAdmin ? undefined : safeCurrentUserId,
-        page: 1,
-        limit: 1000,
-      },
-      skip: !open || !safeCurrentUserId || userLoading, // Skip if dialog closed, no user ID, or still loading user
-      fetchPolicy: "cache-first",
-      nextFetchPolicy: "cache-first",
-    },
-  );
-
   // Get strategic periods
   const { data: periodsData, loading: periodsLoading } = useQuery(
     GET_STRATEGIC_PERIODS,
@@ -147,7 +147,10 @@ export default function CreateSessionDialog({
   );
 
   const [createSession] = useMutation(CREATE_CHECKINOUT_SESSION, {
-    errorPolicy: "none",
+    // Expected validation errors are handled inside this form. Returning them
+    // with the result avoids an unhandled Apollo rejection/Next.js error
+    // overlay while the backend still remains authoritative.
+    errorPolicy: "all",
   });
 
   const allEmployees = employeesData?.employees?.items || [];
@@ -156,19 +159,15 @@ export default function CreateSessionDialog({
   const departments = departmentsData?.departments?.items || [];
   const divisions = divisionsData?.divisions?.items || [];
   const periods = periodsData?.strategicPeriods?.items || [];
-  const existingSessions =
-    existingSessionsData?.checkinoutSessions?.items || [];
 
   // Debug logging for data
   console.log("📊 Data loaded:", {
     allEmployees: allEmployees.length,
     departments: departments.length,
     divisions: divisions.length,
-    existingSessions: existingSessions.length,
     employeesLoading,
     departmentsLoading,
     divisionsLoading,
-    sessionsLoading,
   });
 
   // Get employees from departments where current user is head (for department managers)
@@ -270,23 +269,49 @@ export default function CreateSessionDialog({
     employeesFromDepartments,
   ]);
 
-  // Exclude only sessions that overlap the selected week in the same period.
-  // Historical OPEN sessions must not hide directors/managers from future weeks.
-  const employeesWithActiveSessions = useMemo(
-    () =>
-      getEmployeesWithOverlappingOpenSessions(
-        existingSessions,
-        strategicPeriodId,
-        weekStartDate,
-        weekEndDate,
-      ),
-    [existingSessions, strategicPeriodId, weekStartDate, weekEndDate],
+  const candidateEmployeeIds = useMemo(
+    () => directReports.map((employee: any) => employee.employeeId),
+    [directReports],
   );
+  const {
+    data: conflictsData,
+    loading: conflictsLoading,
+    error: conflictsError,
+    refetch: refetchConflicts,
+  } = useQuery(GET_CHECKINOUT_SESSION_CONFLICTS, {
+    variables: {
+      employeeIds: candidateEmployeeIds,
+      weekStartDate,
+      weekEndDate,
+    },
+    skip:
+      !open ||
+      candidateEmployeeIds.length === 0 ||
+      !weekStartDate ||
+      !weekEndDate ||
+      weekStartDate > weekEndDate,
+    fetchPolicy: "network-only",
+  });
+  const availabilityConflicts = useMemo<SessionConflict[]>(
+    () => conflictsData?.checkinoutSessionConflicts ?? [],
+    [conflictsData],
+  );
+  const conflictingEmployeeIds = useMemo(
+    () => new Set(availabilityConflicts.map((conflict) => conflict.employeeId)),
+    [availabilityConflicts],
+  );
+
+  useEffect(() => {
+    if (conflictingEmployeeIds.size === 0) return;
+    setSelectedEmployees((current) =>
+      current.filter((employeeId) => !conflictingEmployeeIds.has(employeeId)),
+    );
+  }, [conflictingEmployeeIds]);
 
   // Filter out employees who already have active sessions
   const availableEmployees = useMemo(() => {
     const available = directReports.filter(
-      (emp: any) => !employeesWithActiveSessions.has(emp.employeeId),
+      (emp: any) => !conflictingEmployeeIds.has(emp.employeeId),
     );
     console.log(
       "✅ Available employees:",
@@ -295,7 +320,7 @@ export default function CreateSessionDialog({
       directReports.length,
     );
     return available;
-  }, [directReports, employeesWithActiveSessions]);
+  }, [directReports, conflictingEmployeeIds]);
 
   // Auto-calculate week end date (7 days after start) - REMOVED, now manual
   // useEffect(() => {
@@ -411,11 +436,12 @@ export default function CreateSessionDialog({
       return;
     }
 
+    setCreationIssues([]);
     setCreating(true);
     let successCount = 0;
     let errorCount = 0;
     const successfulEmployees: string[] = [];
-    const failedEmployees: string[] = [];
+    const failedEmployees: CreationIssue[] = [];
 
     try {
       for (const employeeId of selectedEmployees) {
@@ -444,6 +470,12 @@ export default function CreateSessionDialog({
             },
           });
 
+          if (result.errors?.length) {
+            throw new Error(
+              result.errors.map((error) => error.message).join("; "),
+            );
+          }
+
           if (!result.data?.createCheckinoutSession) {
             throw new Error("The server did not confirm session creation.");
           }
@@ -457,20 +489,21 @@ export default function CreateSessionDialog({
           if (employee) {
             successfulEmployees.push(employee.fullName);
           }
-        } catch (error: any) {
-          console.error(
-            `Failed to create session for employee ${employeeId}:`,
-            error,
-          );
+        } catch (error: unknown) {
           errorCount++;
 
           // Get employee name for error message
           const employee = directReports.find(
             (emp: any) => emp.employeeId === employeeId,
           );
-          if (employee) {
-            failedEmployees.push(employee.fullName);
-          }
+          const rawMessage =
+            error instanceof Error
+              ? error.message
+              : "The session could not be created.";
+          failedEmployees.push({
+            employeeName: employee?.fullName || "Selected employee",
+            message: formatManualSessionConflict(rawMessage),
+          });
         }
       }
 
@@ -497,9 +530,11 @@ export default function CreateSessionDialog({
         resetForm();
         onSuccess?.();
       } else {
+        setCreationIssues(failedEmployees);
         toast.warning(
-          `Created sessions for ${successCount} employee${successCount !== 1 ? "s" : ""}, ${errorCount} failed${failedEmployees.length > 0 ? `: ${failedEmployees.join(", ")}` : ""}`,
+          `Created sessions for ${successCount} employee${successCount !== 1 ? "s" : ""}; ${errorCount} could not be created. Review the details in the form.`,
         );
+        if (successCount > 0) onSuccess?.();
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to create check-in period");
@@ -514,6 +549,7 @@ export default function CreateSessionDialog({
     setWeekStartDate("");
     setWeekEndDate("");
     setSprintTitle("");
+    setCreationIssues([]);
   };
 
   return (
@@ -529,278 +565,357 @@ export default function CreateSessionDialog({
 
         <ScrollArea className="flex-1 overflow-y-auto pr-4">
           <div className="space-y-6">
-          {/* Sprint Title */}
-          <div className="space-y-2">
-            <Label htmlFor="sprintTitle">
-              Sprint Title{" "}
-              <span className="text-gray-500 text-xs">(Optional)</span>
-            </Label>
-            <Input
-              id="sprintTitle"
-              placeholder="e.g., Q2 Sprint 1, April Sprint, etc."
-              value={sprintTitle}
-              onChange={(e) => setSprintTitle(e.target.value)}
-              maxLength={100}
-            />
-            <p className="text-xs text-gray-500">
-              Give this sprint a memorable name. If left empty, it will be
-              auto-generated.
-            </p>
-          </div>
-
-          {/* Strategic Period Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="period">
-              Strategic Period <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={strategicPeriodId}
-              onValueChange={(value) => {
-                setStrategicPeriodId(value);
-                setSelectedEmployees([]);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select period..." />
-              </SelectTrigger>
-              <SelectContent>
-                {periodsLoading ? (
-                  <SelectItem value="loading" disabled>
-                    Loading periods...
-                  </SelectItem>
-                ) : periods.length > 0 ? (
-                  periods.map((period: any) => (
-                    <SelectItem
-                      key={period.strategicPeriodId}
-                      value={period.strategicPeriodId}
-                    >
-                      {period.name} ({new Date(period.startDate).getFullYear()})
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="none" disabled>
-                    No periods available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Week Date Range */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">
-                  Start Date <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={weekStartDate}
-                    onChange={(e) => {
-                      setWeekStartDate(e.target.value);
-                      setSelectedEmployees([]);
-                    }}
-                    min={today}
-                    className="pl-10"
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Must be today or future date
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endDate">
-                  End Date <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={weekEndDate}
-                    onChange={(e) => {
-                      setWeekEndDate(e.target.value);
-                      setSelectedEmployees([]);
-                    }}
-                    min={weekStartDate || today}
-                    className="pl-10"
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Flexible duration (1 week, 2 weeks, etc.)
-                </p>
-              </div>
-            </div>
-
-            {/* Duration Display */}
-            {sessionDuration && (
-              <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-indigo-600" />
-                  <span className="text-gray-700">Session Duration:</span>
-                  <span className="font-semibold text-indigo-600">
-                    {sessionDuration}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Employee Selection */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>
-                Select Employees <span className="text-red-500">*</span>
+            {/* Sprint Title */}
+            <div className="space-y-2">
+              <Label htmlFor="sprintTitle">
+                Sprint Title{" "}
+                <span className="text-gray-500 text-xs">(Optional)</span>
               </Label>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={handleSelectAll}
-                className="h-auto p-0 text-indigo-600"
-                disabled={availableEmployees.length === 0}
-              >
-                {selectedEmployees.length === availableEmployees.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </Button>
+              <Input
+                id="sprintTitle"
+                placeholder="e.g., Q2 Sprint 1, April Sprint, etc."
+                value={sprintTitle}
+                onChange={(e) => setSprintTitle(e.target.value)}
+                maxLength={100}
+              />
+              <p className="text-xs text-gray-500">
+                Give this sprint a memorable name. If left empty, it will be
+                auto-generated.
+              </p>
             </div>
 
-            {employeesLoading ||
-            superAdminCandidatesLoading ||
-            departmentsLoading ||
-            divisionsLoading ||
-            sessionsLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Loading employees...
+            {/* Strategic Period Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="period">
+                Strategic Period <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={strategicPeriodId}
+                onValueChange={(value) => {
+                  setStrategicPeriodId(value);
+                  setSelectedEmployees([]);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select period..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodsLoading ? (
+                    <SelectItem value="loading" disabled>
+                      Loading periods...
+                    </SelectItem>
+                  ) : periods.length > 0 ? (
+                    periods.map((period: any) => (
+                      <SelectItem
+                        key={period.strategicPeriodId}
+                        value={period.strategicPeriodId}
+                      >
+                        {period.name} (
+                        {new Date(period.startDate).getFullYear()})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>
+                      No periods available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Week Date Range */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">
+                    Start Date <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={weekStartDate}
+                      onChange={(e) => {
+                        setWeekStartDate(e.target.value);
+                        setSelectedEmployees([]);
+                      }}
+                      min={today}
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Must be today or future date
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">
+                    End Date <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={weekEndDate}
+                      onChange={(e) => {
+                        setWeekEndDate(e.target.value);
+                        setSelectedEmployees([]);
+                      }}
+                      min={weekStartDate || today}
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Flexible duration (1 week, 2 weeks, etc.)
                   </p>
                 </div>
               </div>
-            ) : isSuperAdmin && superAdminCandidatesError ? (
-              <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-4 text-center">
-                <AlertCircle className="mb-2 h-8 w-8 text-red-500" />
-                <p className="text-sm font-medium text-red-700">
-                  Unable to load directors and managers
-                </p>
-                <p className="mt-1 max-w-md text-xs text-red-600">
-                  {superAdminCandidatesError.message}
-                </p>
+
+              {/* Duration Display */}
+              {sessionDuration && (
+                <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-indigo-600" />
+                    <span className="text-gray-700">Session Duration:</span>
+                    <span className="font-semibold text-indigo-600">
+                      {sessionDuration}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Employee Selection */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>
+                  Select Employees <span className="text-red-500">*</span>
+                </Label>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="link"
                   size="sm"
-                  className="mt-3 border-red-200 text-red-700 hover:bg-red-100"
-                  onClick={() => void refetchSuperAdminCandidates()}
+                  onClick={handleSelectAll}
+                  className="h-auto p-0 text-indigo-600"
+                  disabled={availableEmployees.length === 0}
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Retry
+                  {availableEmployees.length > 0 &&
+                  selectedEmployees.length === availableEmployees.length
+                    ? "Deselect All"
+                    : "Select All"}
                 </Button>
               </div>
-            ) : availableEmployees.length > 0 ? (
-              <div className="border rounded-lg max-h-64 overflow-y-auto">
-                <div className="p-4 space-y-2">
-                  {availableEmployees.map((employee: any) => (
-                    <div
-                      key={employee.employeeId}
-                      className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      <Checkbox
-                        id={`employee-${employee.employeeId}`}
-                        checked={selectedEmployees.includes(
-                          employee.employeeId,
-                        )}
-                        onCheckedChange={() =>
-                          handleToggleEmployee(employee.employeeId)
-                        }
-                      />
-                      <label
-                        htmlFor={`employee-${employee.employeeId}`}
-                        className="flex-1 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <span className="text-sm font-semibold text-indigo-600">
-                              {employee.fullName?.charAt(0) || "U"}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-medium text-gray-900">
-                                {employee.fullName}
-                              </p>
-                              {employee.role && (
-                                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
-                                  {employee.role === "DIRECTOR"
-                                    ? "Director"
-                                    : employee.role === "MANAGER"
-                                      ? "Manager"
-                                      : employee.role}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              {employee.email}
-                            </p>
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : directReports.length > 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 border rounded-lg bg-amber-50">
-                <Users className="h-8 w-8 text-amber-500 mb-2" />
-                <p className="text-sm text-amber-700 font-medium">
-                  All team members have overlapping sessions
-                </p>
-                <p className="text-xs text-amber-600 mt-2 text-center px-4 max-w-sm">
-                  Each listed person already has an open session overlapping the
-                  selected dates in this strategic period.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-32 border rounded-lg bg-gray-50">
-                <Users className="h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600 font-medium">
-                  No team members found
-                </p>
-                <p className="text-xs text-gray-500 mt-2 text-center px-4 max-w-sm">
-                  {isSuperAdmin
-                    ? "No active directors in the reporting hierarchy or active division/department heads were found."
-                    : isAdmin
-                      ? "No employees found in the system"
-                      : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}
-                </p>
-              </div>
-            )}
 
-            {selectedEmployees.length > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <Users className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-gray-700">
-                  <span className="font-semibold text-green-600">
-                    {selectedEmployees.length}
-                  </span>{" "}
-                  employee{selectedEmployees.length !== 1 ? "s" : ""} selected
-                  {sessionDuration && (
-                    <span className="text-gray-500">
-                      {" "}
-                      • {sessionDuration} period
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
+              {employeesLoading ||
+              superAdminCandidatesLoading ||
+              departmentsLoading ||
+              divisionsLoading ||
+              conflictsLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Loading employees...
+                    </p>
+                  </div>
+                </div>
+              ) : conflictsError ? (
+                <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                  <AlertCircle className="mb-2 h-8 w-8 text-red-500" />
+                  <p className="text-sm font-medium text-red-700">
+                    Unable to check existing sessions
+                  </p>
+                  <p className="mt-1 max-w-md text-xs text-red-600">
+                    Employee selection is paused so a duplicate session cannot
+                    be created.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-red-200 text-red-700 hover:bg-red-100"
+                    onClick={() => void refetchConflicts()}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry
+                  </Button>
+                </div>
+              ) : isSuperAdmin && superAdminCandidatesError ? (
+                <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                  <AlertCircle className="mb-2 h-8 w-8 text-red-500" />
+                  <p className="text-sm font-medium text-red-700">
+                    Unable to load directors and managers
+                  </p>
+                  <p className="mt-1 max-w-md text-xs text-red-600">
+                    {superAdminCandidatesError.message}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-red-200 text-red-700 hover:bg-red-100"
+                    onClick={() => void refetchSuperAdminCandidates()}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry
+                  </Button>
+                </div>
+              ) : availableEmployees.length > 0 ? (
+                <div className="border rounded-lg max-h-64 overflow-y-auto">
+                  <div className="p-4 space-y-2">
+                    {availableEmployees.map((employee: any) => (
+                      <div
+                        key={employee.employeeId}
+                        className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        <Checkbox
+                          id={`employee-${employee.employeeId}`}
+                          checked={selectedEmployees.includes(
+                            employee.employeeId,
+                          )}
+                          onCheckedChange={() =>
+                            handleToggleEmployee(employee.employeeId)
+                          }
+                        />
+                        <label
+                          htmlFor={`employee-${employee.employeeId}`}
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <span className="text-sm font-semibold text-indigo-600">
+                                {employee.fullName?.charAt(0) || "U"}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-gray-900">
+                                  {employee.fullName}
+                                </p>
+                                {employee.role && (
+                                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                                    {employee.role === "DIRECTOR"
+                                      ? "Director"
+                                      : employee.role === "MANAGER"
+                                        ? "Manager"
+                                        : employee.role}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {employee.email}
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : directReports.length > 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 border rounded-lg bg-amber-50">
+                  <Users className="h-8 w-8 text-amber-500 mb-2" />
+                  <p className="text-sm text-amber-700 font-medium">
+                    All team members have overlapping sessions
+                  </p>
+                  <p className="text-xs text-amber-600 mt-2 text-center px-4 max-w-sm">
+                    Each listed person already has a non-closed session
+                    overlapping the selected dates. Existing sessions are kept
+                    unchanged.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 border rounded-lg bg-gray-50">
+                  <Users className="h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600 font-medium">
+                    No team members found
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2 text-center px-4 max-w-sm">
+                    {isSuperAdmin
+                      ? "No active directors in the reporting hierarchy or active division/department heads were found."
+                      : isAdmin
+                        ? "No employees found in the system"
+                        : "You need to be assigned as the head of a department (with employees) or division (with departments) to create check-in sessions."}
+                  </p>
+                </div>
+              )}
+
+              {availabilityConflicts.length > 0 && !conflictsError && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-semibold text-amber-800">
+                    Already scheduled ({availabilityConflicts.length})
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    These existing sessions are preserved and cannot be selected
+                    for overlapping dates.
+                  </p>
+                  <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">
+                    {availabilityConflicts.map((conflict) => {
+                      const employee = directReports.find(
+                        (candidate: any) =>
+                          candidate.employeeId === conflict.employeeId,
+                      );
+                      return (
+                        <p
+                          key={conflict.existingSessionId}
+                          className="text-xs text-amber-800"
+                        >
+                          <span className="font-medium">
+                            {employee?.fullName || "Employee"}
+                          </span>{" "}
+                          · {conflict.weekStartDate} – {conflict.weekEndDate}
+                          {conflict.supervisorName
+                            ? ` · created by ${conflict.supervisorName}`
+                            : ""}
+                        </p>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {creationIssues.length > 0 && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <p className="text-sm font-semibold text-red-800">
+                    Sessions not created
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {creationIssues.map((issue, index) => (
+                      <div
+                        key={`${issue.employeeName}-${index}`}
+                        className="text-xs text-red-700"
+                      >
+                        <span className="font-medium">
+                          {issue.employeeName}:
+                        </span>{" "}
+                        {issue.message}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedEmployees.length > 0 && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <Users className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-gray-700">
+                    <span className="font-semibold text-green-600">
+                      {selectedEmployees.length}
+                    </span>{" "}
+                    employee{selectedEmployees.length !== 1 ? "s" : ""} selected
+                    {sessionDuration && (
+                      <span className="text-gray-500">
+                        {" "}
+                        • {sessionDuration} period
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         </ScrollArea>
 
         <DialogFooter className="flex-shrink-0">
@@ -822,7 +937,9 @@ export default function CreateSessionDialog({
               selectedEmployees.length === 0 ||
               !strategicPeriodId ||
               !weekStartDate ||
-              !weekEndDate
+              !weekEndDate ||
+              conflictsLoading ||
+              Boolean(conflictsError)
             }
             className="bg-indigo-600 hover:bg-indigo-700"
           >

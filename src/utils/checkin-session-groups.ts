@@ -5,6 +5,8 @@ export type CheckinoutSessionLike = {
   weekEndDate: string;
   overallStatus?: string | null;
   isLocked?: boolean | null;
+  hasApprovedTasks?: boolean | null;
+  scheduleWeekId?: string | null;
   employee?: {
     employeeId?: string | null;
     fullName?: string | null;
@@ -31,14 +33,18 @@ export type CheckinoutSessionWeekGroup<T extends CheckinoutSessionLike> = {
  * Super Admin sees the full shared session list (all users), same as ADMIN.
  * Kept as a named helper so call sites stay explicit about the role path.
  */
-export const getSuperAdminCheckinoutSessions = <T extends CheckinoutSessionLike>(
+export const getSuperAdminCheckinoutSessions = <
+  T extends CheckinoutSessionLike,
+>(
   sessions: T[],
   _viewerId?: string | null,
 ): T[] => sessions;
 
 export const getLeadershipCheckinoutSessions = <
   T extends CheckinoutSessionLike,
->(sessions: T[]): T[] => {
+>(
+  sessions: T[],
+): T[] => {
   const sessionsById = new Map<string, T>();
   for (const session of sessions) {
     if (
@@ -58,14 +64,13 @@ export const getCheckinoutSessionWeekKey = (
 ): string =>
   [
     session.supervisor?.employeeId ?? "",
+    session.scheduleWeekId ?? "standalone",
     session.strategicPeriod?.strategicPeriodId ?? "",
     session.weekStartDate,
     session.weekEndDate,
   ].join("|");
 
-export const groupCheckinoutSessionsByWeek = <
-  T extends CheckinoutSessionLike,
->(
+export const groupCheckinoutSessionsByWeek = <T extends CheckinoutSessionLike>(
   sessions: T[],
 ): CheckinoutSessionWeekGroup<T>[] => {
   const groups = new Map<string, CheckinoutSessionWeekGroup<T>>();

@@ -10,6 +10,8 @@ const SCHEDULE_SESSION_FIELDS = gql`
     weekEndDate
     overallStatus
     isLocked
+    hasApprovedTasks
+    scheduleWeekId
     checkinSubmittedAt
     checkoutSubmittedAt
     overallRating
@@ -17,9 +19,26 @@ const SCHEDULE_SESSION_FIELDS = gql`
     supervisorReviewAt
     createdAt
     updatedAt
-    employee { employeeId fullName email title role }
-    supervisor { employeeId fullName email title role }
-    strategicPeriod { strategicPeriodId name startDate endDate }
+    employee {
+      employeeId
+      fullName
+      email
+      title
+      role
+    }
+    supervisor {
+      employeeId
+      fullName
+      email
+      title
+      role
+    }
+    strategicPeriod {
+      strategicPeriodId
+      name
+      startDate
+      endDate
+    }
   }
 `;
 
@@ -49,12 +68,22 @@ const SCHEDULE_WEEK_FIELDS = gql`
     status
     activatedAt
     ...CheckinoutScheduleWeekPeriodFields
-    sessions { ...CheckinoutScheduleSessionFields }
+    sessions {
+      ...CheckinoutScheduleSessionFields
+    }
     coverages {
       scheduleWeekCoverageId
       coverageType
-      employee { employeeId fullName email title role }
-      existingSession { ...CheckinoutScheduleSessionFields }
+      employee {
+        employeeId
+        fullName
+        email
+        title
+        role
+      }
+      existingSession {
+        ...CheckinoutScheduleSessionFields
+      }
     }
   }
   ${SCHEDULE_SESSION_FIELDS}
@@ -68,9 +97,24 @@ const SCHEDULE_FIELDS = gql`
     rangeStartDate
     rangeEndDate
     status
-    strategicPlan { strategicPlanId title startDate endDate }
-    participants { employee { employeeId fullName email title role } }
-    weeks { ...CheckinoutScheduleWeekFields }
+    strategicPlan {
+      strategicPlanId
+      title
+      startDate
+      endDate
+    }
+    participants {
+      employee {
+        employeeId
+        fullName
+        email
+        title
+        role
+      }
+    }
+    weeks {
+      ...CheckinoutScheduleWeekFields
+    }
   }
   ${SCHEDULE_WEEK_FIELDS}
 `;
@@ -116,28 +160,36 @@ export const PREVIEW_CHECKINOUT_SCHEDULE = gql`
 
 export const GENERATE_CHECKINOUT_SCHEDULE = gql`
   mutation GenerateCheckinoutSchedule($input: CheckinoutScheduleInput!) {
-    generateCheckinoutSchedule(input: $input) { ...CheckinoutScheduleFields }
+    generateCheckinoutSchedule(input: $input) {
+      ...CheckinoutScheduleFields
+    }
   }
   ${SCHEDULE_FIELDS}
 `;
 
 export const GET_CHECKINOUT_SCHEDULES = gql`
   query CheckinoutSchedules {
-    checkinoutSchedules { ...CheckinoutScheduleFields }
+    checkinoutSchedules {
+      ...CheckinoutScheduleFields
+    }
   }
   ${SCHEDULE_FIELDS}
 `;
 
 export const GET_CHECKINOUT_SCHEDULE = gql`
   query CheckinoutSchedule($scheduleId: ID!) {
-    checkinoutSchedule(scheduleId: $scheduleId) { ...CheckinoutScheduleFields }
+    checkinoutSchedule(scheduleId: $scheduleId) {
+      ...CheckinoutScheduleFields
+    }
   }
   ${SCHEDULE_FIELDS}
 `;
 
 export const ACTIVATE_CHECKINOUT_SCHEDULE_WEEK = gql`
   mutation ActivateCheckinoutScheduleWeek($scheduleWeekId: ID!) {
-    activateCheckinoutScheduleWeek(scheduleWeekId: $scheduleWeekId) { ...CheckinoutScheduleWeekFields }
+    activateCheckinoutScheduleWeek(scheduleWeekId: $scheduleWeekId) {
+      ...CheckinoutScheduleWeekFields
+    }
   }
   ${SCHEDULE_WEEK_FIELDS}
 `;

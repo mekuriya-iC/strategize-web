@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatManualSessionConflict,
   getEmployeesWithOverlappingOpenSessions,
   sortSessionCandidates,
 } from "./session-candidate-availability";
@@ -57,5 +58,15 @@ describe("check-in session candidate availability", () => {
         { fullName: "Director One", role: "DIRECTOR" },
       ]).map((candidate) => candidate.role),
     ).toEqual(["DIRECTOR", "MANAGER"]);
+  });
+
+  it("turns a duplicate manual session error into actionable guidance", () => {
+    expect(
+      formatManualSessionConflict(
+        'Cannot create session for employee "Employee One" from 2026-10-12 to 2026-10-17: non-closed session "session-1" overlaps from 2026-10-12 to 2026-10-17 and was created by "Super Admin" (admin-1).',
+      ),
+    ).toBe(
+      'An existing session already covers 2026-10-12 to 2026-10-17 and was created by "Super Admin" (admin-1). It was kept unchanged; choose different dates.',
+    );
   });
 });

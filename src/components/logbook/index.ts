@@ -3,3 +3,4 @@ export { LogbookTableRow } from "./LogbookTableRow";
 export { LogbookTableCard } from "./LogbookTableCard";
 export { SubmitApprovalDialog } from "./SubmitApprovalDialog";
 export { LogbookApprovalActions } from "./LogbookApprovalActions";
+export { LogbookAchievementDetails } from "./LogbookAchievementDetails";

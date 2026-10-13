@@ -28,6 +28,7 @@ import {
   type LogbookReviewDepartment as ReviewDepartment,
   type LogbookReviewUser as ReviewEmployee,
 } from "@/lib/logbook/review-hierarchy";
+import type { LogbookApprovalAchievementEntry } from "@/types/logbook";
 
 /**
  * Logbook Approvals Page
@@ -53,13 +54,9 @@ const GET_LOGBOOK_REVIEW_DEPARTMENTS = gql`
 `;
 
 
-type ReviewLogbookEntry = {
-  logbookEntryId: string;
+type ReviewLogbookEntry = LogbookApprovalAchievementEntry & {
   entryDate: string;
-  activityDescription?: string | null;
   entryStatus?: string | null;
-  kpiCompletionPercent?: number | null;
-  linkedKpi?: { name?: string | null } | null;
   owner?:
     | (ReviewEmployee & { fullName?: string | null; title?: string | null })
     | null;
@@ -299,6 +296,7 @@ export default function LogbookApprovalsPage() {
                       logbookEntryId={entry.logbookEntryId}
                       activityDescription={entry.activityDescription || ""}
                       linkedKpiName={entry.linkedKpi?.name}
+                      achievementDetails={entry}
                       currentStatus={entry.entryStatus || ""}
                       onSuccess={() => refetch()}
                     />

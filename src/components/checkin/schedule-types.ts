@@ -27,6 +27,8 @@ export interface ScheduleSession {
   weekEndDate: string;
   overallStatus: string;
   isLocked?: boolean;
+  hasApprovedTasks?: boolean;
+  scheduleWeekId?: string | null;
   employee: ScheduleEmployee;
   supervisor?: ScheduleEmployee | null;
   strategicPeriod?: ScheduleStrategicPeriod | null;

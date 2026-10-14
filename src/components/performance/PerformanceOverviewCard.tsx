@@ -18,6 +18,8 @@ interface PerformanceComponentScore {
   weight: number;
   weightedScore: number;
   source: string;
+  isAvailable: boolean;
+  status: string;
   lastUpdated?: string;
 }
 
@@ -30,6 +32,9 @@ interface PerformanceBreakdown {
 interface PerformanceOverviewCardProps {
   totalScore: number;
   maxPossibleScore: number;
+  configuredMaxPossibleScore: number;
+  componentCoverage: number;
+  isProvisional: boolean;
   overallPercentage: number;
   rating: string;
   breakdown: PerformanceBreakdown;
@@ -76,6 +81,30 @@ function ComponentScoreCard({
   score: PerformanceComponentScore;
   icon: React.ElementType;
 }) {
+  if (!score.isAvailable) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {score.source}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Weight: {score.weight}%
+            </p>
+          </div>
+        </div>
+        <Badge variant="secondary">Pending</Badge>
+        <p className="text-xs text-muted-foreground">
+          Not included in the live score denominator.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -140,6 +169,9 @@ function ComponentScoreCard({
 export default function PerformanceOverviewCard({
   totalScore,
   maxPossibleScore,
+  configuredMaxPossibleScore,
+  componentCoverage,
+  isProvisional,
   overallPercentage,
   rating,
   breakdown,
@@ -174,8 +206,13 @@ export default function PerformanceOverviewCard({
             <span className="text-2xl font-semibold text-gray-500">%</span>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {totalScore.toFixed(2)} out of {maxPossibleScore.toFixed(2)} points
+            {totalScore.toFixed(2)} out of {maxPossibleScore.toFixed(2)} available points
           </p>
+          {isProvisional && (
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              Provisional · {componentCoverage.toFixed(0)}% component coverage ({maxPossibleScore.toFixed(0)} of {configuredMaxPossibleScore.toFixed(0)} configured weight)
+            </p>
+          )}
           {calculatedAt && (
             <p className="text-xs text-gray-500">
               Last calculated: {new Date(calculatedAt).toLocaleString()}

@@ -32,6 +32,9 @@ export const GET_EMPLOYEE_PERFORMANCE = gql`
       strategicPeriodId
       totalScore
       maxPossibleScore
+      configuredMaxPossibleScore
+      componentCoverage
+      isProvisional
       overallPercentage
       rating
       breakdown {
@@ -42,6 +45,9 @@ export const GET_EMPLOYEE_PERFORMANCE = gql`
           weight
           weightedScore
           source
+          isAvailable
+          status
+          scope
           lastUpdated
         }
         competencyScore {
@@ -51,6 +57,8 @@ export const GET_EMPLOYEE_PERFORMANCE = gql`
           weight
           weightedScore
           source
+          isAvailable
+          status
           lastUpdated
         }
         activityScore {
@@ -60,6 +68,8 @@ export const GET_EMPLOYEE_PERFORMANCE = gql`
           weight
           weightedScore
           source
+          isAvailable
+          status
           lastUpdated
         }
       }
@@ -101,6 +111,9 @@ export const GET_TEAM_PERFORMANCE = gql`
         strategicPeriodId
         totalScore
         maxPossibleScore
+        configuredMaxPossibleScore
+        componentCoverage
+        isProvisional
         overallPercentage
         rating
         breakdown {
@@ -111,6 +124,9 @@ export const GET_TEAM_PERFORMANCE = gql`
             weight
             weightedScore
             source
+            isAvailable
+            status
+            scope
             lastUpdated
           }
           competencyScore {
@@ -120,6 +136,8 @@ export const GET_TEAM_PERFORMANCE = gql`
             weight
             weightedScore
             source
+            isAvailable
+            status
             lastUpdated
           }
           activityScore {
@@ -129,6 +147,8 @@ export const GET_TEAM_PERFORMANCE = gql`
             weight
             weightedScore
             source
+            isAvailable
+            status
             lastUpdated
           }
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, gql } from "@apollo/client";
 import {
   Card,
@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Download,
   TrendingUp,
@@ -46,6 +47,9 @@ const GET_EMPLOYEE_PERFORMANCE = gql`
       strategicPeriodId
       totalScore
       maxPossibleScore
+      configuredMaxPossibleScore
+      componentCoverage
+      isProvisional
       overallPercentage
       rating
       breakdown {
@@ -56,6 +60,9 @@ const GET_EMPLOYEE_PERFORMANCE = gql`
           weight
           weightedScore
           source
+          isAvailable
+          status
+          scope
         }
         competencyScore {
           rawScore
@@ -64,6 +71,8 @@ const GET_EMPLOYEE_PERFORMANCE = gql`
           weight
           weightedScore
           source
+          isAvailable
+          status
         }
         activityScore {
           rawScore
@@ -72,6 +81,8 @@ const GET_EMPLOYEE_PERFORMANCE = gql`
           weight
           weightedScore
           source
+          isAvailable
+          status
         }
       }
       trendChange
@@ -94,6 +105,9 @@ const GET_TEAM_PERFORMANCE = gql`
         strategicPeriodId
         totalScore
         maxPossibleScore
+        configuredMaxPossibleScore
+        componentCoverage
+        isProvisional
         overallPercentage
         rating
         breakdown {
@@ -103,6 +117,9 @@ const GET_TEAM_PERFORMANCE = gql`
             percentageAchieved
             weight
             weightedScore
+            isAvailable
+            status
+            scope
           }
           competencyScore {
             rawScore
@@ -110,6 +127,8 @@ const GET_TEAM_PERFORMANCE = gql`
             percentageAchieved
             weight
             weightedScore
+            isAvailable
+            status
           }
           activityScore {
             rawScore
@@ -117,6 +136,8 @@ const GET_TEAM_PERFORMANCE = gql`
             percentageAchieved
             weight
             weightedScore
+            isAvailable
+            status
           }
         }
       }
@@ -165,6 +186,7 @@ export default function UnifiedPerformanceReport({
     selectedPeriod,
     setSelectedPeriod,
   } = useStrategicPeriodStore();
+  const [rankingMode, setRankingMode] = useState<"kpi" | "overall">("kpi");
 
   // Fetch periods
   const { data: periodsData } = useQuery(GET_PERIODS, {
@@ -409,8 +431,13 @@ export default function UnifiedPerformanceReport({
               </div>
               <div className="mt-3 flex justify-between text-xs font-semibold text-slate-500 dark:text-zinc-400">
                 <span>Earned Score: <strong className="text-slate-800 dark:text-zinc-200">{performanceData.totalScore.toFixed(2)}</strong></span>
-                <span>Max Benchmark: <strong className="text-slate-800 dark:text-zinc-200">{performanceData.maxPossibleScore.toFixed(2)}</strong></span>
+                <span>Available Weight: <strong className="text-slate-800 dark:text-zinc-200">{performanceData.maxPossibleScore.toFixed(2)} / {performanceData.configuredMaxPossibleScore.toFixed(2)}</strong></span>
               </div>
+              {performanceData.isProvisional && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                  Provisional score · {performanceData.componentCoverage.toFixed(0)}% of configured component weight is available. Pending components are not counted as zero.
+                </div>
+              )}
             </div>
 
             {/* Performance Component Breakdown */}
@@ -427,7 +454,9 @@ export default function UnifiedPerformanceReport({
                   <span className="text-xs font-semibold text-slate-400">{performanceData.breakdown.kpiScore.weight}% weight</span>
                 </div>
                 <div className="text-3xl font-black tracking-tight tabular-nums text-blue-600 dark:text-blue-400">
-                  {performanceData.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
+                  {performanceData.breakdown.kpiScore.isAvailable
+                    ? `${performanceData.breakdown.kpiScore.percentageAchieved.toFixed(1)}%`
+                    : "Pending"}
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
                   <div
@@ -452,7 +481,9 @@ export default function UnifiedPerformanceReport({
                   <span className="text-xs font-semibold text-slate-400">{performanceData.breakdown.competencyScore.weight}% weight</span>
                 </div>
                 <div className="text-3xl font-black tracking-tight tabular-nums text-purple-600 dark:text-purple-400">
-                  {performanceData.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
+                  {performanceData.breakdown.competencyScore.isAvailable
+                    ? `${performanceData.breakdown.competencyScore.percentageAchieved.toFixed(1)}%`
+                    : "Pending"}
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
                   <div
@@ -477,7 +508,9 @@ export default function UnifiedPerformanceReport({
                   <span className="text-xs font-semibold text-slate-400">{performanceData.breakdown.activityScore.weight}% weight</span>
                 </div>
                 <div className="text-3xl font-black tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">
-                  {performanceData.breakdown.activityScore.percentageAchieved.toFixed(1)}%
+                  {performanceData.breakdown.activityScore.isAvailable
+                    ? `${performanceData.breakdown.activityScore.percentageAchieved.toFixed(1)}%`
+                    : "Pending"}
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
                   <div
@@ -523,6 +556,49 @@ export default function UnifiedPerformanceReport({
 
   // Render Team Performance View
   const results = performanceData.results || [];
+  const individualResults = results.filter(
+    (result: any) =>
+      result.breakdown?.kpiScore?.scope === "INDIVIDUAL" &&
+      result.breakdown?.kpiScore?.isAvailable,
+  );
+  const leadershipResults = results.filter(
+    (result: any) =>
+      result.breakdown?.kpiScore?.isAvailable &&
+      ["DEPARTMENT", "DIVISION"].includes(
+        result.breakdown?.kpiScore?.scope,
+      ),
+  );
+  const unrankedResults = results.filter(
+    (result: any) => !result.breakdown?.kpiScore?.isAvailable,
+  );
+  const rankingScore = (result: any) =>
+    rankingMode === "kpi"
+      ? result.breakdown.kpiScore.percentageAchieved
+      : result.overallPercentage;
+  const rankedResults = [...individualResults].sort(
+    (left: any, right: any) => rankingScore(right) - rankingScore(left),
+  );
+  const rankingScores = rankedResults.map(rankingScore);
+  const rankingAverage = rankingScores.length
+    ? rankingScores.reduce((sum: number, score: number) => sum + score, 0) /
+      rankingScores.length
+    : 0;
+  const orderedRankingScores = [...rankingScores].sort(
+    (left, right) => left - right,
+  );
+  const rankingMiddle = Math.floor(orderedRankingScores.length / 2);
+  const rankingMedian = orderedRankingScores.length
+    ? orderedRankingScores.length % 2 === 0
+      ? (orderedRankingScores[rankingMiddle - 1] +
+          orderedRankingScores[rankingMiddle]) /
+        2
+      : orderedRankingScores[rankingMiddle]
+    : 0;
+  const rankingHighest = rankingScores.length ? Math.max(...rankingScores) : 0;
+  const rankingLowest = rankingScores.length ? Math.min(...rankingScores) : 0;
+  const topRankedResult = rankedResults[0];
+  const rankingLabel =
+    rankingMode === "kpi" ? "Individual KPI achievement" : "Live composite";
 
   return (
     <div className="space-y-6">
@@ -554,12 +630,12 @@ export default function UnifiedPerformanceReport({
                   Team Performance Summary
                 </CardTitle>
                 <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
-                  Aggregated evaluation metrics for {results.length} team members
+                  Like-for-like individual rankings for the selected quarter
                 </CardDescription>
               </div>
             </div>
             <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold">
-              {results.length} Members Evaluated
+              {individualResults.length} Individuals Ranked
             </Badge>
           </div>
         </CardHeader>
@@ -568,45 +644,45 @@ export default function UnifiedPerformanceReport({
           {/* Average Scores Grid */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Average Score</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Average {rankingMode === "kpi" ? "KPI" : "Composite"}</div>
               <div className="mt-1 text-2xl font-black tabular-nums text-blue-700 dark:text-blue-300">
-                {performanceData.averageScore.toFixed(1)}%
+                {rankingAverage.toFixed(1)}%
               </div>
             </div>
             <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4 dark:border-purple-900/40 dark:bg-purple-950/20">
               <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Median Score</div>
               <div className="mt-1 text-2xl font-black tabular-nums text-purple-700 dark:text-purple-300">
-                {performanceData.medianScore.toFixed(1)}%
+                {rankingMedian.toFixed(1)}%
               </div>
             </div>
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
               <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Highest Score</div>
               <div className="mt-1 text-2xl font-black tabular-nums text-emerald-700 dark:text-emerald-300">
-                {performanceData.highestScore.toFixed(1)}%
+                {rankingHighest.toFixed(1)}%
               </div>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
               <div className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Lowest Score</div>
               <div className="mt-1 text-2xl font-black tabular-nums text-amber-700 dark:text-amber-300">
-                {performanceData.lowestScore.toFixed(1)}%
+                {rankingLowest.toFixed(1)}%
               </div>
             </div>
           </div>
 
           {/* Top Performer Card */}
-          {performanceData.topPerformer && (
+          {topRankedResult && (
             <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-amber-50/80 p-5 dark:border-amber-900/40 dark:from-amber-950/20 dark:via-orange-950/10 dark:to-amber-950/20">
               <div className="flex items-center gap-3.5">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20">
                   <Award className="h-6 w-6" />
                 </div>
                 <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Top Overall Performer</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Top {rankingMode === "kpi" ? "Individual KPI Performer" : "Live Composite Performer"}</div>
                   <div className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                    {performanceData.topPerformer.employee.fullName}
+                    {topRankedResult.employee.fullName}
                   </div>
                   <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                    {performanceData.topPerformer.totalScore.toFixed(1)}% benchmark overall score
+                    {rankingScore(topRankedResult).toFixed(1)}% {rankingLabel.toLowerCase()}
                   </div>
                 </div>
               </div>
@@ -618,18 +694,37 @@ export default function UnifiedPerformanceReport({
       {/* Individual Team Member Ranking */}
       <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
         <CardHeader className="p-0 pb-5">
-          <CardTitle className="text-base font-bold text-slate-900 dark:text-zinc-100">
-            Team Member Performance Rankings
-          </CardTitle>
-          <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
-            Ranked by overall composite score across KPI, competency, and operational activity.
-          </CardDescription>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                Individual Performance Rankings
+              </CardTitle>
+              <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+                Managers’ department and division scorecards are separated below so every row here uses the same individual scope.
+              </CardDescription>
+            </div>
+            <Tabs
+              value={rankingMode}
+              onValueChange={(value) =>
+                setRankingMode(value as "kpi" | "overall")
+              }
+            >
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="kpi">KPI achievement</TabsTrigger>
+                <TabsTrigger value="overall">Live composite</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3.5 p-0">
-          {[...results]
-            .sort((a: any, b: any) => b.overallPercentage - a.overallPercentage)
-            .map((result: any, index: number) => {
-              const badge = getPerformanceBadge(result.overallPercentage);
+          {rankedResults.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-zinc-800 dark:text-zinc-400">
+              No individual KPI results are available for this period.
+            </div>
+          )}
+          {rankedResults.map((result: any, index: number) => {
+              const displayedScore = rankingScore(result);
+              const badge = getPerformanceBadge(displayedScore);
               return (
                 <div
                   key={result.employeeId}
@@ -659,10 +754,10 @@ export default function UnifiedPerformanceReport({
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.color}`}>
-                        {result.rating}
+                        {rankingMode === "kpi" ? badge.label : result.rating}
                       </Badge>
-                      <span className={`text-2xl font-black tabular-nums ${getPerformanceColor(result.overallPercentage)}`}>
-                        {result.overallPercentage.toFixed(1)}%
+                      <span className={`text-2xl font-black tabular-nums ${getPerformanceColor(displayedScore)}`}>
+                        {displayedScore.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -670,7 +765,7 @@ export default function UnifiedPerformanceReport({
                   <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-zinc-800">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all duration-500"
-                      style={{ width: `${Math.min(Math.max(result.overallPercentage, 0), 100)}%` }}
+                      style={{ width: `${Math.min(Math.max(displayedScore, 0), 100)}%` }}
                     />
                   </div>
 
@@ -684,21 +779,75 @@ export default function UnifiedPerformanceReport({
                     <div className="flex items-center justify-between rounded-lg bg-white/70 px-2.5 py-1.5 dark:bg-zinc-900/60">
                       <span className="text-slate-400">Competency:</span>
                       <span className="font-bold tabular-nums text-purple-600 dark:text-purple-400">
-                        {result.breakdown.competencyScore.percentageAchieved.toFixed(1)}%
+                        {result.breakdown.competencyScore.isAvailable
+                          ? `${result.breakdown.competencyScore.percentageAchieved.toFixed(1)}%`
+                          : "Pending"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-white/70 px-2.5 py-1.5 dark:bg-zinc-900/60">
                       <span className="text-slate-400">Activity:</span>
                       <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                        {result.breakdown.activityScore.percentageAchieved.toFixed(1)}%
+                        {result.breakdown.activityScore.isAvailable
+                          ? `${result.breakdown.activityScore.percentageAchieved.toFixed(1)}%`
+                          : "Pending"}
                       </span>
                     </div>
                   </div>
+                  {rankingMode === "overall" && result.isProvisional && (
+                    <div className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                      Provisional · {result.componentCoverage.toFixed(0)}% component coverage
+                    </div>
+                  )}
                 </div>
               );
             })}
         </CardContent>
       </Card>
+
+      {leadershipResults.length > 0 && (
+        <Card className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/90 sm:p-7">
+          <CardHeader className="p-0 pb-5">
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-zinc-100">
+              Leadership Organizational Scorecards
+            </CardTitle>
+            <CardDescription className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+              These are department or division results attached to leaders. They are intentionally excluded from individual rankings.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 p-0">
+            {[...leadershipResults]
+              .sort(
+                (left: any, right: any) =>
+                  right.breakdown.kpiScore.percentageAchieved -
+                  left.breakdown.kpiScore.percentageAchieved,
+              )
+              .map((result: any) => (
+                <div
+                  key={`leadership-${result.employeeId}`}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/40 p-4 dark:border-zinc-800 dark:bg-zinc-800/20"
+                >
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-zinc-100">
+                      {result.employee.fullName}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-zinc-400">
+                      {result.employee.title} · {result.breakdown.kpiScore.scope.toLowerCase()} scorecard
+                    </div>
+                  </div>
+                  <div className="text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400">
+                    {result.breakdown.kpiScore.percentageAchieved.toFixed(1)}%
+                  </div>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {unrankedResults.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          {unrankedResults.length} user{unrankedResults.length === 1 ? " is" : "s are"} not ranked because no applicable KPI score is available for this period.
+        </div>
+      )}
     </div>
   );
 }

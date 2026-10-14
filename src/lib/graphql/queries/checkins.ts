@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 /**
  * Check-In/Out Queries
@@ -35,6 +35,8 @@ export const GET_CHECKINOUT_SESSIONS = gql`
         supervisorComment
         supervisorReviewAt
         isLocked
+        hasApprovedTasks
+        scheduleWeekId
         createdAt
         updatedAt
         employee {
@@ -115,6 +117,27 @@ export const GET_MANAGER_CHECKINOUT_SESSION_CANDIDATES = gql`
   }
 `;
 
+export const GET_CHECKINOUT_SESSION_CONFLICTS = gql`
+  query CheckinoutSessionConflicts(
+    $employeeIds: [ID!]!
+    $weekStartDate: String!
+    $weekEndDate: String!
+  ) {
+    checkinoutSessionConflicts(
+      employeeIds: $employeeIds
+      weekStartDate: $weekStartDate
+      weekEndDate: $weekEndDate
+    ) {
+      employeeId
+      existingSessionId
+      weekStartDate
+      weekEndDate
+      supervisorId
+      supervisorName
+    }
+  }
+`;
+
 // Get single check-in session
 export const GET_CHECKINOUT_SESSION = gql`
   query GetCheckinoutSession($checkinoutSessionId: ID!) {
@@ -129,6 +152,8 @@ export const GET_CHECKINOUT_SESSION = gql`
       supervisorComment
       supervisorReviewAt
       isLocked
+      hasApprovedTasks
+      scheduleWeekId
       createdAt
       updatedAt
       employee {
@@ -199,8 +224,14 @@ export const GET_CHECKINOUT_TASKS = gql`
           isInitialWeeklySelection
           submittedAt
           reviewedAt
-          submittedBy { employeeId fullName }
-          reviewedBy { employeeId fullName }
+          submittedBy {
+            employeeId
+            fullName
+          }
+          reviewedBy {
+            employeeId
+            fullName
+          }
         }
         submissionBatchId
         isCollaborativeTask
@@ -278,8 +309,14 @@ export const GET_CHECKINOUT_TASK = gql`
         isInitialWeeklySelection
         submittedAt
         reviewedAt
-        submittedBy { employeeId fullName }
-        reviewedBy { employeeId fullName }
+        submittedBy {
+          employeeId
+          fullName
+        }
+        reviewedBy {
+          employeeId
+          fullName
+        }
       }
       submissionBatchId
       isCollaborativeTask
@@ -337,12 +374,18 @@ export const GET_PENDING_TASK_PLANNING_APPROVALS = gql`
       carryoverGeneration
       isCarryoverOverdue
       carryoverEscalatedAt
-      relatedTo { employeeId fullName }
+      relatedTo {
+        employeeId
+        fullName
+      }
       session {
         checkinoutSessionId
         weekStartDate
         weekEndDate
-        employee { employeeId fullName }
+        employee {
+          employeeId
+          fullName
+        }
       }
       planningReviewHistory {
         planningReviewId
@@ -352,8 +395,14 @@ export const GET_PENDING_TASK_PLANNING_APPROVALS = gql`
         isInitialWeeklySelection
         submittedAt
         reviewedAt
-        submittedBy { employeeId fullName }
-        reviewedBy { employeeId fullName }
+        submittedBy {
+          employeeId
+          fullName
+        }
+        reviewedBy {
+          employeeId
+          fullName
+        }
       }
     }
   }
@@ -371,8 +420,14 @@ export const GET_TASK_PLANNING_REVIEW_HISTORY = gql`
       submittedAt
       reviewedAt
       createdAt
-      submittedBy { employeeId fullName }
-      reviewedBy { employeeId fullName }
+      submittedBy {
+        employeeId
+        fullName
+      }
+      reviewedBy {
+        employeeId
+        fullName
+      }
     }
   }
 `;

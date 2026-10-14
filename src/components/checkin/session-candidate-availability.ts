@@ -14,6 +14,15 @@ export interface ExistingCheckinoutSession {
   strategicPeriod?: SessionCandidatePeriod | null;
 }
 
+export function formatManualSessionConflict(message: string): string {
+  const match = message.match(
+    /non-closed session "[^"]+" overlaps from (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2}) and was created by (.+)\.?$/i,
+  );
+  if (!match) return message;
+  const [, startDate, endDate, creator] = match;
+  return `An existing session already covers ${startDate} to ${endDate} and was created by ${creator.replace(/\.$/, "")}. It was kept unchanged; choose different dates.`;
+}
+
 export function getEmployeesWithOverlappingOpenSessions(
   sessions: readonly ExistingCheckinoutSession[],
   strategicPeriodId: string,

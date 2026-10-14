@@ -427,6 +427,51 @@ export interface LogbookEvidence {
   size?: number | null;
 }
 
+/**
+ * Achievement fields shown to a hierarchy approver before a logbook decision.
+ * This intentionally mirrors the fields returned by GET_LOGBOOK_ENTRIES so the
+ * review UI never recalculates or invents an achievement in the browser.
+ */
+export interface LogbookApprovalAchievementEntry {
+  logbookEntryId: string;
+  entryDate?: string | null;
+  activityDescription?: string | null;
+  evidenceDescription?: string | null;
+  kpiAchievedValue?: number | null;
+  kpiTargetValue?: number | null;
+  kpiCompletionPercent?: number | null;
+  contributionUnit?: string | null;
+  kpiResultInputMode?: string | null;
+  kpiActualDenominator?: number | null;
+  kpiActualNumeratorExact?: string | null;
+  kpiActualRateExact?: string | null;
+  kpiActualBasisExact?: string | null;
+  evidenceUrl?: string | null;
+  evidenceItems?: LogbookEvidence[] | null;
+  metricObservations?: LogbookMetricObservation[] | null;
+  linkedKpi?: {
+    kpiId?: string | null;
+    name?: string | null;
+    targetValue?: number | null;
+    unitType?: string | null;
+    measurementUnit?: string | null;
+    calculationType?: LogbookKpiCalculationType | null;
+    numeratorLabel?: string | null;
+    denominatorLabel?: string | null;
+    basisUnitType?: string | null;
+  } | null;
+  quarterPlan?: {
+    quarterNumber?: number | null;
+    timeline?: string | null;
+    status?: string | null;
+  } | null;
+  owner?: {
+    employeeId?: string | null;
+    fullName?: string | null;
+    title?: string | null;
+  } | null;
+}
+
 export interface FrontendLogbookItem {
   id: string;
   activity: string;

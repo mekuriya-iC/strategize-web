@@ -48,12 +48,16 @@ const GET_REPORTS_SUMMARY = gql`
         breakdown {
           kpiScore {
             percentageAchieved
+            isAvailable
+            scope
           }
           competencyScore {
             percentageAchieved
+            isAvailable
           }
           activityScore {
             percentageAchieved
+            isAvailable
           }
         }
       }
@@ -125,10 +129,19 @@ function ReportsContent() {
   });
 
   const teamPerformance = summaryData?.unifiedTeamPerformance;
+  const rankableTeamResults = useMemo(
+    () =>
+      teamPerformance?.results?.filter(
+        (result: any) =>
+          result.breakdown?.kpiScore?.scope === "INDIVIDUAL" &&
+          result.breakdown?.kpiScore?.isAvailable,
+      ) || [],
+    [teamPerformance?.results],
+  );
   const scorecard = scorecardData?.kpiQuarterPerformanceReport;
 
   // Calculate metrics
-  const totalEmployees = teamPerformance?.results?.length || 0;
+  const totalEmployees = rankableTeamResults.length;
   const avgPerformance = teamPerformance?.averageScore || 0;
   const topPerformerScore = teamPerformance?.highestScore || 0;
   const hasKpiResults =
@@ -141,29 +154,54 @@ function ReportsContent() {
 
   // Calculate rating distribution (memoized)
   const ratingDistribution = useMemo(() => {
-    return teamPerformance?.results?.reduce((acc: any, r: any) => {
+    return rankableTeamResults.reduce((acc: any, r: any) => {
       const rating = r.rating || 'Unknown';
       acc[rating] = (acc[rating] || 0) + 1;
       return acc;
     }, {}) || {};
-  }, [teamPerformance]);
+  }, [rankableTeamResults]);
 
   // Calculate component averages (memoized)
   const componentAverages = useMemo(() => {
-    return teamPerformance?.results?.reduce(
-      (acc: any, r: any) => ({
-        kpi: acc.kpi + (r.breakdown?.kpiScore?.percentageAchieved || 0),
-        competency: acc.competency + (r.breakdown?.competencyScore?.percentageAchieved || 0),
-        activity: acc.activity + (r.breakdown?.activityScore?.percentageAchieved || 0),
-        count: acc.count + 1,
-      }),
-      { kpi: 0, competency: 0, activity: 0, count: 0 }
-    );
-  }, [teamPerformance]);
+    return rankableTeamResults.reduce(
+      (acc: any, r: any) => {
+        const competency = r.breakdown?.competencyScore;
+        const activity = r.breakdown?.activityScore;
 
-  const avgKPI = componentAverages?.count ? componentAverages.kpi / componentAverages.count : 0;
-  const avgCompetency = componentAverages?.count ? componentAverages.competency / componentAverages.count : 0;
-  const avgActivity = componentAverages?.count ? componentAverages.activity / componentAverages.count : 0;
+        return {
+          kpi: acc.kpi + (r.breakdown?.kpiScore?.percentageAchieved || 0),
+          competency:
+            acc.competency +
+            (competency?.isAvailable ? competency.percentageAchieved || 0 : 0),
+          activity:
+            acc.activity +
+            (activity?.isAvailable ? activity.percentageAchieved || 0 : 0),
+          kpiCount: acc.kpiCount + 1,
+          competencyCount:
+            acc.competencyCount + (competency?.isAvailable ? 1 : 0),
+          activityCount: acc.activityCount + (activity?.isAvailable ? 1 : 0),
+        };
+      },
+      {
+        kpi: 0,
+        competency: 0,
+        activity: 0,
+        kpiCount: 0,
+        competencyCount: 0,
+        activityCount: 0,
+      },
+    );
+  }, [rankableTeamResults]);
+
+  const avgKPI = componentAverages?.kpiCount
+    ? componentAverages.kpi / componentAverages.kpiCount
+    : 0;
+  const avgCompetency = componentAverages?.competencyCount
+    ? componentAverages.competency / componentAverages.competencyCount
+    : 0;
+  const avgActivity = componentAverages?.activityCount
+    ? componentAverages.activity / componentAverages.activityCount
+    : 0;
 
   // Normalize deep-link tab ids from the sidebar (e.g. my-submissions → submissions)
   const defaultTabValue = useMemo(() => {

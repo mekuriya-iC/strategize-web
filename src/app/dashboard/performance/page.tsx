@@ -173,7 +173,14 @@ export default function PerformancePage() {
 
   // Process and filter results
   const processedResults = useMemo(() => {
-    let results = [...teamResults];
+    // Individual rankings must compare like-for-like records. Department and
+    // division KPI scorecards attached to leaders are organizational results,
+    // not personal employee scores.
+    let results = teamResults.filter(
+      (result: any) =>
+        result.breakdown?.kpiScore?.scope === "INDIVIDUAL" &&
+        result.breakdown?.kpiScore?.isAvailable,
+    );
 
     // Apply search filter
     if (filters.search) {
@@ -247,6 +254,21 @@ export default function PerformancePage() {
     return sortedResults;
   }, [teamResults, filters]);
 
+  const liveAverageScore = processedResults.length
+    ? processedResults.reduce(
+        (sum: number, result: any) => sum + result.overallPercentage,
+        0,
+      ) / processedResults.length
+    : 0;
+  const liveHighestScore = processedResults.length
+    ? Math.max(...processedResults.map((result: any) => result.overallPercentage))
+    : 0;
+  const liveTopPerformer = processedResults.reduce(
+    (best: any, result: any) =>
+      !best || result.overallPercentage > best.overallPercentage ? result : best,
+    null,
+  );
+
   // Calculate distribution data
   const distributionData = useMemo(() => {
     const ratings = {
@@ -282,14 +304,33 @@ export default function PerformancePage() {
 
     const totals = processedResults.reduce((acc: any, result: any) => ({
       kpi: acc.kpi + result.breakdown.kpiScore.percentageAchieved,
-      competency: acc.competency + result.breakdown.competencyScore.percentageAchieved,
-      activity: acc.activity + result.breakdown.activityScore.percentageAchieved,
-    }), { kpi: 0, competency: 0, activity: 0 });
+      kpiCount: acc.kpiCount + 1,
+      competency:
+        acc.competency +
+        (result.breakdown.competencyScore.isAvailable
+          ? result.breakdown.competencyScore.percentageAchieved
+          : 0),
+      competencyCount:
+        acc.competencyCount +
+        (result.breakdown.competencyScore.isAvailable ? 1 : 0),
+      activity:
+        acc.activity +
+        (result.breakdown.activityScore.isAvailable
+          ? result.breakdown.activityScore.percentageAchieved
+          : 0),
+      activityCount:
+        acc.activityCount +
+        (result.breakdown.activityScore.isAvailable ? 1 : 0),
+    }), { kpi: 0, kpiCount: 0, competency: 0, competencyCount: 0, activity: 0, activityCount: 0 });
 
     return {
-      kpi: totals.kpi / processedResults.length,
-      competency: totals.competency / processedResults.length,
-      activity: totals.activity / processedResults.length,
+      kpi: totals.kpiCount ? totals.kpi / totals.kpiCount : 0,
+      competency: totals.competencyCount
+        ? totals.competency / totals.competencyCount
+        : 0,
+      activity: totals.activityCount
+        ? totals.activity / totals.activityCount
+        : 0,
     };
   }, [processedResults]);
 
@@ -298,9 +339,9 @@ export default function PerformancePage() {
     // This would come from a real API in production
     return [
       { period: 'Q1 2026', averageScore: 75, kpiScore: 72, competencyScore: 78 },
-      { period: 'Q2 2026', averageScore: teamPerformance?.averageScore || 0, kpiScore: componentAverages.kpi, competencyScore: componentAverages.competency },
+      { period: 'Q2 2026', averageScore: liveAverageScore, kpiScore: componentAverages.kpi, competencyScore: componentAverages.competency },
     ];
-  }, [teamPerformance, componentAverages]);
+  }, [liveAverageScore, componentAverages]);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-emerald-600 dark:text-emerald-400";
@@ -366,8 +407,8 @@ export default function PerformancePage() {
   // Calculate summary stats for export
   const summaryStats = teamPerformance ? {
     teamSize: processedResults.length,
-    averageScore: teamPerformance.averageScore,
-    topScore: teamPerformance.highestScore,
+    averageScore: liveAverageScore,
+    topScore: liveHighestScore,
     excellenceRate: processedResults.length > 0
       ? (processedResults.filter((r: any) => r.overallPercentage >= 90).length / processedResults.length) * 100
       : 0,
@@ -474,12 +515,12 @@ export default function PerformancePage() {
                   </CardHeader>
                   <CardContent>
                     <div
-                      className={`text-2xl font-bold ${getScoreColor(teamPerformance.averageScore)}`}
+                      className={`text-2xl font-bold ${getScoreColor(liveAverageScore)}`}
                     >
-                      {teamPerformance.averageScore.toFixed(1)}%
+                      {liveAverageScore.toFixed(1)}%
                     </div>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      {getTrendIcon(teamPerformance.averageScore, 75)}
+                      {getTrendIcon(liveAverageScore, 75)}
                       Team average
                     </p>
                   </CardContent>
@@ -538,9 +579,9 @@ export default function PerformancePage() {
                   </CardHeader>
                   <CardContent>
                     <div
-                      className={`text-2xl font-bold ${getScoreColor(teamPerformance.highestScore)}`}
+                      className={`text-2xl font-bold ${getScoreColor(liveHighestScore)}`}
                     >
-                      {teamPerformance.highestScore.toFixed(1)}%
+                      {liveHighestScore.toFixed(1)}%
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Best performer
@@ -551,7 +592,7 @@ export default function PerformancePage() {
             )}
 
             {/* Top Performer Highlight */}
-            {teamPerformance?.topPerformer && (
+            {liveTopPerformer && (
               <Card className="border-l-4 border-l-yellow-500">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -565,28 +606,28 @@ export default function PerformancePage() {
                 <CardContent>
                   <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20">
                     <UserAvatar
-                      src={teamPerformance.topPerformer.employee.picture}
-                      alt={teamPerformance.topPerformer.employee.fullName}
+                      src={liveTopPerformer.employee.picture}
+                      alt={liveTopPerformer.employee.fullName}
                       size="lg"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-900 dark:text-gray-100 text-xl">
-                        {teamPerformance.topPerformer.employee.fullName}
+                        {liveTopPerformer.employee.fullName}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {teamPerformance.topPerformer.employee.title || "No title"}
-                        {teamPerformance.topPerformer.employee.departments?.[0] &&
-                          ` • ${teamPerformance.topPerformer.employee.departments[0].name}`}
+                        {liveTopPerformer.employee.title || "No title"}
+                        {liveTopPerformer.employee.departments?.[0] &&
+                          ` • ${liveTopPerformer.employee.departments[0].name}`}
                       </p>
                     </div>
                     <div className="text-right">
                       <div
-                        className={`text-4xl font-bold ${getScoreColor(teamPerformance.topPerformer.overallPercentage)}`}
+                        className={`text-4xl font-bold ${getScoreColor(liveTopPerformer.overallPercentage)}`}
                       >
-                        {teamPerformance.topPerformer.overallPercentage.toFixed(1)}%
+                        {liveTopPerformer.overallPercentage.toFixed(1)}%
                       </div>
-                      <Badge className={getScoreBadge(teamPerformance.topPerformer.overallPercentage)}>
-                        {teamPerformance.topPerformer.rating}
+                      <Badge className={getScoreBadge(liveTopPerformer.overallPercentage)}>
+                        {liveTopPerformer.rating}
                       </Badge>
                     </div>
                   </div>

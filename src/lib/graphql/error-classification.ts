@@ -6,6 +6,8 @@ const EXPECTED_BUSINESS_ERROR_PATTERNS = [
   "task type (tasklinktype) cannot be changed",
   "logbook achievement cannot be submitted or approved while",
   "valid quarterly plan is required before this logbook achievement",
+  "cannot create session for employee",
+  "non-closed session",
 ];
 
 export function isExpectedGraphqlBusinessError(message: string): boolean {

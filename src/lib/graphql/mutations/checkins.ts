@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 const TASK_PLANNING_MUTATION_FIELDS = gql`
   fragment TaskPlanningMutationFields on CheckinoutTask {
@@ -6,9 +6,15 @@ const TASK_PLANNING_MUTATION_FIELDS = gql`
     taskTitle
     taskLinkType
     linkedKpiId
-    linkedKpi { kpiId name }
+    linkedKpi {
+      kpiId
+      name
+    }
     linkedInitiativeId
-    linkedInitiative { initiativeId title }
+    linkedInitiative {
+      initiativeId
+      title
+    }
     relatedToEmployeeId
     plannedDescription
     achievedDescription
@@ -36,9 +42,19 @@ const TASK_PLANNING_MUTATION_FIELDS = gql`
     carryoverEscalatedAt
     createdAt
     updatedAt
-    approvedBy { employeeId fullName }
-    relatedTo { employeeId fullName }
-    session { checkinoutSessionId weekStartDate weekEndDate }
+    approvedBy {
+      employeeId
+      fullName
+    }
+    relatedTo {
+      employeeId
+      fullName
+    }
+    session {
+      checkinoutSessionId
+      weekStartDate
+      weekEndDate
+    }
     planningReviewHistory {
       planningReviewId
       revision
@@ -47,11 +63,17 @@ const TASK_PLANNING_MUTATION_FIELDS = gql`
       isInitialWeeklySelection
       submittedAt
       reviewedAt
-      submittedBy { employeeId fullName }
-      reviewedBy { employeeId fullName }
+      submittedBy {
+        employeeId
+        fullName
+      }
+      reviewedBy {
+        employeeId
+        fullName
+      }
     }
   }
-`; 
+`;
 
 /**
  * Check-In/Out Mutations
@@ -94,6 +116,22 @@ export const UPDATE_CHECKINOUT_SESSION = gql`
       supervisorComment
       supervisorReviewAt
       isLocked
+      updatedAt
+    }
+  }
+`;
+
+export const RESCHEDULE_CHECKINOUT_SESSIONS = gql`
+  mutation RescheduleCheckinoutSessions(
+    $input: RescheduleCheckinoutSessionsInput!
+  ) {
+    rescheduleCheckinoutSessions(input: $input) {
+      checkinoutSessionId
+      weekStartDate
+      weekEndDate
+      scheduleWeekId
+      hasApprovedTasks
+      overallStatus
       updatedAt
     }
   }
@@ -270,7 +308,9 @@ export const REVIEW_TASK_PLANNING_BATCH = gql`
     reviewTaskPlanningBatch(reviews: $reviews) {
       approvedCount
       rejectedCount
-      tasks { ...TaskPlanningMutationFields }
+      tasks {
+        ...TaskPlanningMutationFields
+      }
     }
   }
   ${TASK_PLANNING_MUTATION_FIELDS}

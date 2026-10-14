@@ -12,7 +12,10 @@ import {
   GET_LOGBOOK_ENTRIES,
   GET_LOGBOOK_FORMULA_FOR_CONTEXT,
 } from "@/lib/graphql/queries/logbook";
-import { LogbookApprovalActions } from "@/components/logbook";
+import {
+  LogbookAchievementDetails,
+  LogbookApprovalActions,
+} from "@/components/logbook";
 import {
   Table,
   TableBody,
@@ -89,6 +92,9 @@ type LogbookReviewEntry = {
   entryStatus?: string | null;
   contributionUnit?: string | null;
   kpiCompletionPercent?: number | null;
+  kpiAchievedValue?: number | null;
+  kpiTargetValue?: number | null;
+  kpiActualDenominator?: number | null;
   kpiResultInputMode?: string | null;
   kpiActualNumeratorExact?: string | null;
   kpiActualRateExact?: string | null;
@@ -106,6 +112,10 @@ type LogbookReviewEntry = {
     kpiId: string;
     name?: string | null;
     calculationType?: LogbookKpiCalculationType | null;
+    targetValue?: number | null;
+    unitType?: string | null;
+    measurementUnit?: string | null;
+    basisUnitType?: string | null;
     actualBasisSource?: string | null;
     numeratorLabel?: string | null;
     denominatorLabel?: string | null;
@@ -596,13 +606,16 @@ export default function ApprovalsPage() {
                                   className="text-blue-600 border-blue-600 hover:bg-blue-50"
                                 >
                                   <Eye className="mr-1.5 h-4 w-4" />
-                                  View
+                                  View achievement
                                 </Button>
                                 <LogbookApprovalActions
                                   logbookEntryId={entry.logbookEntryId}
                                   activityDescription={
                                     entry.activityDescription || ""
                                   }
+                                  linkedKpiName={entry.linkedKpi?.name}
+                                  achievementDetails={entry}
+                                  showAchievementButton={false}
                                   currentStatus={entry.entryStatus || ""}
                                   onSuccess={() => refetchLogbook()}
                                 />
@@ -682,19 +695,10 @@ export default function ApprovalsPage() {
                 </div>
               </div>
 
-              {/* Linked KPI */}
-              {selectedLogbookEntry.linkedKpi && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Linked KPI
-                  </Label>
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      {selectedLogbookEntry.linkedKpi.name}
-                    </p>
-                  </div>
-                </div>
-              )}
+              <LogbookAchievementDetails
+                entry={selectedLogbookEntry}
+                summaryOnly
+              />
 
               {/* Activity Description */}
               <div className="space-y-2">
@@ -1110,6 +1114,9 @@ export default function ApprovalsPage() {
                     activityDescription={
                       selectedLogbookEntry.activityDescription || ""
                     }
+                    linkedKpiName={selectedLogbookEntry.linkedKpi?.name}
+                    achievementDetails={selectedLogbookEntry}
+                    showAchievementButton={false}
                     currentStatus={selectedLogbookEntry.entryStatus || ""}
                     onSuccess={() => {
                       refetchLogbook();
